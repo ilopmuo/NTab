@@ -79,20 +79,45 @@ export const ICONS: Record<string, LucideIcon> = {
   baby: Baby,
 }
 
-export function Icon({ name, size = 16, className, style }: { name: string; size?: number; className?: string; style?: React.CSSProperties }) {
+export function Icon({
+  name,
+  size = 16,
+  className,
+  style,
+  strokeWidth = 2,
+}: {
+  name: string
+  size?: number
+  className?: string
+  style?: React.CSSProperties
+  strokeWidth?: number
+}) {
   const C = ICONS[name] ?? Circle
-  return <C size={size} className={className} style={style} strokeWidth={1.8} />
+  return <C size={size} className={className} style={style} strokeWidth={strokeWidth} />
+}
+
+/** Icono de área en círculo de color con glifo blanco */
+export function AreaBadge({ icon, color, size = 24 }: { icon: string; color: string; size?: number }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full text-white"
+      style={{ width: size, height: size, background: `linear-gradient(180deg, color-mix(in srgb, ${color} 85%, white), ${color})` }}
+    >
+      <Icon name={icon} size={Math.round(size * 0.55)} strokeWidth={2.4} />
+    </span>
+  )
 }
 
 export const COLORS = [
-  '#2F7BFF',
-  '#64D2FF',
-  '#C5F82A',
-  '#30D158',
-  '#FFD60A',
-  '#FF9F0A',
-  '#FF453A',
-  '#FF375F',
-  '#BF5AF2',
-  '#8E8E93',
+  '#0A84FF', // azul
+  '#40C8E0', // verde azulado
+  '#30D158', // verde
+  '#FFD60A', // amarillo
+  '#FF9F0A', // naranja
+  '#FF453A', // rojo
+  '#FF375F', // rosa
+  '#BF5AF2', // morado
+  '#5E5CE6', // índigo
+  '#A2845E', // marrón
+  '#8E8E93', // gris
 ]

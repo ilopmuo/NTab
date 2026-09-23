@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { FileText, Pencil, Plus } from 'lucide-react'
+import { ChevronRight, FileText, Pencil, Plus, StickyNote } from 'lucide-react'
 import { db } from '@/db/db'
 import { createNote } from '@/db/actions'
 import { useProjects } from '@/db/hooks'
 import { href, navigate } from '@/app/router'
-import { Icon } from '@/components/icons'
-import { InlineAdd, TaskList } from '@/components/TaskList'
-import { Button, Empty, IconButton, PageHeader, Section } from '@/components/ui'
+import { AreaBadge } from '@/components/icons'
+import { TaskList } from '@/components/TaskList'
+import { Button, Empty, Group, IconButton, PageHeader, Section } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectCard } from '../projects/ProjectCard'
 import { ProjectForm } from '../projects/ProjectForm'
@@ -29,16 +29,12 @@ export function AreaView({ id }: { id: string }) {
   return (
     <Page wide>
       <PageHeader
-        icon={
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${area.color}22`, color: area.color }}>
-            <Icon name={area.icon} size={21} />
-          </span>
-        }
-        title={area.name}
-        subtitle={`${tasks.filter((t) => !t.done).length} tareas pendientes · ${projects.length} proyectos`}
+        icon={<AreaBadge icon={area.icon} color={area.color} size={40} />}
+        title={<span style={{ color: area.color }}>{area.name}</span>}
+        subtitle={`${tasks.filter((t) => !t.done).length} tareas pendientes · ${projects.length} ${projects.length === 1 ? 'proyecto' : 'proyectos'}`}
         actions={
-          <IconButton label="Editar área" onClick={() => setEditing(true)}>
-            <Pencil size={15} />
+          <IconButton label="Editar área" filled onClick={() => setEditing(true)}>
+            <Pencil size={15} strokeWidth={2.3} />
           </IconButton>
         }
       />
@@ -46,32 +42,39 @@ export function AreaView({ id }: { id: string }) {
       <Section
         title="Proyectos"
         count={projects.length}
+        tone="indigo"
         action={
           <Button size="sm" variant="ghost" onClick={() => setCreatingProject(true)}>
-            <Plus size={14} /> Proyecto
+            <Plus size={14} strokeWidth={2.6} /> Proyecto
           </Button>
         }
       >
         {projects.length === 0 ? (
-          <p className="px-1 py-2 text-[13px] text-faint">Sin proyectos activos en esta área.</p>
+          <button
+            type="button"
+            onClick={() => setCreatingProject(true)}
+            className="glass flex w-full items-center gap-3 rounded-[18px] px-4 py-4 text-left text-[15px] text-muted transition-colors hover:text-fg"
+          >
+            <Plus size={18} /> Crea un proyecto para agrupar lo que requiere varios pasos
+          </button>
         ) : (
-          <div className="mt-2 grid gap-3 @[560px]:grid-cols-2 @[860px]:grid-cols-3">
-            {projects.map((p) => (
-              <ProjectCard key={p.id} project={p} tasks={tasks} />
+          <div className="grid gap-3 @[560px]:grid-cols-2 @[860px]:grid-cols-3">
+            {projects.map((p, i) => (
+              <ProjectCard key={p.id} project={p} tasks={tasks} index={i} />
             ))}
           </div>
         )}
       </Section>
 
       <div className="max-w-3xl">
-        <Section title="Tareas sueltas" count={loose.length}>
-          <TaskList tasks={loose} hideProject />
-          <InlineAdd defaults={{ areaId: id }} />
+        <Section title="Tareas sueltas" count={loose.length} tone={area.color}>
+          <TaskList tasks={loose} hideProject add={{ defaults: { areaId: id }, color: area.color }} />
         </Section>
 
         <Section
           title="Notas"
           count={notes.length}
+          tone="yellow"
           action={
             <Button
               size="sm"
@@ -81,16 +84,21 @@ export function AreaView({ id }: { id: string }) {
                 navigate(`/notes/${n.id}`)
               }}
             >
-              <Plus size={14} /> Nota
+              <Plus size={14} strokeWidth={2.6} /> Nota
             </Button>
           }
         >
-          {notes.map((n) => (
-            <a key={n.id} href={href(`/notes/${n.id}`)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] hover:bg-hover">
-              <FileText size={15} className="text-muted" />
-              {n.title || 'Sin título'}
-            </a>
-          ))}
+          {notes.length > 0 && (
+            <Group>
+              {notes.map((n) => (
+                <a key={n.id} href={href(`/notes/${n.id}`)} className="relative flex items-center gap-3 px-4 py-3 text-[15px] transition-colors after:absolute after:right-0 after:bottom-0 after:left-[50px] after:h-px after:bg-line last:after:hidden hover:bg-hover">
+                  <StickyNote size={20} className="text-yellow" strokeWidth={2.2} />
+                  <span className="flex-1 truncate">{n.title || 'Sin título'}</span>
+                  <ChevronRight size={16} className="text-faint" />
+                </a>
+              ))}
+            </Group>
+          )}
         </Section>
       </div>
 

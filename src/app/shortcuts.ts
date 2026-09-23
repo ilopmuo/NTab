@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { NAV } from '@/components/CommandPalette'
+import { SECTIONS } from './sections'
 import { navigate } from './router'
 import { getUI, ui } from './store'
 
@@ -31,7 +31,7 @@ export function useGlobalShortcuts() {
       const k = e.key.toLowerCase()
       if (gPressed && Date.now() - gPressed < 1200) {
         gPressed = 0
-        const target = NAV.find((n) => n.key.toLowerCase() === k)
+        const target = SECTIONS.find((n) => n.key.toLowerCase() === k)
         if (target) {
           e.preventDefault()
           navigate(target.path)

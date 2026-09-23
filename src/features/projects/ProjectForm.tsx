@@ -76,7 +76,7 @@ function Form({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="¿Qué significa terminar este proyecto?"
           rows={2}
-          className="rounded-lg border border-line bg-bg px-3 py-2"
+          className="rounded-xl bg-fill-2 px-3.5 py-2.5"
         />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Área">
@@ -97,7 +97,7 @@ function Form({
           <ColorPicker value={color} onChange={setColor} colors={COLORS} />
         </Field>
       </div>
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
+      <div className="flex justify-end gap-2 px-5 pt-1 pb-5">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { useLookup } from '@/db/hooks'
@@ -7,31 +8,80 @@ import { parseQuickAdd } from '@/lib/parse'
 import { sortTasks } from '@/lib/tasks'
 import { TaskItem } from './TaskItem'
 import { ParsedChips } from './ParsedChips'
+import { Group, cx } from './ui'
 
+const rowSeparator =
+  "relative after:pointer-events-none after:absolute after:right-0 after:bottom-0 after:left-[50px] after:h-px after:bg-line after:content-[''] last:after:hidden"
+
+/**
+ * Lista de tareas en bloque agrupado. Las filas entran escalonadas, se
+ * reordenan con suavidad y al completarse se pliegan.
+ */
 export function TaskList({
   tasks,
   hideDate,
   hideProject,
   sort = true,
+  add,
+  bare,
+  empty,
+  compact,
+  className,
 }: {
   tasks: Task[]
   hideDate?: boolean
   hideProject?: boolean
   sort?: boolean
+  /** fila "Nueva tarea" al final, heredando estos valores */
+  add?: { defaults?: Partial<Task>; placeholder?: string; color?: string }
+  /** sin bloque de cristal alrededor */
+  bare?: boolean
+  /** contenido cuando no hay tareas (dentro del bloque) */
+  empty?: React.ReactNode
+  compact?: boolean
+  className?: string
 }) {
   const lookup = useLookup()
   const list = useMemo(() => (sort ? [...tasks].sort(sortTasks) : tasks), [tasks, sort])
-  return (
-    <div className="flex flex-col">
-      {list.map((t) => (
-        <TaskItem key={t.id} task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} />
-      ))}
-    </div>
+  if (!list.length && !add && !empty) return null
+
+  const rows = (
+    <>
+      <AnimatePresence initial={true}>
+        {list.map((t, i) => (
+          <motion.div
+            key={t.id}
+            layout="position"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 32, delay: Math.min(i, 12) * 0.03 } }}
+            exit={{ opacity: 0, height: 0, transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
+            className={cx(rowSeparator, 'overflow-hidden')}
+          >
+            <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+      {!list.length && empty}
+      {add && (
+        <div className={cx(list.length > 0 && 'shadow-[inset_0_1px_0_var(--c-border)]')}>
+          <InlineAdd {...add} />
+        </div>
+      )}
+    </>
   )
+  return bare ? <div className={className}>{rows}</div> : <Group className={className}>{rows}</Group>
 }
 
-/** Fila "Añadir tarea" que entiende lenguaje natural y hereda el contexto de la vista. */
-export function InlineAdd({ defaults, placeholder = 'Añadir tarea' }: { defaults?: Partial<Task>; placeholder?: string }) {
+/** Fila "Nueva tarea" que entiende lenguaje natural y hereda el contexto de la vista. */
+export function InlineAdd({
+  defaults,
+  placeholder = 'Nueva tarea',
+  color = 'var(--c-blue)',
+}: {
+  defaults?: Partial<Task>
+  placeholder?: string
+  color?: string
+}) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
   const { areas, projects } = useLookup()
@@ -64,10 +114,11 @@ export function InlineAdd({ defaults, placeholder = 'Añadir tarea' }: { default
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] text-faint transition-colors hover:text-accent"
+        className="group flex w-full items-center gap-3 px-4 py-[11px] text-[15px] font-medium transition-colors hover:bg-hover"
+        style={{ color }}
       >
-        <span className="flex h-5 w-5 items-center justify-center rounded-full transition-colors group-hover:bg-accent group-hover:text-white">
-          <Plus size={16} strokeWidth={2} />
+        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-white transition-transform group-active:scale-90" style={{ background: color }}>
+          <Plus size={15} strokeWidth={3} />
         </span>
         {placeholder}
       </button>
@@ -75,9 +126,9 @@ export function InlineAdd({ defaults, placeholder = 'Añadir tarea' }: { default
   }
 
   return (
-    <div className="rounded-xl border border-line bg-surface px-3 py-2.5 animate-fade-in">
+    <div className="px-4 py-[11px]">
       <div className="flex items-center gap-3">
-        <span className="h-5 w-5 shrink-0 rounded-full border-[1.5px] border-dashed border-line-strong" />
+        <span className="h-[22px] w-[22px] shrink-0 rounded-full border-[1.6px] border-dashed border-faint" />
         <input
           autoFocus
           value={value}
@@ -92,10 +143,10 @@ export function InlineAdd({ defaults, placeholder = 'Añadir tarea' }: { default
           }}
           onBlur={() => !value && setOpen(false)}
           placeholder="Ej: Enviar informe el viernes a las 12 !alta"
-          className="min-w-0 flex-1 bg-transparent text-[14px] placeholder:text-faint"
+          className="min-w-0 flex-1 bg-transparent text-[15px] placeholder:text-faint"
         />
       </div>
-      {value && <ParsedChips parsed={parsed} className="mt-2 pl-8" />}
+      {value && <ParsedChips parsed={parsed} className="mt-2 pl-[34px]" />}
     </div>
   )
 }

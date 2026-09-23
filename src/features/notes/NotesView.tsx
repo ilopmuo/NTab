@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowLeft, ListPlus, NotebookPen, Pin, PinOff, Plus, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, ListPlus, Pin, PinOff, Plus, Search, StickyNote, Trash2 } from 'lucide-react'
+import { SectionIcon, section } from '@/app/sections'
 import { db } from '@/db/db'
 import type { Note } from '@/db/types'
 import { createNote, createTask, updateNote } from '@/db/actions'
@@ -30,39 +31,39 @@ export function NotesView({ id }: { id?: string }) {
 
   return (
     <div className="flex h-full">
-      <div className={cx('flex w-full flex-col border-r border-line md:w-80 md:shrink-0', id && 'hidden md:flex')}>
-        <div className="px-4 pt-8 pb-3 lg:pt-12">
+      <div className={cx('flex w-full flex-col md:w-[340px] md:shrink-0 md:shadow-[inset_-1px_0_0_var(--c-border)]', id && 'hidden md:flex')}>
+        <div className="px-4 pt-[max(env(safe-area-inset-top),20px)] pb-3 lg:pt-10">
           <div className="mb-4 flex items-center gap-3">
-            <NotebookPen size={24} className="text-accent" />
-            <h1 className="flex-1 text-[26px] font-bold tracking-tight">Notas</h1>
-            <IconButton label="Nueva nota" onClick={newNote} className="bg-accent text-white hover:bg-accent hover:text-white hover:brightness-110">
+            <SectionIcon def={section('notes')} size={36} />
+            <h1 className="flex-1 text-[30px] font-bold tracking-[-0.025em]">Notas</h1>
+            <IconButton label="Nueva nota" onClick={newNote} className="!bg-yellow !text-black shadow-[0_4px_14px_-4px_var(--c-yellow)]">
               <Plus size={17} />
             </IconButton>
           </div>
           <div className="relative">
-            <Search size={14} className="absolute top-1/2 left-3 -translate-y-1/2 text-faint" />
+            <Search size={15} strokeWidth={2.3} className="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar en notas"
-              className="h-9 w-full rounded-lg bg-hover pr-3 pl-8 text-[13.5px] placeholder:text-faint"
+              className="h-10 w-full rounded-[12px] bg-fill pr-3 pl-9 text-[15px] placeholder:text-muted"
             />
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-2 pb-28 lg:pb-4">
+        <div className="flex-1 overflow-y-auto px-3 pb-36 lg:pb-4">
           {list.length === 0 && <p className="px-3 py-6 text-center text-[13px] text-faint">{q ? 'Sin resultados' : 'Ninguna nota todavía'}</p>}
           {list.map((n) => (
             <a
               key={n.id}
               href={href(`/notes/${n.id}`)}
-              className={cx('mb-0.5 block rounded-xl px-3 py-2.5 transition-colors', n.id === id ? 'bg-accent-soft' : 'hover:bg-hover')}
+              className={cx('mb-1 block rounded-[14px] px-3.5 py-3 transition-colors', n.id === id ? 'bg-[color-mix(in_srgb,var(--c-yellow)_22%,transparent)]' : 'hover:bg-hover')}
             >
               <div className="flex items-center gap-1.5">
-                {!!n.pinned && <Pin size={11} className="shrink-0 text-accent" />}
-                <span className="truncate text-[14px] font-medium">{n.title || 'Sin título'}</span>
+                {!!n.pinned && <Pin size={12} className="shrink-0 text-yellow" strokeWidth={2.6} />}
+                <span className="truncate text-[15px] font-semibold">{n.title || 'Sin título'}</span>
               </div>
-              <p className="mt-0.5 truncate text-[12.5px] text-muted">
-                <span className="text-faint">{formatDistanceToNow(n.updatedAt, { locale: es, addSuffix: false })}</span>
+              <p className="mt-0.5 truncate text-[13px] text-muted">
+                <span className="font-medium text-fg/70">{formatDistanceToNow(n.updatedAt, { locale: es, addSuffix: false })}</span>
                 {n.content && ` · ${n.content.slice(0, 80)}`}
               </p>
             </a>
@@ -74,8 +75,8 @@ export function NotesView({ id }: { id?: string }) {
         {current ? (
           <NoteEditor key={current.id} note={current} />
         ) : (
-          <Empty icon={<NotebookPen size={22} />} title={id ? 'Nota no encontrada' : 'Selecciona una nota'} hint="Ideas, apuntes de reuniones, listas, contraseñas del wifi…">
-            <button type="button" onClick={newNote} className="text-[13.5px] font-medium text-accent hover:underline">
+          <Empty icon={<StickyNote size={28} strokeWidth={2.2} />} color="var(--c-yellow)" title={id ? 'Nota no encontrada' : 'Selecciona una nota'} hint="Ideas, apuntes de reuniones, listas, contraseñas del wifi…">
+            <button type="button" onClick={newNote} className="h-10 rounded-full bg-yellow px-5 text-[14px] font-semibold text-black transition-transform active:scale-95">
               Crear nota
             </button>
           </Empty>
@@ -141,10 +142,10 @@ function NoteEditor({ note }: { note: Note }) {
   }
 
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col px-5 pt-6 pb-28 lg:px-10 lg:pt-12 lg:pb-10">
+    <div className="mx-auto flex h-full max-w-3xl flex-col px-5 pt-[max(env(safe-area-inset-top),16px)] pb-36 lg:px-10 lg:pt-10 lg:pb-10">
       <div className="mb-4 flex items-center gap-1">
-        <a href={href('/notes')} className="mr-1 rounded-lg p-1.5 text-muted hover:bg-hover md:hidden" aria-label="Volver">
-          <ArrowLeft size={18} />
+        <a href={href('/notes')} className="mr-1 flex items-center gap-0.5 rounded-lg py-1.5 pr-2 text-[16px] font-medium text-yellow md:hidden" aria-label="Volver">
+          <ArrowLeft size={18} strokeWidth={2.4} /> Notas
         </a>
         <Select
           value={assign}
@@ -155,7 +156,7 @@ function NoteEditor({ note }: { note: Note }) {
             if (v[0] === 'a') return updateNote(note.id, { areaId: id, projectId: undefined })
             updateNote(note.id, { projectId: id, areaId: projects.find((p) => p.id === id)?.areaId })
           }}
-          className="h-7 w-auto max-w-52 border-transparent bg-hover pr-7 text-[12.5px] text-muted"
+          className="h-8 w-auto max-w-52 rounded-full pr-8 text-[13px] font-medium"
         >
           <option value="">Sin clasificar</option>
           {areas.map((a) => (
@@ -183,7 +184,7 @@ function NoteEditor({ note }: { note: Note }) {
           </IconButton>
           <IconButton
             label="Eliminar nota"
-            className="hover:text-danger"
+            className="hover:!text-red"
             onClick={async () => {
               const copy = { ...note, title, content }
               await db.notes.delete(note.id)
@@ -203,7 +204,7 @@ function NoteEditor({ note }: { note: Note }) {
           setTitle(e.target.value)
         }}
         placeholder="Título"
-        className="mb-3 w-full bg-transparent text-[28px] font-bold tracking-tight placeholder:text-faint"
+        className="mb-3 w-full bg-transparent text-[30px] font-bold tracking-[-0.02em] placeholder:text-faint"
       />
       <Textarea
         value={content}
@@ -212,7 +213,7 @@ function NoteEditor({ note }: { note: Note }) {
           setContent(e.target.value)
         }}
         placeholder={'Empieza a escribir…\n\nTruco: escribe "- [ ] algo" y pulsa el botón de lista para convertirlo en tarea.'}
-        className="min-h-[50vh] flex-1 text-[15px] leading-7"
+        className="min-h-[50vh] flex-1 text-[17px] leading-[1.65]"
       />
     </div>
   )

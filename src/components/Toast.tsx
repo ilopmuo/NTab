@@ -1,28 +1,43 @@
+import { AnimatePresence, motion } from 'motion/react'
+import { CheckCircle2 } from 'lucide-react'
 import { setUI, useUI } from '@/app/store'
+import { spring } from './ui'
 
+/** Aviso tipo cápsula flotante (como los de iOS) */
 export function Toast() {
   const t = useUI((s) => s.toast)
-  if (!t) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex justify-center px-4 lg:bottom-6">
-      <div
-        key={t.id}
-        className="pointer-events-auto flex items-center gap-4 rounded-xl border border-line-strong bg-elevated py-2.5 pr-2.5 pl-4 text-[13.5px] shadow-2xl shadow-black/40 animate-pop-in"
-      >
-        <span>{t.message}</span>
-        {t.action && (
-          <button
-            type="button"
-            onClick={() => {
-              t.action!.run()
-              setUI({ toast: null })
-            }}
-            className="rounded-lg px-2.5 py-1 text-[13px] font-semibold text-accent hover:bg-accent-soft"
+    <div className="pointer-events-none fixed inset-x-0 bottom-[96px] z-[60] flex justify-center px-4 lg:bottom-6">
+      <AnimatePresence mode="popLayout">
+        {t && (
+          <motion.div
+            key={t.id}
+            layout
+            initial={{ opacity: 0, y: 24, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.95, transition: { duration: 0.18 } }}
+            transition={spring}
+            className="glass-thick pointer-events-auto flex items-center gap-3 rounded-full py-2 pr-2 pl-3 text-[14px] font-medium"
           >
-            {t.action.label}
-          </button>
+            <CheckCircle2 size={18} className="text-green" strokeWidth={2.4} />
+            <span className="max-w-[60vw] truncate">{t.message}</span>
+            {t.action ? (
+              <button
+                type="button"
+                onClick={() => {
+                  t.action!.run()
+                  setUI({ toast: null })
+                }}
+                className="rounded-full bg-accent-soft px-3 py-1.5 text-[13px] font-bold text-blue transition-transform active:scale-95"
+              >
+                {t.action.label}
+              </button>
+            ) : (
+              <span className="w-1" />
+            )}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   )
 }

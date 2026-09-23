@@ -74,49 +74,51 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
         void submit(false)
       }}
     >
-      <div className="px-5 pt-5 pb-3">
-        <input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault()
-              void submit(true)
-            }
-          }}
-          placeholder={example}
-          className="w-full bg-transparent text-[18px] font-medium tracking-tight placeholder:font-normal placeholder:text-faint"
-        />
-        <input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Notas"
-          className="mt-1.5 w-full bg-transparent text-[13.5px] text-muted placeholder:text-faint"
-        />
-        <ParsedChips parsed={parsed} className="mt-3" />
+      <div className="flex items-start gap-3 px-5 pt-5 pb-3">
+        <span className="mt-1 h-[24px] w-[24px] shrink-0 rounded-full border-[1.6px] border-dashed border-faint" />
+        <div className="min-w-0 flex-1">
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                void submit(true)
+              }
+            }}
+            placeholder={example}
+            className="w-full bg-transparent text-[20px] font-semibold tracking-tight placeholder:font-normal placeholder:text-faint"
+          />
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Notas"
+            className="mt-1 w-full bg-transparent text-[15px] text-muted placeholder:text-faint"
+          />
+          <ParsedChips parsed={parsed} className="mt-3" />
+        </div>
       </div>
-      <div className="flex items-center gap-3 border-t border-line bg-surface px-5 py-3">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[12px] text-muted">
+      <div className="flex items-center gap-3 px-5 pt-1 pb-4">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-muted">
           {toInbox ? (
             <>
-              <Inbox size={13} /> Bandeja de entrada
+              <Inbox size={14} strokeWidth={2.3} /> Bandeja de entrada
             </>
           ) : (
-            <span className="truncate">
-              {[final.dueDate && dateLabel(final.dueDate), destination].filter(Boolean).join(' · ')}
-            </span>
+            <span className="truncate">{[final.dueDate && dateLabel(final.dueDate), destination].filter(Boolean).join(' · ')}</span>
           )}
-          <span className="ml-auto hidden items-center gap-1 text-faint sm:flex">
-            <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>proyecto <Kbd>!</Kbd>prioridad
+          <span className="ml-auto hidden items-center gap-1 text-faint md:flex">
+            <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>!</Kbd>prioridad
           </span>
         </div>
         <button
           type="submit"
           disabled={!parsed.title}
-          className="flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:opacity-30"
+          aria-label="Añadir"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-[0_4px_14px_-4px_var(--c-blue)] transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none"
         >
-          Añadir <ArrowUp size={14} />
+          <ArrowUp size={18} strokeWidth={2.8} />
         </button>
       </div>
     </form>

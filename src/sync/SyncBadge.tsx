@@ -3,7 +3,7 @@ import { formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { href } from '@/app/router'
 import { cx } from '@/components/ui'
-import { useSync, type SyncStatus } from './service'
+import { openAuth, useSync, type SyncStatus } from './service'
 
 export function syncLabel(s: SyncStatus): { icon: React.ReactNode; text: string; tone: string } {
   switch (s.state) {
@@ -22,7 +22,9 @@ export function syncLabel(s: SyncStatus): { icon: React.ReactNode; text: string;
     case 'error':
       return { icon: <AlertTriangle size={14} />, text: 'Error al sincronizar', tone: 'text-danger' }
     default:
-      return { icon: <LogIn size={14} />, text: 'Solo en este dispositivo', tone: 'text-faint' }
+      return s.knownEmail
+        ? { icon: <LogIn size={14} />, text: 'Sesión caducada · entrar', tone: 'text-warn' }
+        : { icon: <LogIn size={14} />, text: 'Solo en este dispositivo', tone: 'text-faint' }
   }
 }
 
@@ -31,6 +33,18 @@ export function SyncBadge() {
   const s = useSync()
   if (s.state === 'loading') return null
   const { icon, text, tone } = syncLabel(s)
+  if (s.state === 'signed-out') {
+    return (
+      <button
+        type="button"
+        onClick={openAuth}
+        className={cx('flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[12px] transition-colors hover:bg-hover', tone)}
+      >
+        <span className="flex w-4 justify-center">{icon}</span>
+        <span className="truncate">{text}</span>
+      </button>
+    )
+  }
   return (
     <a
       href={href('/settings')}

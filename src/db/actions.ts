@@ -81,7 +81,7 @@ export async function duplicateTask(task: Task) {
 // ── Áreas y proyectos ─────────────────────────────────────────
 
 export async function createArea(data: Partial<Area> & { name: string }): Promise<Area> {
-  const area: Area = { id: uid(), icon: 'circle', color: '#2F7BFF', order: Date.now(), ...data }
+  const area: Area = { id: uid(), icon: 'circle', color: '#0A84FF', order: Date.now(), ...data }
   await db.areas.add(area)
   return area
 }
@@ -100,7 +100,7 @@ export async function createProject(data: Partial<Project> & { name: string }): 
     id: uid(),
     description: '',
     status: 'active',
-    color: '#2F7BFF',
+    color: '#0A84FF',
     order: Date.now(),
     createdAt: Date.now(),
     ...data,
@@ -144,7 +144,7 @@ export async function createHabit(data: Partial<Habit> & { name: string }): Prom
   const habit: Habit = {
     id: uid(),
     icon: 'sparkles',
-    color: '#C5F82A',
+    color: '#30D158',
     days: [0, 1, 2, 3, 4, 5, 6],
     archived: 0,
     order: Date.now(),

@@ -69,6 +69,20 @@ export function openDatabase(name = 'ntab') {
   return { db, raw }
 }
 
+/** Colores de la primera versión → colores de sistema de Apple (se traducen al leer) */
+const LEGACY_COLORS: Record<string, string> = {
+  '#2f7bff': '#0A84FF',
+  '#c5f82a': '#30D158',
+  '#64d2ff': '#40C8E0',
+}
+function modernColor<T extends { color: string }>(obj: T): T {
+  const c = LEGACY_COLORS[obj?.color?.toLowerCase()]
+  return c ? { ...obj, color: c } : obj
+}
+
 const opened = openDatabase()
 export const db = opened.db
 export const rawDb = opened.raw
+db.areas.hook('reading', modernColor)
+db.projects.hook('reading', modernColor)
+db.habits.hook('reading', modernColor)

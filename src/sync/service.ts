@@ -18,6 +18,15 @@ export interface SyncStatus {
   localOnly: boolean
   /** se ha abierto el enlace de "recuperar contraseña" */
   recovery: boolean
+  /**
+   * Email de la cuenta a la que este dispositivo ya estuvo conectado
+   * (undefined mientras se lee). Si la sesión se pierde —iOS a veces borra
+   * el almacenamiento de las apps de la pantalla de inicio— la app no se
+   * bloquea: sigue funcionando con los datos locales y pide volver a entrar.
+   */
+  knownEmail?: string | null
+  /** pantalla de inicio de sesión abierta encima de la app */
+  authOpen: boolean
 }
 
 const LOCAL_ONLY_KEY = 'ntab-local-only'
@@ -29,7 +38,7 @@ function readLocalOnly() {
   }
 }
 
-let status: SyncStatus = { state: 'loading', user: null, localOnly: readLocalOnly(), recovery: false }
+let status: SyncStatus = { state: 'loading', user: null, localOnly: readLocalOnly(), recovery: false, authOpen: false }
 const listeners = new Set<() => void>()
 function set(patch: Partial<SyncStatus>) {
   status = { ...status, ...patch }
@@ -70,8 +79,8 @@ function isNetworkError(e: unknown) {
   return !navigator.onLine || m.includes('failed to fetch') || m.includes('network') || m.includes('load failed')
 }
 
-async function connect(e: SyncEngine, userId: string) {
-  const result = await e.connect(userId, async () =>
+async function connect(e: SyncEngine, user: { id: string; email: string }) {
+  const result = await e.connect(user.id, async () =>
     window.confirm(
       'Tu cuenta ya tiene datos y este dispositivo también tiene cosas propias.\n\n' +
         'Aceptar: combinar ambos (se suben también los de este dispositivo).\n' +
@@ -79,6 +88,8 @@ async function connect(e: SyncEngine, userId: string) {
     ),
   )
   connected = true
+  await e.setMeta('email', user.email)
+  set({ knownEmail: user.email })
   if (result === 'uploaded') toast('Tus datos ya están en la nube ☁️')
   if (result === 'downloaded') toast('Datos descargados de tu cuenta')
   if (result === 'merged') toast('Datos combinados con tu cuenta')
@@ -101,7 +112,7 @@ export async function syncNow() {
   try {
     // La primera conexión de este dispositivo (decidir subir/descargar/combinar)
     // se reintenta hasta completarse; solo después se sincroniza con normalidad.
-    if (!connected) await connect(e, user.id)
+    if (!connected) await connect(e, user)
     do {
       again = false
       await e.sync()
@@ -120,7 +131,7 @@ async function start(session: Session) {
   const user = { id: session.user.id, email: session.user.email ?? '' }
   if (engine && status.user?.id === user.id) return
   stop()
-  set({ user, state: 'syncing', localOnly: false })
+  set({ user, state: 'syncing', localOnly: false, authOpen: false })
   try {
     localStorage.removeItem(LOCAL_ONLY_KEY)
   } catch {
@@ -174,15 +185,21 @@ let initialized = false
 export function initSync() {
   if (initialized) return
   initialized = true
+  const known = rawDb._local
+    .get('email')
+    .then((r) => (r?.value as string | undefined) ?? null)
+    .catch(() => null)
+  void known.then((knownEmail) => set({ knownEmail }))
   supabase.auth.onAuthStateChange((event, session) => {
     // No se puede llamar a Supabase dentro de este callback: se difiere
-    setTimeout(() => {
+    setTimeout(async () => {
       if (event === 'PASSWORD_RECOVERY') set({ recovery: true })
       if (event === 'INITIAL_SESSION') cleanAuthHash()
       if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) void start(session)
       else if (!session && (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT')) {
         stop()
-        set({ state: 'signed-out', user: null })
+        // Esperar a saber si el dispositivo ya tenía cuenta para no mostrar el login de golpe
+        set({ state: 'signed-out', user: null, knownEmail: await known })
       }
       if (event === 'SIGNED_IN') cleanAuthHash()
     }, 0)
@@ -241,7 +258,7 @@ export async function signOut() {
   await supabase.auth.signOut({ scope: 'local' })
   await local.resetLocal()
   await seedIfEmpty()
-  set({ state: 'signed-out', user: null, lastSyncAt: undefined })
+  set({ state: 'signed-out', user: null, lastSyncAt: undefined, knownEmail: null })
 }
 
 export function setLocalOnly(on: boolean) {
@@ -252,4 +269,13 @@ export function setLocalOnly(on: boolean) {
     /* sin almacenamiento */
   }
   set({ localOnly: on })
+}
+
+/** Abre la pantalla de inicio de sesión encima de la app */
+export function openAuth() {
+  set({ authOpen: true })
+}
+
+export function closeAuth() {
+  set({ authOpen: false })
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Cake, CalendarRange, Check, Folder, Inbox, PartyPopper, RefreshCcw, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Cake, CalendarRange, Check, Folder, Inbox, PartyPopper, Sparkles } from 'lucide-react'
 import { db } from '@/db/db'
 import { createTask, setSetting, updateTask } from '@/db/actions'
 import { useLookup, useOpenTasks } from '@/db/hooks'
@@ -12,7 +12,9 @@ import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { Icon } from '@/components/icons'
 import { InlineAdd, TaskList } from '@/components/TaskList'
-import { Button, Card, Textarea, cx } from '@/components/ui'
+import { Button, Card, Textarea, bouncy, cx, spring } from '@/components/ui'
+import { AnimatePresence, motion } from 'motion/react'
+import { SectionIcon, section } from '@/app/sections'
 import { useHabits } from '../habits/useHabits'
 import { Page } from '../Page'
 
@@ -28,6 +30,12 @@ const STEPS = [
 
 export function ReviewView() {
   const [step, setStep] = useState(0)
+  const [dir, setDir] = useState(1)
+  const go = (i: number) => {
+    setDir(i >= step ? 1 : -1)
+    setStep(i)
+    document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   const s = STEPS[step]
   const last = step === STEPS.length - 1
 
@@ -35,61 +43,81 @@ export function ReviewView() {
     if (step === STEPS.length - 2) {
       await setSetting('lastReview', Date.now())
     }
-    setStep((v) => Math.min(v + 1, STEPS.length - 1))
-    window.scrollTo({ top: 0 })
+    go(Math.min(step + 1, STEPS.length - 1))
   }
 
   return (
     <Page>
-      <div className="mb-8 flex items-center gap-3">
-        <RefreshCcw size={22} className="text-accent" />
-        <span className="text-[13px] font-medium text-muted">Revisión semanal</span>
-        <span className="ml-auto text-[12px] text-faint tabular-nums">
-          {Math.min(step + 1, STEPS.length - 1)} / {STEPS.length - 1}
+      <div className="mb-6 flex items-center gap-3">
+        <SectionIcon def={section('review')} size={30} />
+        <span className="text-[15px] font-semibold text-indigo">Revisión semanal</span>
+        <span className="font-num ml-auto text-[14px] font-semibold text-muted">
+          {Math.min(step + 1, STEPS.length - 1)} de {STEPS.length - 1}
         </span>
       </div>
-      <div className="mb-10 flex gap-1">
+      <div className="mb-10 flex gap-1.5">
         {STEPS.slice(0, -1).map((x, i) => (
-          <button
-            key={x.key}
-            type="button"
-            aria-label={x.title}
-            onClick={() => setStep(i)}
-            className={cx('h-1 flex-1 rounded-full transition-colors', i < step || last ? 'bg-lime' : i === step ? 'bg-accent' : 'bg-line')}
-          />
+          <button key={x.key} type="button" aria-label={x.title} onClick={() => go(i)} className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-fill">
+            <motion.span
+              className="absolute inset-0 origin-left rounded-full"
+              style={{ background: i < step || last ? 'var(--c-green)' : 'var(--c-indigo)' }}
+              initial={false}
+              animate={{ scaleX: i <= step || last ? 1 : 0 }}
+              transition={spring}
+            />
+          </button>
         ))}
       </div>
 
-      <header className="mb-8 animate-fade-in" key={s.key}>
-        <s.icon size={28} className={last ? 'text-lime' : 'text-accent'} />
-        <h1 className="mt-3 text-[30px] font-bold tracking-[-0.025em]">{s.title}</h1>
-        {s.hint && <p className="mt-1 text-[14px] text-muted">{s.hint}</p>}
-      </header>
+      <AnimatePresence mode="wait" custom={dir}>
+        <motion.div
+          key={s.key}
+          custom={dir}
+          initial={{ opacity: 0, x: dir * 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: dir * -40, transition: { duration: 0.15 } }}
+          transition={spring}
+        >
+          <header className="mb-8">
+            <motion.span
+              initial={{ scale: 0.5, rotate: -10 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={bouncy}
+              className="flex h-14 w-14 items-center justify-center rounded-[16px] text-white"
+              style={{ background: last ? 'var(--c-green)' : 'var(--c-indigo)' }}
+            >
+              <s.icon size={28} strokeWidth={2.2} />
+            </motion.span>
+            <h1 className="mt-4 text-[32px] font-bold tracking-[-0.025em]">{s.title}</h1>
+            {s.hint && <p className="mt-1.5 text-[16px] leading-snug text-muted">{s.hint}</p>}
+          </header>
 
-      <div className="min-h-60 animate-fade-in" key={`c-${s.key}`}>
-        {s.key === 'dump' && <DumpStep />}
-        {s.key === 'inbox' && <InboxStep />}
-        {s.key === 'overdue' && <OverdueStep />}
-        {s.key === 'projects' && <ProjectsStep />}
-        {s.key === 'week' && <WeekStep />}
-        {s.key === 'habits' && <HabitsStep />}
-        {s.key === 'done' && <DoneStep />}
-      </div>
+          <div className="min-h-60">
+            {s.key === 'dump' && <DumpStep />}
+            {s.key === 'inbox' && <InboxStep />}
+            {s.key === 'overdue' && <OverdueStep />}
+            {s.key === 'projects' && <ProjectsStep />}
+            {s.key === 'week' && <WeekStep />}
+            {s.key === 'habits' && <HabitsStep />}
+            {s.key === 'done' && <DoneStep />}
+          </div>
+        </motion.div>
+      </AnimatePresence>
 
-      <div className="mt-10 flex items-center border-t border-line pt-5">
+      <div className="mt-10 flex items-center gap-3">
         {step > 0 && !last && (
-          <Button variant="ghost" onClick={() => setStep(step - 1)}>
-            <ArrowLeft size={15} /> Atrás
+          <Button onClick={() => go(step - 1)}>
+            <ArrowLeft size={16} strokeWidth={2.4} /> Atrás
           </Button>
         )}
         <div className="flex-1" />
         {last ? (
-          <Button variant="primary" onClick={() => navigate('/today')}>
-            Ir a Hoy <ArrowRight size={15} />
+          <Button variant="primary" size="lg" onClick={() => navigate('/today')}>
+            Ir a Hoy <ArrowRight size={17} strokeWidth={2.4} />
           </Button>
         ) : (
-          <Button variant="primary" onClick={next}>
-            {step === STEPS.length - 2 ? 'Terminar revisión' : 'Siguiente'} <ArrowRight size={15} />
+          <Button variant="primary" size="lg" onClick={next} className="!bg-indigo">
+            {step === STEPS.length - 2 ? 'Terminar revisión' : 'Siguiente'} <ArrowRight size={17} strokeWidth={2.4} />
           </Button>
         )}
       </div>
@@ -108,7 +136,7 @@ function DumpStep() {
         onChange={(e) => setText(e.target.value)}
         rows={8}
         placeholder={'Renovar el DNI\nLlamar al fontanero\nIdea: aprender a cocinar sushi\n…'}
-        className="min-h-48 rounded-2xl border border-line bg-surface p-4 text-[15px] leading-7"
+        className="glass min-h-48 rounded-[20px] p-4 text-[16px] leading-7"
       />
       <div className="mt-3 flex justify-end">
         <Button
@@ -176,7 +204,7 @@ function ProjectsStep() {
     return (
       <p className="text-[14px] text-muted">
         No tienes proyectos activos.{' '}
-        <a href={href('/projects')} className="text-accent hover:underline">
+        <a href={href('/projects')} className="font-semibold text-blue hover:underline">
           Crear uno
         </a>
       </p>
@@ -187,20 +215,20 @@ function ProjectsStep() {
         const open = tasks.filter((x) => x.projectId === p.id)
         const a = area(p.areaId)
         return (
-          <Card key={p.id} className={cx('p-4', !open.length && 'border-warn/40')}>
+          <Card key={p.id} className={cx('p-4', !open.length && 'ring-2 ring-orange/50')}>
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
-              <a href={href(`/project/${p.id}`)} className="flex-1 text-[14.5px] font-medium hover:text-accent">
+              <a href={href(`/project/${p.id}`)} className="flex-1 text-[16px] font-semibold">
                 {p.name}
               </a>
               {a && <Icon name={a.icon} size={13} style={{ color: a.color }} />}
-              <span className={cx('text-[12px]', open.length ? 'text-muted' : 'font-medium text-warn')}>
+              <span className={cx('text-[13px] font-semibold', open.length ? 'text-muted' : 'text-orange')}>
                 {open.length ? `${open.length} pendientes` : 'Sin siguiente paso'}
               </span>
             </div>
             {!open.length && (
               <div className="mt-2">
-                <InlineAdd defaults={{ projectId: p.id, areaId: p.areaId }} placeholder="Añadir siguiente paso" />
+                <InlineAdd defaults={{ projectId: p.id, areaId: p.areaId }} placeholder="Añadir siguiente paso" color={p.color} />
               </div>
             )}
           </Card>
@@ -223,20 +251,20 @@ function WeekStep() {
         <Card className="space-y-2 p-4">
           {bdays.map((b) => (
             <p key={b.person.id} className="flex items-center gap-2 text-[13.5px]">
-              <Cake size={14} className="text-warn" /> Cumpleaños de <a className="font-medium hover:text-accent" href={href(`/people/${b.person.id}`)}>{b.person.name}</a>
+              <Cake size={15} className="text-pink" strokeWidth={2.4} /> Cumpleaños de <a className="font-semibold text-purple" href={href(`/people/${b.person.id}`)}>{b.person.name}</a>
               <span className="text-muted">· {dateLabel(b.date)}</span>
             </p>
           ))}
           {contact.map((c) => (
             <p key={c.person.id} className="flex items-center gap-2 text-[13.5px]">
               <span className="h-1.5 w-1.5 rounded-full bg-danger" /> Hablar con{' '}
-              <a className="font-medium hover:text-accent" href={href(`/people/${c.person.id}`)}>{c.person.name}</a>
+              <a className="font-semibold text-purple" href={href(`/people/${c.person.id}`)}>{c.person.name}</a>
             </p>
           ))}
         </Card>
       )}
-      {week.length ? <TaskList tasks={week} /> : <p className="text-[14px] text-muted">Semana tranquila. Buen momento para avanzar en proyectos.</p>}
-      <InlineAdd defaults={{ dueDate: addDaysYmd(t, 1) }} placeholder="Planificar algo para esta semana" />
+      {!week.length && <p className="px-1 text-[15px] text-muted">Semana tranquila. Buen momento para avanzar en proyectos.</p>}
+      <TaskList tasks={week} add={{ defaults: { dueDate: addDaysYmd(t, 1) }, placeholder: 'Planificar algo para esta semana', color: 'var(--c-orange)' }} />
     </div>
   )
 }
@@ -247,7 +275,7 @@ function HabitsStep() {
   return (
     <div className="space-y-4">
       <Card className="flex items-center gap-4 p-4">
-        <span className="text-[34px] font-bold tabular-nums text-lime">{doneTasks}</span>
+        <span className="font-num text-[40px] font-bold text-green">{doneTasks}</span>
         <span className="text-[14px] text-muted">tareas completadas en los últimos 7 días</span>
       </Card>
       {(habits ?? []).map((h) => {
@@ -266,7 +294,7 @@ function HabitsStep() {
       {habits?.length === 0 && (
         <p className="text-[14px] text-muted">
           Aún no sigues ningún hábito.{' '}
-          <a href={href('/habits')} className="text-accent hover:underline">
+          <a href={href('/habits')} className="font-semibold text-blue hover:underline">
             Crea el primero
           </a>
         </p>
@@ -289,9 +317,14 @@ function DoneStep() {
 
 function Done({ text, big }: { text: string; big?: boolean }) {
   return (
-    <div className={cx('flex items-center gap-3 rounded-2xl bg-lime-soft px-5 text-lime', big ? 'py-8 text-[16px]' : 'py-4 text-[14px]')}>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={bouncy}
+      className={cx('flex items-center gap-3 rounded-[20px] bg-lime-soft px-5 text-green', big ? 'py-8 text-[18px]' : 'py-4 text-[15px]')}
+    >
       <Check size={big ? 22 : 18} strokeWidth={2.5} />
       <span className="font-medium">{text}</span>
-    </div>
+    </motion.div>
   )
 }

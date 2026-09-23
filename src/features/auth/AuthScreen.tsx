@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { ArrowRight, Cloud, Laptop, Loader2, Smartphone, Tablet } from 'lucide-react'
 import { authErrorMessage, sendPasswordReset, setLocalOnly, signIn, signUp } from '@/sync/service'
-import { Input, cx } from '@/components/ui'
+import { motion } from 'motion/react'
+import { Input, cx, softSpring } from '@/components/ui'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
-export function AuthScreen({ onCancel }: { onCancel?: () => void }) {
+export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => void; initialEmail?: string }) {
   const [mode, setMode] = useState<Mode>('signin')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -40,16 +41,16 @@ export function AuthScreen({ onCancel }: { onCancel?: () => void }) {
   const valid = /\S+@\S+\.\S+/.test(email) && (mode === 'reset' || password.length >= 6)
 
   return (
-    <div className="flex min-h-full items-center justify-center overflow-y-auto bg-bg px-5 py-10">
-      <div className="w-full max-w-sm animate-pop-in">
+    <div className="relative z-10 flex min-h-full items-center justify-center overflow-y-auto px-5 py-10">
+      <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={softSpring} className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <img src="./icon.svg" alt="" className="mb-5 h-16 w-16 rounded-[18px] shadow-2xl shadow-accent/20" />
-          <h1 className="text-[28px] font-bold tracking-[-0.025em]">NTab</h1>
-          <p className="mt-1.5 text-[14px] text-muted">Tu vida, organizada. En todos tus dispositivos.</p>
+          <img src="./icon-512.png" alt="" className="mb-5 h-20 w-20 rounded-[22px] shadow-[0_20px_50px_-12px_var(--c-blue)]" />
+          <h1 className="text-[34px] font-bold tracking-[-0.025em]">NTab</h1>
+          <p className="mt-1.5 text-[16px] text-muted">Tu vida, organizada. En todos tus dispositivos.</p>
           <div className="mt-5 flex items-center gap-3 text-faint">
             <Smartphone size={18} />
             <span className="h-px w-5 bg-line-strong" />
-            <Cloud size={20} className="text-accent" />
+            <Cloud size={20} className="text-blue" strokeWidth={2.3} />
             <span className="h-px w-5 bg-line-strong" />
             <Laptop size={18} />
             <Tablet size={18} />
@@ -61,10 +62,10 @@ export function AuthScreen({ onCancel }: { onCancel?: () => void }) {
             e.preventDefault()
             if (valid && !busy) void submit()
           }}
-          className="rounded-2xl border border-line bg-surface p-5"
+          className="glass-thick rounded-[26px] p-5"
         >
           {mode !== 'reset' && (
-            <div className="mb-5 grid grid-cols-2 rounded-lg bg-bg p-0.5">
+            <div className="mb-5 grid grid-cols-2 rounded-[10px] bg-fill p-[2px]">
               {(['signin', 'signup'] as const).map((m) => (
                 <button
                   key={m}
@@ -74,8 +75,8 @@ export function AuthScreen({ onCancel }: { onCancel?: () => void }) {
                     setError('')
                   }}
                   className={cx(
-                    'h-8 rounded-md text-[13px] font-medium transition-all',
-                    mode === m ? 'bg-elevated text-fg shadow-sm ring-1 ring-line' : 'text-muted hover:text-fg',
+                    'h-8 rounded-[8px] text-[14px] font-semibold transition-all',
+                    mode === m ? 'bg-surface text-fg shadow-[0_1px_3px_rgb(0_0_0/0.16)] dark:bg-[#636366]' : 'text-muted hover:text-fg',
                   )}
                 >
                   {m === 'signin' ? 'Entrar' : 'Crear cuenta'}
@@ -94,7 +95,7 @@ export function AuthScreen({ onCancel }: { onCancel?: () => void }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
-              className="h-11 text-[15px]"
+              className="h-12 text-[16px]"
             />
             {mode !== 'reset' && (
               <Input
@@ -103,18 +104,18 @@ export function AuthScreen({ onCancel }: { onCancel?: () => void }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={mode === 'signup' ? 'Contraseña (mínimo 6 caracteres)' : 'Contraseña'}
-                className="h-11 text-[15px]"
+                className="h-12 text-[16px]"
               />
             )}
           </div>
 
-          {error && <p className="mt-3 rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger">{error}</p>}
-          {info && <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-[13px] text-accent">{info}</p>}
+          {error && <p className="mt-3 rounded-xl bg-danger-soft px-3.5 py-2.5 text-[14px] text-red">{error}</p>}
+          {info && <p className="mt-3 rounded-xl bg-accent-soft px-3.5 py-2.5 text-[14px] text-blue">{info}</p>}
 
           <button
             type="submit"
             disabled={!valid || busy}
-            className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent text-[14.5px] font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-white shadow-[0_8px_24px_-8px_var(--c-blue)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
           >
             {busy ? (
               <Loader2 size={17} className="animate-spin" />
@@ -151,7 +152,7 @@ export function AuthScreen({ onCancel }: { onCancel?: () => void }) {
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
