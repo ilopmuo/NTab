@@ -78,7 +78,7 @@ function useDebounced<T>(value: T, onCommit: (v: T) => void, delay = 300) {
 /** Icono cuadrado de color de las filas de ajustes */
 function Glyph({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[8px] text-white" style={{ background: color }}>
+    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[8px] bg-fill text-fg" data-color={color}>
       {children}
     </span>
   )
@@ -374,7 +374,7 @@ function TaskDetail({ task }: { task: Task }) {
             </Glyph>
             <p className="flex-1 text-[15px]">Subtareas</p>
             {task.subtasks.length > 0 && (
-              <span className="font-num text-[14px] font-semibold text-green">
+              <span className="font-num text-[14px] font-semibold text-muted">
                 {subDone}/{task.subtasks.length}
               </span>
             )}
@@ -412,7 +412,7 @@ function TaskDetail({ task }: { task: Task }) {
             ))}
           </AnimatePresence>
           <div className="flex items-center gap-3 py-2 pr-3 pl-[58px]">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green text-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
               <Plus size={13} strokeWidth={3} />
             </span>
             <input

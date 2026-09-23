@@ -3,8 +3,7 @@ import type { Project } from '@/db/types'
 import { db } from '@/db/db'
 import { createProject } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
-import { COLORS } from '@/components/icons'
-import { Button, ColorPicker, Field, Input, Modal, ModalHeader, Select, Textarea } from '@/components/ui'
+import { Button, Field, Input, Modal, ModalHeader, Select, Textarea } from '@/components/ui'
 
 export function ProjectForm({
   project,
@@ -42,11 +41,9 @@ function Form({
   const [description, setDescription] = useState(project?.description ?? '')
   const [areaId, setAreaId] = useState(project?.areaId ?? defaultAreaId ?? '')
   const [deadline, setDeadline] = useState(project?.deadline ?? '')
-  const [color, setColor] = useState(project?.color ?? COLORS[0])
-
   const save = async () => {
     if (!name.trim()) return
-    const data = { name: name.trim(), description, areaId: areaId || undefined, deadline: deadline || undefined, color }
+    const data = { name: name.trim(), description, areaId: areaId || undefined, deadline: deadline || undefined }
     if (project) {
       await db.transaction('rw', db.projects, db.tasks, async () => {
         await db.projects.update(project.id, data)
@@ -93,9 +90,6 @@ function Form({
             <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </Field>
         </div>
-        <Field label="Color">
-          <ColorPicker value={color} onChange={setColor} colors={COLORS} />
-        </Field>
       </div>
       <div className="flex justify-end gap-2 px-5 pt-1 pb-5">
         <Button type="button" variant="ghost" onClick={onClose}>

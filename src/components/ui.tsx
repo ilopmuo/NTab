@@ -384,20 +384,8 @@ export function Empty({
   )
 }
 
-const TONES: Record<string, string> = {
-  danger: 'var(--c-red)',
-  accent: 'var(--c-blue)',
-  lime: 'var(--c-green)',
-  blue: 'var(--c-blue)',
-  orange: 'var(--c-orange)',
-  red: 'var(--c-red)',
-  green: 'var(--c-green)',
-  teal: 'var(--c-teal)',
-  indigo: 'var(--c-indigo)',
-  purple: 'var(--c-purple)',
-  yellow: 'var(--c-yellow)',
-  gray: 'var(--c-muted)',
-}
+/** Títulos de bloque siempre en color de texto (diseño monocromo); solo el azul resalta */
+const TONES: Record<string, string> = { blue: 'var(--c-blue)', accent: 'var(--c-blue)' }
 
 /** Bloque con título de color (como las secciones de Recordatorios) */
 export function Section({
@@ -418,7 +406,7 @@ export function Section({
   return (
     <section className={cx('mb-8', className)}>
       <div className="mb-2 flex min-h-8 items-center gap-2 px-1">
-        <h3 className="text-[19px] font-bold tracking-tight" style={{ color: tone ? TONES[tone] ?? tone : undefined }}>
+        <h3 className="text-[19px] font-bold tracking-tight" style={{ color: tone ? TONES[tone] : undefined }}>
           {title}
         </h3>
         {count !== undefined && count > 0 && <span className="font-num text-[15px] font-semibold text-faint">{count}</span>}
@@ -446,7 +434,7 @@ export function ProgressRing({
   value,
   size = 44,
   stroke = 5,
-  color = 'var(--c-green)',
+  color = 'var(--c-blue)',
   track,
   delay = 0,
 }: {

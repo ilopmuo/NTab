@@ -1,40 +1,28 @@
 # NTab — Sistema de diseño
 
 > Referencias: Recordatorios, Fitness, Calendario y Ajustes de Apple (iOS 26 / macOS Tahoe).
-> Nada de "tarjetas oscuras con borde gris y un acento azul": materiales, profundidad, color con significado y movimiento con física.
+> Blanco, negro y grises; azul eléctrico para actuar y verde lima para lo hecho. Movimiento con física.
 
 ## 1. Principios
 
-1. **El color significa algo.** Cada sección tiene un color fijo, que se repite en su icono, en su título, en los anillos y en el halo del fondo. Si ves naranja, estás mirando lo que viene.
-2. **Profundidad, no cajas.** El fondo es un degradado ambiental vivo. El contenido flota encima en *materiales* translúcidos (cristal con desenfoque), como en iOS.
-3. **Listas agrupadas.** Las filas van en bloques redondeados con separadores finos que empiezan tras el icono (*inset grouped*), como en Ajustes y Recordatorios.
-4. **Títulos grandes que se compactan.** Cada vista abre con un título grande. Al hacer scroll aparece una barra de cristal con el título pequeño.
-5. **Movimiento con física.** Muelles (*springs*), nunca transiciones lineales. Todo entra escalonado y todo sale con animación. Si el sistema pide menos movimiento, se respeta.
-6. **Nunca una pantalla vacía.** Hoy es un panel con anillos, agenda y widgets. Un estado vacío explica qué hacer y ofrece un botón.
+1. **Monocromo.** Blanco, negro y grises. El color solo aparece donde aporta algo, y solo hay dos:
+   - **Azul eléctrico** (`#2F7DFF` en oscuro, `#1668FF` en claro): hoy, selección, botones principales, enlaces y la prioridad máxima.
+   - **Verde lima** (`#C5F82A`): lo hecho (casillas completadas, hábitos cumplidos, anillos de progreso). Siempre con el glifo en negro encima.
+   Nada más: ni rojo, ni naranja, ni morado. Tampoco colores por área, proyecto o hábito.
+2. **La importancia se marca con contraste, no con color.** Lo atrasado va en texto fuerte, lo que viene en gris y la prioridad sube de gris claro a blanco o negro, y a azul en la máxima.
+3. **Superficies sólidas.** En oscuro, negro con celdas `#1C1C1E`; en claro, gris `#F2F2F7` con celdas blancas, como las listas agrupadas de iOS.
+4. **Listas agrupadas.** Las filas van en bloques redondeados con separadores finos que empiezan tras el icono (*inset grouped*), como en Ajustes y Recordatorios.
+5. **Títulos grandes que se compactan.** Cada vista abre con un título grande. Al hacer scroll aparece una barra con el título pequeño.
+6. **Movimiento con física.** Muelles (*springs*), nunca transiciones lineales. Todo entra escalonado y todo sale con animación. Si el sistema pide menos movimiento, se respeta.
+7. **Nunca una pantalla vacía.** Hoy es un panel con anillos, agenda y widgets. Un estado vacío explica qué hacer y ofrece un botón.
 
-## 2. Color semántico
+## 2. Tokens
 
-| Color | Oscuro | Claro | Significa | Dónde |
-|---|---|---|---|---|
-| Azul | `#0A84FF` | `#007AFF` | **Hoy**, foco, acción principal | Hoy, botones, selección |
-| Naranja | `#FF9F0A` | `#FF9500` | **Lo que viene** | Próximo, prioridad media |
-| Rojo | `#FF453A` | `#FF3B30` | **Urgente o atrasado** | Atrasadas, prioridad alta, borrar |
-| Verde | `#30D158` | `#34C759` | **Hecho, constancia** | Completar, hábitos, rachas |
-| Verde azulado | `#40C8E0` | `#30B0C7` | **Tiempo** | Calendario, horas |
-| Índigo | `#5E5CE6` | `#5856D6` | **Objetivos** | Proyectos, revisión semanal |
-| Morado | `#BF5AF2` | `#AF52DE` | **Personas** | Personas, cumpleaños |
-| Amarillo | `#FFD60A` | `#FFCC00` | **Ideas** | Notas |
-| Gris | `#8E8E93` | `#8E8E93` | **Sin procesar / sistema** | Bandeja, Ajustes, Completadas |
+Los nombres de color heredados (`--c-red`, `--c-orange`, `--c-purple`…) existen pero valen tonos de gris, para que nada vuelva a colarse con color. Los únicos que no son grises son `--c-blue` y `--c-green` (lima).
 
-Las áreas (Trabajo, Salud…) conservan el color que elija el usuario.
+## 3. Iconos
 
-## 3. Superficies
-
-- **Fondo:** oscuro `#000` y claro `#F2F2F7` (el gris agrupado de Apple, no blanco puro). Encima van dos o tres halos difuminados que se mueven muy despacio:
-  - uno con el color de la sección actual;
-  - otro según la hora: cálido por la mañana, azul por la tarde, índigo por la noche.
-- **Material:** blanco o gris casi negro al 60–75 %, con `backdrop-filter: blur(40px) saturate(180%)`, borde de 0,5 px y un brillo interior de 1 px arriba.
-- **Rellenos de control:** `rgba(120,120,128,.12/.24)`, igual que `systemFill` en iOS.
+Glifos sobre círculos o cuadrados de relleno gris (`--c-fill`). La sección activa de la barra lateral se rellena de azul.
 
 ## 4. Tipografía
 

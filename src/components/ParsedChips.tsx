@@ -58,7 +58,7 @@ export function ParsedChips({ parsed, className }: { parsed: ParsedTask; classNa
         </Chip>
       )}
       {(p || a) && (
-        <Chip color={a?.color ?? p?.color}>
+        <Chip color="var(--c-muted)">
           {p ? <Folder size={13} strokeWidth={2.4} /> : <Icon name={a!.icon} size={13} strokeWidth={2.4} />}
           {p?.name ?? a?.name}
         </Chip>

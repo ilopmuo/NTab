@@ -36,7 +36,7 @@ export function NotesView({ id }: { id?: string }) {
           <div className="mb-4 flex items-center gap-3">
             <SectionIcon def={section('notes')} size={36} />
             <h1 className="flex-1 text-[30px] font-bold tracking-[-0.025em]">Notas</h1>
-            <IconButton label="Nueva nota" onClick={newNote} className="!bg-yellow !text-black shadow-[0_4px_14px_-4px_var(--c-yellow)]">
+            <IconButton label="Nueva nota" onClick={newNote} className="!bg-accent !text-white">
               <Plus size={17} />
             </IconButton>
           </div>
@@ -56,10 +56,10 @@ export function NotesView({ id }: { id?: string }) {
             <a
               key={n.id}
               href={href(`/notes/${n.id}`)}
-              className={cx('mb-1 block rounded-[14px] px-3.5 py-3 transition-colors', n.id === id ? 'bg-[color-mix(in_srgb,var(--c-yellow)_22%,transparent)]' : 'hover:bg-hover')}
+              className={cx('mb-1 block rounded-[14px] px-3.5 py-3 transition-colors', n.id === id ? 'bg-fill' : 'hover:bg-hover')}
             >
               <div className="flex items-center gap-1.5">
-                {!!n.pinned && <Pin size={12} className="shrink-0 text-yellow" strokeWidth={2.6} />}
+                {!!n.pinned && <Pin size={12} className="shrink-0 text-muted" strokeWidth={2.6} />}
                 <span className="truncate text-[15px] font-semibold">{n.title || 'Sin título'}</span>
               </div>
               <p className="mt-0.5 truncate text-[13px] text-muted">
@@ -76,7 +76,7 @@ export function NotesView({ id }: { id?: string }) {
           <NoteEditor key={current.id} note={current} />
         ) : (
           <Empty icon={<StickyNote size={28} strokeWidth={2.2} />} color="var(--c-yellow)" title={id ? 'Nota no encontrada' : 'Selecciona una nota'} hint="Ideas, apuntes de reuniones, listas, contraseñas del wifi…">
-            <button type="button" onClick={newNote} className="h-10 rounded-full bg-yellow px-5 text-[14px] font-semibold text-black transition-transform active:scale-95">
+            <button type="button" onClick={newNote} className="h-10 rounded-full bg-accent px-5 text-[14px] font-semibold text-white transition-transform active:scale-95">
               Crear nota
             </button>
           </Empty>
@@ -144,7 +144,7 @@ function NoteEditor({ note }: { note: Note }) {
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col px-5 pt-[max(env(safe-area-inset-top),16px)] pb-36 lg:px-10 lg:pt-10 lg:pb-10">
       <div className="mb-4 flex items-center gap-1">
-        <a href={href('/notes')} className="mr-1 flex items-center gap-0.5 rounded-lg py-1.5 pr-2 text-[16px] font-medium text-yellow md:hidden" aria-label="Volver">
+        <a href={href('/notes')} className="mr-1 flex items-center gap-0.5 rounded-lg py-1.5 pr-2 text-[16px] font-medium text-blue md:hidden" aria-label="Volver">
           <ArrowLeft size={18} strokeWidth={2.4} /> Notas
         </a>
         <Select

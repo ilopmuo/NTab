@@ -22,7 +22,7 @@ export function ReauthBanner() {
             onClick={openAuth}
             className="glass flex w-full items-center gap-3 rounded-[18px] px-4 py-3 text-left transition-transform active:scale-[0.99]"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange text-white">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-white">
               <KeyRound size={16} strokeWidth={2.4} />
             </span>
             <span className="min-w-0 flex-1">

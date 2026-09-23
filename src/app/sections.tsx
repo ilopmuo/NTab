@@ -32,16 +32,16 @@ export interface SectionDef {
 
 export const SECTIONS: SectionDef[] = [
   { id: 'today', path: '/today', label: 'Hoy', short: 'Hoy', icon: 'today', tint: 'blue', key: 'H' },
-  { id: 'upcoming', path: '/upcoming', label: 'Próximo', short: 'Próximo', icon: CalendarClock, tint: 'orange', key: 'U' },
-  { id: 'inbox', path: '/inbox', label: 'Bandeja de entrada', short: 'Bandeja', icon: Inbox, tint: 'gray', key: 'I' },
-  { id: 'calendar', path: '/calendar', label: 'Calendario', short: 'Calendario', icon: CalendarDays, tint: 'teal', key: 'C' },
-  { id: 'habits', path: '/habits', label: 'Hábitos', short: 'Hábitos', icon: Flame, tint: 'green', key: 'B' },
-  { id: 'notes', path: '/notes', label: 'Notas', short: 'Notas', icon: StickyNote, tint: 'yellow', key: 'O' },
-  { id: 'people', path: '/people', label: 'Personas', short: 'Personas', icon: Users, tint: 'purple', key: 'P' },
-  { id: 'projects', path: '/projects', label: 'Proyectos', short: 'Proyectos', icon: Layers, tint: 'indigo', key: 'J' },
-  { id: 'review', path: '/review', label: 'Revisión semanal', short: 'Revisión', icon: RefreshCcw, tint: 'indigo', key: 'R' },
-  { id: 'logbook', path: '/logbook', label: 'Completadas', short: 'Completadas', icon: Archive, tint: 'gray', key: 'L' },
-  { id: 'settings', path: '/settings', label: 'Ajustes', short: 'Ajustes', icon: Settings, tint: 'gray', key: 'S' },
+  { id: 'upcoming', path: '/upcoming', label: 'Próximo', short: 'Próximo', icon: CalendarClock, tint: 'blue', key: 'U' },
+  { id: 'inbox', path: '/inbox', label: 'Bandeja de entrada', short: 'Bandeja', icon: Inbox, tint: 'blue', key: 'I' },
+  { id: 'calendar', path: '/calendar', label: 'Calendario', short: 'Calendario', icon: CalendarDays, tint: 'blue', key: 'C' },
+  { id: 'habits', path: '/habits', label: 'Hábitos', short: 'Hábitos', icon: Flame, tint: 'blue', key: 'B' },
+  { id: 'notes', path: '/notes', label: 'Notas', short: 'Notas', icon: StickyNote, tint: 'blue', key: 'O' },
+  { id: 'people', path: '/people', label: 'Personas', short: 'Personas', icon: Users, tint: 'blue', key: 'P' },
+  { id: 'projects', path: '/projects', label: 'Proyectos', short: 'Proyectos', icon: Layers, tint: 'blue', key: 'J' },
+  { id: 'review', path: '/review', label: 'Revisión semanal', short: 'Revisión', icon: RefreshCcw, tint: 'blue', key: 'R' },
+  { id: 'logbook', path: '/logbook', label: 'Completadas', short: 'Completadas', icon: Archive, tint: 'blue', key: 'L' },
+  { id: 'settings', path: '/settings', label: 'Ajustes', short: 'Ajustes', icon: Settings, tint: 'blue', key: 'S' },
 ]
 
 export const section = (id: string) => SECTIONS.find((s) => s.id === id) ?? SECTIONS[0]
@@ -53,7 +53,7 @@ export function routeTint(first: string | undefined): Tint {
   return SECTIONS.find((s) => s.id === first)?.tint ?? 'blue'
 }
 
-/** Icono redondo de color con glifo blanco, como en Recordatorios y Ajustes */
+/** Icono de sección: glifo sobre círculo gris neutro (monocromo) */
 export function SectionIcon({
   def,
   size = 28,
@@ -65,23 +65,18 @@ export function SectionIcon({
   className?: string
   square?: boolean
 }) {
-  const glyph = Math.round(size * 0.56)
+  const glyph = Math.round(size * 0.52)
   return (
     <span
-      className={cx('inline-flex shrink-0 items-center justify-center text-white', square ? 'rounded-[28%]' : 'rounded-full', className)}
-      style={{
-        width: size,
-        height: size,
-        background: `linear-gradient(180deg, color-mix(in srgb, ${tint(def.tint)} 88%, white), ${tint(def.tint)})`,
-        boxShadow: `0 1px 2px color-mix(in srgb, ${tint(def.tint)} 40%, transparent)`,
-      }}
+      className={cx('inline-flex shrink-0 items-center justify-center bg-fill text-fg', square ? 'rounded-[28%]' : 'rounded-full', className)}
+      style={{ width: size, height: size }}
     >
       {def.icon === 'today' ? (
-        <span className="font-num leading-none font-bold" style={{ fontSize: Math.round(size * 0.46) }}>
+        <span className="font-num leading-none font-bold" style={{ fontSize: Math.round(size * 0.44) }}>
           {new Date().getDate()}
         </span>
       ) : (
-        <def.icon size={glyph} strokeWidth={2.3} />
+        <def.icon size={glyph} strokeWidth={2.1} />
       )}
     </span>
   )

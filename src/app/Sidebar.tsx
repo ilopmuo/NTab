@@ -173,7 +173,7 @@ function SidebarContent() {
               <Row
                 to={`/area/${a.id}`}
                 active={path === `/area/${a.id}`}
-                icon={<AreaBadge icon={a.icon} color={a.color} />}
+                icon={<AreaBadge icon={a.icon} />}
                 label={a.name}
                 count={c.byArea.get(a.id)}
               />
@@ -185,7 +185,7 @@ function SidebarContent() {
                     indent
                     to={`/project/${p.id}`}
                     active={path === `/project/${p.id}`}
-                    icon={<span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />}
+                    icon={<span className="h-1.5 w-1.5 rounded-full bg-faint" />}
                     label={p.name}
                     count={c.byProject.get(p.id)}
                   />
@@ -199,7 +199,7 @@ function SidebarContent() {
                 key={p.id}
                 to={`/project/${p.id}`}
                 active={path === `/project/${p.id}`}
-                icon={<span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />}
+                icon={<span className="h-1.5 w-1.5 rounded-full bg-faint" />}
                 label={p.name}
                 count={c.byProject.get(p.id)}
               />

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { CheckCircle2 } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { setUI, useUI } from '@/app/store'
 import { spring } from './ui'
 
@@ -19,7 +19,9 @@ export function Toast() {
             transition={spring}
             className="glass-thick pointer-events-auto flex items-center gap-3 rounded-full py-2 pr-2 pl-3 text-[14px] font-medium"
           >
-            <CheckCircle2 size={18} className="text-green" strokeWidth={2.4} />
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green text-on-green">
+              <Check size={13} strokeWidth={3} />
+            </span>
             <span className="max-w-[60vw] truncate">{t.message}</span>
             {t.action ? (
               <button

@@ -27,12 +27,13 @@ export function sortTasks(a: Task, b: Task) {
 }
 
 export const PRIORITY_LABEL = ['Sin prioridad', 'Baja', 'Media', 'Alta'] as const
-export const PRIORITY_COLOR = ['var(--c-faint)', 'var(--c-blue)', 'var(--c-orange)', 'var(--c-red)'] as const
+/** Monocromo: cuanto más importante, más contraste; la máxima, en azul */
+export const PRIORITY_COLOR = ['var(--c-faint)', 'var(--c-muted)', 'var(--c-text)', 'var(--c-blue)'] as const
 
-/** Color con significado para una fecha: rojo si ya pasó, azul si es hoy, naranja si viene */
+/** Fecha: azul si es hoy, texto fuerte si ya pasó, gris si viene */
 export function dateColor(date: string | undefined, ref = today()) {
-  if (!date) return 'var(--c-gray)'
-  if (date < ref) return 'var(--c-red)'
+  if (!date) return 'var(--c-muted)'
   if (date === ref) return 'var(--c-blue)'
-  return 'var(--c-orange)'
+  if (date < ref) return 'var(--c-text)'
+  return 'var(--c-muted)'
 }
