@@ -20,8 +20,9 @@
 | **Revisión semanal** | Asistente de 6 pasos para vaciar la cabeza y planificar la semana |
 | **Paleta** (`⌘K`) | Busca cualquier cosa y ejecuta cualquier acción |
 | **Tema** | Oscuro (por defecto), claro o del sistema |
-| **Offline y privado** | Los datos viven en tu dispositivo (IndexedDB). Exporta/importa copias en JSON |
-| **Instalable** | PWA: se instala como app en el móvil y en el ordenador |
+| **Sincronización** | Con tu cuenta, los datos están en el iPhone, el iPad y el ordenador, al momento |
+| **Funciona sin conexión** | Cada dispositivo guarda una copia local; los cambios se suben al volver la conexión |
+| **Instalable** | Se añade a la pantalla de inicio del iPhone/iPad sin App Store |
 
 <p>
   <img src="docs/screenshots/captura.png" width="49%" alt="Captura rápida">
@@ -45,19 +46,32 @@
 
 `N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`O`/`P`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar
 
+## En el iPhone o el iPad
+
+1. Abre la web de NTab en **Safari**.
+2. Pulsa **Compartir** → **Añadir a pantalla de inicio**.
+3. Ábrela desde el icono y entra con tu cuenta.
+
+## Sincronización
+
+- Supabase guarda cada registro en la tabla `records` (JSON por registro), protegida con RLS: cada usuario solo ve sus filas.
+- La app sigue trabajando contra IndexedDB. Un middleware de Dexie apunta cada cambio en un *outbox*; el motor (`src/sync/engine.ts`) sube lo pendiente, descarga lo nuevo desde la última vez y escucha cambios en tiempo real.
+- Primera vez en un dispositivo: si la nube está vacía se suben sus datos; si no, se descargan (o se combinan, si el dispositivo tenía datos propios).
+- Las migraciones están en `supabase/migrations/` y la integración de GitHub de Supabase las aplica al fusionar en `main`.
+
 ## Desarrollo
 
 ```bash
 npm install
 npm run dev        # servidor de desarrollo
-npm test           # tests (parser de lenguaje natural, repeticiones, rachas)
+npm test           # tests (lenguaje natural, repeticiones, rachas, sincronización)
 npm run build      # typecheck + build de producción en dist/
 npm run preview    # sirve el build
 ```
 
-**Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Dexie (IndexedDB) · date-fns · lucide · cmdk · vite-plugin-pwa · Vitest.
+**Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Dexie (IndexedDB) · Supabase · date-fns · lucide · cmdk · vite-plugin-pwa · Vitest.
 
-El build es estático (`dist/`) con rutas relativas, así que se puede publicar tal cual en GitHub Pages, Netlify, Vercel o cualquier hosting.
+Se publica en Vercel (`vercel.json`). La URL y la clave pública de Supabase están en `src/sync/supabase.ts` y se pueden sobrescribir con `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
 
 ## Plan
 

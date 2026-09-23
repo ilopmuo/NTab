@@ -144,7 +144,7 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ⏳ **Fase 4 — Automatización** · Objetivos, Finanzas ligeras, notificaciones.
-- ⏳ **Fase 5 — Conectado** · Sincronización multi-dispositivo, asistente IA, integraciones.
+- 🟡 **Fase 5 — Conectado** · ✅ Sincronización multi-dispositivo (Supabase) · ⏳ asistente IA, integraciones.
 
 ### Ideas para siguientes iteraciones
 
@@ -152,7 +152,6 @@ src/
 - Reordenar tareas arrastrando.
 - Objetivos trimestrales con proyectos vinculados y progreso agregado.
 - Suscripciones y pagos recurrentes con total mensual.
-- Sincronización (Supabase) para usar la misma cuenta en móvil y ordenador.
 - Asistente IA: "planifícame el día", "convierte este email en tareas".
 
 ## 8. Atajos de teclado

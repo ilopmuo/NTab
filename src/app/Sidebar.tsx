@@ -6,6 +6,7 @@ import { isInbox } from '@/lib/tasks'
 import { Icon } from '@/components/icons'
 import { NAV } from '@/components/CommandPalette'
 import { Kbd, cx } from '@/components/ui'
+import { SyncBadge } from '@/sync/SyncBadge'
 import { href, useRoute } from './router'
 import { ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
@@ -203,6 +204,7 @@ export function Sidebar() {
           {FOOT.map((n) => (
             <NavLink key={n.path} to={n.path} active={path.startsWith(n.path)} icon={<n.icon size={15} strokeWidth={1.8} />} label={n.label} />
           ))}
+          <SyncBadge />
         </div>
       </nav>
     </>

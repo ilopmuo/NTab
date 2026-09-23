@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Download, Keyboard, Monitor, Moon, Pencil, Plus, Settings, Sun, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, Keyboard, LogIn, LogOut, Monitor, Moon, Pencil, Plus, RefreshCw, Settings, Sun, Trash2, Upload } from 'lucide-react'
+import { setLocalOnly, signOut, syncNow, useSync } from '@/sync/service'
+import { syncLabel } from '@/sync/SyncBadge'
 import type { Area } from '@/db/types'
 import { db } from '@/db/db'
 import { deleteArea } from '@/db/actions'
@@ -12,6 +14,44 @@ import { Icon } from '@/components/icons'
 import { Button, Card, IconButton, PageHeader, Segmented } from '@/components/ui'
 import { AreaForm } from '../areas/AreaForm'
 import { Page } from '../Page'
+
+function AccountBlock() {
+  const sync = useSync()
+  const { icon, text, tone } = syncLabel(sync)
+  if (!sync.user) {
+    return (
+      <Block title="Cuenta y sincronización" desc="Ahora mismo tus datos solo están en este dispositivo. Crea una cuenta o entra para tenerlos también en el iPhone, el iPad y el ordenador.">
+        <Button variant="primary" onClick={() => setLocalOnly(false)}>
+          <LogIn size={15} /> Iniciar sesión o crear cuenta
+        </Button>
+      </Block>
+    )
+  }
+  return (
+    <Block title="Cuenta y sincronización" desc="Tus datos se guardan en tu cuenta y se sincronizan solos entre tus dispositivos. Sin conexión también funciona: los cambios se suben al volver.">
+      <Card className="flex flex-wrap items-center gap-3 p-4">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-[15px] font-semibold text-accent">
+          {sync.user.email.charAt(0).toUpperCase()}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-medium">{sync.user.email}</p>
+          <p className={`flex items-center gap-1.5 text-[12.5px] ${tone}`}>
+            {icon} {text}
+          </p>
+          {sync.error && <p className="mt-1 text-[12px] break-words text-danger">{sync.error}</p>}
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => void syncNow()} disabled={sync.state === 'syncing'}>
+            <RefreshCw size={13} /> Sincronizar
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => void signOut()}>
+            <LogOut size={13} /> Salir
+          </Button>
+        </div>
+      </Card>
+    </Block>
+  )
+}
 
 function Block({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
@@ -44,6 +84,8 @@ export function SettingsView() {
   return (
     <Page>
       <PageHeader icon={<Settings size={26} className="text-muted" />} title="Ajustes" />
+
+      <AccountBlock />
 
       <Block title="Apariencia">
         <Segmented
@@ -98,7 +140,7 @@ export function SettingsView() {
 
       <Block
         title="Tus datos"
-        desc="Todo se guarda en este dispositivo, sin servidores. Exporta una copia de vez en cuando para no perder nada (o para pasarla a otro dispositivo)."
+        desc="Exporta una copia en un archivo cuando quieras tener un respaldo extra. Importar una copia sustituye todos los datos (y, con sesión iniciada, también los de tu cuenta)."
       >
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => downloadBackup()}>
@@ -130,7 +172,7 @@ export function SettingsView() {
           <Button
             variant="danger"
             onClick={async () => {
-              if (!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer. Exporta una copia antes si la necesitas.')) return
+              if (!confirm('¿Borrar TODOS los datos? Con sesión iniciada se borran también de tu cuenta y del resto de dispositivos. No se puede deshacer: exporta una copia antes si la necesitas.')) return
               await wipeData()
               await seedIfEmpty()
               toast('Datos borrados')
