@@ -18,7 +18,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react'
-import { setLocalOnly, signOut, syncNow, useSync } from '@/sync/service'
+import { openAuth, signOut, syncNow, useSync } from '@/sync/service'
 import { syncLabel } from '@/sync/SyncBadge'
 import type { Area } from '@/db/types'
 import { db } from '@/db/db'
@@ -98,13 +98,15 @@ function AccountCard() {
     return (
       <section className="mb-8">
         <Group>
-          <button type="button" onClick={() => setLocalOnly(false)} className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-hover">
+          <button type="button" onClick={openAuth} className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-hover">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-fill text-muted">
               <LogIn size={24} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[17px] font-semibold text-blue">Iniciar sesión</span>
-              <span className="block text-[13px] leading-snug text-muted">Ten tus datos en el iPhone, el iPad y el ordenador.</span>
+              <span className="block text-[17px] font-semibold text-blue">{sync.knownEmail ? 'Volver a entrar' : 'Iniciar sesión'}</span>
+              <span className="block text-[13px] leading-snug text-muted">
+                {sync.knownEmail ? `La sesión de ${sync.knownEmail} ha caducado. Entra para seguir sincronizando.` : 'Ten tus datos en el iPhone, el iPad y el ordenador.'}
+              </span>
             </span>
             <ChevronRight size={18} className="text-faint" />
           </button>

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Remote, RemoteRow } from './engine'
+import { durableStorage } from './authStorage'
 
 // Valores públicos por diseño: la clave "anon" solo permite lo que dejan las
 // políticas RLS de la base de datos (cada usuario ve únicamente sus filas).
@@ -10,7 +11,7 @@ const ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtdnZsZm91d3h5ZXBubXJibmZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTM1ODAsImV4cCI6MjEwNTc2OTU4MH0.R8a4M8AkSRFLQ865fCGFAJ6Y3iwQYcZvTEUTtV806R0'
 
 export const supabase: SupabaseClient = createClient(URL, ANON_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'ntab-auth' },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'ntab-auth', storage: durableStorage },
 })
 
 const PAGE = 1000

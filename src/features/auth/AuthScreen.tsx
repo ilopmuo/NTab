@@ -6,9 +6,9 @@ import { Input, cx, softSpring } from '@/components/ui'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
-export function AuthScreen({ onCancel }: { onCancel?: () => void }) {
+export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => void; initialEmail?: string }) {
   const [mode, setMode] = useState<Mode>('signin')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')

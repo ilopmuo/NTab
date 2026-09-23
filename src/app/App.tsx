@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MotionConfig, motion } from 'motion/react'
+import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { AreaView } from '@/features/areas/AreaView'
 import { CalendarView } from '@/features/calendar/CalendarView'
 import { HabitsView } from '@/features/habits/HabitsView'
@@ -29,7 +29,8 @@ import { Ambient } from './Ambient'
 import { Splash } from './Splash'
 import { routeTint } from './sections'
 import { useUI } from './store'
-import { useSync } from '@/sync/service'
+import { closeAuth, useSync } from '@/sync/service'
+import { ReauthBanner } from '@/sync/ReauthBanner'
 import { AuthScreen } from '@/features/auth/AuthScreen'
 import { RecoveryModal } from '@/features/auth/RecoveryModal'
 
@@ -85,11 +86,27 @@ const TITLES: Record<string, string> = {
 export function App() {
   const sync = useSync()
   const { parts } = useRoute()
-  const signedOut = sync.state !== 'loading' && !sync.user && !sync.localOnly
+  // Sin sesión y sin cuenta previa en este dispositivo → pantalla de inicio de sesión.
+  // Si el dispositivo ya estuvo conectado, la app sigue funcionando con los datos
+  // locales y un aviso pide volver a entrar (ver knownEmail en sync/service).
+  const needsLogin = sync.state === 'signed-out' && !sync.localOnly && !sync.knownEmail
   return (
     <MotionConfig reducedMotion="user">
-      <Ambient section={signedOut ? 'blue' : routeTint(parts[0])} />
-      {sync.state === 'loading' ? null : signedOut ? <AuthScreen /> : <Workspace />}
+      <Ambient section={needsLogin ? 'blue' : routeTint(parts[0])} />
+      {sync.state === 'loading' ? null : needsLogin ? <AuthScreen /> : <Workspace />}
+      <AnimatePresence>
+        {sync.authOpen && !needsLogin && (
+          <motion.div
+            key="auth"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] overflow-y-auto bg-[color-mix(in_srgb,var(--c-bg)_70%,transparent)] backdrop-blur-2xl"
+          >
+            <AuthScreen onCancel={closeAuth} initialEmail={sync.knownEmail ?? ''} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <Splash ready={sync.state !== 'loading'} />
     </MotionConfig>
   )
@@ -117,6 +134,7 @@ function Workspace() {
         )}
       >
         <div id="topbar" className="pointer-events-none sticky top-0 z-30 h-0 safe-top" />
+        <ReauthBanner />
         <motion.div
           key={screenKey}
           initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
