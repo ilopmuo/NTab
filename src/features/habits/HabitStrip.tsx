@@ -1,12 +1,13 @@
-import { Flame } from 'lucide-react'
+import { motion } from 'motion/react'
+import { Check, Flame, Plus } from 'lucide-react'
 import { toggleHabit } from '@/db/actions'
 import { isScheduled, streak } from '@/lib/habits'
 import { href } from '@/app/router'
 import { Icon } from '@/components/icons'
-import { Card, cx } from '@/components/ui'
+import { Card, bouncy, cx } from '@/components/ui'
 import { useHabits } from './useHabits'
 
-/** Tarjeta compacta con los hábitos de hoy (para la vista Hoy) */
+/** Hábitos de hoy como interruptores de la app Casa: se encienden al tocarlos */
 export function HabitStrip() {
   const { habits, byHabit, today } = useHabits(60)
   if (!habits) return null
@@ -15,45 +16,59 @@ export function HabitStrip() {
 
   return (
     <Card className="p-4">
-      <div className="mb-3 flex items-center">
-        <h3 className="text-[12px] font-semibold tracking-wider text-muted uppercase">Hábitos de hoy</h3>
+      <div className="mb-3 flex items-center gap-2">
+        <Flame size={16} className="text-green" strokeWidth={2.4} />
+        <h3 className="text-[15px] font-bold text-green">Hábitos</h3>
         {todays.length > 0 && (
-          <span className="ml-2 text-[12px] text-faint tabular-nums">
+          <span className="font-num text-[14px] font-semibold text-faint">
             {doneCount}/{todays.length}
           </span>
         )}
-        <a href={href('/habits')} className="ml-auto text-[12px] text-accent hover:underline">
+        <a href={href('/habits')} className="ml-auto text-[13px] font-semibold text-blue hover:underline">
           {habits.length ? 'Ver todos' : 'Crear'}
         </a>
       </div>
       {todays.length === 0 ? (
-        <p className="text-[13px] text-faint">{habits.length ? 'Hoy toca descansar.' : 'Construye rutinas: agua, ejercicio, leer…'}</p>
+        <a href={href('/habits')} className="flex items-center gap-2 rounded-xl bg-fill-2 px-3 py-3 text-[14px] text-muted transition-colors hover:text-fg">
+          <Plus size={16} />
+          {habits.length ? 'Hoy toca descansar.' : 'Crea rutinas: agua, ejercicio, leer…'}
+        </a>
       ) : (
-        <div className="space-y-1">
+        <div className="grid grid-cols-2 gap-2">
           {todays.map((h) => {
             const set = byHabit.get(h.id) ?? new Set<string>()
             const done = set.has(today)
             const s = streak(h, set, today)
             return (
-              <button
+              <motion.button
                 key={h.id}
                 type="button"
+                whileTap={{ scale: 0.94 }}
                 onClick={() => toggleHabit(h.id, today)}
-                className="flex w-full items-center gap-3 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-hover"
-              >
-                <span
-                  className={cx('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all', done && 'animate-check')}
-                  style={{ background: done ? h.color : `${h.color}1f`, color: done ? '#000' : h.color }}
-                >
-                  <Icon name={h.icon} size={15} />
-                </span>
-                <span className={cx('flex-1 truncate text-[13.5px]', done && 'text-muted')}>{h.name}</span>
-                {s > 0 && (
-                  <span className="flex items-center gap-0.5 text-[12px] text-warn tabular-nums">
-                    <Flame size={12} /> {s}
-                  </span>
+                className={cx(
+                  'relative flex flex-col items-start gap-2 overflow-hidden rounded-[14px] p-2.5 text-left transition-colors duration-300',
+                  done ? 'text-black' : 'bg-fill-2',
                 )}
-              </button>
+                style={done ? { background: `linear-gradient(160deg, color-mix(in srgb, ${h.color} 70%, white), ${h.color})` } : undefined}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <motion.span
+                    animate={done ? { scale: [1, 1.25, 1] } : { scale: 1 }}
+                    transition={bouncy}
+                    className="flex h-8 w-8 items-center justify-center rounded-full"
+                    style={done ? { background: 'rgb(255 255 255 / 0.55)', color: '#000' } : { background: `color-mix(in srgb, ${h.color} 20%, transparent)`, color: h.color }}
+                  >
+                    {done ? <Check size={17} strokeWidth={3} /> : <Icon name={h.icon} size={16} strokeWidth={2.3} />}
+                  </motion.span>
+                  {s > 0 && (
+                    <span className={cx('font-num flex items-center gap-0.5 text-[12px] font-bold', done ? 'text-black/70' : 'text-orange')}>
+                      <Flame size={12} strokeWidth={2.6} />
+                      {s}
+                    </span>
+                  )}
+                </div>
+                <span className={cx('line-clamp-2 text-[13px] leading-tight font-semibold', done ? 'text-black/85' : 'text-fg')}>{h.name}</span>
+              </motion.button>
             )
           })}
         </div>

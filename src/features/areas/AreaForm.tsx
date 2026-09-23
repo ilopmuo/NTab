@@ -55,7 +55,7 @@ function Form({ area, onClose, onSaved }: { area?: Area; onClose: () => void; on
                 key={k}
                 type="button"
                 onClick={() => setIcon(k)}
-                className={cx('flex h-8 items-center justify-center rounded-lg transition-colors', icon === k ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg')}
+                className={cx('flex h-9 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent text-white' : 'text-muted hover:bg-hover hover:text-fg')}
               >
                 <Icon name={k} size={16} />
               </button>
@@ -63,7 +63,7 @@ function Form({ area, onClose, onSaved }: { area?: Area; onClose: () => void; on
           </div>
         </Field>
       </div>
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
+      <div className="flex justify-end gap-2 px-5 pt-1 pb-5">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>

@@ -6,7 +6,7 @@ import { WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { COLORS, ICONS, Icon } from '@/components/icons'
 import { Button, ColorPicker, Field, Input, Modal, ModalHeader, cx } from '@/components/ui'
 
-const HABIT_COLORS = ['#C5F82A', ...COLORS.filter((c) => c !== '#C5F82A')]
+const HABIT_COLORS = ['#30D158', ...COLORS.filter((c) => c !== '#30D158')]
 
 export function HabitForm({ habit, open, onClose }: { habit?: Habit; open: boolean; onClose: () => void }) {
   return (
@@ -60,10 +60,10 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
                 </button>
               )
             })}
-            <button type="button" className="ml-2 text-[12px] text-accent hover:underline" onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}>
+            <button type="button" className="ml-2 text-[13px] font-semibold text-blue" onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}>
               Todos
             </button>
-            <button type="button" className="text-[12px] text-accent hover:underline" onClick={() => setDays([1, 2, 3, 4, 5])}>
+            <button type="button" className="text-[13px] font-semibold text-blue" onClick={() => setDays([1, 2, 3, 4, 5])}>
               L–V
             </button>
           </div>
@@ -78,7 +78,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
                 key={k}
                 type="button"
                 onClick={() => setIcon(k)}
-                className={cx('flex h-8 items-center justify-center rounded-lg transition-colors', icon === k ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg')}
+                className={cx('flex h-9 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent text-white' : 'text-muted hover:bg-hover hover:text-fg')}
               >
                 <Icon name={k} size={16} />
               </button>
@@ -86,7 +86,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
           </div>
         </Field>
       </div>
-      <div className="flex items-center gap-2 border-t border-line px-5 py-3">
+      <div className="flex items-center gap-2 px-5 pt-1 pb-5">
         {habit && (
           <>
             <Button type="button" variant="danger" onClick={async () => (await deleteHabit(habit.id), onClose())}>

@@ -1,63 +1,72 @@
 import { memo, useState } from 'react'
-import { AlignLeft, Calendar, Clock, ListChecks, Repeat } from 'lucide-react'
+import { motion } from 'motion/react'
+import { ChevronRight, Clock, ListChecks, Repeat, StickyNote } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
 import type { Lookup } from '@/db/hooks'
 import { toggleTask } from '@/db/actions'
 import { dateLabel, today } from '@/lib/dates'
-import { PRIORITY_COLOR } from '@/lib/tasks'
+import { PRIORITY_COLOR, dateColor } from '@/lib/tasks'
 import { recurrenceLabel } from '@/lib/recurrence'
 import { toast, ui, useUI } from '@/app/store'
-import { Icon } from './icons'
-import { cx } from './ui'
+import { bouncy, cx } from './ui'
 
+/** Casilla redonda de Recordatorios: se rellena con un muelle y el ✓ se dibuja */
 export function Checkbox({
   checked,
   onChange,
   priority = 0,
-  size = 20,
+  size = 22,
   label,
+  color = 'var(--c-green)',
 }: {
   checked: boolean
   onChange: () => void
   priority?: number
   size?: number
   label?: string
+  color?: string
 }) {
-  const color = checked ? 'var(--c-lime)' : priority ? PRIORITY_COLOR[priority] : 'var(--c-border-strong)'
+  const ring = priority ? PRIORITY_COLOR[priority] : 'var(--c-faint)'
   return (
-    <button
+    <motion.button
       type="button"
       role="checkbox"
       aria-checked={checked}
       aria-label={label ?? (checked ? 'Marcar como pendiente' : 'Completar')}
+      whileTap={{ scale: 0.82 }}
       onClick={(e) => {
         e.stopPropagation()
         onChange()
       }}
-      className="group/cb relative flex shrink-0 items-center justify-center rounded-full transition-all"
-      style={{
-        width: size,
-        height: size,
-        border: `1.5px solid ${color}`,
-        background: checked ? 'var(--c-lime)' : priority ? `color-mix(in srgb, ${color} 10%, transparent)` : 'transparent',
-      }}
+      className="group/cb relative flex shrink-0 items-center justify-center rounded-full"
+      style={{ width: size, height: size }}
     >
-      <svg
-        viewBox="0 0 16 16"
-        className={cx('transition-opacity', checked ? 'animate-check opacity-100' : 'opacity-0 group-hover/cb:opacity-40')}
-        style={{ width: size * 0.62, height: size * 0.62 }}
-      >
-        <path
-          d="M3.5 8.5l3 3 6-6.5"
+      <span className="absolute inset-0 rounded-full border-[1.6px] transition-colors" style={{ borderColor: checked ? color : ring }} />
+      <motion.span
+        className="absolute inset-0 rounded-full"
+        style={{ background: color }}
+        initial={false}
+        animate={{ scale: checked ? 1 : 0, opacity: checked ? 1 : 0 }}
+        transition={bouncy}
+      />
+      {!checked && (
+        <span className="absolute inset-[4px] rounded-full opacity-0 transition-opacity group-hover/cb:opacity-100" style={{ background: `color-mix(in srgb, ${ring} 22%, transparent)` }} />
+      )}
+      <svg viewBox="0 0 16 16" className="relative" style={{ width: size * 0.6, height: size * 0.6 }}>
+        <motion.path
+          d="M3.5 8.4l3 3 6-6.6"
           fill="none"
-          stroke={checked ? '#000' : color}
-          strokeWidth="2.2"
+          stroke="#fff"
+          strokeWidth="2.4"
           strokeLinecap="round"
           strokeLinejoin="round"
+          initial={false}
+          animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }}
+          transition={{ duration: 0.28, delay: checked ? 0.08 : 0, ease: [0.3, 0.8, 0.3, 1] }}
         />
       </svg>
-    </button>
+    </motion.button>
   )
 }
 
@@ -65,7 +74,7 @@ export async function completeWithFeedback(task: Task) {
   const wasDone = !!task.done
   const next = await toggleTask(task)
   if (wasDone) return
-  const msg = next?.dueDate ? `Completada · próxima ${dateLabel(next.dueDate).toLowerCase()}` : 'Completada'
+  const msg = next?.dueDate ? `Hecho · se repite ${dateLabel(next.dueDate).toLowerCase()}` : 'Hecho'
   toast(msg, {
     label: 'Deshacer',
     run: async () => {
@@ -77,22 +86,25 @@ export async function completeWithFeedback(task: Task) {
   })
 }
 
+const BANGS = ['', '!', '!!', '!!!']
+
 export const TaskItem = memo(function TaskItem({
   task,
   lookup,
   hideDate,
   hideProject,
+  compact,
 }: {
   task: Task
   lookup: Lookup
   hideDate?: boolean
   hideProject?: boolean
+  compact?: boolean
 }) {
   const selected = useUI((s) => s.selectedTaskId === task.id)
   const [completing, setCompleting] = useState(false)
   const checked = !!task.done || completing
   const t = today()
-  const overdue = !task.done && task.dueDate && task.dueDate < t
   const project = lookup.project(task.projectId)
   const area = lookup.area(task.areaId ?? project?.areaId)
   const subDone = task.subtasks.filter((s) => s.done).length
@@ -103,22 +115,21 @@ export const TaskItem = memo(function TaskItem({
     setTimeout(() => {
       void completeWithFeedback(task)
       setCompleting(false)
-    }, 380)
+    }, 520)
   }
 
   const meta: React.ReactNode[] = []
   if (task.dueDate && !hideDate) {
     meta.push(
-      <span key="d" className={cx('inline-flex items-center gap-1', overdue ? 'text-danger' : task.dueDate === t ? 'text-accent' : '')}>
-        <Calendar size={12} strokeWidth={2} />
+      <span key="d" className="font-medium" style={{ color: task.done ? undefined : dateColor(task.dueDate, t) }}>
         {dateLabel(task.dueDate, t)}
       </span>,
     )
   }
   if (task.dueTime) {
     meta.push(
-      <span key="t" className="inline-flex items-center gap-1">
-        <Clock size={12} strokeWidth={2} />
+      <span key="t" className={cx('inline-flex items-center gap-1', hideDate && 'font-medium text-teal')}>
+        <Clock size={11} strokeWidth={2.4} />
         {task.dueTime}
       </span>,
     )
@@ -126,28 +137,35 @@ export const TaskItem = memo(function TaskItem({
   if (task.recurrence) {
     meta.push(
       <span key="r" className="inline-flex items-center gap-1" title={recurrenceLabel(task.recurrence)}>
-        <Repeat size={12} strokeWidth={2} />
+        <Repeat size={11} strokeWidth={2.4} />
+        {!compact && recurrenceLabel(task.recurrence)}
       </span>,
     )
   }
   if (task.subtasks.length) {
     meta.push(
-      <span key="s" className="inline-flex items-center gap-1 tabular-nums">
-        <ListChecks size={12} strokeWidth={2} />
+      <span key="s" className={cx('font-num inline-flex items-center gap-1', subDone === task.subtasks.length && 'text-green')}>
+        <ListChecks size={12} strokeWidth={2.2} />
         {subDone}/{task.subtasks.length}
       </span>,
     )
   }
-  if (task.notes.trim()) meta.push(<AlignLeft key="n" size={12} strokeWidth={2} />)
+  if (task.notes.trim()) meta.push(<StickyNote key="n" size={11} strokeWidth={2.4} />)
+  if (!hideProject && (project || area)) {
+    meta.push(
+      <span key="p" className="inline-flex items-center gap-1.5">
+        <span className="h-2 w-2 rounded-full" style={{ background: project?.color ?? area?.color }} />
+        {project?.name ?? area?.name}
+      </span>,
+    )
+  }
   for (const tag of task.tags) {
     meta.push(
-      <a key={`#${tag}`} href={`#/tag/${encodeURIComponent(tag)}`} onClick={(e) => e.stopPropagation()} className="hover:text-fg">
+      <a key={`#${tag}`} href={`#/tag/${encodeURIComponent(tag)}`} onClick={(e) => e.stopPropagation()} className="text-blue hover:underline">
         #{tag}
       </a>,
     )
   }
-
-  const where = !hideProject && (project || area)
 
   return (
     <div
@@ -162,35 +180,35 @@ export const TaskItem = memo(function TaskItem({
         }
       }}
       className={cx(
-        'group flex cursor-default items-start gap-3 rounded-xl px-3 py-2.5 transition-all outline-none',
-        selected ? 'bg-accent-soft' : 'hover:bg-hover focus-visible:bg-hover',
-        completing && 'opacity-50',
+        'group relative flex cursor-default items-start gap-3 px-4 outline-none transition-colors duration-150',
+        compact ? 'py-2' : 'py-[11px]',
+        selected ? 'bg-accent-soft' : 'hover:bg-hover focus-visible:bg-hover active:bg-press',
       )}
     >
       <div className="pt-px">
         <Checkbox checked={checked} onChange={onToggle} priority={task.priority} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <p
-            className={cx(
-              'min-w-0 flex-1 text-[14px] leading-[20px] transition-colors',
-              checked ? 'text-faint line-through decoration-faint' : 'text-fg',
-            )}
-          >
-            {task.title || <span className="text-faint">Sin título</span>}
-          </p>
-          {where && (
-            <span className="hidden shrink-0 items-center gap-1.5 text-[12px] text-muted sm:inline-flex">
-              {area && <Icon name={area.icon} size={12} style={{ color: area.color }} />}
-              <span className="max-w-40 truncate">{project?.name ?? area?.name}</span>
+        <p
+          className={cx(
+            'text-[15px] leading-[21px] transition-colors duration-300',
+            checked ? 'text-faint line-through decoration-[1.5px]' : 'text-fg',
+          )}
+        >
+          {task.priority > 0 && !checked && (
+            <span className="mr-1 font-bold" style={{ color: PRIORITY_COLOR[task.priority] }}>
+              {BANGS[task.priority]}
             </span>
           )}
-        </div>
+          {task.title || <span className="text-faint">Sin título</span>}
+        </p>
         {meta.length > 0 && (
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-muted">{meta}</div>
+          <div className={cx('mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[13px] text-muted', checked && 'opacity-50')}>
+            {meta}
+          </div>
         )}
       </div>
+      <ChevronRight size={16} className="mt-0.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" />
     </div>
   )
 })

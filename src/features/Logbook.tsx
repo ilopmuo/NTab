@@ -2,8 +2,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Archive } from 'lucide-react'
 import { db } from '@/db/db'
 import { dateLabel, ymd } from '@/lib/dates'
+import { SectionIcon, section } from '@/app/sections'
 import { TaskList } from '@/components/TaskList'
-import { Empty, PageHeader, Section } from '@/components/ui'
+import { Empty, Group, PageHeader, Section } from '@/components/ui'
 import { Page } from './Page'
 
 export function LogbookView() {
@@ -17,10 +18,14 @@ export function LogbookView() {
   }
   return (
     <Page>
-      <PageHeader icon={<Archive size={26} className="text-lime" />} title="Completadas" subtitle="Todo lo que has hecho. Date una palmadita en la espalda." />
-      {groups.size === 0 && <Empty icon={<Archive size={22} />} title="Aún nada completado" />}
+      <PageHeader icon={<SectionIcon def={section('logbook')} size={40} />} title="Completadas" subtitle="Todo lo que has hecho. Date una palmadita en la espalda." />
+      {groups.size === 0 && (
+        <Group>
+          <Empty icon={<Archive size={28} strokeWidth={2.2} />} title="Aún nada completado" hint="Cuando completes tareas, aparecerán aquí." />
+        </Group>
+      )}
       {[...groups].map(([day, list]) => (
-        <Section key={day} title={dateLabel(day)} count={list.length}>
+        <Section key={day} title={dateLabel(day)} count={list.length} tone="green">
           <TaskList tasks={list} sort={false} />
         </Section>
       ))}

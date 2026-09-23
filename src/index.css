@@ -3,77 +3,132 @@
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/* ── Colores de sistema de Apple (ver docs/DESIGN.md) ───────────────── */
+
 :root,
 [data-theme='dark'] {
   --c-bg: #000000;
-  --c-surface: #0e0e10;
-  --c-elevated: #17171a;
-  --c-hover: #1c1c20;
-  --c-border: #232326;
-  --c-border-strong: #333338;
+  /* materiales translúcidos */
+  --c-material: rgb(28 28 30 / 0.66);
+  --c-material-thick: rgb(38 38 41 / 0.82);
+  --c-material-thin: rgb(28 28 30 / 0.45);
+  --c-sidebar: rgb(22 22 24 / 0.6);
+  --c-surface: #1c1c1e;
+  --c-elevated: #2c2c2e;
+  --c-hover: rgb(255 255 255 / 0.06);
+  --c-press: rgb(255 255 255 / 0.1);
+  --c-fill: rgb(120 120 128 / 0.24);
+  --c-fill-2: rgb(120 120 128 / 0.16);
+  --c-border: rgb(255 255 255 / 0.09);
+  --c-border-strong: rgb(255 255 255 / 0.16);
+  --c-highlight: rgb(255 255 255 / 0.07);
   --c-text: #f5f5f7;
-  --c-muted: #8e8e93;
-  --c-faint: #5a5a60;
-  --c-accent: #2f7bff;
-  --c-accent-soft: rgb(47 123 255 / 0.14);
-  --c-lime: #c5f82a;
-  --c-lime-soft: rgb(197 248 42 / 0.12);
-  --c-danger: #ff453a;
-  --c-danger-soft: rgb(255 69 58 / 0.13);
-  --c-warn: #ff9f0a;
-  --c-warn-soft: rgb(255 159 10 / 0.13);
-  --c-scrim: rgb(0 0 0 / 0.6);
+  --c-muted: rgb(235 235 245 / 0.6);
+  --c-faint: rgb(235 235 245 / 0.3);
+  --c-shadow: 0 0 0 1px rgb(255 255 255 / 0.05), 0 12px 40px -8px rgb(0 0 0 / 0.6);
+  --c-shadow-lg: 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 80px -12px rgb(0 0 0 / 0.75);
+  --c-scrim: rgb(0 0 0 / 0.5);
+
+  --c-blue: #0a84ff;
+  --c-orange: #ff9f0a;
+  --c-red: #ff453a;
+  --c-green: #30d158;
+  --c-teal: #40c8e0;
+  --c-indigo: #5e5ce6;
+  --c-purple: #bf5af2;
+  --c-yellow: #ffd60a;
+  --c-pink: #ff375f;
+  --c-gray: #8e8e93;
+  --soft: 20%;
+
+  --ambient-opacity: 0.55;
   color-scheme: dark;
 }
 
 [data-theme='light'] {
-  --c-bg: #f5f5f7;
+  --c-bg: #f2f2f7;
+  --c-material: rgb(255 255 255 / 0.72);
+  --c-material-thick: rgb(255 255 255 / 0.88);
+  --c-material-thin: rgb(255 255 255 / 0.5);
+  --c-sidebar: rgb(246 246 250 / 0.62);
   --c-surface: #ffffff;
   --c-elevated: #ffffff;
-  --c-hover: #efeff2;
-  --c-border: #e4e4e7;
-  --c-border-strong: #d1d1d6;
-  --c-text: #0a0a0b;
-  --c-muted: #6e6e73;
-  --c-faint: #a1a1a6;
-  --c-accent: #0a63f0;
-  --c-accent-soft: rgb(10 99 240 / 0.1);
-  --c-lime: #5c8a00;
-  --c-lime-soft: rgb(120 180 0 / 0.14);
-  --c-danger: #e0352b;
-  --c-danger-soft: rgb(224 53 43 / 0.1);
-  --c-warn: #c77700;
-  --c-warn-soft: rgb(199 119 0 / 0.12);
-  --c-scrim: rgb(0 0 0 / 0.25);
+  --c-hover: rgb(0 0 0 / 0.04);
+  --c-press: rgb(0 0 0 / 0.07);
+  --c-fill: rgb(120 120 128 / 0.14);
+  --c-fill-2: rgb(120 120 128 / 0.08);
+  --c-border: rgb(60 60 67 / 0.12);
+  --c-border-strong: rgb(60 60 67 / 0.2);
+  --c-highlight: rgb(255 255 255 / 0.8);
+  --c-text: #1d1d1f;
+  --c-muted: rgb(60 60 67 / 0.62);
+  --c-faint: rgb(60 60 67 / 0.32);
+  --c-shadow: 0 0 0 1px rgb(0 0 0 / 0.035), 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 30px -10px rgb(0 0 0 / 0.12);
+  --c-shadow-lg: 0 0 0 1px rgb(0 0 0 / 0.05), 0 30px 70px -16px rgb(0 0 0 / 0.25);
+  --c-scrim: rgb(0 0 0 / 0.2);
+
+  --c-blue: #007aff;
+  --c-orange: #ff9500;
+  --c-red: #ff3b30;
+  --c-green: #34c759;
+  --c-teal: #30b0c7;
+  --c-indigo: #5856d6;
+  --c-purple: #af52de;
+  --c-yellow: #ffcc00;
+  --c-pink: #ff2d55;
+  --c-gray: #8e8e93;
+  --soft: 14%;
+
+  --ambient-opacity: 0.4;
   color-scheme: light;
 }
 
 @theme {
-  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
+  --font-rounded: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Inter Variable', system-ui, sans-serif;
 
   --color-bg: var(--c-bg);
   --color-surface: var(--c-surface);
   --color-elevated: var(--c-elevated);
   --color-hover: var(--c-hover);
+  --color-press: var(--c-press);
+  --color-fill: var(--c-fill);
+  --color-fill-2: var(--c-fill-2);
   --color-line: var(--c-border);
   --color-line-strong: var(--c-border-strong);
   --color-fg: var(--c-text);
   --color-muted: var(--c-muted);
   --color-faint: var(--c-faint);
-  --color-accent: var(--c-accent);
-  --color-accent-soft: var(--c-accent-soft);
-  --color-lime: var(--c-lime);
-  --color-lime-soft: var(--c-lime-soft);
-  --color-danger: var(--c-danger);
-  --color-danger-soft: var(--c-danger-soft);
-  --color-warn: var(--c-warn);
-  --color-warn-soft: var(--c-warn-soft);
   --color-scrim: var(--c-scrim);
 
-  --animate-fade-in: fade-in 160ms ease-out;
-  --animate-pop-in: pop-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
-  --animate-slide-in: slide-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --animate-check: check 260ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+  --color-blue: var(--c-blue);
+  --color-orange: var(--c-orange);
+  --color-red: var(--c-red);
+  --color-green: var(--c-green);
+  --color-teal: var(--c-teal);
+  --color-indigo: var(--c-indigo);
+  --color-purple: var(--c-purple);
+  --color-yellow: var(--c-yellow);
+  --color-pink: var(--c-pink);
+  --color-gray: var(--c-gray);
+
+  /* alias semánticos */
+  --color-accent: var(--c-blue);
+  --color-accent-soft: color-mix(in srgb, var(--c-blue) var(--soft), transparent);
+  --color-danger: var(--c-red);
+  --color-danger-soft: color-mix(in srgb, var(--c-red) var(--soft), transparent);
+  --color-warn: var(--c-orange);
+  --color-warn-soft: color-mix(in srgb, var(--c-orange) var(--soft), transparent);
+  --color-lime: var(--c-green);
+  --color-lime-soft: color-mix(in srgb, var(--c-green) var(--soft), transparent);
+
+  --radius-card: 18px;
+
+  --animate-fade-in: fade-in 200ms ease-out;
+  --animate-pop-in: pop-in 320ms cubic-bezier(0.2, 0.9, 0.25, 1.15);
+  --animate-slide-in: slide-in 360ms cubic-bezier(0.2, 0.9, 0.25, 1);
+  --animate-check: check 360ms cubic-bezier(0.2, 0.9, 0.3, 1.5);
 }
 
 @keyframes fade-in {
@@ -81,17 +136,25 @@
   to { opacity: 1; }
 }
 @keyframes pop-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes slide-in {
-  from { opacity: 0; transform: translateX(24px); }
+  from { opacity: 0; transform: translateX(28px); }
   to { opacity: 1; transform: translateX(0); }
 }
 @keyframes check {
-  0% { transform: scale(0.6); }
-  60% { transform: scale(1.15); }
+  0% { transform: scale(0.5); }
+  60% { transform: scale(1.18); }
   100% { transform: scale(1); }
+}
+@keyframes drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6vw, 4vh, 0) scale(1.12); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-5vw, -6vh, 0) scale(0.92); }
 }
 
 @layer base {
@@ -104,14 +167,21 @@
     background: var(--c-bg);
     color: var(--c-text);
     font-family: var(--font-sans);
-    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    font-feature-settings: 'cv11', 'ss01';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-size: 14px;
-    letter-spacing: -0.006em;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    overscroll-behavior: none;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
   }
   ::selection {
-    background: var(--c-accent-soft);
+    background: color-mix(in srgb, var(--c-blue) 30%, transparent);
   }
   * {
     scrollbar-width: thin;
@@ -126,9 +196,9 @@
     outline: none;
   }
   :where(button, a, [role='button'], [role='checkbox'], summary):focus-visible {
-    outline: 2px solid var(--c-accent);
+    outline: 2px solid var(--c-blue);
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 8px;
   }
   input[type='date']::-webkit-calendar-picker-indicator,
   input[type='time']::-webkit-calendar-picker-indicator {
@@ -141,12 +211,60 @@
   }
 }
 
+/* Material translúcido (cristal) */
 @utility glass {
-  background: color-mix(in srgb, var(--c-surface) 78%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: var(--c-material);
+  backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: var(--c-shadow), inset 0 1px 0 var(--c-highlight);
 }
-
+@utility glass-thick {
+  background: var(--c-material-thick);
+  backdrop-filter: blur(50px) saturate(200%);
+  box-shadow: var(--c-shadow-lg), inset 0 1px 0 var(--c-highlight);
+}
+@utility glass-bar {
+  background: var(--c-material-thin);
+  backdrop-filter: blur(30px) saturate(180%);
+}
+@utility hairline-b {
+  box-shadow: inset 0 -1px 0 var(--c-border);
+}
+@utility font-num {
+  font-family: var(--font-rounded);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
 @utility safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+@utility safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Fondo ambiental: halos de color que se mueven muy despacio */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.ambient > span {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: var(--ambient-opacity);
+  transition: background-color 1200ms ease;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient > span {
+    animation: none !important;
+  }
 }

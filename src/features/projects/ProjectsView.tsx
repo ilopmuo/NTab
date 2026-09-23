@@ -6,7 +6,7 @@ import { useLookup } from '@/db/hooks'
 import type { ProjectStatus } from '@/db/types'
 import { navigate } from '@/app/router'
 import { setUI, useUI } from '@/app/store'
-import { Icon } from '@/components/icons'
+import { SectionIcon, section } from '@/app/sections'
 import { Button, Empty, PageHeader, Section, Segmented } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectCard } from './ProjectCard'
@@ -26,7 +26,7 @@ export function ProjectsView() {
   return (
     <Page wide>
       <PageHeader
-        icon={<Folder size={26} className="text-accent" />}
+        icon={<SectionIcon def={section('projects')} size={40} />}
         title="Proyectos"
         subtitle="Todo lo que requiere más de un paso."
         actions={
@@ -46,18 +46,18 @@ export function ProjectsView() {
         ]}
       />
       {groups.length === 0 && (
-        <Empty icon={<Folder size={22} />} title="Ningún proyecto aquí" hint="Un proyecto es cualquier objetivo que necesite varias tareas: una mudanza, un viaje, lanzar una web…" />
+        <Empty icon={<Folder size={28} strokeWidth={2.2} />} color="var(--c-indigo)" title="Ningún proyecto aquí" hint="Un proyecto es cualquier objetivo que necesite varias tareas: una mudanza, un viaje, lanzar una web…" />
       )}
       {groups.map((g) => (
         <Section
           key={g.key}
           title={g.area?.name ?? 'Sin área'}
           count={g.items.length}
-          action={g.area && <Icon name={g.area.icon} size={14} style={{ color: g.area.color }} />}
+          tone={g.area?.color ?? 'gray'}
         >
           <div className="mt-2 grid gap-3 @[560px]:grid-cols-2 @[860px]:grid-cols-3">
-            {g.items.map((p) => (
-              <ProjectCard key={p.id} project={p} tasks={tasks} />
+            {g.items.map((p, i) => (
+              <ProjectCard key={p.id} project={p} tasks={tasks} index={i} />
             ))}
           </div>
         </Section>

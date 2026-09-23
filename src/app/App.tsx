@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { MotionConfig, motion } from 'motion/react'
 import { AreaView } from '@/features/areas/AreaView'
 import { CalendarView } from '@/features/calendar/CalendarView'
 import { HabitsView } from '@/features/habits/HabitsView'
@@ -22,7 +23,11 @@ import { Toast } from '@/components/Toast'
 import { cx } from '@/components/ui'
 import { useRoute } from './router'
 import { useGlobalShortcuts } from './shortcuts'
-import { MobileBar, Sidebar } from './Sidebar'
+import { Sidebar } from './Sidebar'
+import { MobileBar } from './MobileBar'
+import { Ambient } from './Ambient'
+import { Splash } from './Splash'
+import { routeTint } from './sections'
 import { useUI } from './store'
 import { useSync } from '@/sync/service'
 import { AuthScreen } from '@/features/auth/AuthScreen'
@@ -79,9 +84,15 @@ const TITLES: Record<string, string> = {
 
 export function App() {
   const sync = useSync()
-  if (sync.state === 'loading') return <div className="h-full bg-bg" />
-  if (!sync.user && !sync.localOnly) return <AuthScreen />
-  return <Workspace />
+  const { parts } = useRoute()
+  const signedOut = sync.state !== 'loading' && !sync.user && !sync.localOnly
+  return (
+    <MotionConfig reducedMotion="user">
+      <Ambient section={signedOut ? 'blue' : routeTint(parts[0])} />
+      {sync.state === 'loading' ? null : signedOut ? <AuthScreen /> : <Workspace />}
+      <Splash ready={sync.state !== 'loading'} />
+    </MotionConfig>
+  )
 }
 
 function Workspace() {
@@ -94,14 +105,29 @@ function Workspace() {
     document.getElementById('main')?.scrollTo({ top: 0 })
   }, [path, parts])
 
+  const screenKey = parts[0] === 'notes' ? 'notes' : path
   return (
-    <div className="h-full">
+    <div className="relative z-10 h-full">
       <Sidebar />
       <main
         id="main"
-        className={cx('@container h-full overflow-y-auto transition-[padding] duration-200 lg:pl-[260px]', panelOpen && 'lg:pr-[440px]')}
+        className={cx(
+          '@container h-full overflow-y-auto overscroll-contain transition-[padding] duration-300 lg:pl-[272px]',
+          panelOpen && 'xl:pr-[420px]',
+        )}
       >
-        <Screen key={parts[0] === 'notes' ? 'notes' : path} />
+        <div id="topbar" className="pointer-events-none sticky top-0 z-30 h-0 safe-top" />
+        <motion.div
+          key={screenKey}
+          initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
+          // Al terminar se quita el filtro: si se queda, el cristal de las tarjetas
+          // no puede difuminar el fondo ambiental (el filtro crea una "raíz de fondo")
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+          transition={{ type: 'spring', stiffness: 260, damping: 30, mass: 0.8 }}
+          className={cx('min-h-full', screenKey === 'notes' && 'h-full')}
+        >
+          <Screen />
+        </motion.div>
       </main>
       <MobileBar />
       <TaskDetailPanel />

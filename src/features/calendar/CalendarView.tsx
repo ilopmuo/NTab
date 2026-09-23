@@ -1,25 +1,30 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { AnimatePresence, motion } from 'motion/react'
 import { addMonths, endOfMonth, startOfMonth } from 'date-fns'
-import { Cake, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Cake, ChevronLeft, ChevronRight } from 'lucide-react'
 import { db } from '@/db/db'
 import type { Task } from '@/db/types'
+import { useLookup } from '@/db/hooks'
 import { addDaysYmd, capitalize, fmt, fromYmd, longDateLabel, today, weekStart, ymd } from '@/lib/dates'
 import { upcomingBirthdays } from '@/lib/people'
-import { PRIORITY_COLOR, sortTasks } from '@/lib/tasks'
+import { sortTasks } from '@/lib/tasks'
+import { SectionIcon, section } from '@/app/sections'
 import { ui } from '@/app/store'
-import { InlineAdd, TaskList } from '@/components/TaskList'
-import { Button, IconButton, PageHeader, Segmented, cx } from '@/components/ui'
+import { TaskList } from '@/components/TaskList'
+import { Button, Card, IconButton, PageHeader, Segmented, cx, spring } from '@/components/ui'
 import { Page } from '../Page'
 
 type Mode = 'month' | 'week'
-const HEAD = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+const HEAD = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 export function CalendarView() {
   const t = today()
   const [mode, setMode] = useState<Mode>(() => (window.innerWidth < 640 ? 'week' : 'month'))
   const [cursor, setCursor] = useState(t)
   const [selected, setSelected] = useState(t)
+  const [dir, setDir] = useState(0)
+  const { project, area } = useLookup()
 
   const range = useMemo(() => {
     if (mode === 'week') {
@@ -46,11 +51,12 @@ export function CalendarView() {
     return m
   }, [tasks])
 
-  const move = (dir: number) => {
-    const next = mode === 'week' ? addDaysYmd(cursor, dir * 7) : ymd(addMonths(fromYmd(cursor), dir))
-    setCursor(next)
+  const colorOf = (x: Task) => project(x.projectId)?.color ?? area(x.areaId)?.color ?? 'var(--c-teal)'
+  const move = (d: number) => {
+    setDir(d)
+    setCursor(mode === 'week' ? addDaysYmd(cursor, d * 7) : ymd(addMonths(fromYmd(cursor), d)))
   }
-  const title = mode === 'month' ? capitalize(fmt(cursor, 'MMMM yyyy')) : `Semana del ${fmt(range.start, "d 'de' MMMM")}`
+  const title = mode === 'month' ? capitalize(fmt(cursor, 'MMMM')) : `Semana del ${fmt(range.start, 'd')}`
   const month = cursor.slice(0, 7)
   const selectedTasks = byDay.get(selected) ?? []
   const selectedBirthdays = birthdays.filter((b) => b.date === selected)
@@ -58,8 +64,12 @@ export function CalendarView() {
   return (
     <Page wide>
       <PageHeader
-        icon={<CalendarDays size={26} className="text-accent" />}
-        title={title}
+        icon={<SectionIcon def={section('calendar')} size={40} />}
+        title={
+          <>
+            {title} <span className="font-num text-muted">{fmt(cursor, 'yyyy')}</span>
+          </>
+        }
         actions={
           <>
             <Segmented
@@ -72,8 +82,8 @@ export function CalendarView() {
             />
             <Button
               size="sm"
-              variant="ghost"
-              className="ml-2"
+              variant="tinted"
+              className="ml-1 !bg-[color-mix(in_srgb,var(--c-teal)_16%,transparent)] !text-teal"
               onClick={() => {
                 setCursor(t)
                 setSelected(t)
@@ -81,125 +91,138 @@ export function CalendarView() {
             >
               Hoy
             </Button>
-            <IconButton label="Anterior" onClick={() => move(-1)}>
-              <ChevronLeft size={17} />
+            <IconButton label="Anterior" filled onClick={() => move(-1)}>
+              <ChevronLeft size={18} strokeWidth={2.4} />
             </IconButton>
-            <IconButton label="Siguiente" onClick={() => move(1)}>
-              <ChevronRight size={17} />
+            <IconButton label="Siguiente" filled onClick={() => move(1)}>
+              <ChevronRight size={18} strokeWidth={2.4} />
             </IconButton>
           </>
         }
       />
 
       {mode === 'month' ? (
-        <div className="grid gap-8 @[1100px]:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-            <div className="grid grid-cols-7 border-b border-line">
-              {HEAD.map((h) => (
-                <div key={h} className="py-2.5 text-center text-[11.5px] font-medium tracking-wide text-muted uppercase">
+        <div className="grid gap-6 @[1100px]:grid-cols-[minmax(0,1fr)_340px]">
+          <Card className="overflow-hidden p-2">
+            <div className="grid grid-cols-7 pb-1">
+              {HEAD.map((h, i) => (
+                <div key={h} className={cx('py-2 text-center text-[12px] font-semibold', i >= 5 ? 'text-faint' : 'text-muted')}>
                   {h}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7">
-              {range.days.map((d, i) => {
-                const list = byDay.get(d) ?? []
-                const open = list.filter((x) => !x.done)
-                const inMonth = d.slice(0, 7) === month
-                const bday = birthdays.some((b) => b.date === d)
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setSelected(d)}
-                    onDoubleClick={() => ui.quickAdd({ dueDate: d })}
-                    className={cx(
-                      'flex min-h-[64px] flex-col items-stretch gap-1 border-line p-1.5 text-left transition-colors sm:min-h-[104px]',
-                      i % 7 !== 6 && 'border-r',
-                      i < range.days.length - 7 && 'border-b',
-                      selected === d ? 'bg-accent-soft' : 'hover:bg-hover',
-                      !inMonth && 'opacity-40',
-                    )}
-                  >
-                    <span className="flex items-center justify-between">
-                      <span
-                        className={cx(
-                          'flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[12.5px] tabular-nums',
-                          d === t ? 'bg-accent font-semibold text-white' : 'text-fg',
-                        )}
-                      >
-                        {fromYmd(d).getDate()}
-                      </span>
-                      {bday && <Cake size={12} className="text-warn" />}
-                    </span>
-                    <span className="hidden flex-col gap-0.5 sm:flex">
-                      {list.slice(0, 3).map((x) => (
+            <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+              <motion.div
+                key={cursor.slice(0, 7) + mode}
+                custom={dir}
+                initial={{ opacity: 0, x: dir * 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: dir * -40 }}
+                transition={spring}
+                className="grid grid-cols-7 gap-1"
+              >
+                {range.days.map((d) => {
+                  const list = byDay.get(d) ?? []
+                  const inMonth = d.slice(0, 7) === month
+                  const bday = birthdays.some((b) => b.date === d)
+                  const isSel = selected === d
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setSelected(d)}
+                      onDoubleClick={() => ui.quickAdd({ dueDate: d })}
+                      className={cx(
+                        'relative flex min-h-[62px] flex-col items-stretch gap-1 rounded-[12px] p-1.5 text-left transition-colors sm:min-h-[104px]',
+                        isSel ? 'bg-[color-mix(in_srgb,var(--c-teal)_16%,transparent)]' : 'hover:bg-hover',
+                        !inMonth && 'opacity-35',
+                      )}
+                    >
+                      <span className="flex items-center justify-between">
                         <span
-                          key={x.id}
-                          className={cx('flex items-center gap-1 truncate rounded px-1 text-[11.5px] leading-[18px]', x.done ? 'text-faint line-through' : 'text-fg')}
+                          className={cx(
+                            'font-num flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-[14px] font-semibold',
+                            d === t ? 'bg-blue text-white' : isSel ? 'text-teal' : '',
+                          )}
                         >
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: x.priority ? PRIORITY_COLOR[x.priority] : 'var(--c-faint)' }} />
-                          {x.dueTime && <span className="text-muted">{x.dueTime}</span>}
-                          <span className="truncate">{x.title}</span>
+                          {fromYmd(d).getDate()}
                         </span>
-                      ))}
-                      {list.length > 3 && <span className="px-1 text-[11px] text-muted">+{list.length - 3} más</span>}
-                    </span>
-                    {open.length > 0 && (
-                      <span className="flex gap-0.5 px-1 sm:hidden">
-                        {open.slice(0, 4).map((x) => (
-                          <span key={x.id} className="h-1.5 w-1.5 rounded-full bg-accent" />
-                        ))}
+                        {bday && <Cake size={13} className="text-pink" strokeWidth={2.4} />}
                       </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+                      <span className="hidden flex-col gap-[3px] sm:flex">
+                        {list.slice(0, 3).map((x) => (
+                          <span
+                            key={x.id}
+                            className={cx('flex items-center gap-1 truncate rounded-[5px] px-1.5 text-[11.5px] leading-[19px] font-medium', x.done && 'line-through opacity-45')}
+                            style={{ background: `color-mix(in srgb, ${colorOf(x)} 20%, transparent)`, color: `color-mix(in srgb, ${colorOf(x)} 70%, var(--c-text))` }}
+                          >
+                            {x.dueTime && <span className="font-num opacity-80">{x.dueTime}</span>}
+                            <span className="truncate">{x.title}</span>
+                          </span>
+                        ))}
+                        {list.length > 3 && <span className="px-1 text-[11px] font-semibold text-muted">+{list.length - 3} más</span>}
+                      </span>
+                      {list.length > 0 && (
+                        <span className="flex justify-center gap-0.5 sm:hidden">
+                          {list.slice(0, 3).map((x) => (
+                            <span key={x.id} className="h-1.5 w-1.5 rounded-full" style={{ background: colorOf(x) }} />
+                          ))}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </motion.div>
+            </AnimatePresence>
+          </Card>
 
           <div>
-            <h2 className="mb-1 px-1 text-[15px] font-semibold">{longDateLabel(selected)}</h2>
-            <p className="mb-3 px-1 text-[12.5px] text-muted">
-              {selectedTasks.length ? `${selectedTasks.length} tareas` : 'Sin tareas'} · doble clic en un día para añadir
+            <h2 className="px-1 text-[20px] font-bold tracking-tight">{longDateLabel(selected)}</h2>
+            <p className="mb-3 px-1 text-[13px] text-muted">
+              {selectedTasks.length ? `${selectedTasks.length} ${selectedTasks.length === 1 ? 'tarea' : 'tareas'}` : 'Sin tareas'} · doble clic en un día para añadir
             </p>
             {selectedBirthdays.map((b) => (
-              <a key={b.person.id} href={`#/people/${b.person.id}`} className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] hover:bg-hover">
-                <Cake size={16} className="text-warn" /> Cumpleaños de {b.person.name}
-                {b.age ? ` (${b.age})` : ''}
+              <a key={b.person.id} href={`#/people/${b.person.id}`} className="glass mb-3 flex items-center gap-3 rounded-[16px] px-4 py-3 text-[15px]">
+                <Cake size={18} className="text-pink" strokeWidth={2.3} /> Cumpleaños de <b className="font-semibold">{b.person.name}</b>
+                {b.age ? <span className="text-muted">({b.age})</span> : null}
               </a>
             ))}
-            <TaskList tasks={selectedTasks} hideDate />
-            <InlineAdd key={selected} defaults={{ dueDate: selected }} />
+            <TaskList key={selected} tasks={selectedTasks} hideDate add={{ defaults: { dueDate: selected }, color: 'var(--c-teal)' }} />
           </div>
         </div>
       ) : (
         <div className="grid gap-3 @[860px]:grid-cols-7">
-          {range.days.map((d) => {
+          {range.days.map((d, i) => {
             const list = byDay.get(d) ?? []
             const bdays = birthdays.filter((b) => b.date === d)
             return (
-              <div key={d} className={cx('flex min-h-40 flex-col rounded-2xl border bg-surface p-2', d === t ? 'border-accent/50' : 'border-line')}>
+              <motion.div
+                key={d}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...spring, delay: i * 0.03 }}
+                className={cx('glass flex min-h-44 flex-col rounded-[18px] p-2', d === t && 'ring-2 ring-blue')}
+              >
                 <div className="mb-1 flex items-baseline gap-1.5 px-1.5 pt-1">
-                  <span className={cx('text-[20px] font-bold tabular-nums', d === t && 'text-accent')}>{fromYmd(d).getDate()}</span>
-                  <span className="text-[12px] text-muted">{capitalize(fmt(d, 'EEEE'))}</span>
+                  <span className={cx('font-num text-[22px] font-bold', d === t && 'text-blue')}>{fromYmd(d).getDate()}</span>
+                  <span className="text-[13px] font-semibold text-muted">{capitalize(fmt(d, 'EEEE'))}</span>
                 </div>
                 {bdays.map((b) => (
-                  <p key={b.person.id} className="flex items-center gap-1.5 px-1.5 py-1 text-[12px] text-warn">
+                  <p key={b.person.id} className="flex items-center gap-1.5 px-1.5 py-1 text-[12px] font-semibold text-pink">
                     <Cake size={12} /> {b.person.name}
                   </p>
                 ))}
-                <div className="flex-1 [&_p]:text-[13px]">
-                  <TaskList tasks={list} hideDate hideProject />
+                <div className="flex-1">
+                  <TaskList tasks={list} hideDate hideProject bare compact />
                 </div>
                 <button
                   type="button"
                   onClick={() => ui.quickAdd({ dueDate: d })}
-                  className="mt-1 rounded-lg py-1.5 text-[12px] text-faint transition-colors hover:bg-hover hover:text-accent"
+                  className="mt-1 rounded-[10px] py-1.5 text-[13px] font-semibold text-teal transition-colors hover:bg-hover"
                 >
                   + Añadir
                 </button>
-              </div>
+              </motion.div>
             )
           })}
         </div>

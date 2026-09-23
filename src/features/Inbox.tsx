@@ -1,7 +1,8 @@
 import { Inbox as InboxIcon } from 'lucide-react'
 import { useOpenTasks } from '@/db/hooks'
 import { isInbox } from '@/lib/tasks'
-import { InlineAdd, TaskList } from '@/components/TaskList'
+import { SectionIcon, section } from '@/app/sections'
+import { TaskList } from '@/components/TaskList'
 import { Empty, PageHeader } from '@/components/ui'
 import { Page } from './Page'
 
@@ -12,16 +13,15 @@ export function InboxView() {
   return (
     <Page>
       <PageHeader
-        icon={<InboxIcon size={26} className="text-accent" />}
+        icon={<SectionIcon def={section('inbox')} size={40} />}
         title="Bandeja de entrada"
-        subtitle="Todo lo que capturas sin fecha ni proyecto. Vacíala a menudo: dale fecha, muévelo o bórralo."
+        subtitle="Lo que capturas sin fecha ni lista. Procésalo a menudo: ponle fecha, muévelo o bórralo."
       />
-      {inbox.length === 0 ? (
-        <Empty icon={<InboxIcon size={22} />} title="Bandeja vacía" hint="Tu cabeza está despejada. Pulsa N para capturar algo." />
-      ) : (
-        <TaskList tasks={inbox} />
-      )}
-      <InlineAdd />
+      <TaskList
+        tasks={inbox}
+        add={{ color: 'var(--c-gray)' }}
+        empty={<Empty icon={<InboxIcon size={28} strokeWidth={2.2} />} title="Bandeja vacía" hint="Tu cabeza está despejada. Pulsa N para capturar cualquier cosa." />}
+      />
     </Page>
   )
 }

@@ -25,11 +25,31 @@
 | **Instalable** | Se añade a la pantalla de inicio del iPhone/iPad sin App Store |
 
 <p>
-  <img src="docs/screenshots/captura.png" width="49%" alt="Captura rápida">
+  <img src="docs/screenshots/hoy-claro.png" width="49%" alt="Modo claro">
+  <img src="docs/screenshots/detalle.png" width="49%" alt="Detalle de tarea">
   <img src="docs/screenshots/habitos.png" width="49%" alt="Hábitos">
   <img src="docs/screenshots/calendario.png" width="49%" alt="Calendario">
-  <img src="docs/screenshots/hoy-claro.png" width="49%" alt="Modo claro">
+  <img src="docs/screenshots/captura.png" width="49%" alt="Captura rápida">
+  <img src="docs/screenshots/login.png" width="49%" alt="Inicio de sesión">
 </p>
+
+<img src="docs/screenshots/movil.png" width="260" alt="En el iPhone">
+
+## Diseño
+
+Inspirado en Recordatorios, Fitness, Calendario y Ajustes de Apple. Detalles en [docs/DESIGN.md](docs/DESIGN.md).
+
+- **Cada color significa algo:**
+  - azul: hoy;
+  - naranja: lo que viene;
+  - rojo: atrasado o urgente;
+  - verde: hecho y hábitos;
+  - verde azulado: tiempo;
+  - índigo: proyectos;
+  - morado: personas;
+  - amarillo: notas.
+- **Materiales de cristal** sobre un fondo ambiental que cambia con la sección y la hora del día.
+- **Movimiento con física:** arranque animado, transiciones entre vistas, listas que entran escalonadas, casillas que se rellenan con un muelle, anillos que se llenan, hojas que se cierran arrastrando. Si el sistema pide reducir el movimiento, se respeta.
 
 ## Lenguaje natural
 
@@ -69,7 +89,7 @@ npm run build      # typecheck + build de producción en dist/
 npm run preview    # sirve el build
 ```
 
-**Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Dexie (IndexedDB) · Supabase · date-fns · lucide · cmdk · vite-plugin-pwa · Vitest.
+**Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Motion · Dexie (IndexedDB) · Supabase · date-fns · lucide · cmdk · vite-plugin-pwa · Vitest.
 
 Se publica en Vercel (`vercel.json`). La URL y la clave pública de Supabase están en `src/sync/supabase.ts` y se pueden sobrescribir con `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
 

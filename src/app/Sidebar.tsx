@@ -1,52 +1,82 @@
-import { useMemo } from 'react'
-import { ChevronRight, Menu, Moon, Plus, Search, Sun } from 'lucide-react'
-import { useLookup, useOpenTasks } from '@/db/hooks'
-import { today } from '@/lib/dates'
-import { isInbox } from '@/lib/tasks'
-import { Icon } from '@/components/icons'
-import { NAV } from '@/components/CommandPalette'
-import { Kbd, cx } from '@/components/ui'
+import { AnimatePresence, motion } from 'motion/react'
+import { Moon, Plus, Search, Sun } from 'lucide-react'
+import { useLookup } from '@/db/hooks'
+import { AreaBadge } from '@/components/icons'
+import { Kbd, cx, spring, useMediaQuery } from '@/components/ui'
 import { SyncBadge } from '@/sync/SyncBadge'
+import { useNavCounts } from './counts'
 import { href, useRoute } from './router'
+import { SectionIcon, section, tint, type SectionDef } from './sections'
 import { ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
 
-const MAIN = NAV.filter((n) => ['/today', '/inbox', '/upcoming', '/calendar', '/habits', '/notes', '/people'].includes(n.path))
-const FOOT = NAV.filter((n) => ['/projects', '/review', '/logbook', '/settings'].includes(n.path))
+const TILES = ['today', 'upcoming', 'inbox', 'calendar', 'habits', 'notes'].map(section)
+const MORE = ['people', 'projects', 'review'].map(section)
+const FOOT = ['logbook', 'settings'].map(section)
 
-function NavLink({
+/** Lista inteligente en cuadrícula, como en Recordatorios */
+function Tile({ def, count, active }: { def: SectionDef; count: number | string; active: boolean }) {
+  return (
+    <a
+      href={href(def.path)}
+      onClick={() => ui.sidebar(false)}
+      className={cx(
+        'relative flex flex-col gap-2 overflow-hidden rounded-[14px] p-2.5 transition-[transform,box-shadow] duration-200 active:scale-[0.97]',
+        active ? 'text-white shadow-lg' : 'bg-[var(--c-material)] shadow-[var(--c-shadow)] hover:brightness-[1.03]',
+      )}
+      style={active ? { background: tint(def.tint), boxShadow: `0 8px 24px -8px ${tint(def.tint)}` } : undefined}
+    >
+      <div className="flex items-start justify-between">
+        {active ? (
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white" style={{ color: tint(def.tint) }}>
+            {def.icon === 'today' ? (
+              <span className="font-num text-[13px] font-bold">{new Date().getDate()}</span>
+            ) : (
+              <def.icon size={16} strokeWidth={2.4} />
+            )}
+          </span>
+        ) : (
+          <SectionIcon def={def} size={28} />
+        )}
+        <span className={cx('font-num text-[22px] leading-none font-bold', !active && 'text-fg')}>{count}</span>
+      </div>
+      <span className={cx('truncate text-[13px] font-semibold', active ? 'text-white/90' : 'text-muted')}>{def.short}</span>
+    </a>
+  )
+}
+
+function Row({
   to,
   active,
   icon,
   label,
   count,
   countTone,
+  indent,
 }: {
   to: string
   active: boolean
   icon: React.ReactNode
   label: string
   count?: number
-  countTone?: 'danger' | 'accent'
+  countTone?: string
+  indent?: boolean
 }) {
   return (
     <a
       href={href(to)}
       onClick={() => ui.sidebar(false)}
       className={cx(
-        'group flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] transition-colors',
-        active ? 'bg-hover font-medium text-fg' : 'text-muted hover:bg-hover/60 hover:text-fg',
+        'relative flex h-9 items-center gap-2.5 rounded-[10px] px-2 text-[14px] transition-colors',
+        indent && 'pl-9',
+        active ? 'font-semibold text-fg' : 'text-fg/90 hover:bg-hover',
       )}
     >
-      <span className={cx('flex w-4 justify-center', active && 'text-accent')}>{icon}</span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {active && <motion.span layoutId="nav-pill" transition={spring} className="absolute inset-0 rounded-[10px] bg-fill" />}
+      <span className="relative flex w-6 shrink-0 justify-center">{icon}</span>
+      <span className="relative min-w-0 flex-1 truncate">{label}</span>
       {!!count && (
-        <span
-          className={cx(
-            'text-[12px] tabular-nums',
-            countTone === 'danger' ? 'font-semibold text-danger' : countTone === 'accent' ? 'text-accent' : 'text-faint',
-          )}
-        >
+        <span className="font-num relative text-[13px] font-medium" style={{ color: countTone ?? 'var(--c-muted)' }}>
           {count}
         </span>
       )}
@@ -54,194 +84,192 @@ function NavLink({
   )
 }
 
-export function Sidebar() {
+function SidebarContent() {
   const { path } = useRoute()
-  const open = useUI((s) => s.sidebarOpen)
-  const tasks = useOpenTasks() ?? []
+  const c = useNavCounts()
   const { areas, projects } = useLookup()
   useTheme()
   const dark = document.documentElement.dataset.theme === 'dark'
-
-  const counts = useMemo(() => {
-    const t = today()
-    const overdue = tasks.filter((x) => x.dueDate && x.dueDate < t).length
-    const todayCount = tasks.filter((x) => x.dueDate && x.dueDate <= t).length
-    const inbox = tasks.filter(isInbox).length
-    const byProject = new Map<string, number>()
-    for (const x of tasks) if (x.projectId) byProject.set(x.projectId, (byProject.get(x.projectId) ?? 0) + 1)
-    return { overdue, todayCount, inbox, byProject }
-  }, [tasks])
-
   const activeProjects = projects.filter((p) => p.status === 'active')
+  const is = (p: string) => path === p || path.startsWith(p + '/')
+
+  const tileCount: Record<string, number | string> = {
+    today: c.today,
+    upcoming: c.upcoming,
+    inbox: c.inbox,
+    calendar: c.calendar,
+    habits: c.habitsTotal ? `${c.habitsDone}/${c.habitsTotal}` : 0,
+    notes: c.notes,
+  }
 
   return (
-    <>
-      {open && <div className="fixed inset-0 z-40 bg-scrim animate-fade-in lg:hidden" onClick={() => ui.sidebar(false)} />}
-      <nav
-        className={cx(
-          'fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-line bg-surface transition-transform duration-200 lg:z-20 lg:translate-x-0',
-          open ? 'translate-x-0' : '-translate-x-full',
-        )}
-      >
-        <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
-          <img src="./icon.svg" alt="" className="h-7 w-7 rounded-lg" />
-          <span className="text-[16px] font-bold tracking-tight">NTab</span>
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),14px)] pb-3">
+        <button
+          type="button"
+          onClick={() => {
+            ui.sidebar(false)
+            ui.palette()
+          }}
+          className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-fill px-2.5 text-[14px] text-muted transition-colors hover:text-fg"
+        >
+          <Search size={15} strokeWidth={2.2} />
+          <span className="flex-1 text-left">Buscar</span>
+          <Kbd>⌘K</Kbd>
+        </button>
+        <button
+          type="button"
+          aria-label="Nueva tarea"
+          title="Nueva tarea (N)"
+          onClick={() => {
+            ui.sidebar(false)
+            ui.quickAdd()
+          }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-[0_4px_14px_-4px_var(--c-blue)] transition-transform active:scale-90"
+        >
+          <Plus size={19} strokeWidth={2.6} />
+        </button>
+      </div>
+
+      <div className="no-scrollbar flex-1 overflow-y-auto px-3 pb-4">
+        <div className="grid grid-cols-2 gap-2">
+          {TILES.map((d) => (
+            <Tile key={d.id} def={d} count={tileCount[d.id]} active={is(d.path)} />
+          ))}
+        </div>
+
+        <div className="mt-4 space-y-px">
+          {MORE.map((d) => (
+            <Row
+              key={d.id}
+              to={d.path}
+              active={is(d.path)}
+              icon={<SectionIcon def={d} size={24} square />}
+              label={d.label}
+              count={d.id === 'people' ? c.peopleDue : undefined}
+              countTone={d.id === 'people' ? 'var(--c-purple)' : undefined}
+            />
+          ))}
+        </div>
+
+        <div className="mt-5 mb-1 flex items-center px-2">
+          <span className="text-[13px] font-bold text-muted">Mis áreas</span>
+          <button
+            type="button"
+            aria-label="Nueva área"
+            onClick={() => {
+              ui.sidebar(false)
+              window.location.hash = '/settings'
+              ui.create('area')
+            }}
+            className="ml-auto flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg"
+          >
+            <Plus size={15} />
+          </button>
+        </div>
+        <div className="space-y-px">
+          {areas.map((a) => (
+            <div key={a.id}>
+              <Row
+                to={`/area/${a.id}`}
+                active={path === `/area/${a.id}`}
+                icon={<AreaBadge icon={a.icon} color={a.color} />}
+                label={a.name}
+                count={c.byArea.get(a.id)}
+              />
+              {activeProjects
+                .filter((p) => p.areaId === a.id)
+                .map((p) => (
+                  <Row
+                    key={p.id}
+                    indent
+                    to={`/project/${p.id}`}
+                    active={path === `/project/${p.id}`}
+                    icon={<span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />}
+                    label={p.name}
+                    count={c.byProject.get(p.id)}
+                  />
+                ))}
+            </div>
+          ))}
+          {activeProjects
+            .filter((p) => !p.areaId || !areas.some((a) => a.id === p.areaId))
+            .map((p) => (
+              <Row
+                key={p.id}
+                to={`/project/${p.id}`}
+                active={path === `/project/${p.id}`}
+                icon={<span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />}
+                label={p.name}
+                count={c.byProject.get(p.id)}
+              />
+            ))}
+        </div>
+      </div>
+
+      <div className="space-y-px px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] shadow-[inset_0_1px_0_var(--c-border)]">
+        {FOOT.map((d) => (
+          <Row key={d.id} to={d.path} active={is(d.path)} icon={<SectionIcon def={d} size={24} square />} label={d.label} />
+        ))}
+        <div className="flex items-center">
+          <div className="min-w-0 flex-1">
+            <SyncBadge />
+          </div>
           <button
             type="button"
             onClick={toggleTheme}
             aria-label="Cambiar tema"
-            className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-fg"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg"
           >
-            {dark ? <Sun size={15} /> : <Moon size={15} />}
+            <motion.span key={dark ? 'sun' : 'moon'} initial={{ rotate: -90, scale: 0.4 }} animate={{ rotate: 0, scale: 1 }} transition={spring}>
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
+            </motion.span>
           </button>
         </div>
-
-        <div className="space-y-1.5 px-3 pb-3">
-          <button
-            type="button"
-            onClick={() => {
-              ui.sidebar(false)
-              ui.quickAdd()
-            }}
-            className="flex h-9 w-full items-center gap-2 rounded-lg bg-accent px-3 text-[13.5px] font-medium text-white transition-all hover:brightness-110"
-          >
-            <Plus size={16} strokeWidth={2.2} /> Nueva tarea
-            <span className="ml-auto rounded bg-white/20 px-1.5 text-[11px]">N</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              ui.sidebar(false)
-              ui.palette()
-            }}
-            className="flex h-9 w-full items-center gap-2 rounded-lg border border-line px-3 text-[13.5px] text-muted transition-colors hover:text-fg"
-          >
-            <Search size={15} /> Buscar
-            <span className="ml-auto flex gap-0.5">
-              <Kbd>⌘</Kbd>
-              <Kbd>K</Kbd>
-            </span>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-3 pb-4">
-          <div className="space-y-px">
-            {MAIN.map((n) => (
-              <NavLink
-                key={n.path}
-                to={n.path}
-                active={path === n.path || path.startsWith(n.path + '/')}
-                icon={<n.icon size={16} strokeWidth={1.8} />}
-                label={n.label}
-                count={n.path === '/today' ? counts.todayCount : n.path === '/inbox' ? counts.inbox : undefined}
-                countTone={n.path === '/today' && counts.overdue ? 'danger' : undefined}
-              />
-            ))}
-          </div>
-
-          <div className="mt-6 mb-1 flex items-center px-2.5">
-            <span className="text-[11px] font-semibold tracking-wider text-faint uppercase">Áreas</span>
-            <button
-              type="button"
-              aria-label="Nueva área"
-              onClick={() => {
-                ui.sidebar(false)
-                window.location.hash = '/settings'
-                ui.create('area')
-              }}
-              className="ml-auto rounded p-0.5 text-faint hover:text-fg"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-          <div className="space-y-px">
-            {areas.map((a) => {
-              const areaProjects = activeProjects.filter((p) => p.areaId === a.id)
-              const expanded = path === `/area/${a.id}` || areaProjects.some((p) => path === `/project/${p.id}`)
-              return (
-                <div key={a.id}>
-                  <NavLink
-                    to={`/area/${a.id}`}
-                    active={path === `/area/${a.id}`}
-                    icon={<Icon name={a.icon} size={15} style={{ color: a.color }} />}
-                    label={a.name}
-                  />
-                  {(expanded || areaProjects.length <= 3) &&
-                    areaProjects.map((p) => (
-                      <NavLink
-                        key={p.id}
-                        to={`/project/${p.id}`}
-                        active={path === `/project/${p.id}`}
-                        icon={<span className="h-2 w-2 rounded-full" style={{ background: p.color }} />}
-                        label={p.name}
-                        count={counts.byProject.get(p.id)}
-                      />
-                    ))}
-                  {!expanded && areaProjects.length > 3 && (
-                    <a href={href(`/area/${a.id}`)} className="flex h-7 items-center gap-2 pl-9 text-[12.5px] text-faint hover:text-fg">
-                      {areaProjects.length} proyectos <ChevronRight size={12} />
-                    </a>
-                  )}
-                </div>
-              )
-            })}
-            {activeProjects
-              .filter((p) => !p.areaId || !areas.some((a) => a.id === p.areaId))
-              .map((p) => (
-                <NavLink
-                  key={p.id}
-                  to={`/project/${p.id}`}
-                  active={path === `/project/${p.id}`}
-                  icon={<span className="h-2 w-2 rounded-full" style={{ background: p.color }} />}
-                  label={p.name}
-                  count={counts.byProject.get(p.id)}
-                />
-              ))}
-          </div>
-        </div>
-
-        <div className="space-y-px border-t border-line px-3 py-3 safe-bottom">
-          {FOOT.map((n) => (
-            <NavLink key={n.path} to={n.path} active={path.startsWith(n.path)} icon={<n.icon size={15} strokeWidth={1.8} />} label={n.label} />
-          ))}
-          <SyncBadge />
-        </div>
-      </nav>
-    </>
+      </div>
+    </div>
   )
 }
 
-export function MobileBar() {
-  const { path } = useRoute()
-  const items = NAV.filter((n) => ['/today', '/inbox', '/calendar'].includes(n.path))
+export function Sidebar() {
+  const open = useUI((s) => s.sidebarOpen)
+  const desktop = useMediaQuery('(min-width: 1024px)')
+  if (desktop) {
+    return (
+      <nav className="fixed inset-y-0 left-0 z-20 w-[272px] shadow-[inset_-1px_0_0_var(--c-border)] backdrop-blur-[40px] backdrop-saturate-[1.8]" style={{ background: 'var(--c-sidebar)' }}>
+        <SidebarContent />
+      </nav>
+    )
+  }
   return (
-    <div className="glass fixed inset-x-0 bottom-0 z-30 border-t border-line lg:hidden safe-bottom">
-      <div className="flex h-14 items-center justify-around px-2">
-        {items.slice(0, 2).map((n) => (
-          <a key={n.path} href={href(n.path)} className={cx('flex flex-col items-center gap-0.5 px-3 text-[10.5px]', path === n.path ? 'text-accent' : 'text-muted')}>
-            <n.icon size={20} strokeWidth={1.8} />
-            {n.label.split(' ')[0]}
-          </a>
-        ))}
-        <button
-          type="button"
-          aria-label="Nueva tarea"
-          onClick={() => ui.quickAdd()}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30 active:scale-95"
-        >
-          <Plus size={22} strokeWidth={2.2} />
-        </button>
-        {items.slice(2).map((n) => (
-          <a key={n.path} href={href(n.path)} className={cx('flex flex-col items-center gap-0.5 px-3 text-[10.5px]', path === n.path ? 'text-accent' : 'text-muted')}>
-            <n.icon size={20} strokeWidth={1.8} />
-            {n.label}
-          </a>
-        ))}
-        <button type="button" onClick={() => ui.sidebar(true)} className="flex flex-col items-center gap-0.5 px-3 text-[10.5px] text-muted">
-          <Menu size={20} strokeWidth={1.8} />
-          Menú
-        </button>
-      </div>
-    </div>
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="scrim"
+            className="fixed inset-0 z-40 bg-scrim"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => ui.sidebar(false)}
+          />
+          <motion.nav
+            key="drawer"
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', stiffness: 420, damping: 42 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={{ left: 0.6, right: 0 }}
+            onDragEnd={(_, i) => (i.offset.x < -80 || i.velocity.x < -500) && ui.sidebar(false)}
+            className="fixed inset-y-0 left-0 z-50 w-[300px] max-w-[85vw] rounded-r-[28px] shadow-[var(--c-shadow-lg)]"
+            style={{ background: 'color-mix(in srgb, var(--c-bg) 90%, var(--c-surface))' }}
+          >
+            <SidebarContent />
+          </motion.nav>
+        </>
+      )}
+    </AnimatePresence>
   )
 }

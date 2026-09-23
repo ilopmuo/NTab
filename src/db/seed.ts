@@ -3,12 +3,12 @@ import { createArea, createTask, setSetting } from './actions'
 import { today } from '@/lib/dates'
 
 export const DEFAULT_AREAS = [
-  { name: 'Trabajo', icon: 'briefcase', color: '#2F7BFF' },
+  { name: 'Trabajo', icon: 'briefcase', color: '#0A84FF' },
   { name: 'Personal', icon: 'user', color: '#BF5AF2' },
   { name: 'Salud', icon: 'heart', color: '#FF453A' },
-  { name: 'Finanzas', icon: 'wallet', color: '#C5F82A' },
+  { name: 'Finanzas', icon: 'wallet', color: '#30D158' },
   { name: 'Hogar', icon: 'home', color: '#FF9F0A' },
-  { name: 'Aprendizaje', icon: 'book', color: '#64D2FF' },
+  { name: 'Aprendizaje', icon: 'book', color: '#40C8E0' },
 ]
 
 /** Primera vez que se abre la app: áreas por defecto y unas tareas de bienvenida. */
