@@ -57,8 +57,8 @@ export function Checkbox({
         <motion.path
           d="M3.5 8.4l3 3 6-6.6"
           fill="none"
-          stroke="#fff"
-          strokeWidth="2.4"
+          stroke="var(--c-on-green)"
+          strokeWidth="2.6"
           strokeLinecap="round"
           strokeLinejoin="round"
           initial={false}
@@ -128,7 +128,7 @@ export const TaskItem = memo(function TaskItem({
   }
   if (task.dueTime) {
     meta.push(
-      <span key="t" className={cx('inline-flex items-center gap-1', hideDate && 'font-medium text-teal')}>
+      <span key="t" className="inline-flex items-center gap-1">
         <Clock size={11} strokeWidth={2.4} />
         {task.dueTime}
       </span>,
@@ -144,7 +144,7 @@ export const TaskItem = memo(function TaskItem({
   }
   if (task.subtasks.length) {
     meta.push(
-      <span key="s" className={cx('font-num inline-flex items-center gap-1', subDone === task.subtasks.length && 'text-green')}>
+      <span key="s" className="font-num inline-flex items-center gap-1">
         <ListChecks size={12} strokeWidth={2.2} />
         {subDone}/{task.subtasks.length}
       </span>,
@@ -154,7 +154,7 @@ export const TaskItem = memo(function TaskItem({
   if (!hideProject && (project || area)) {
     meta.push(
       <span key="p" className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full" style={{ background: project?.color ?? area?.color }} />
+        <span className="h-1.5 w-1.5 rounded-full bg-faint" />
         {project?.name ?? area?.name}
       </span>,
     )

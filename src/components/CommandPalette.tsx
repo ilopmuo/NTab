@@ -60,7 +60,7 @@ function Item({
 /** Icono cuadrado de color para las acciones */
 function G({ c, children }: { c: Tint; children: React.ReactNode }) {
   return (
-    <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] text-white" style={{ background: tint(c) }}>
+    <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-fill text-fg" data-tint={c}>
       {children}
     </span>
   )
@@ -196,12 +196,12 @@ function Palette() {
             </Item>
           ))}
           {areas.map((a) => (
-            <Item key={a.id} value={`a:${a.id}`} keywords={['área', a.name]} icon={<AreaBadge icon={a.icon} color={a.color} size={26} />} onSelect={() => go(`/area/${a.id}`)} hint="Área">
+            <Item key={a.id} value={`a:${a.id}`} keywords={['área', a.name]} icon={<AreaBadge icon={a.icon} size={26} />} onSelect={() => go(`/area/${a.id}`)} hint="Área">
               {a.name}
             </Item>
           ))}
           {projects.map((p) => (
-            <Item key={p.id} value={`pr:${p.id}`} keywords={['proyecto', p.name]} icon={<span className="h-3 w-3 rounded-full" style={{ background: p.color }} />} onSelect={() => go(`/project/${p.id}`)} hint="Proyecto">
+            <Item key={p.id} value={`pr:${p.id}`} keywords={['proyecto', p.name]} icon={<span className="h-2.5 w-2.5 rounded-full bg-faint" />} onSelect={() => go(`/project/${p.id}`)} hint="Proyecto">
               {p.name}
             </Item>
           ))}

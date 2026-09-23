@@ -3,10 +3,9 @@ import type { Habit } from '@/db/types'
 import { db } from '@/db/db'
 import { createHabit, deleteHabit } from '@/db/actions'
 import { WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
-import { COLORS, ICONS, Icon } from '@/components/icons'
-import { Button, ColorPicker, Field, Input, Modal, ModalHeader, cx } from '@/components/ui'
+import { ICONS, Icon } from '@/components/icons'
+import { Button, Field, Input, Modal, ModalHeader, cx } from '@/components/ui'
 
-const HABIT_COLORS = ['#30D158', ...COLORS.filter((c) => c !== '#30D158')]
 
 export function HabitForm({ habit, open, onClose }: { habit?: Habit; open: boolean; onClose: () => void }) {
   return (
@@ -19,12 +18,11 @@ export function HabitForm({ habit, open, onClose }: { habit?: Habit; open: boole
 function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
   const [name, setName] = useState(habit?.name ?? '')
   const [icon, setIcon] = useState(habit?.icon ?? 'droplet')
-  const [color, setColor] = useState(habit?.color ?? HABIT_COLORS[0])
   const [days, setDays] = useState<number[]>(habit?.days ?? [0, 1, 2, 3, 4, 5, 6])
 
   const save = async () => {
     if (!name.trim() || !days.length) return
-    const data = { name: name.trim(), icon, color, days }
+    const data = { name: name.trim(), icon, days }
     if (habit) await db.habits.update(habit.id, data)
     else await createHabit(data)
     onClose()
@@ -40,7 +38,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
       <ModalHeader title={habit ? 'Editar hábito' : 'Nuevo hábito'} onClose={onClose} />
       <div className="space-y-5 p-5">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: `${color}22`, color }}>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fill text-fg">
             <Icon name={icon} size={22} />
           </span>
           <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Beber 2 L de agua" className="h-11 text-[15px]" />
@@ -54,7 +52,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
                   key={d}
                   type="button"
                   onClick={() => setDays(on ? days.filter((x) => x !== d) : [...days, d])}
-                  className={cx('h-9 w-9 rounded-full text-[13px] font-medium transition-colors', on ? 'bg-accent text-white' : 'bg-hover text-muted hover:text-fg')}
+                  className={cx('h-9 w-9 rounded-full text-[13px] font-medium transition-colors', on ? 'bg-accent text-white' : 'bg-fill text-muted hover:text-fg')}
                 >
                   {WEEKDAYS_SHORT[d]}
                 </button>
@@ -67,9 +65,6 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
               L–V
             </button>
           </div>
-        </Field>
-        <Field label="Color">
-          <ColorPicker value={color} onChange={setColor} colors={HABIT_COLORS} />
         </Field>
         <Field label="Icono">
           <div className="grid grid-cols-10 gap-1">

@@ -25,8 +25,8 @@ export function ProjectCard({ project, tasks, index = 0 }: { project: Project; t
     >
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
-          <ProgressRing value={s.progress} size={44} stroke={5} color={project.color} delay={0.1 + index * 0.04} />
-          <span className="font-num absolute inset-0 flex items-center justify-center text-[11px] font-bold" style={{ color: project.color }}>
+          <ProgressRing value={s.progress} size={44} stroke={5} color="var(--c-blue)" track="var(--c-fill)" delay={0.1 + index * 0.04} />
+          <span className="font-num absolute inset-0 flex items-center justify-center text-[11px] font-bold">
             {Math.round(s.progress * 100)}%
           </span>
         </div>
@@ -40,7 +40,7 @@ export function ProjectCard({ project, tasks, index = 0 }: { project: Project; t
       </div>
       {project.description && <p className="line-clamp-2 text-[13px] leading-snug text-muted">{project.description}</p>}
       {project.deadline && (
-        <p className={cx('text-[12px] font-semibold', late ? 'text-red' : 'text-orange')}>Límite: {dateLabel(project.deadline)}</p>
+        <p className={cx('text-[12px] font-semibold', late ? 'text-fg' : 'text-muted')}>Límite: {dateLabel(project.deadline)}</p>
       )}
     </motion.a>
   )

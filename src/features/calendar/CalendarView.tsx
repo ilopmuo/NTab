@@ -5,7 +5,6 @@ import { addMonths, endOfMonth, startOfMonth } from 'date-fns'
 import { Cake, ChevronLeft, ChevronRight } from 'lucide-react'
 import { db } from '@/db/db'
 import type { Task } from '@/db/types'
-import { useLookup } from '@/db/hooks'
 import { addDaysYmd, capitalize, fmt, fromYmd, longDateLabel, today, weekStart, ymd } from '@/lib/dates'
 import { upcomingBirthdays } from '@/lib/people'
 import { sortTasks } from '@/lib/tasks'
@@ -24,7 +23,6 @@ export function CalendarView() {
   const [cursor, setCursor] = useState(t)
   const [selected, setSelected] = useState(t)
   const [dir, setDir] = useState(0)
-  const { project, area } = useLookup()
 
   const range = useMemo(() => {
     if (mode === 'week') {
@@ -51,7 +49,7 @@ export function CalendarView() {
     return m
   }, [tasks])
 
-  const colorOf = (x: Task) => project(x.projectId)?.color ?? area(x.areaId)?.color ?? 'var(--c-teal)'
+  const colorOf = (_x: Task) => 'var(--c-muted)'
   const move = (d: number) => {
     setDir(d)
     setCursor(mode === 'week' ? addDaysYmd(cursor, d * 7) : ymd(addMonths(fromYmd(cursor), d)))
@@ -83,7 +81,7 @@ export function CalendarView() {
             <Button
               size="sm"
               variant="tinted"
-              className="ml-1 !bg-[color-mix(in_srgb,var(--c-teal)_16%,transparent)] !text-teal"
+              className="ml-1"
               onClick={() => {
                 setCursor(t)
                 setSelected(t)
@@ -134,7 +132,7 @@ export function CalendarView() {
                       onDoubleClick={() => ui.quickAdd({ dueDate: d })}
                       className={cx(
                         'relative flex min-h-[62px] flex-col items-stretch gap-1 rounded-[12px] p-1.5 text-left transition-colors sm:min-h-[104px]',
-                        isSel ? 'bg-[color-mix(in_srgb,var(--c-teal)_16%,transparent)]' : 'hover:bg-hover',
+                        isSel ? 'bg-fill' : 'hover:bg-hover',
                         !inMonth && 'opacity-35',
                       )}
                     >
@@ -142,7 +140,7 @@ export function CalendarView() {
                         <span
                           className={cx(
                             'font-num flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-[14px] font-semibold',
-                            d === t ? 'bg-blue text-white' : isSel ? 'text-teal' : '',
+                            d === t ? 'bg-blue text-white' : isSel ? 'text-fg' : '',
                           )}
                         >
                           {fromYmd(d).getDate()}
@@ -187,7 +185,7 @@ export function CalendarView() {
                 {b.age ? <span className="text-muted">({b.age})</span> : null}
               </a>
             ))}
-            <TaskList key={selected} tasks={selectedTasks} hideDate add={{ defaults: { dueDate: selected }, color: 'var(--c-teal)' }} />
+            <TaskList key={selected} tasks={selectedTasks} hideDate add={{ defaults: { dueDate: selected } }} />
           </div>
         </div>
       ) : (
@@ -218,7 +216,7 @@ export function CalendarView() {
                 <button
                   type="button"
                   onClick={() => ui.quickAdd({ dueDate: d })}
-                  className="mt-1 rounded-[10px] py-1.5 text-[13px] font-semibold text-teal transition-colors hover:bg-hover"
+                  className="mt-1 rounded-[10px] py-1.5 text-[13px] font-semibold text-blue transition-colors hover:bg-hover"
                 >
                   + Añadir
                 </button>

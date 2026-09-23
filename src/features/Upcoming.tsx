@@ -34,13 +34,13 @@ export function UpcomingView() {
         return (
           <section key={d} className="mb-6">
             <div className="mb-2 flex items-baseline gap-2 px-1">
-              <span className={cx('font-num text-[28px] leading-none font-bold', i === 0 ? 'text-blue' : weekend ? 'text-muted' : 'text-orange')}>
+              <span className={cx('font-num text-[28px] leading-none font-bold', i === 0 ? 'text-blue' : weekend ? 'text-muted' : 'text-fg')}>
                 {fromYmd(d).getDate()}
               </span>
               <span className="text-[17px] font-bold">{label}</span>
               <span className="text-[14px] text-muted">{capitalize(fmt(d, 'MMMM'))}</span>
             </div>
-            <TaskList tasks={list} hideDate add={list.length > 0 || i < 7 ? { defaults: { dueDate: d }, placeholder: 'Nueva tarea', color: i === 0 ? 'var(--c-blue)' : 'var(--c-orange)' } : undefined} />
+            <TaskList tasks={list} hideDate add={list.length > 0 || i < 7 ? { defaults: { dueDate: d }, placeholder: 'Nueva tarea', color: 'var(--c-blue)' } : undefined} />
           </section>
         )
       })}

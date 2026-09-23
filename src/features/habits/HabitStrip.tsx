@@ -17,8 +17,8 @@ export function HabitStrip() {
   return (
     <Card className="p-4">
       <div className="mb-3 flex items-center gap-2">
-        <Flame size={16} className="text-green" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold text-green">Hábitos</h3>
+        <Flame size={16} className="text-fg" strokeWidth={2.4} />
+        <h3 className="text-[15px] font-bold">Hábitos</h3>
         {todays.length > 0 && (
           <span className="font-num text-[14px] font-semibold text-faint">
             {doneCount}/{todays.length}
@@ -49,19 +49,19 @@ export function HabitStrip() {
                   'relative flex flex-col items-start gap-2 overflow-hidden rounded-[14px] p-2.5 text-left transition-colors duration-300',
                   done ? 'text-black' : 'bg-fill-2',
                 )}
-                style={done ? { background: `linear-gradient(160deg, color-mix(in srgb, ${h.color} 70%, white), ${h.color})` } : undefined}
+                style={done ? { background: 'var(--c-green)' } : undefined}
               >
                 <div className="flex w-full items-center justify-between">
                   <motion.span
                     animate={done ? { scale: [1, 1.25, 1] } : { scale: 1 }}
                     transition={bouncy}
                     className="flex h-8 w-8 items-center justify-center rounded-full"
-                    style={done ? { background: 'rgb(255 255 255 / 0.55)', color: '#000' } : { background: `color-mix(in srgb, ${h.color} 20%, transparent)`, color: h.color }}
+                    style={done ? { background: 'rgb(0 0 0 / 0.12)', color: 'var(--c-on-green)' } : { background: 'var(--c-fill)', color: 'var(--c-text)' }}
                   >
                     {done ? <Check size={17} strokeWidth={3} /> : <Icon name={h.icon} size={16} strokeWidth={2.3} />}
                   </motion.span>
                   {s > 0 && (
-                    <span className={cx('font-num flex items-center gap-0.5 text-[12px] font-bold', done ? 'text-black/70' : 'text-orange')}>
+                    <span className={cx('font-num flex items-center gap-0.5 text-[12px] font-bold', done ? 'text-black/70' : 'text-muted')}>
                       <Flame size={12} strokeWidth={2.6} />
                       {s}
                     </span>

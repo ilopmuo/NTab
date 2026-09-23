@@ -96,28 +96,11 @@ export function Icon({
   return <C size={size} className={className} style={style} strokeWidth={strokeWidth} />
 }
 
-/** Icono de área en círculo de color con glifo blanco */
-export function AreaBadge({ icon, color, size = 24 }: { icon: string; color: string; size?: number }) {
+/** Icono de área: glifo sobre círculo gris neutro (monocromo) */
+export function AreaBadge({ icon, size = 24 }: { icon: string; color?: string; size?: number }) {
   return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center rounded-full text-white"
-      style={{ width: size, height: size, background: `linear-gradient(180deg, color-mix(in srgb, ${color} 85%, white), ${color})` }}
-    >
-      <Icon name={icon} size={Math.round(size * 0.55)} strokeWidth={2.4} />
+    <span className="inline-flex shrink-0 items-center justify-center rounded-full bg-fill text-fg" style={{ width: size, height: size }}>
+      <Icon name={icon} size={Math.round(size * 0.52)} strokeWidth={2.1} />
     </span>
   )
 }
-
-export const COLORS = [
-  '#0A84FF', // azul
-  '#40C8E0', // verde azulado
-  '#30D158', // verde
-  '#FFD60A', // amarillo
-  '#FF9F0A', // naranja
-  '#FF453A', // rojo
-  '#FF375F', // rosa
-  '#BF5AF2', // morado
-  '#5E5CE6', // índigo
-  '#A2845E', // marrón
-  '#8E8E93', // gris
-]

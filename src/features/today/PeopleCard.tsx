@@ -15,13 +15,13 @@ export function PeopleCard({ people }: { people: Person[] }) {
   return (
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
-        <Users size={16} className="text-purple" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold text-purple">Personas</h3>
+        <Users size={16} className="text-fg" strokeWidth={2.4} />
+        <h3 className="text-[15px] font-bold">Personas</h3>
       </div>
       <div className="space-y-0.5">
         {birthdays.map(({ person, date, age }) => (
           <a key={`b-${person.id}`} href={href(`/people/${person.id}`)} className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 transition-colors hover:bg-hover">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--c-pink)_18%,transparent)] text-pink">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-fill text-fg">
               <Cake size={15} strokeWidth={2.3} />
             </span>
             <span className="min-w-0 flex-1 truncate text-[14px]">

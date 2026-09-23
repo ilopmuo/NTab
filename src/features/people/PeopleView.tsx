@@ -63,7 +63,7 @@ export function PeopleView() {
         title="Personas"
         subtitle="Tu gente: familia, amigos, clientes. Que nadie se quede olvidado."
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'person' })} className="!bg-purple">
+          <Button variant="primary" onClick={() => setUI({ creating: 'person' })} className="">
             <Plus size={16} strokeWidth={2.6} /> Nueva
           </Button>
         }

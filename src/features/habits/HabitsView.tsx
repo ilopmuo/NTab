@@ -47,7 +47,7 @@ export function HabitsView() {
           onClick={() => createHabit(p)}
           className="glass flex h-10 items-center gap-2 rounded-full pr-4 pl-1.5 text-[14px] font-medium"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full text-white" style={{ background: p.color }}>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-fill text-fg">
             <Icon name={p.icon} size={14} strokeWidth={2.4} />
           </span>
           {p.name}
@@ -63,7 +63,7 @@ export function HabitsView() {
         title="Hábitos"
         subtitle={scheduledToday.length ? `Hoy llevas ${doneToday} de ${scheduledToday.length}.` : 'Pequeñas acciones, repetidas cada día, lo cambian todo.'}
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'habit' })} className="!bg-green">
+          <Button variant="primary" onClick={() => setUI({ creating: 'habit' })} className="">
             <Plus size={16} strokeWidth={2.6} /> Nuevo
           </Button>
         }
@@ -93,8 +93,8 @@ export function HabitsView() {
             >
               <button type="button" onClick={() => setEditing(h)} className="flex min-w-0 items-center gap-3 text-left @[900px]:w-72">
                 <div className="relative shrink-0">
-                  <ProgressRing value={rate} size={52} stroke={5} color={h.color} delay={0.15 + idx * 0.05} />
-                  <span className="absolute inset-0 flex items-center justify-center" style={{ color: h.color }}>
+                  <ProgressRing value={rate} size={52} stroke={5} color="var(--c-green)" track="var(--c-fill)" delay={0.15 + idx * 0.05} />
+                  <span className="absolute inset-0 flex items-center justify-center text-fg">
                     <Icon name={h.icon} size={20} strokeWidth={2.3} />
                   </span>
                 </div>
@@ -126,13 +126,13 @@ export function HabitsView() {
                       >
                         <motion.span
                           className="absolute inset-0 rounded-full"
-                          style={{ background: h.color }}
+                          style={{ background: 'var(--c-green)' }}
                           initial={false}
                           animate={{ scale: on ? 1 : 0 }}
                           transition={bouncy}
                         />
                         {on && (
-                          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ ...bouncy, delay: 0.05 }} className="relative text-black">
+                          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ ...bouncy, delay: 0.05 }} className="relative text-on-green">
                             <Check size={17} strokeWidth={3} />
                           </motion.span>
                         )}
@@ -179,7 +179,7 @@ function Heatmap({ habit, done, today }: { habit: Habit; done: Set<string>; toda
                 title={fmt(d, 'd MMM')}
                 className="h-[11px] w-[11px] rounded-[3px]"
                 style={{
-                  background: future ? 'transparent' : on ? habit.color : sched ? 'var(--c-fill)' : 'var(--c-fill-2)',
+                  background: future ? 'transparent' : on ? 'var(--c-green)' : sched ? 'var(--c-fill)' : 'var(--c-fill-2)',
                   opacity: future ? 0 : 1,
                 }}
               />

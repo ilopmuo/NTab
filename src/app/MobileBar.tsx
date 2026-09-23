@@ -40,7 +40,7 @@ export function MobileBar() {
                 {!!badge[t.id] && (
                   <span
                     className="font-num absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                    style={{ background: t.id === 'today' && c.overdue ? tint('red') : tint(t.tint) }}
+                    style={{ background: tint('blue') }}
                   >
                     {badge[t.id]}
                   </span>

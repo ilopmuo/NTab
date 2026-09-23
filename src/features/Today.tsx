@@ -89,7 +89,7 @@ export function TodayView() {
             rings={[
               { label: 'Tareas de hoy', done: done.length, total, color: 'var(--c-blue)' },
               { label: 'Hábitos', done: habitsDone, total: scheduledHabits.length, color: 'var(--c-green)' },
-              { label: 'Esta semana', done: doneWeek, total: doneWeek + weekOpen, color: 'var(--c-orange)' },
+              { label: 'Esta semana', done: doneWeek, total: doneWeek + weekOpen, color: 'var(--c-text)' },
             ]}
           />
         </div>
@@ -104,7 +104,7 @@ export function TodayView() {
                 href={href('/review')}
                 className="glass mb-6 flex items-center gap-3 rounded-[18px] px-4 py-3 text-[14px] transition-transform active:scale-[0.99]"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo text-white">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-fill text-fg">
                   <RefreshCcw size={16} strokeWidth={2.4} />
                 </span>
                 <span className="flex-1">
@@ -113,7 +113,7 @@ export function TodayView() {
                     {reviewDays === null ? 'Ordena tu semana en 5 minutos' : `Hace ${reviewDays} días de la última`}
                   </span>
                 </span>
-                <ArrowRight size={17} className="text-indigo" />
+                <ArrowRight size={17} className="text-muted" />
               </motion.a>
             )}
           </AnimatePresence>
@@ -148,11 +148,11 @@ export function TodayView() {
           ) : (
             <>
               {timedGroups.map((g) => (
-                <Section key={g.id} title={g.title} count={g.tasks.length} tone="blue">
+                <Section key={g.id} title={g.title} count={g.tasks.length}>
                   <TaskList tasks={g.tasks} hideDate />
                 </Section>
               ))}
-              <Section title={timedGroups.length ? 'Sin hora' : 'Hoy'} count={untimed.length} tone="blue">
+              <Section title={timedGroups.length ? 'Sin hora' : 'Hoy'} count={untimed.length}>
                 <TaskList tasks={untimed} hideDate add={{ defaults: { dueDate: t } }} />
               </Section>
             </>
@@ -163,7 +163,7 @@ export function TodayView() {
               <button
                 type="button"
                 onClick={() => setShowDone((v) => !v)}
-                className="mb-2 flex items-center gap-1.5 px-1 text-[17px] font-bold text-green"
+                className="mb-2 flex items-center gap-1.5 px-1 text-[17px] font-bold"
               >
                 <ChevronRight size={18} strokeWidth={2.6} className={cx('transition-transform duration-300', showDone && 'rotate-90')} />
                 Completadas hoy

@@ -50,7 +50,7 @@ export function ReviewView() {
     <Page>
       <div className="mb-6 flex items-center gap-3">
         <SectionIcon def={section('review')} size={30} />
-        <span className="text-[15px] font-semibold text-indigo">Revisión semanal</span>
+        <span className="text-[15px] font-semibold">Revisión semanal</span>
         <span className="font-num ml-auto text-[14px] font-semibold text-muted">
           {Math.min(step + 1, STEPS.length - 1)} de {STEPS.length - 1}
         </span>
@@ -60,7 +60,7 @@ export function ReviewView() {
           <button key={x.key} type="button" aria-label={x.title} onClick={() => go(i)} className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-fill">
             <motion.span
               className="absolute inset-0 origin-left rounded-full"
-              style={{ background: i < step || last ? 'var(--c-green)' : 'var(--c-indigo)' }}
+              style={{ background: i < step || last ? 'var(--c-green)' : 'var(--c-blue)' }}
               initial={false}
               animate={{ scaleX: i <= step || last ? 1 : 0 }}
               transition={spring}
@@ -84,7 +84,7 @@ export function ReviewView() {
               animate={{ scale: 1, rotate: 0 }}
               transition={bouncy}
               className="flex h-14 w-14 items-center justify-center rounded-[16px] text-white"
-              style={{ background: last ? 'var(--c-green)' : 'var(--c-indigo)' }}
+              style={{ background: last ? 'var(--c-green)' : 'var(--c-fill)', color: last ? 'var(--c-on-green)' : 'var(--c-text)' }}
             >
               <s.icon size={28} strokeWidth={2.2} />
             </motion.span>
@@ -116,7 +116,7 @@ export function ReviewView() {
             Ir a Hoy <ArrowRight size={17} strokeWidth={2.4} />
           </Button>
         ) : (
-          <Button variant="primary" size="lg" onClick={next} className="!bg-indigo">
+          <Button variant="primary" size="lg" onClick={next}>
             {step === STEPS.length - 2 ? 'Terminar revisión' : 'Siguiente'} <ArrowRight size={17} strokeWidth={2.4} />
           </Button>
         )}
@@ -217,18 +217,18 @@ function ProjectsStep() {
         return (
           <Card key={p.id} className={cx('p-4', !open.length && 'ring-2 ring-orange/50')}>
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
+              <span className="h-2 w-2 rounded-full bg-faint" />
               <a href={href(`/project/${p.id}`)} className="flex-1 text-[16px] font-semibold">
                 {p.name}
               </a>
-              {a && <Icon name={a.icon} size={13} style={{ color: a.color }} />}
+              {a && <Icon name={a.icon} size={13} className="text-muted" />}
               <span className={cx('text-[13px] font-semibold', open.length ? 'text-muted' : 'text-orange')}>
                 {open.length ? `${open.length} pendientes` : 'Sin siguiente paso'}
               </span>
             </div>
             {!open.length && (
               <div className="mt-2">
-                <InlineAdd defaults={{ projectId: p.id, areaId: p.areaId }} placeholder="Añadir siguiente paso" color={p.color} />
+                <InlineAdd defaults={{ projectId: p.id, areaId: p.areaId }} placeholder="Añadir siguiente paso" />
               </div>
             )}
           </Card>
@@ -275,17 +275,17 @@ function HabitsStep() {
   return (
     <div className="space-y-4">
       <Card className="flex items-center gap-4 p-4">
-        <span className="font-num text-[40px] font-bold text-green">{doneTasks}</span>
+        <span className="font-num text-[40px] font-bold">{doneTasks}</span>
         <span className="text-[14px] text-muted">tareas completadas en los últimos 7 días</span>
       </Card>
       {(habits ?? []).map((h) => {
         const rate = completionRate(h, byHabit.get(h.id) ?? new Set(), t, 7)
         return (
           <div key={h.id} className="flex items-center gap-3">
-            <Icon name={h.icon} size={16} style={{ color: h.color }} />
+            <Icon name={h.icon} size={16} className="text-muted" />
             <span className="w-44 truncate text-[13.5px]">{h.name}</span>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
-              <div className="h-full rounded-full" style={{ width: `${rate * 100}%`, background: h.color }} />
+              <div className="h-full rounded-full" style={{ width: `${rate * 100}%`, background: 'var(--c-green)' }} />
             </div>
             <span className="w-10 text-right text-[12px] text-muted tabular-nums">{Math.round(rate * 100)}%</span>
           </div>
@@ -321,7 +321,7 @@ function Done({ text, big }: { text: string; big?: boolean }) {
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={bouncy}
-      className={cx('flex items-center gap-3 rounded-[20px] bg-lime-soft px-5 text-green', big ? 'py-8 text-[18px]' : 'py-4 text-[15px]')}
+      className={cx('glass flex items-center gap-3 rounded-[20px] px-5', big ? 'py-8 text-[18px]' : 'py-4 text-[15px]')}
     >
       <Check size={big ? 22 : 18} strokeWidth={2.5} />
       <span className="font-medium">{text}</span>

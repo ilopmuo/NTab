@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { CalendarClock } from 'lucide-react'
 import type { Task } from '@/db/types'
-import { useLookup } from '@/db/hooks'
 import { ui } from '@/app/store'
 import { Card, cx } from '@/components/ui'
 
@@ -13,7 +12,6 @@ function nowHHMM() {
 
 /** Lo que tiene hora hoy, con la línea roja de "ahora" como en Calendario */
 export function Agenda({ tasks }: { tasks: Task[] }) {
-  const { project, area } = useLookup()
   const [now, setNow] = useState(nowHHMM)
   useEffect(() => {
     const t = setInterval(() => setNow(nowHHMM()), 30_000)
@@ -25,19 +23,19 @@ export function Agenda({ tasks }: { tasks: Task[] }) {
 
   const marker = (
     <motion.div key="now" layout className="flex items-center gap-2 py-1">
-      <span className="font-num w-11 text-right text-[12px] font-bold text-red">{now}</span>
-      <span className="relative h-2.5 w-2.5 rounded-full bg-red">
-        <span className="absolute inset-0 animate-ping rounded-full bg-red opacity-60" />
+      <span className="font-num w-11 text-right text-[12px] font-bold text-blue">{now}</span>
+      <span className="relative h-2.5 w-2.5 rounded-full bg-blue">
+        <span className="absolute inset-0 animate-ping rounded-full bg-blue opacity-60" />
       </span>
-      <span className="h-[1.5px] flex-1 rounded-full bg-red" />
+      <span className="h-[1.5px] flex-1 rounded-full bg-blue" />
     </motion.div>
   )
 
   return (
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
-        <CalendarClock size={16} className="text-teal" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold text-teal">Agenda</h3>
+        <CalendarClock size={16} className="text-fg" strokeWidth={2.4} />
+        <h3 className="text-[15px] font-bold">Agenda</h3>
       </div>
       {timed.length === 0 ? (
         <p className="py-2 text-[14px] leading-snug text-muted">
@@ -46,7 +44,7 @@ export function Agenda({ tasks }: { tasks: Task[] }) {
       ) : (
         <div className="space-y-0.5">
           {timed.map((t, i) => {
-            const color = project(t.projectId)?.color ?? area(t.areaId)?.color ?? 'var(--c-teal)'
+            const color = 'var(--c-border-strong)'
             const past = t.dueTime! < now
             return (
               <div key={t.id}>

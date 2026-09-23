@@ -29,8 +29,8 @@ export function AreaView({ id }: { id: string }) {
   return (
     <Page wide>
       <PageHeader
-        icon={<AreaBadge icon={area.icon} color={area.color} size={40} />}
-        title={<span style={{ color: area.color }}>{area.name}</span>}
+        icon={<AreaBadge icon={area.icon} size={40} />}
+        title={area.name}
         subtitle={`${tasks.filter((t) => !t.done).length} tareas pendientes · ${projects.length} ${projects.length === 1 ? 'proyecto' : 'proyectos'}`}
         actions={
           <IconButton label="Editar área" filled onClick={() => setEditing(true)}>
@@ -68,7 +68,7 @@ export function AreaView({ id }: { id: string }) {
 
       <div className="max-w-3xl">
         <Section title="Tareas sueltas" count={loose.length} tone={area.color}>
-          <TaskList tasks={loose} hideProject add={{ defaults: { areaId: id }, color: area.color }} />
+          <TaskList tasks={loose} hideProject add={{ defaults: { areaId: id } }} />
         </Section>
 
         <Section
@@ -92,7 +92,7 @@ export function AreaView({ id }: { id: string }) {
             <Group>
               {notes.map((n) => (
                 <a key={n.id} href={href(`/notes/${n.id}`)} className="relative flex items-center gap-3 px-4 py-3 text-[15px] transition-colors after:absolute after:right-0 after:bottom-0 after:left-[50px] after:h-px after:bg-line last:after:hidden hover:bg-hover">
-                  <StickyNote size={20} className="text-yellow" strokeWidth={2.2} />
+                  <StickyNote size={20} className="text-muted" strokeWidth={2.2} />
                   <span className="flex-1 truncate">{n.title || 'Sin título'}</span>
                   <ChevronRight size={16} className="text-faint" />
                 </a>

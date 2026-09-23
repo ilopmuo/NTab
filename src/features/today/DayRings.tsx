@@ -32,7 +32,7 @@ export function DayRings({ rings }: { rings: RingData[] }) {
                 color={r.color}
                 value={r.total ? r.done / r.total : 0}
                 delay={0.15 + i * 0.12}
-                track={`color-mix(in srgb, ${r.color} 20%, transparent)`}
+                track="var(--c-fill)"
               />
             </div>
           )
@@ -42,7 +42,8 @@ export function DayRings({ rings }: { rings: RingData[] }) {
         {rings.map((r) => (
           <div key={r.label}>
             <p className="text-[13px] font-semibold text-muted">{r.label}</p>
-            <p className="leading-tight font-bold" style={{ color: r.color }}>
+            <p className="leading-tight font-bold">
+              <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ background: r.color }} />
               <CountUp value={r.done} className="text-[22px]" />
               <span className="font-num text-[15px] opacity-70">/{r.total}</span>
             </p>

@@ -44,7 +44,7 @@ export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => v
     <div className="relative z-10 flex min-h-full items-center justify-center overflow-y-auto px-5 py-10">
       <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={softSpring} className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <img src="./icon-512.png" alt="" className="mb-5 h-20 w-20 rounded-[22px] shadow-[0_20px_50px_-12px_var(--c-blue)]" />
+          <img src="./icon-512.png" alt="" className="mb-5 h-20 w-20 rounded-[22px] shadow-2xl" />
           <h1 className="text-[34px] font-bold tracking-[-0.025em]">NTab</h1>
           <p className="mt-1.5 text-[16px] text-muted">Tu vida, organizada. En todos tus dispositivos.</p>
           <div className="mt-5 flex items-center gap-3 text-faint">

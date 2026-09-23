@@ -25,9 +25,7 @@ import { useRoute } from './router'
 import { useGlobalShortcuts } from './shortcuts'
 import { Sidebar } from './Sidebar'
 import { MobileBar } from './MobileBar'
-import { Ambient } from './Ambient'
 import { Splash } from './Splash'
-import { routeTint } from './sections'
 import { useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
 import { ReauthBanner } from '@/sync/ReauthBanner'
@@ -85,14 +83,12 @@ const TITLES: Record<string, string> = {
 
 export function App() {
   const sync = useSync()
-  const { parts } = useRoute()
   // Sin sesión y sin cuenta previa en este dispositivo → pantalla de inicio de sesión.
   // Si el dispositivo ya estuvo conectado, la app sigue funcionando con los datos
   // locales y un aviso pide volver a entrar (ver knownEmail en sync/service).
   const needsLogin = sync.state === 'signed-out' && !sync.localOnly && !sync.knownEmail
   return (
     <MotionConfig reducedMotion="user">
-      <Ambient section={needsLogin ? 'blue' : routeTint(parts[0])} />
       {sync.state === 'loading' ? null : needsLogin ? <AuthScreen /> : <Workspace />}
       <AnimatePresence>
         {sync.authOpen && !needsLogin && (

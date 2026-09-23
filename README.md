@@ -37,19 +37,15 @@
 
 ## Diseño
 
-Inspirado en Recordatorios, Fitness, Calendario y Ajustes de Apple. Detalles en [docs/DESIGN.md](docs/DESIGN.md).
+Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de Apple. Detalles en [docs/DESIGN.md](docs/DESIGN.md).
 
-- **Cada color significa algo:**
-  - azul: hoy;
-  - naranja: lo que viene;
-  - rojo: atrasado o urgente;
-  - verde: hecho y hábitos;
-  - verde azulado: tiempo;
-  - índigo: proyectos;
-  - morado: personas;
-  - amarillo: notas.
-- **Materiales de cristal** sobre un fondo ambiental que cambia con la sección y la hora del día.
-- **Movimiento con física:** arranque animado, transiciones entre vistas, listas que entran escalonadas, casillas que se rellenan con un muelle, anillos que se llenan, hojas que se cierran arrastrando. Si el sistema pide reducir el movimiento, se respeta.
+- **Blanco, negro y grises.** Solo **azul eléctrico** para actuar (hoy, selección, botones) y **verde lima** para lo hecho.
+- **Listas agrupadas**, títulos grandes, anillos de progreso y SF Pro en los dispositivos de Apple.
+- **Movimiento con física:**
+  - arranque animado;
+  - transiciones entre vistas;
+  - casillas que se rellenan con un muelle;
+  - hojas que se cierran arrastrando.
 
 ## Lenguaje natural
 

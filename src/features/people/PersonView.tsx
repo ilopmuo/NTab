@@ -91,7 +91,7 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
   return (
     <Page>
       <div className="mb-4 flex items-center">
-        <a href={href('/people')} className="inline-flex items-center gap-1 text-[16px] font-medium text-purple">
+        <a href={href('/people')} className="inline-flex items-center gap-1 text-[16px] font-medium text-blue">
           <ChevronLeft size={20} strokeWidth={2.4} /> Personas
         </a>
         <IconButton
@@ -132,7 +132,7 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
             )
             const cls = cx(
               'glass flex flex-col items-center gap-1 rounded-[16px] py-2.5 transition-transform active:scale-95',
-              a.href || a.onClick ? 'text-purple' : 'pointer-events-none text-faint',
+              a.href || a.onClick ? 'text-blue' : 'pointer-events-none text-faint',
             )
             return a.onClick ? (
               <button key={a.label} type="button" onClick={a.onClick} className={cls}>
@@ -159,7 +159,7 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
                     onClick={() => setKind(k.value)}
                     className={cx(
                       'flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all active:scale-95',
-                      kind === k.value ? 'bg-purple text-white' : 'bg-fill text-fg hover:bg-press',
+                      kind === k.value ? 'bg-accent text-white' : 'bg-fill text-fg hover:bg-press',
                     )}
                   >
                     <k.icon size={14} strokeWidth={2.3} /> {k.label}
@@ -168,7 +168,7 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
               </div>
               <div className="flex gap-2">
                 <Input value={summary} onChange={(e) => setSummary(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && log()} placeholder="¿De qué hablasteis? (opcional)" />
-                <Button variant="primary" onClick={log} className="!bg-purple">
+                <Button variant="primary" onClick={log}>
                   Guardar
                 </Button>
               </div>

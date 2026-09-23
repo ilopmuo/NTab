@@ -26,7 +26,7 @@ import { deleteArea } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
 import { downloadBackup, importData, isBackup, wipeData } from '@/db/backup'
 import { seedIfEmpty } from '@/db/seed'
-import { SectionIcon, section, tint, type Tint } from '@/app/sections'
+import { SectionIcon, section, type Tint } from '@/app/sections'
 import { setUI, toast, ui, useUI } from '@/app/store'
 import { setTheme, useTheme } from '@/app/theme'
 import { AreaBadge } from '@/components/icons'
@@ -37,7 +37,7 @@ import { Page } from '../Page'
 /** Icono cuadrado de color, como en la app Ajustes */
 function Glyph({ c, children }: { c: Tint; children: React.ReactNode }) {
   return (
-    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[8px] text-white" style={{ background: tint(c) }}>
+    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[8px] bg-fill text-fg" data-tint={c}>
       {children}
     </span>
   )
@@ -120,7 +120,7 @@ function AccountCard() {
         <div className="flex items-center gap-4 p-4">
           <span
             className="flex h-14 w-14 items-center justify-center rounded-full text-[22px] font-semibold text-white"
-            style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${tint('blue')} 70%, white), ${tint('blue')})` }}
+            style={{ background: 'linear-gradient(180deg, #a9adb6, #7f848d)' }}
           >
             {sync.user.email.charAt(0).toUpperCase()}
           </span>
@@ -206,7 +206,7 @@ export function SettingsView() {
       <Block title="Áreas de vida" footer="Las grandes parcelas de tu vida. Cada tarea, proyecto y nota puede pertenecer a una.">
         {areas.map((a, i) => (
           <div key={a.id} className={rowCls}>
-            <AreaBadge icon={a.icon} color={a.color} size={30} />
+            <AreaBadge icon={a.icon} size={30} />
             <span className="min-w-0 flex-1 truncate">{a.name}</span>
             <IconButton label="Subir" onClick={() => move(i, -1)} disabled={i === 0} className="h-8 w-8">
               <ChevronUp size={16} />
