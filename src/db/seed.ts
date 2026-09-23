@@ -15,8 +15,10 @@ export const DEFAULT_AREAS = [
 export async function seedIfEmpty() {
   const seeded = await db.settings.get('seeded')
   if (seeded) return
-  await db.transaction('rw', db.areas, db.tasks, db.settings, async () => {
-    for (const [i, a] of DEFAULT_AREAS.entries()) await createArea({ ...a, order: i })
+  await db.transaction('rw', [db.areas, db.tasks, db.settings, db._local], async () => {
+    // Se apuntan para saber luego si el usuario ha creado algo propio (ver SyncEngine.isPristine)
+    const seedIds: string[] = []
+    for (const [i, a] of DEFAULT_AREAS.entries()) seedIds.push((await createArea({ ...a, order: i })).id)
     const t = today()
     const welcome = [
       { title: 'Pulsa N en cualquier sitio para capturar una tarea', priority: 3 as const, dueDate: t },
@@ -25,7 +27,8 @@ export async function seedIfEmpty() {
       { title: 'Todo lo que no tenga fecha ni proyecto acaba aquí, en la Bandeja', priority: 0 as const },
       { title: 'Haz clic en una tarea para ver sus detalles, subtareas y notas', priority: 0 as const },
     ]
-    for (const [i, w] of welcome.entries()) await createTask({ ...w, order: i })
+    for (const [i, w] of welcome.entries()) seedIds.push((await createTask({ ...w, order: i })).id)
+    await db._local.put({ key: 'seedIds', value: seedIds })
     await setSetting('seeded', true)
   })
 }

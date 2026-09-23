@@ -24,6 +24,9 @@ import { useRoute } from './router'
 import { useGlobalShortcuts } from './shortcuts'
 import { MobileBar, Sidebar } from './Sidebar'
 import { useUI } from './store'
+import { useSync } from '@/sync/service'
+import { AuthScreen } from '@/features/auth/AuthScreen'
+import { RecoveryModal } from '@/features/auth/RecoveryModal'
 
 function Screen() {
   const { parts } = useRoute()
@@ -75,6 +78,13 @@ const TITLES: Record<string, string> = {
 }
 
 export function App() {
+  const sync = useSync()
+  if (sync.state === 'loading') return <div className="h-full bg-bg" />
+  if (!sync.user && !sync.localOnly) return <AuthScreen />
+  return <Workspace />
+}
+
+function Workspace() {
   useGlobalShortcuts()
   const { path, parts } = useRoute()
   const panelOpen = useUI((s) => !!s.selectedTaskId)
@@ -98,6 +108,7 @@ export function App() {
       <QuickAdd />
       <CommandPalette />
       <ShortcutsHelp />
+      <RecoveryModal />
       <Toast />
     </div>
   )
