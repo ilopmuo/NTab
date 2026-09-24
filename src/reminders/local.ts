@@ -1,5 +1,5 @@
 import { db } from '@/db/db'
-import { rollSubscriptions } from '@/db/actions'
+import { rollSubscriptions, toggleTask, updateTask } from '@/db/actions'
 import { chargeWhen, money } from '@/lib/finance'
 import { toast, ui } from '@/app/store'
 import { navigate } from '@/app/router'
@@ -10,9 +10,9 @@ import { askPermission } from './push'
 /**
  * Avisos con la app abierta (o en segundo plano en el ordenador): aviso dentro
  * de la app, sonido y notificación del sistema. La notificación usa la misma
- * etiqueta que la del servidor y se apunta en la caché "ntab-alerted": cuando
- * llega el push del mismo aviso, el service worker ve que ya se avisó y no
- * vuelve a sonar (ver public/push-sw.js).
+ * etiqueta que la del servidor y cada aviso (elemento + momento) se apunta en la
+ * caché "ntab-alerted": cuando llega el push del mismo aviso, el service worker
+ * ve que ya se avisó y no vuelve a sonar (ver public/push-sw.js).
  */
 const SEEN_KEY = 'ntab-reminded'
 const CHECK_MS = 15_000
@@ -37,6 +37,33 @@ export function openTaskFromNotification(id: string) {
   ui.openTask(id)
 }
 
+export const SNOOZE_MINUTES = 15
+export type ReminderAction = 'snooze' | 'done'
+
+const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+
+/** Posponer o completar desde un aviso (dentro de la app o desde la notificación) */
+export async function applyReminderAction(action: ReminderAction, id: string) {
+  const task = await db.tasks.get(id)
+  if (!task) return
+  if (action === 'done') {
+    if (!task.done) await toggleTask(task)
+    toast(`Hecho: ${task.title}`)
+  } else {
+    const at = Date.now() + SNOOZE_MINUTES * 60_000
+    await updateTask(id, { reminder: { at } })
+    toast(`Te lo recuerdo a las ${hhmm(at)}`, undefined, 4000, { icon: 'bell' })
+  }
+}
+
+/** Mensajes del service worker: botones de la notificación con la app abierta */
+function listenToWorker() {
+  navigator.serviceWorker?.addEventListener('message', (e: MessageEvent) => {
+    const d = e.data as { type?: string; action?: ReminderAction; id?: string } | null
+    if (d?.type === 'reminder-action' && d.id && (d.action === 'snooze' || d.action === 'done')) void applyReminderAction(d.action, d.id)
+  })
+}
+
 const ALERTED_CACHE = 'ntab-alerted'
 
 /** Apunta que este aviso ya se ha dado en este dispositivo */
@@ -49,10 +76,24 @@ async function markAlerted(tag: string) {
   }
 }
 
-async function showSystemNotification(tag: string, title: string, body: string, url: string, mark = true) {
-  if (mark) await markAlerted(tag)
+/** Botones de las notificaciones de tareas (en iPhone no se muestran) */
+export const TASK_ACTIONS = [
+  { action: 'done', title: 'Hecho' },
+  { action: 'snooze', title: `Posponer ${SNOOZE_MINUTES} min` },
+]
+
+async function showSystemNotification(tag: string, title: string, body: string, url: string, key?: string) {
+  if (key) await markAlerted(key)
   if (!('Notification' in window) || Notification.permission !== 'granted') return
-  const options: NotificationOptions = { body, tag, icon: './icon-192.png', badge: './icon-192.png', data: { url }, requireInteraction: true }
+  const options: NotificationOptions & { actions?: typeof TASK_ACTIONS } = {
+    body,
+    tag,
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    data: { url },
+    requireInteraction: true,
+    ...(tag.startsWith('tasks-') ? { actions: TASK_ACTIONS } : {}),
+  }
   try {
     const reg = await navigator.serviceWorker?.getRegistration()
     if (reg) return void (await reg.showNotification(title, options))
@@ -64,6 +105,7 @@ async function showSystemNotification(tag: string, title: string, body: string, 
 
 export function startLocalReminders() {
   primeSound()
+  listenToWorker()
   let last = Date.now() - 60_000
   const seen = loadSeen()
   const check = async () => {
@@ -76,8 +118,16 @@ export function startLocalReminders() {
     for (const t of due) {
       seen.add(`${t.id}:${t.remindAt}`)
       const when = t.dueTime ? `A las ${t.dueTime}` : 'Hoy'
-      toast(`⏰ ${t.title}`, { label: 'Ver', run: () => openTaskFromNotification(t.id) }, 15_000)
-      void showSystemNotification(`tasks-${t.id}`, t.title, when, `./#/task/${t.id}`)
+      toast(
+        t.title,
+        [
+          { label: 'Hecho', run: () => void applyReminderAction('done', t.id) },
+          { label: `${SNOOZE_MINUTES} min`, run: () => void applyReminderAction('snooze', t.id) },
+        ],
+        20_000,
+        { icon: 'bell', onClick: () => openTaskFromNotification(t.id) },
+      )
+      void showSystemNotification(`tasks-${t.id}`, t.title, when, `./#/task/${t.id}`, `tasks-${t.id}-${t.remindAt}`)
     }
     // Pagos: aviso días antes del cargo
     const subs = (await db.subscriptions.toArray()).filter(
@@ -86,8 +136,8 @@ export function startLocalReminders() {
     for (const x of subs) {
       seen.add(`${x.id}:${x.remindAt}`)
       const body = `${money(x.amount, x.currency)} · ${chargeWhen(x.nextDate).toLowerCase()}`
-      toast(`💳 ${x.name}: ${body}`, { label: 'Ver', run: () => navigate('/finance') }, 15_000)
-      void showSystemNotification(`subscriptions-${x.id}`, x.name, `Cargo de ${body}`, './#/finance')
+      toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate('/finance') }, 15_000, { icon: 'bell' })
+      void showSystemNotification(`subscriptions-${x.id}`, x.name, `Cargo de ${body}`, './#/finance', `subscriptions-${x.id}-${x.remindAt}`)
     }
     if (due.length || subs.length) {
       saveSeen(seen)
@@ -117,6 +167,6 @@ export async function testHere(): Promise<'shown' | 'denied' | 'unsupported'> {
   if (!('Notification' in window)) return 'unsupported'
   const permission = Notification.permission === 'default' ? await askPermission() : Notification.permission
   if (permission !== 'granted') return 'denied'
-  await showSystemNotification('ntab-test-local', 'NTab', 'Así te avisaré de tus tareas ⏰', './#/settings', false)
+  await showSystemNotification('ntab-test-local', 'NTab', 'Así te avisaré de tus tareas ⏰', './#/settings')
   return 'shown'
 }

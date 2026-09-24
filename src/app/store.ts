@@ -1,6 +1,11 @@
 import { useSyncExternalStore } from 'react'
 import type { Task } from '@/db/types'
 
+export interface ToastAction {
+  label: string
+  run: () => void
+}
+
 export interface UIState {
   selectedTaskId: string | null
   quickAdd: { open: boolean; defaults?: Partial<Task>; text?: string }
@@ -9,7 +14,7 @@ export interface UIState {
   sidebarOpen: boolean
   /** abre el formulario de creación de la vista correspondiente */
   creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | null
-  toast: { id: number; message: string; action?: { label: string; run: () => void } } | null
+  toast: { id: number; message: string; actions: ToastAction[]; icon: 'check' | 'bell'; onClick?: () => void } | null
 }
 
 let state: UIState = {
@@ -55,9 +60,15 @@ export const ui = {
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
-export function toast(message: string, action?: { label: string; run: () => void }, durationMs = 4000) {
+export function toast(
+  message: string,
+  action?: ToastAction | ToastAction[],
+  durationMs = 4000,
+  opts: { icon?: 'check' | 'bell'; onClick?: () => void } = {},
+) {
   clearTimeout(toastTimer)
   const id = Date.now()
-  setUI({ toast: { id, message, action } })
+  const actions = action ? (Array.isArray(action) ? action : [action]) : []
+  setUI({ toast: { id, message, actions, icon: opts.icon ?? 'check', onClick: opts.onClick } })
   toastTimer = setTimeout(() => setUI((s) => (s.toast?.id === id ? { toast: null } : {})), durationMs)
 }

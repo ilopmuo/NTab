@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
+import { buildDigest, buildPayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
 
 // Jueves 24 de septiembre de 2026, 10:00 en Madrid
 const now = new Date('2026-09-24T08:00:00Z')
@@ -30,6 +30,8 @@ describe('texto de las notificaciones', () => {
       body: 'Hoy a las 10:00',
       url: './#/task/t1',
       tag: 'tasks-t1',
+      key: `tasks-t1-${now.getTime()}`,
+      taskId: 't1',
     })
     expect(buildPayload({ ...base, due_date: '2026-09-25', due_time: null }, 'Europe/Madrid', now).body).toBe('Mañana')
   })
@@ -39,5 +41,19 @@ describe('texto de las notificaciones', () => {
     expect(p.title).toBe('Netflix')
     expect(p.body.replace(/\s/g, ' ')).toBe('Cargo de 12,99 € el sábado 26')
     expect(p.url).toBe('./#/finance')
+  })
+})
+
+describe('resumen de la mañana', () => {
+  const d = { user_id: 'u', local_date: '2026-09-24', tz: 'Europe/Madrid', today_count: 4, overdue_count: 1, titles: ['Llamar al banco', 'Comprar pan', 'Informe'], payments: 1 }
+  it('cuenta lo del día y enseña las primeras', () => {
+    const p = buildDigest(d, now)
+    expect(p.title).toBe('Buenos días ☀️')
+    expect(p.body).toBe('4 tareas para hoy · 1 atrasada · 1 pago\nLlamar al banco · Comprar pan · Informe …')
+    expect(p.tag).toBe('digest-2026-09-24')
+  })
+  it('día despejado', () => {
+    const p = buildDigest({ ...d, today_count: 0, overdue_count: 0, titles: [], payments: 0 }, now)
+    expect(p.body).toMatch(/nada planificado/)
   })
 })
