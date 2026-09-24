@@ -111,6 +111,8 @@ export function eventDays(e: CalEvent): string[] {
 export function eventsByDay(events: CalEvent[]) {
   const m = new Map<string, CalEvent[]>()
   for (const e of events) for (const d of eventDays(e)) m.set(d, [...(m.get(d) ?? []), e])
+  // Primero los de todo el día, luego por hora
+  for (const list of m.values()) list.sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.localeCompare(b.start))
   return m
 }
 

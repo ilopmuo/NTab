@@ -123,6 +123,8 @@ export interface Task {
   people?: ID[]
   subtasks: Subtask[]
   recurrence?: Recurrence
+  /** duración estimada en minutos */
+  estimate?: number
   reminder?: Reminder | null
   /** momento del aviso ya calculado (ms); lo usa el servidor para enviar la notificación */
   remindAt?: number

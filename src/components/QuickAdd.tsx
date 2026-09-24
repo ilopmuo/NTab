@@ -13,7 +13,7 @@ const EXAMPLES = [
   'Llamar al dentista mañana a las 10 !alta',
   'Pagar el alquiler el 1 de cada mes +Finanzas',
   'Gimnasio cada lunes y jueves a las 19',
-  'Revisar presupuesto el viernes #trabajo',
+  'Revisar presupuesto el viernes ~1h #trabajo',
   'Comprar regalo para Ana en 2 semanas',
 ]
 
@@ -41,6 +41,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   if (parsed.dueTime) final.dueTime = parsed.dueTime
   if (parsed.recurrence) final.recurrence = parsed.recurrence
   if (parsed.reminder) final.reminder = parsed.reminder
+  if (parsed.estimate) final.estimate = parsed.estimate
   if (parsed.people?.length) final.people = [...new Set([...(defaults?.people ?? []), ...parsed.people])]
   if (parsed.projectId) {
     final.projectId = parsed.projectId
@@ -111,7 +112,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
             <span className="truncate">{[final.dueDate && dateLabel(final.dueDate), destination].filter(Boolean).join(' · ')}</span>
           )}
           <span className="ml-auto hidden items-center gap-1 text-faint md:flex">
-            <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>@</Kbd>persona <Kbd>!</Kbd>prioridad
+            <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>@</Kbd>persona <Kbd>!</Kbd>prioridad <Kbd>~</Kbd>duración
           </span>
         </div>
         <button

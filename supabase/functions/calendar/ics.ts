@@ -13,6 +13,8 @@ export interface IcsTask {
   notes?: string
   dueDate?: string
   dueTime?: string
+  /** duración estimada en minutos (si no, 30) */
+  estimate?: number
   priority?: number
   projectName?: string
 }
@@ -115,7 +117,7 @@ export function buildCalendar(input: IcsInput): string {
     let when: string[]
     if (t.dueTime) {
       const start = zonedToUtc(t.dueDate, t.dueTime, input.tz)
-      when = [`DTSTART:${utcStamp(start)}`, `DTEND:${utcStamp(start + TASK_MINUTES * 60_000)}`]
+      when = [`DTSTART:${utcStamp(start)}`, `DTEND:${utcStamp(start + (t.estimate && t.estimate > 0 ? t.estimate : TASK_MINUTES) * 60_000)}`]
     } else {
       when = [`DTSTART;VALUE=DATE:${dateValue(t.dueDate)}`, `DTEND;VALUE=DATE:${dateValue(nextDay(t.dueDate))}`]
     }

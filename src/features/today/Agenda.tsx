@@ -3,7 +3,9 @@ import { motion } from 'motion/react'
 import { CalendarClock } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { ui } from '@/app/store'
-import { eventTime, type CalEvent } from '@/lib/calendarEvents'
+import { eventMinutes, eventTime, type CalEvent } from '@/lib/calendarEvents'
+import { dayLoad } from '@/lib/duration'
+import { LoadBar } from '../plan/LoadBar'
 import { Card, cx } from '@/components/ui'
 
 function nowHHMM() {
@@ -25,6 +27,7 @@ export function Agenda({ tasks, events = [], names = {} }: { tasks: Task[]; even
     ...tasks.filter((t) => t.dueTime).map((t) => ({ kind: 'task' as const, time: t.dueTime!, task: t })),
     ...events.filter((e) => !e.allDay).map((e) => ({ kind: 'event' as const, time: eventTime(e), end: new Date(e.end).toTimeString().slice(0, 5), event: e })),
   ].sort((a, b) => a.time.localeCompare(b.time))
+  const load = dayLoad(tasks, events.map(eventMinutes))
   const nowIndex = timed.findIndex((t) => t.time > now)
   const markerAt = nowIndex === -1 ? timed.length : nowIndex
 
@@ -94,6 +97,7 @@ export function Agenda({ tasks, events = [], names = {} }: { tasks: Task[]; even
           {markerAt === timed.length && marker}
         </div>
       )}
+      {load.total > 0 && <LoadBar load={load} className="mt-3 border-t border-line pt-3" />}
     </Card>
   )
 }

@@ -18,12 +18,14 @@ export const SERVER_INFO = { name: 'ntab', title: 'NTab', version: '1.0.0' }
 const INSTRUCTIONS = `NTab es la app con la que el usuario organiza su vida: tareas, proyectos, hábitos, objetivos, pagos y personas. Es muy despistado: ayúdale a no olvidar nada.
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
 - Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
+- Al planificar, ten en cuenta sus reuniones y la carga del día (duración estimada de las tareas); si un día pasa de 6 h, propón mover algo.
 - Títulos de tarea cortos y que empiecen por un verbo. Fechas en formato YYYY-MM-DD y horas HH:MM, en su zona horaria.
 - Responde en español.`
 
 const DATE = { type: 'string', description: 'YYYY-MM-DD' }
 const TIME = { type: 'string', description: 'HH:MM (24 h)' }
 const PRIORITY = { type: 'integer', minimum: 0, maximum: 3, description: '0 ninguna, 1 baja, 2 media, 3 alta' }
+const DURATION = { type: 'integer', minimum: 1, description: 'Minutos que calculas que llevará (para no sobrecargar el día)' }
 
 export const TOOLS = [
   {
@@ -84,6 +86,7 @@ export const TOOLS = [
               etiquetas: { type: 'array', items: { type: 'string' } },
               subtareas: { type: 'array', items: { type: 'string' } },
               personas: { type: 'array', items: { type: 'string' }, description: 'Personas relacionadas (por nombre): la tarea aparece en su ficha' },
+              duracion: DURATION,
             },
             required: ['titulo'],
           },
@@ -96,7 +99,7 @@ export const TOOLS = [
   {
     name: 'actualizar_tareas',
     title: 'Actualizar tareas',
-    description: 'Cambia tareas existentes por su id: título, fecha, hora, prioridad, notas, proyecto o marcarlas como hechas. fecha u hora a null las quita.',
+    description: 'Cambia tareas existentes por su id: título, fecha, hora, prioridad, notas, proyecto, duración estimada o marcarlas como hechas. fecha u hora a null las quita.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -114,6 +117,7 @@ export const TOOLS = [
               notas: { type: 'string' },
               proyecto: { type: ['string', 'null'], description: 'Nombre del proyecto, o null para sacarla' },
               hecha: { type: 'boolean' },
+              duracion: { type: ['integer', 'null'], minimum: 1, description: 'Minutos estimados, o null para quitarla' },
             },
             required: ['id'],
           },

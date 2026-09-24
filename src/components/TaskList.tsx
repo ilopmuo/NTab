@@ -102,6 +102,7 @@ export function InlineAdd({
     if (parsed.dueTime) data.dueTime = parsed.dueTime
     if (parsed.recurrence) data.recurrence = parsed.recurrence
     if (parsed.reminder) data.reminder = parsed.reminder
+    if (parsed.estimate) data.estimate = parsed.estimate
     if (parsed.people?.length) data.people = [...new Set([...(defaults?.people ?? []), ...parsed.people])]
     if (parsed.projectId) {
       data.projectId = parsed.projectId

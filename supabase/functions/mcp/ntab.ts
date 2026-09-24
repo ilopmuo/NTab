@@ -32,6 +32,8 @@ export interface Task {
   people?: string[]
   subtasks: { id: string; title: string; done: boolean }[]
   recurrence?: Recurrence
+  /** duración estimada en minutos */
+  estimate?: number
   reminder?: Reminder | null
   remindAt?: number
   order: number
@@ -170,6 +172,14 @@ class Index {
   }
 }
 
+/** 30 → "30 min", 90 → "1 h 30" */
+export function minutesLabel(min: number) {
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`
+}
+
 function taskLine(t: Task, ix: Index, today: string) {
   const where = t.projectId ? ix.projectName(t.projectId) : ix.areaName(t.areaId)
   return [
@@ -179,6 +189,7 @@ function taskLine(t: Task, ix: Index, today: string) {
     where ? ` · ${where}` : '',
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
     t.people?.length ? ` · con ${ix.personNames(t.people).join(', ')}` : '',
+    t.estimate ? ` · ~${minutesLabel(t.estimate)}` : '',
     t.recurrence ? ' · se repite' : '',
     t.subtasks?.length ? ` · subtareas ${t.subtasks.filter((s) => s.done).length}/${t.subtasks.length}` : '',
     t.done ? ' · HECHA' : '',
@@ -209,6 +220,17 @@ export function eventLines(events: EventLike[], names: Record<string, string>, e
   })
 }
 
+/** "Carga de hoy: …" con las duraciones estimadas y las reuniones (jornada de referencia: 6 h) */
+function loadLine(todays: Task[], meetings: EventLike[]) {
+  const tasks = todays.reduce((s, t) => s + num(t.estimate), 0)
+  const events = meetings.reduce((s, e) => s + Math.max(0, Math.round((Date.parse(e.end) - Date.parse(e.start)) / 60_000)), 0)
+  const unest = todays.filter((t) => !t.estimate).length
+  const total = tasks + events
+  const parts = [`${minutesLabel(tasks)} de tareas estimadas`, `${minutesLabel(events)} de reuniones`]
+  if (unest) parts.push(`${unest} ${unest === 1 ? 'tarea' : 'tareas'} de hoy sin duración`)
+  return `Carga de hoy: ${total ? minutesLabel(total) : 'nada estimado'} (${parts.join(', ')}). Jornada de referencia: 6 h${total > 360 ? ' — HOY ESTÁ SOBRECARGADO, propón mover algo' : ''}.`
+}
+
 /** Resumen de todo NTab para que Claude responda y planifique */
 export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLike[]; names: Record<string, string> }): string {
   const today = ymdIn(env.now, env.tz)
@@ -222,6 +244,7 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
 
   const s: string[] = [
     `HOY: ${longDate(today)} (${today}), son las ${hhmmIn(env.now, env.tz)} (${env.tz}). Semana: del ${weekStart(today)} al ${addDays(weekStart(today), 6)}.`,
+    loadLine(open.filter((t) => t.dueDate === today), (calendar?.events ?? []).filter((e) => !e.allDay && ymdIn(Date.parse(e.start), env.tz) === today)),
     ...(calendar ? [`\nEVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (${calendar.events.length}) — solo lectura:`, ...eventLines(calendar.events, calendar.names, env)] : []),
     `\nATRASADAS (${overdue.length}):`,
     ...limit(overdue, 60),
@@ -338,6 +361,7 @@ export interface NewTask {
   etiquetas?: string[]
   subtareas?: string[]
   personas?: string[]
+  duracion?: number
 }
 
 export interface Change {
@@ -349,6 +373,7 @@ export interface Change {
   notas?: string
   proyecto?: string | null
   hecha?: boolean
+  duracion?: number | null
 }
 
 export interface WriteResult {
@@ -359,6 +384,7 @@ export interface WriteResult {
 }
 
 const clampPrio = (n: unknown) => (typeof n === 'number' ? Math.max(0, Math.min(3, Math.round(n))) : undefined)
+const cleanMinutes = (n: unknown) => (typeof n === 'number' && n > 0 ? Math.min(24 * 60, Math.round(n)) : undefined)
 const cleanTags = (tags: unknown) =>
   Array.isArray(tags) ? [...new Set(tags.map((g) => String(g).replace(/^#/, '').trim().toLowerCase()).filter(Boolean))] : []
 
@@ -390,6 +416,8 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
     }
     const who = ix.resolvePeople(n.personas)
     if (who.ids.length) task.people = who.ids
+    const est = cleanMinutes(n.duracion)
+    if (est) task.estimate = est
     task = withReminder(task, env)
     out.writes.push({ tbl: 'tasks', id: task.id, data: task as unknown as Data })
     out.report.push(
@@ -415,6 +443,8 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
     if (typeof c.notas === 'string') t.notes = c.notas
     const prio = clampPrio(c.prioridad)
     if (prio !== undefined) t.priority = prio
+    if (c.duracion === null) delete t.estimate
+    else if (cleanMinutes(c.duracion)) t.estimate = cleanMinutes(c.duracion)
     if (c.fecha === null) {
       delete t.dueDate
       delete t.dueTime

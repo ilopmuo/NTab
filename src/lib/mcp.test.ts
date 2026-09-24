@@ -206,4 +206,20 @@ describe('conector MCP', () => {
     const list = (await call(store, 'ver_eventos', { desde: '2026-09-26', hasta: '2026-09-30' })).text
     expect(list).toBe('- el sábado 26 (2026-09-26) todo el día: Congreso (Trabajo)')
   })
+
+  it('duración estimada y carga del día', async () => {
+    const store = memoryStore(base())
+    store.events = async () => ({
+      names: {},
+      events: [{ sourceId: 'g', title: 'Comité', allDay: false, start: '2026-09-24T12:00:00.000Z', end: '2026-09-24T17:00:00.000Z' }],
+    })
+    const r = await call(store, 'crear_tareas', { tareas: [{ titulo: 'Preparar la presentación', fecha: '2026-09-24', duracion: 90 }] })
+    expect(r.text).toContain('Preparar la presentación · hoy (2026-09-24) · ~1 h 30')
+    const summary = (await call(store, 'ver_resumen')).text
+    expect(summary).toMatch(/Carga de hoy: 6 h 30 \(1 h 30 de tareas estimadas, 5 h de reuniones(, \d+ tareas? de hoy sin duración)?\)\. Jornada de referencia: 6 h — HOY ESTÁ SOBRECARGADO/)
+    const task = () => [...store.rows.values()].find((x) => x.data.title === 'Preparar la presentación')!
+    expect(task().data.estimate).toBe(90)
+    await call(store, 'actualizar_tareas', { cambios: [{ id: task().id, duracion: null }] })
+    expect(task().data.estimate).toBeUndefined()
+  })
 })

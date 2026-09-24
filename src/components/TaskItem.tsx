@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import { motion } from 'motion/react'
-import { Bell, ChevronRight, Clock, ListChecks, Repeat, StickyNote } from 'lucide-react'
+import { Bell, ChevronRight, Clock, Hourglass, ListChecks, Repeat, StickyNote } from 'lucide-react'
+import { durationLabel } from '@/lib/duration'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
 import type { Lookup } from '@/db/hooks'
@@ -135,6 +136,14 @@ export const TaskItem = memo(function TaskItem({
       <span key="t" className="inline-flex items-center gap-1">
         <Clock size={11} strokeWidth={2.4} />
         {task.dueTime}
+      </span>,
+    )
+  }
+  if (task.estimate) {
+    meta.push(
+      <span key="e" className="inline-flex items-center gap-1" title="Duración estimada">
+        <Hourglass size={11} strokeWidth={2.4} />
+        {durationLabel(task.estimate)}
       </span>,
     )
   }
