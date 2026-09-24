@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -309,5 +309,20 @@ describe('conector MCP', () => {
     expect(short).not.toContain('Preparar la presentación')
     const long = (await call(store, 'que_hago', { minutos: 120, energia: 'mucha' })).text
     expect(long.split('\n')[1]).toContain('Preparar la presentación')
+  })
+
+  it('gastos: apuntar con texto y ver el mes', async () => {
+    const store = memoryStore(base())
+    await store.save([{ tbl: 'settings', id: 'budget', data: { key: 'budget', value: { monthly: 100 } } }])
+    const nb = (x: { text: string }) => ({ ...x, text: x.text.replace(/\u00a0/g, ' ') })
+    let r = nb(await call(store, 'apuntar_gasto', { texto: '63 súper' }))
+    expect(r.text).toBe('Apuntado: 63 € · Súper (Supermercado, hoy). Este mes: 63 € de 100 €.')
+    r = nb(await call(store, 'apuntar_gasto', { texto: 'ayer 45,50 cena' }))
+    expect(r.text).toContain('45,50 € · Cena (Comer fuera, ayer)')
+    expect(r.text).toContain('SE HA PASADO DEL PRESUPUESTO')
+    const list = nb(await call(store, 'ver_gastos', {})).text
+    expect(list).toContain('Gastos de 2026-09: 108,50 € en 2 gastos, presupuesto 100 €')
+    expect(list).toContain('- Supermercado: 63 € (58 %)')
+    expect(nb(await call(store, 'ver_resumen')).text).toContain('GASTOS DE ESTE MES: 108,50 € de un presupuesto de 100 €')
   })
 })

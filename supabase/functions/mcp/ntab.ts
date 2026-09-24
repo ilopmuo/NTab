@@ -10,6 +10,7 @@ import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, we
 import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
+import { CATEGORIES, categoryFor, money, monthSummary, parseExpense } from '../_shared/expenses.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -332,6 +333,10 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     .filter((r) => r.tbl === 'journal' && typeof r.data.mood === 'number' && r.id >= addDays(today, -6))
     .sort((a, b) => a.id.localeCompare(b.id))
   if (moods.length) s.push(`\nÁNIMO ÚLTIMOS DÍAS (diario, 1 muy mal – 5 muy bien): ${moods.map((r) => `${relDay(r.id, today)} ${num(r.data.mood)}`).join('; ')}. Tenlo en cuenta al proponer planes.`)
+
+  const month = monthSummary(expenseRows(rows), today.slice(0, 7), today)
+  const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
+  if (month.count || budget) s.push(`\nGASTOS DE ESTE MES: ${money(month.total)}${budget ? ` de un presupuesto de ${money(budget)}` : ''}${month.projection > month.total ? ` (a este ritmo, ${money(month.projection)} a fin de mes)` : ''}.`)
 
   const shopping = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
   if (shopping.length) s.push(`\nLISTA DE LA COMPRA (${shopping.length}): ${shopping.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
@@ -1029,4 +1034,59 @@ export function whatNow(rows: Row[], args: { minutos?: number; energia?: string 
     `Para ${minutes} minutos con energía ${args.energia ?? 'normal'}, en este orden:`,
     ...list.slice(0, 5).map((s, i) => `${i + 1}. [${s.task.id}] ${s.task.title} — ${s.reasons.join(', ')}`),
   ].join('\n')
+}
+
+// ── Gastos ────────────────────────────────────────────────────
+
+function expenseRows(rows: Row[]) {
+  return rows.filter((r) => r.tbl === 'expenses' && typeof r.data.amount === 'number' && isYmd(r.data.date)).map((r) => ({ amount: r.data.amount as number, category: str(r.data.category) || 'otros', date: r.data.date as string, note: str(r.data.note) }))
+}
+const catLabel = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Otros'
+
+export function addExpenseTool(rows: Row[], args: { texto?: string; importe?: number; concepto?: string; categoria?: string; fecha?: string }, env: Env): WriteResult {
+  const today = ymdIn(env.now, env.tz)
+  let amount: number | undefined
+  let note = str(args.concepto).trim()
+  let date = isYmd(args.fecha) && args.fecha <= today ? args.fecha : today
+  if (args.texto) {
+    const p = parseExpense(str(args.texto))
+    if (p) {
+      amount = p.amount
+      note = note || p.note
+      if (!isYmd(args.fecha)) date = addDays(today, -p.daysAgo)
+    }
+  }
+  if (typeof args.importe === 'number' && args.importe > 0) amount = Math.round(args.importe * 100) / 100
+  if (!amount) return { writes: [], report: ['Falta el importe del gasto.'] }
+  note = note || 'Gasto'
+  const category = CATEGORIES.some((c) => c.id === args.categoria) ? args.categoria! : categoryFor(note)
+  const id = env.newId()
+  const monthBefore = monthSummary(expenseRows(rows), date.slice(0, 7), today).total
+  const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
+  const total = monthBefore + amount
+  return {
+    writes: [{ tbl: 'expenses', id, data: { id, amount, note: note.charAt(0).toUpperCase() + note.slice(1), category, date, createdAt: env.now } }],
+    report: [`Apuntado: ${money(amount)} · ${note} (${catLabel(category)}, ${relDay(date, today)}). Este mes: ${money(total)}${budget ? ` de ${money(budget)}${total > budget ? ' — SE HA PASADO DEL PRESUPUESTO' : ''}` : ''}.`],
+  }
+}
+
+export function listExpenses(rows: Row[], args: { mes?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const month = /^\d{4}-\d{2}$/.test(str(args.mes)) ? str(args.mes) : today.slice(0, 7)
+  const all = expenseRows(rows)
+  const s = monthSummary(all, month, today)
+  if (!s.count) return `No hay gastos apuntados en ${month}.`
+  const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
+  const lines = [
+    `Gastos de ${month}: ${money(s.total)} en ${s.count} gastos${budget ? `, presupuesto ${money(budget)}` : ''}${s.projection > s.total ? `; a este ritmo, ${money(s.projection)} a fin de mes` : ''}.`,
+    'Por categoría:',
+    ...s.byCategory.map((c) => `- ${catLabel(c.id)}: ${money(c.amount)} (${Math.round((c.amount / s.total) * 100)} %)`),
+    'Últimos:',
+    ...all
+      .filter((e) => e.date.startsWith(month))
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 10)
+      .map((e) => `- ${e.date} ${money(e.amount)} ${e.note}`),
+  ]
+  return lines.join('\n')
 }

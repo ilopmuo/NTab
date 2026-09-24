@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Area, Goal, Habit, Interaction, Note, Person, Project, JournalEntry, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, Expense, JournalEntry, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
@@ -568,4 +568,12 @@ export async function saveJournal(date: string, patch: Partial<Omit<JournalEntry
     const cur = await db.journal.get(date)
     await db.journal.put({ id: date, text: '', good: [], ...cur, ...patch, updatedAt: Date.now() })
   })
+}
+
+// ── Gastos ────────────────────────────────────────────────────
+
+export async function addExpense(data: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+  const e: Expense = { id: uid(), createdAt: Date.now(), ...data }
+  await db.expenses.add(e)
+  return e
 }

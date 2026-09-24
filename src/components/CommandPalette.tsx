@@ -26,6 +26,7 @@ import {
   History,
   BookOpen,
   ShoppingCart,
+  Receipt,
 } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
@@ -140,7 +141,7 @@ function Palette() {
       ...routines.map((r) => `rutina empezar ${r.name}`),
       ...things.map((t) => `${t.name} ${t.location ?? ''} ${t.personName ?? ''}`),
       ...trackers.map((t) => `ultima vez hecho ${t.name}`),
-      'que hago ahora diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
+      'gasto gastos presupuesto que hago ahora diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
   }, [q, areas, projects, tasks, notes, people])
@@ -199,6 +200,9 @@ function Palette() {
           </Item>
           <Item value="que hago ahora sugerencia tiempo libre tengo minutos" icon={<G c="blue"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(whatNow.open)}>
             ¿Qué hago ahora?
+          </Item>
+          <Item value="gasto apuntar gastos dinero presupuesto" icon={<G c="blue"><Receipt size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/expenses'))}>
+            Apuntar un gasto
           </Item>
           <Item value="diario escribir como ha ido el dia animo" icon={<G c="blue"><BookOpen size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/journal'))}>
             Escribir en el diario

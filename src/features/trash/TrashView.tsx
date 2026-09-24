@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { Box, CheckCircle2, History, Flame, Folder, ListChecks, RotateCcw, StickyNote, Target, Trash2, User, Wallet } from 'lucide-react'
+import { Box, CheckCircle2, CookingPot, History, Flame, Folder, ListChecks, RotateCcw, StickyNote, Target, Trash2, User, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { TRASH_DAYS, deleteForever, emptyTrash, restoreFromTrash } from '@/db/trash'
 import type { TrashItem } from '@/db/types'
@@ -20,6 +20,7 @@ const KIND: Record<TrashItem['tbl'], { label: string; icon: typeof CheckCircle2 
   routines: { label: 'Rutina', icon: ListChecks },
   things: { label: 'Cosa', icon: Box },
   trackers: { label: 'Última vez', icon: History },
+  recipes: { label: 'Receta', icon: CookingPot },
 }
 
 const dayKey = (ms: number) => new Date(ms).toDateString()
