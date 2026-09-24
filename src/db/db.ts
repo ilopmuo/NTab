@@ -3,6 +3,7 @@ import type { Area, FocusLog, Goal, Habit, HabitLog, Interaction, Note, Person, 
 import { createTracking, type OutboxEntry } from '@/sync/tracking'
 import { computeRemindAt, withDefaultReminder } from '@/lib/reminders'
 import { computeSubRemindAt } from '@/lib/finance'
+import { computeThingRemindAt } from '@/lib/things'
 import { prefs } from '@/lib/prefs'
 
 /** Estado interno de la sincronización (solo de este dispositivo, nunca se sube) */
@@ -166,3 +167,19 @@ export function installReminderHooks(target: NTabDB) {
   })
 }
 installReminderHooks(db)
+
+/** Cosas: aviso de caducidad o de devolución (lo usa también el servidor) */
+export function installThingHooks(target: NTabDB) {
+  target.things.hook('creating', (_pk, obj) => {
+    const at = computeThingRemindAt(obj)
+    if (at === undefined) delete obj.remindAt
+    else obj.remindAt = at
+  })
+  target.things.hook('updating', (mods, _pk, obj) => {
+    const m = mods as Record<string, unknown>
+    if (!['kind', 'expires', 'notifyDays', 'returnBy', 'returned'].some((k) => k in m)) return
+    const at = computeThingRemindAt({ ...obj, ...m } as Thing)
+    return at !== obj.remindAt ? { remindAt: at } : undefined
+  })
+}
+installThingHooks(db)

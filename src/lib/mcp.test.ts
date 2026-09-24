@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -244,5 +244,24 @@ describe('conector MCP', () => {
     const summary = (await call(store, 'ver_resumen')).text
     expect(summary).toContain('- Antes de salir (08:05): 1 de 3 pasos; faltan: Cartera, Móvil')
     expect((await call(store, 'crear_rutina', { nombre: 'antes de salir', pasos: ['x'] })).text).toContain('Ya existe')
+  })
+
+  it('cosas: apuntar, buscar, préstamos y caducidades', async () => {
+    const store = memoryStore(base())
+    let r = await call(store, 'guardar_cosa', { nombre: 'Pasaporte', donde: 'Cajón del escritorio', tipo: 'caduca', caduca: '2027-03-01' })
+    expect(r.text).toContain('Apuntado: Pasaporte · caduca')
+    expect(r.text).toContain('está en: Cajón del escritorio')
+    expect(r.text).toContain('te avisaré el 2027-01-30')
+    r = await call(store, 'guardar_cosa', { nombre: 'Taladro', tipo: 'prestado', persona: 'Ana', devolver: '2026-10-01' })
+    expect(r.text).toContain('lo tiene Ana')
+    const taladro = [...store.rows.values()].find((x) => x.data.name === 'Taladro')!
+    expect(taladro.data.personId).toBe('x1')
+    expect(typeof taladro.data.remindAt).toBe('number')
+    expect((await call(store, 'donde_esta', { busqueda: 'cajon' })).text).toContain('Pasaporte')
+    expect((await call(store, 'donde_esta', { busqueda: 'ana' })).text).toContain('Taladro')
+    expect((await call(store, 'ver_resumen')).text).toContain('- Prestado: Taladro · lo tiene Ana')
+    r = await call(store, 'marcar_devuelto', { cosa: 'taladro' })
+    expect(r.text).toBe('«Taladro» marcado como devuelto.')
+    expect((await call(store, 'guardar_cosa', { nombre: 'Libro', tipo: 'prestado' })).text).toContain('hace falta la persona')
   })
 })

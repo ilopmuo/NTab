@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -177,6 +177,42 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'donde_esta',
+    title: 'Dónde está',
+    description: 'Busca en sus Cosas: dónde guardó algo, qué ha prestado y a quién, qué le han prestado y qué caduca. Úsalo ante «¿dónde dejé…?», «¿quién tiene mi…?», «¿cuándo caduca…?».',
+    inputSchema: { type: 'object', properties: { busqueda: { type: 'string', description: 'Palabras: la cosa, el sitio o la persona' } }, required: ['busqueda'] },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'guardar_cosa',
+    title: 'Apuntar una cosa',
+    description:
+      'Apunta o actualiza (por nombre) una cosa: dónde la guardó, a quién se la prestó (tipo "prestado" + persona), quién se la prestó ("me lo prestaron") o cuándo caduca un documento o garantía ("caduca" + fecha). NTab avisa de las caducidades y de reclamar o devolver préstamos.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string' },
+        tipo: { type: 'string', enum: ['guardado', 'prestado', 'me lo prestaron', 'caduca'] },
+        donde: { type: 'string', description: 'Dónde está guardado' },
+        persona: { type: 'string', description: 'Para préstamos' },
+        desde: DATE,
+        devolver: { ...DATE, description: 'YYYY-MM-DD: cuándo reclamarlo o devolverlo' },
+        caduca: { ...DATE, description: 'YYYY-MM-DD: fecha de caducidad' },
+        avisar_dias: { type: 'integer', minimum: 1, description: 'Días antes de caducar para avisar (por defecto 30)' },
+        notas: { type: 'string' },
+      },
+      required: ['nombre'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'marcar_devuelto',
+    title: 'Marcar préstamo devuelto',
+    description: 'Marca como devuelto un préstamo (lo que prestó o lo que le prestaron).',
+    inputSchema: { type: 'object', properties: { cosa: { type: 'string', description: 'Nombre de la cosa o de la persona' } }, required: ['cosa'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'crear_rutina',
     title: 'Crear rutina',
     description:
@@ -331,12 +367,16 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)
     }
+    case 'donde_esta':
+      return text(whereIs(await store.load(), args, env))
     case 'crear_proyecto':
+    case 'guardar_cosa':
+    case 'marcar_devuelto':
     case 'crear_rutina':
     case 'actualizar_objetivo':
     case 'registrar_contacto':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { crear_proyecto: createProject, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

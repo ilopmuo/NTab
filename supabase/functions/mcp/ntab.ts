@@ -325,6 +325,17 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     }
   }
   if (people.length) s.push(`\nPERSONAS:`, ...people)
+
+  const things = rows.filter((r) => r.tbl === 'things' && !r.data.returned)
+  const lent = things.filter((t) => t.data.kind === 'lent')
+  const borrowed = things.filter((t) => t.data.kind === 'borrowed')
+  const expiring = things.filter((t) => t.data.kind === 'document' && isYmd(t.data.expires) && diffDays(t.data.expires as string, today) <= Math.max(num(t.data.notifyDays), 30))
+  if (lent.length || borrowed.length || expiring.length) {
+    s.push(`\nCOSAS (usa donde_esta para buscar dónde guardó algo):`)
+    for (const t of lent) s.push(`- Prestado: ${thingLine(t.data, today)}`)
+    for (const t of borrowed) s.push(`- Me prestaron: ${thingLine(t.data, today)}`)
+    for (const t of expiring) s.push(`- Caduca: ${thingLine(t.data, today)}`)
+  }
   if (ix.projects.length) s.push(`\nPROYECTOS (para asignar tareas): ${ix.projects.map((p) => str(p.name)).join('; ')}`)
   return s.join('\n')
 }
@@ -740,4 +751,110 @@ export function createRoutine(rows: Row[], args: { nombre?: string; pasos?: unkn
     writes: [{ tbl: 'routines', id: String(routine.id), data: routine }],
     report: [`Rutina creada: «${name}» con ${steps.length} pasos${routine.time ? `, aviso a las ${routine.time}` : ''}. La tiene en NTab → Rutinas y en Hoy.`],
   }
+}
+
+// ── Cosas ─────────────────────────────────────────────────────
+
+const THING_KINDS: Record<string, 'stored' | 'lent' | 'borrowed' | 'document'> = {
+  guardado: 'stored',
+  prestado: 'lent',
+  'me lo prestaron': 'borrowed',
+  caduca: 'document',
+}
+
+function thingLine(d: Data, today: string) {
+  const parts = [str(d.name)]
+  if (d.kind === 'lent') parts.push(`lo tiene ${str(d.personName) || 'alguien'}${isYmd(d.since) ? ` desde ${d.since}` : ''}${isYmd(d.returnBy) ? `, reclamar ${relDay(d.returnBy as string, today)} (${d.returnBy})` : ''}`)
+  if (d.kind === 'borrowed') parts.push(`de ${str(d.personName) || 'alguien'}${isYmd(d.returnBy) ? `, devolver ${relDay(d.returnBy as string, today)} (${d.returnBy})` : ''}`)
+  if (d.kind === 'document' && isYmd(d.expires)) {
+    const n = diffDays(d.expires as string, today)
+    parts.push(n < 0 ? `CADUCÓ el ${d.expires}` : `caduca ${relDay(d.expires as string, today)} (${d.expires})`)
+  }
+  if (d.location) parts.push(`está en: ${str(d.location)}`)
+  if (d.notes) parts.push(`nota: ${str(d.notes)}`)
+  if (d.returned) parts.push('ya devuelto')
+  return parts.join(' · ')
+}
+
+/** Igual que computeThingRemindAt de la app, en la zona horaria del usuario */
+function thingRemindAt(d: Data, env: Env): number | undefined {
+  let when: number | undefined
+  if (d.kind === 'document' && isYmd(d.expires)) {
+    when = zonedToUtc(addDays(d.expires as string, -(num(d.notifyDays) || 30)), '09:00', env.tz)
+    // Ya dentro del margen: a las 9:00 siguientes, si aún no ha caducado
+    if (when <= env.now) {
+      const today = ymdIn(env.now, env.tz)
+      const nine = zonedToUtc(today, '09:00', env.tz)
+      const next = nine > env.now ? nine : zonedToUtc(addDays(today, 1), '09:00', env.tz)
+      when = next <= zonedToUtc(d.expires as string, '09:00', env.tz) ? next : undefined
+    }
+  }
+  else if (d.kind === 'lent' && isYmd(d.returnBy) && !d.returned) when = zonedToUtc(d.returnBy as string, '10:00', env.tz)
+  else if (d.kind === 'borrowed' && isYmd(d.returnBy) && !d.returned) when = zonedToUtc(addDays(d.returnBy as string, -1), '09:00', env.tz)
+  return when !== undefined && when > env.now ? when : undefined
+}
+
+const foldAll = (s: string) => fold(s)
+
+export function whereIs(rows: Row[], args: { busqueda?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const all = rows.filter((r) => r.tbl === 'things')
+  const words = foldAll(str(args.busqueda)).split(/\s+/).filter(Boolean)
+  const hits = all.filter((r) => {
+    const hay = foldAll([r.data.name, r.data.location, r.data.personName, r.data.notes].map(str).join(' '))
+    return words.every((w) => hay.includes(w))
+  })
+  if (!all.length) return 'Aún no ha apuntado ninguna cosa en NTab (Cosas).'
+  if (!hits.length) return `No hay nada apuntado que coincida con «${str(args.busqueda)}». Cosas apuntadas: ${all.map((r) => str(r.data.name)).slice(0, 40).join(', ')}.`
+  return hits.slice(0, 30).map((r) => `- [${r.id}] ${thingLine(r.data, today)}`).join('\n')
+}
+
+export function saveThing(
+  rows: Row[],
+  args: { nombre?: string; tipo?: string; donde?: string; persona?: string; desde?: string; devolver?: string; caduca?: string; avisar_dias?: number; notas?: string },
+  env: Env,
+): WriteResult {
+  const name = str(args.nombre).trim()
+  if (!name) return { writes: [], report: ['Falta el nombre de la cosa.'] }
+  const today = ymdIn(env.now, env.tz)
+  const ix = new Index(rows)
+  const things = rows.filter((r) => r.tbl === 'things')
+  const existing = things.find((r) => fold(str(r.data.name)) === fold(name) && !r.data.returned)
+  const kind = THING_KINDS[fold(str(args.tipo))] ?? (existing?.data.kind as string | undefined) ?? (args.persona ? 'lent' : args.caduca ? 'document' : 'stored')
+  const d: Data = existing ? { ...existing.data } : { id: env.newId(), name, kind, createdAt: env.now }
+  d.kind = kind
+  if (args.donde !== undefined) d.location = str(args.donde).trim() || undefined
+  if (args.notas !== undefined) d.notes = str(args.notas).trim() || undefined
+  if (args.persona) {
+    const p = findByName(ix.people, str(args.persona).replace(/^@/, ''))
+    d.personName = p ? str(p.name) : str(args.persona)
+    if (p) d.personId = p.id
+    else delete d.personId
+  }
+  if (kind === 'lent' || kind === 'borrowed') d.since = isYmd(args.desde) ? args.desde : (d.since ?? today)
+  if (isYmd(args.devolver)) d.returnBy = args.devolver
+  if (isYmd(args.caduca)) d.expires = args.caduca
+  if (typeof args.avisar_dias === 'number' && args.avisar_dias > 0) d.notifyDays = Math.round(args.avisar_dias)
+  if (kind === 'document' && !d.notifyDays) d.notifyDays = 30
+  if ((kind === 'lent' || kind === 'borrowed') && !d.personName) return { writes: [], report: ['Para un préstamo hace falta la persona.'] }
+  if (kind === 'document' && !isYmd(d.expires)) return { writes: [], report: ['Para algo que caduca hace falta la fecha (caduca: YYYY-MM-DD).'] }
+  d.updatedAt = env.now
+  const at = thingRemindAt(d, env)
+  if (at === undefined) delete d.remindAt
+  else d.remindAt = at
+  for (const k of Object.keys(d)) if (d[k] === undefined) delete d[k]
+  return {
+    writes: [{ tbl: 'things', id: String(existing?.id ?? d.id), data: d }],
+    report: [`${existing ? 'Actualizado' : 'Apuntado'}: ${thingLine(d, today)}${at ? ` · te avisaré el ${ymdIn(at, env.tz)}` : ''}.`],
+  }
+}
+
+export function markReturned(rows: Row[], args: { cosa?: string }, env: Env): WriteResult {
+  const q = fold(str(args.cosa))
+  const loans = rows.filter((r) => r.tbl === 'things' && (r.data.kind === 'lent' || r.data.kind === 'borrowed') && !r.data.returned)
+  const hit = loans.find((r) => fold(str(r.data.name)) === q) ?? loans.find((r) => fold(str(r.data.name)).includes(q) || fold(str(r.data.personName)).includes(q))
+  if (!hit) return { writes: [], report: [`No hay ningún préstamo abierto de «${str(args.cosa)}». Préstamos: ${loans.map((r) => str(r.data.name)).join(', ') || 'ninguno'}.`] }
+  const d: Data = { ...hit.data, returned: 1, updatedAt: env.now }
+  delete d.remindAt
+  return { writes: [{ tbl: 'things', id: hit.id, data: d }], report: [`«${str(d.name)}» marcado como devuelto.`] }
 }

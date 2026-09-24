@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Area, Goal, Habit, Interaction, Note, Person, Project, Routine, Subscription, Task } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, Routine, Subscription, Task, Thing } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
@@ -425,4 +425,31 @@ export async function toggleRoutineStep(routine: Routine, date: string, stepId: 
 export async function resetRoutineRun(routineId: string, date: string) {
   const run = await db.routineRuns.where('[routineId+date]').equals([routineId, date]).first()
   if (run) await db.routineRuns.update(run.id, { done: [], completedAt: undefined })
+}
+
+// ── Cosas ─────────────────────────────────────────────────────
+
+export async function createThing(data: Partial<Thing> & { name: string; kind: Thing['kind'] }): Promise<Thing> {
+  const now = Date.now()
+  const thing: Thing = {
+    id: uid(),
+    createdAt: now,
+    updatedAt: now,
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.things.add(thing)
+  return thing
+}
+
+export async function updateThing(id: string, changes: Partial<Thing>) {
+  await db.things.update(id, { ...changes, updatedAt: Date.now() })
+}
+
+export async function deleteThing(id: string) {
+  await db.transaction('rw', db.things, db.trash, async () => {
+    const thing = await db.things.get(id)
+    if (!thing) return
+    await putInTrash('things', thing)
+    await db.things.delete(id)
+  })
 }

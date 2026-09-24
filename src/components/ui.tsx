@@ -213,7 +213,7 @@ export function Segmented<T extends string | number>({
             title={o.title}
             onClick={() => onChange(o.value)}
             className={cx(
-              'relative flex h-7 min-w-9 flex-1 items-center justify-center gap-1 rounded-[8px] px-3 text-[13px] font-medium transition-colors',
+              'relative flex h-7 min-w-9 flex-1 items-center justify-center gap-1 rounded-[8px] px-3 text-[13px] font-medium whitespace-nowrap transition-colors',
               on ? 'text-fg' : 'text-muted hover:text-fg',
             )}
           >

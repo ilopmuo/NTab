@@ -19,6 +19,7 @@ import {
   UserPlus,
   Wallet,
   ListChecks,
+  Box,
 } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
@@ -110,6 +111,7 @@ function Palette() {
   const notes = useLiveQuery(() => db.notes.toArray(), []) ?? []
   const people = useLiveQuery(() => db.people.toArray(), []) ?? []
   const routines = useLiveQuery(() => db.routines.where('archived').equals(0).toArray(), []) ?? []
+  const things = useLiveQuery(() => db.things.toArray(), []) ?? []
   const go = (path: string) => {
     ui.palette(false)
     navigate(path)
@@ -129,6 +131,7 @@ function Palette() {
       ...notes.map((n) => `${n.title} ${n.content.slice(0, 200)}`),
       ...people.map((p) => `${p.name} ${p.company}`),
       ...routines.map((r) => `rutina empezar ${r.name}`),
+      ...things.map((t) => `${t.name} ${t.location ?? ''} ${t.personName ?? ''}`),
       'plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
@@ -182,6 +185,9 @@ function Palette() {
           </Item>
           <Item value="nuevo hábito crear" icon={<G c="green"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/habits'), ui.create('habit')))}>
             Nuevo hábito
+          </Item>
+          <Item value="apuntar cosa donde esta guardado prestar prestamo caduca documento" icon={<G c="blue"><Box size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/things'), ui.create('thing')))}>
+            Apuntar una cosa (dónde está, préstamo, caducidad)
           </Item>
           <Item value="nueva rutina crear checklist lista de pasos" icon={<G c="blue"><ListChecks size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/routines'), ui.create('routine')))}>
             Nueva rutina
@@ -253,6 +259,20 @@ function Palette() {
               {notes.map((n) => (
                 <Item key={n.id} value={`n:${n.id}`} keywords={[n.title, n.content.slice(0, 200)]} icon={<FileText size={17} style={{ color: tint('yellow') }} />} onSelect={() => go(`/notes/${n.id}`)}>
                   {n.title || 'Sin título'}
+                </Item>
+              ))}
+            </Command.Group>
+            <Command.Group heading="Cosas" className={groupCls}>
+              {things.map((t) => (
+                <Item
+                  key={t.id}
+                  value={`c:${t.id}`}
+                  keywords={[t.name, t.location ?? '', t.personName ?? '', 'donde esta']}
+                  icon={<Box size={17} />}
+                  onSelect={() => go(`/things/${t.id}`)}
+                  hint={t.location ?? t.personName}
+                >
+                  {t.name}
                 </Item>
               ))}
             </Command.Group>

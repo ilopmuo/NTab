@@ -10,6 +10,7 @@ import { addDaysYmd, dateLabel, diffDays, relativeDays, today } from '@/lib/date
 import { nextBirthday } from '@/lib/people'
 import { href, navigate } from '@/app/router'
 import { toast, ui } from '@/app/store'
+import { ThingRow } from '../things/ThingRow'
 import { Button, Card, Empty, Field, Group, IconButton, Input, Section, Select, Textarea, bouncy, cx } from '@/components/ui'
 import { Page } from '../Page'
 import { TaskList } from '@/components/TaskList'
@@ -152,6 +153,7 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
       <div className="grid gap-6 @[760px]:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <PendingWith personId={person.id} name={person.name} />
+          <Loans personId={person.id} name={person.name} />
           <Section title="Registrar contacto de hoy" tone="purple">
             <Card className="p-4">
               <div className="mb-3 flex flex-wrap gap-1.5">
@@ -296,6 +298,22 @@ function PendingWith({ personId, name }: { personId: string; name: string }) {
         add={{ defaults: { people: [personId] }, placeholder: `Algo que hablar con ${first}…` }}
         empty={<p className="px-4 pt-3 text-[14px] text-muted">Nada pendiente. Escribe @{first} al crear una tarea para verla aquí.</p>}
       />
+    </Section>
+  )
+}
+
+/** Lo que le has prestado o te ha prestado */
+function Loans({ personId, name }: { personId: string; name: string }) {
+  const things = useLiveQuery(() => db.things.where('personId').equals(personId).filter((t) => !t.returned).toArray(), [personId])
+  if (!things?.length) return null
+  return (
+    <Section title="Préstamos" count={things.length}>
+      <Group>
+        {things.map((t) => (
+          <ThingRow key={t.id} thing={t} onOpen={() => navigate(`/things/${t.id}`)} />
+        ))}
+      </Group>
+      <p className="mt-2 px-1 text-[13px] text-muted">Cosas entre tú y {name.trim().split(/\s+/)[0]}.</p>
     </Section>
   )
 }
