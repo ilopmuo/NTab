@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, Sun } from 'lucide-react'
+import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, Sparkles, Sun } from 'lucide-react'
+import { whatNow } from './whatnow/WhatNow'
 import { DayComplete } from '@/components/Celebrate'
 import { db } from '@/db/db'
 import { updateTask } from '@/db/actions'
@@ -100,7 +101,25 @@ export function TodayView() {
 
   return (
     <Page wide>
-      <PageHeader eyebrow={longDateLabel(t)} tint="var(--c-blue)" title={greeting()} subtitle={summary} actions={<SelectButton />} />
+      <PageHeader eyebrow={longDateLabel(t)} tint="var(--c-blue)" title={greeting()}
+        subtitle={summary}
+        actions={
+          <>
+            {pending > 0 && (
+              <button
+                type="button"
+                onClick={whatNow.open}
+                aria-label="¿Qué hago ahora?"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-accent px-3.5 text-[14px] font-semibold text-white transition-transform active:scale-95 max-sm:w-9 max-sm:justify-center max-sm:px-0"
+              >
+                <Sparkles size={16} strokeWidth={2.4} />
+                <span className="max-sm:hidden">¿Qué hago?</span>
+              </button>
+            )}
+            <SelectButton />
+          </>
+        }
+      />
 
       <div
         className={cx(

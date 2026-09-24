@@ -6,6 +6,7 @@ import { FocusMode } from '@/features/focus/FocusMode'
 import { DragGhost } from '@/components/dayDrag'
 import { SelectionBar } from '@/features/select/SelectionBar'
 import { RoutineRunner } from '@/features/routines/RoutineRunner'
+import { WhatNow } from '@/features/whatnow/WhatNow'
 import { runner } from '@/features/routines/useRoutines'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
@@ -243,6 +244,7 @@ function Workspace() {
       <RecoveryModal />
       <FocusMode />
       <RoutineRunner />
+      <WhatNow />
       <DragGhost />
       <SelectionBar />
       <Toast />

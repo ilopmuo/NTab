@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -299,5 +299,15 @@ describe('conector MCP', () => {
     expect(entry.data.mood).toBe(4)
     expect((await call(store, 'ver_diario', {})).text).toContain('ánimo bien: Buen día de trabajo.')
     expect((await call(store, 'ver_resumen')).text).toContain('ÁNIMO ÚLTIMOS DÍAS (diario, 1 muy mal – 5 muy bien): hoy 4')
+  })
+
+  it('qué hago ahora', async () => {
+    const store = memoryStore(base())
+    await call(store, 'crear_tareas', { tareas: [{ titulo: 'Preparar la presentación', fecha: '2026-09-24', prioridad: 3, duracion: 90 }, { titulo: 'Regar las plantas', fecha: '2026-09-24', duracion: 10 }] })
+    const short = (await call(store, 'que_hago', { minutos: 30 })).text
+    expect(short).toContain('Regar las plantas')
+    expect(short).not.toContain('Preparar la presentación')
+    const long = (await call(store, 'que_hago', { minutos: 120, energia: 'mucha' })).text
+    expect(long.split('\n')[1]).toContain('Preparar la presentación')
   })
 })

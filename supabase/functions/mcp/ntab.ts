@@ -9,6 +9,7 @@
 import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, weekday, ymdIn, zonedToUtc } from '../_shared/time.ts'
 import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
+import { suggest, type Energy } from '../_shared/suggest.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -1011,4 +1012,21 @@ export function writeJournal(rows: Row[], args: { texto?: string; animo?: number
     writes: [{ tbl: 'journal', id: date, data: d }],
     report: [`Apuntado en el diario de ${relDay(date, today)}${typeof d.mood === 'number' ? ` (ánimo: ${MOOD_WORDS[d.mood as number]})` : ''}.`],
   }
+}
+
+// ── ¿Qué hago ahora? ──────────────────────────────────────────
+
+export function whatNow(rows: Row[], args: { minutos?: number; energia?: string }, env: Env): string {
+  const ix = new Index(rows)
+  const today = ymdIn(env.now, env.tz)
+  const [h, m] = hhmmIn(env.now, env.tz).split(':').map(Number)
+  const minutes = typeof args.minutos === 'number' && args.minutos > 0 ? Math.round(args.minutos) : 30
+  const energy: Energy = args.energia === 'poca' ? 'low' : args.energia === 'mucha' ? 'high' : 'normal'
+  const open = ix.tasks.filter((t) => !t.done)
+  const list = suggest(open, { minutes, energy, today, nowMin: h * 60 + m, now: env.now })
+  if (!list.length) return open.length ? `Nada pendiente cabe en ${minutes} minutos.` : 'No tiene nada pendiente.'
+  return [
+    `Para ${minutes} minutos con energía ${args.energia ?? 'normal'}, en este orden:`,
+    ...list.slice(0, 5).map((s, i) => `${i + 1}. [${s.task.id}] ${s.task.title} — ${s.reasons.join(', ')}`),
+  ].join('\n')
 }

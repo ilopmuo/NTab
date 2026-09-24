@@ -1,6 +1,7 @@
 import { Command, defaultFilter } from 'cmdk'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { runner } from '@/features/routines/useRoutines'
+import { whatNow } from '@/features/whatnow/WhatNow'
 import { markDone } from '@/features/trackers/markDone'
 import { sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
@@ -139,7 +140,7 @@ function Palette() {
       ...routines.map((r) => `rutina empezar ${r.name}`),
       ...things.map((t) => `${t.name} ${t.location ?? ''} ${t.personName ?? ''}`),
       ...trackers.map((t) => `ultima vez hecho ${t.name}`),
-      'diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
+      'que hago ahora diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
   }, [q, areas, projects, tasks, notes, people])
@@ -195,6 +196,9 @@ function Palette() {
           </Item>
           <Item value="apuntar cosa donde esta guardado prestar prestamo caduca documento" icon={<G c="blue"><Box size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/things'), ui.create('thing')))}>
             Apuntar una cosa (dónde está, préstamo, caducidad)
+          </Item>
+          <Item value="que hago ahora sugerencia tiempo libre tengo minutos" icon={<G c="blue"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(whatNow.open)}>
+            ¿Qué hago ahora?
           </Item>
           <Item value="diario escribir como ha ido el dia animo" icon={<G c="blue"><BookOpen size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/journal'))}>
             Escribir en el diario
