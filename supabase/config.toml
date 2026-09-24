@@ -432,3 +432,10 @@ verify_jwt = false
 enabled = true
 # Claude se conecta con la URL privada (token en la ruta), sin sesión de Supabase.
 verify_jwt = false
+import_map = "./functions/mcp/deno.json"
+
+[functions.events]
+enabled = true
+# La función comprueba la sesión ella misma (auth.getUser).
+verify_jwt = false
+import_map = "./functions/events/deno.json"

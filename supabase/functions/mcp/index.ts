@@ -6,6 +6,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { handleMessage, type Store } from './server.ts'
 import type { Env, Row } from './ntab.ts'
+import { loadEvents } from '../_shared/loadEvents.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -69,6 +70,10 @@ Deno.serve(async (req) => {
       env.autoRemind = setting?.data?.value !== false
       cache = rows
       return rows
+    },
+    async events(from, to) {
+      const r = await loadEvents(admin, userId, from, to)
+      return { events: r.events, names: r.names }
     },
     async save(writes, deletes = []) {
       const upserts = [

@@ -15,7 +15,7 @@ export function CalendarBlock() {
   const { token, busy } = link
   return (
     <LinkSection
-      title="Calendario"
+      title="NTab en tu calendario"
       footer={
         token
           ? 'Calendario de Apple se pone al día solo cada pocos minutos; para Google, usa «Google Calendar». Quien tenga el enlace ve tus tareas: no lo compartas y, si lo haces, cámbialo.'

@@ -14,6 +14,7 @@ import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/com
 import { HabitStrip } from './habits/HabitStrip'
 import { useHabits } from './habits/useHabits'
 import { Agenda } from './today/Agenda'
+import { useEvents } from '@/lib/calendarEvents'
 import { DayRings } from './today/DayRings'
 import { PaymentsCard } from './today/PaymentsCard'
 import { PeopleCard } from './today/PeopleCard'
@@ -39,6 +40,8 @@ export function TodayView() {
   // null = nunca se ha planificado; undefined = aún cargando
   const lastPlan = useLiveQuery(() => db.settings.get('lastPlan').then((r) => r ?? null), [])
   const { habits, byHabit } = useHabits(7)
+  const cal = useEvents(t, t)
+  const todayEvents = cal.events.filter((e) => (e.allDay ? e.start <= t && e.end > t : new Date(e.start).toDateString() === new Date().toDateString()))
   const [showDone, setShowDone] = useState(false)
 
   const { overdue, todays, weekOpen } = useMemo(() => {
@@ -213,7 +216,7 @@ export function TodayView() {
         </div>
 
         <aside className="min-w-0 space-y-4 [grid-area:side]">
-          <Agenda tasks={todays} />
+          <Agenda tasks={todays} events={todayEvents} names={cal.names} />
           <HabitStrip />
           <WeekStrip tasks={open} />
           <PaymentsCard />

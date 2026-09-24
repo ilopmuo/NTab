@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -186,5 +186,24 @@ describe('conector MCP', () => {
     expect((await call(store, 'buscar_tareas', { persona: 'ana' })).text).toContain('Devolver el libro')
     expect((await call(store, 'buscar_tareas', { persona: 'nadie' })).text).toMatch(/No hay ninguna persona/)
     expect((await call(store, 'ver_resumen')).text).toContain('Devolver el libro · sin fecha · con Ana')
+  })
+
+  it('eventos de los calendarios en el resumen y en ver_eventos', async () => {
+    const store = memoryStore(base())
+    store.events = async () => ({
+      names: { g: 'Trabajo' },
+      events: [
+        { sourceId: 'g', title: 'Reunión de equipo', allDay: false, start: '2026-09-24T09:00:00.000Z', end: '2026-09-24T09:30:00.000Z', location: 'Sala 2' },
+        { sourceId: 'g', title: 'Congreso', allDay: true, start: '2026-09-26', end: '2026-09-28' },
+        { sourceId: 'g', title: 'Ya pasó', allDay: false, start: '2026-09-23T09:00:00.000Z', end: '2026-09-23T10:00:00.000Z' },
+      ],
+    })
+    const summary = (await call(store, 'ver_resumen')).text
+    expect(summary).toContain('EVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (2)')
+    expect(summary).toContain('- hoy (2026-09-24) 11:00–11:30: Reunión de equipo (Trabajo) · Sala 2')
+    expect(summary).toContain('- el sábado 26 (2026-09-26) todo el día: Congreso (Trabajo)')
+    expect(summary).not.toContain('Ya pasó')
+    const list = (await call(store, 'ver_eventos', { desde: '2026-09-26', hasta: '2026-09-30' })).text
+    expect(list).toBe('- el sábado 26 (2026-09-26) todo el día: Congreso (Trabajo)')
   })
 })

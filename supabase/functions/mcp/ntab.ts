@@ -188,8 +188,29 @@ function taskLine(t: Task, ix: Index, today: string) {
 const byDate = (a: Task, b: Task) =>
   (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || (a.dueTime ?? '99').localeCompare(b.dueTime ?? '99') || b.priority - a.priority
 
+/** Evento de un calendario externo (ver supabase/functions/events/expand.ts) */
+export interface EventLike {
+  title: string
+  allDay: boolean
+  start: string
+  end: string
+  location?: string
+  sourceId: string
+}
+
+/** "hoy 10:00–10:30 Reunión de equipo (Trabajo) · Sala 2" */
+export function eventLines(events: EventLike[], names: Record<string, string>, env: Env): string[] {
+  const today = ymdIn(env.now, env.tz)
+  return events.map((e) => {
+    const day = e.allDay ? e.start : ymdIn(Date.parse(e.start), env.tz)
+    const when = e.allDay ? 'todo el día' : `${hhmmIn(Date.parse(e.start), env.tz)}–${hhmmIn(Date.parse(e.end), env.tz)}`
+    const src = names[e.sourceId] ? ` (${names[e.sourceId]})` : ''
+    return `- ${relDay(day, today)} (${day}) ${when}: ${e.title}${src}${e.location ? ` · ${e.location}` : ''}`
+  })
+}
+
 /** Resumen de todo NTab para que Claude responda y planifique */
-export function buildSummary(rows: Row[], env: Env): string {
+export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLike[]; names: Record<string, string> }): string {
   const today = ymdIn(env.now, env.tz)
   const ix = new Index(rows)
   const open = ix.tasks.filter((t) => !t.done)
@@ -201,6 +222,7 @@ export function buildSummary(rows: Row[], env: Env): string {
 
   const s: string[] = [
     `HOY: ${longDate(today)} (${today}), son las ${hhmmIn(env.now, env.tz)} (${env.tz}). Semana: del ${weekStart(today)} al ${addDays(weekStart(today), 6)}.`,
+    ...(calendar ? [`\nEVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (${calendar.events.length}) — solo lectura:`, ...eventLines(calendar.events, calendar.names, env)] : []),
     `\nATRASADAS (${overdue.length}):`,
     ...limit(overdue, 60),
     `\nCON FECHA (${dated.length}):`,

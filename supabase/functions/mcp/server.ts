@@ -3,11 +3,13 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, createNote, createProject, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
   save(rows: Row[], deletes?: Row[]): Promise<void>
+  /** eventos de los calendarios externos entre dos instantes (ms) */
+  events?(from: number, to: number): Promise<{ events: EventLike[]; names: Record<string, string> }>
 }
 
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
@@ -30,6 +32,14 @@ export const TOOLS = [
     description:
       'Resumen completo: fecha y hora actuales, tareas atrasadas, con fecha y sin fecha (con sus id), proyectos, objetivos, hábitos de hoy, pagos próximos y personas (cumpleaños y a quién llamar). Úsalo antes de responder sobre la agenda o planificar.',
     inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  {
+    name: 'ver_eventos',
+    title: 'Ver eventos del calendario',
+    description:
+      'Eventos de los calendarios que el usuario ha conectado (Google, iCloud, Outlook…), en un rango de fechas. Solo lectura: úsalo para saber cuándo tiene reuniones o huecos libres.',
+    inputSchema: { type: 'object', properties: { desde: DATE, hasta: DATE } },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   {
@@ -235,6 +245,7 @@ interface RpcRequest {
   params?: Record<string, unknown>
 }
 
+const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
 const ok = (id: RpcRequest['id'], result: unknown) => ({ jsonrpc: '2.0', id, result })
 const fail = (id: RpcRequest['id'], code: number, message: string) => ({ jsonrpc: '2.0', id: id ?? null, error: { code, message } })
 const text = (s: string, isError = false) => ({ content: [{ type: 'text', text: s }], ...(isError ? { isError: true } : {}) })
@@ -242,8 +253,26 @@ const text = (s: string, isError = false) => ({ content: [{ type: 'text', text: 
 async function callTool(name: string, args: Record<string, unknown>, store: Store, env: Env) {
   const rows = await store.load()
   switch (name) {
-    case 'ver_resumen':
+    case 'ver_resumen': {
+      const cal = store.events ? await store.events(env.now - 864e5, env.now + 8 * 864e5).catch(() => undefined) : undefined
+      if (cal) {
+        const soon = cal.events.filter((e) => Date.parse(e.allDay ? `${e.end}T00:00:00Z` : e.end) > env.now)
+        return text(buildSummary(rows, env, { events: soon, names: cal.names }))
+      }
       return text(buildSummary(rows, env))
+    }
+    case 'ver_eventos': {
+      if (!store.events) return text('No hay calendarios conectados.')
+      const from = isDate(args.desde) ? Date.parse(`${args.desde}T00:00:00Z`) - 864e5 : env.now - 864e5
+      const to = isDate(args.hasta) ? Date.parse(`${args.hasta}T00:00:00Z`) + 2 * 864e5 : env.now + 8 * 864e5
+      const cal = await store.events(from, Math.min(to, from + 95 * 864e5))
+      if (!Object.keys(cal.names).length) return text('No hay calendarios conectados. Se conectan en NTab → Ajustes → Tus calendarios.')
+      const lines = eventLines(cal.events, cal.names, env).filter((l) => {
+        const m = l.match(/\((\d{4}-\d{2}-\d{2})\)/)
+        return !m || ((!isDate(args.desde) || m[1] >= (args.desde as string)) && (!isDate(args.hasta) || m[1] <= (args.hasta as string)))
+      })
+      return text(lines.length ? lines.join('\n') : 'No hay eventos en esas fechas.')
+    }
     case 'buscar_tareas':
       return text(searchTasks(rows, args as SearchArgs, env))
     case 'crear_tareas': {
