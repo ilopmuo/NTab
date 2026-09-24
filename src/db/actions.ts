@@ -453,3 +453,12 @@ export async function deleteThing(id: string) {
     await db.things.delete(id)
   })
 }
+
+/** Pone hora a varias tareas de una vez (colocar en huecos). Devuelve cómo estaban. */
+export async function setTaskTimes(times: { id: string; time: string }[]): Promise<Task[]> {
+  return db.transaction('rw', db.tasks, async () => {
+    const before = (await db.tasks.bulkGet(times.map((t) => t.id))).filter((t): t is Task => !!t)
+    for (const { id, time } of times) await db.tasks.where('id').equals(id).modify((t) => void (t.dueTime = time))
+    return structuredClone(before)
+  })
+}
