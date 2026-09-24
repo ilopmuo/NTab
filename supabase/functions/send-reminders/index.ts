@@ -82,15 +82,17 @@ Deno.serve(async (req) => {
   }
   if (body.test) return sendTest(req, admin, Number(body.delay) || 0)
 
-  const [remindersRes, digestsRes, habitsRes] = await Promise.all([
+  const [remindersRes, digestsRes, habitsRes, nagsRes] = await Promise.all([
     admin.rpc('due_reminders', { window_minutes: 15 }),
     admin.rpc('due_digests', { window_minutes: 15 }),
     admin.rpc('due_habit_reminders', { window_minutes: 15 }),
+    admin.rpc('due_nags', { window_minutes: 15 }),
   ])
   if (remindersRes.error) return json({ error: remindersRes.error.message }, 500)
   // Si la migración del resumen aún no está aplicada, los avisos siguen funcionando
   if (digestsRes.error) console.error('due_digests', digestsRes.error.message)
   if (habitsRes.error) console.error('due_habit_reminders', habitsRes.error.message)
+  if (nagsRes.error) console.error('due_nags', nagsRes.error.message)
 
   // Cada envío: a quién, qué (según la zona horaria del dispositivo) y qué apuntar al terminar
   interface Job {
@@ -100,6 +102,12 @@ Deno.serve(async (req) => {
   }
   const jobs: Job[] = [
     ...((remindersRes.data ?? []) as DueReminder[]).map((r) => ({
+      user_id: r.user_id,
+      payload: (tz: string) => buildPayload(r, tz),
+      log: { user_id: r.user_id, tbl: r.tbl, item_id: r.item_id, remind_at: r.remind_at },
+    })),
+    // Avisos insistentes: misma etiqueta que el aviso original, así que lo sustituyen
+    ...((nagsRes.data ?? []) as DueReminder[]).map((r) => ({
       user_id: r.user_id,
       payload: (tz: string) => buildPayload(r, tz),
       log: { user_id: r.user_id, tbl: r.tbl, item_id: r.item_id, remind_at: r.remind_at },

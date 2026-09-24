@@ -32,6 +32,8 @@ export interface ParsedTask {
   reminder?: Reminder
   /** duración estimada en minutos ("~30m", "~1h30") */
   estimate?: number
+  /** insistir: repetir el aviso cada N minutos */
+  nag?: number
 }
 
 // Límites de palabra que funcionan con acentos y ñ (\b no los entiende).
@@ -299,6 +301,16 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
     if (!min) return false
     out.estimate = min
   })
+
+  // ── Insistir ──────────────────────────────────────────────
+  // "insísteme", "insiste cada 5 minutos", "hasta que lo haga"
+  take(
+    new RegExp(`${B}(?:ins[ií]steme|insiste|insistir|y\\s+no\\s+pares|hasta\\s+que\\s+lo\\s+(?:haga|haya\\s+hecho))(?:\\s+cada\\s+(\\d+|cinco|diez|quince|treinta)\\s*(?:minutos?|min))?${E}`, 'i'),
+    (m) => {
+      out.nag = m[1] ? toNumber(m[1]) : 10
+      if (!out.reminder) out.reminder = { before: 0 }
+    },
+  )
 
   // ── Hora ──────────────────────────────────────────────────
   if (!take(new RegExp(`${B}(?:a\\s+)?(?:al\\s+)?mediod[ií]a${E}`, 'i'), () => void (out.dueTime = '12:00'))) {

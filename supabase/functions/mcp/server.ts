@@ -25,6 +25,7 @@ const INSTRUCTIONS = `NTab es la app con la que el usuario organiza su vida: tar
 const DATE = { type: 'string', description: 'YYYY-MM-DD' }
 const TIME = { type: 'string', description: 'HH:MM (24 h)' }
 const PRIORITY = { type: 'integer', minimum: 0, maximum: 3, description: '0 ninguna, 1 baja, 2 media, 3 alta' }
+const NAG = { type: 'integer', minimum: 5, description: 'Repetir el aviso cada N minutos hasta que la marque como hecha (para lo que no puede olvidar: pastillas, llamadas…). Necesita hora.' }
 const DURATION = { type: 'integer', minimum: 1, description: 'Minutos que calculas que llevará (para no sobrecargar el día)' }
 
 export const TOOLS = [
@@ -87,6 +88,7 @@ export const TOOLS = [
               subtareas: { type: 'array', items: { type: 'string' } },
               personas: { type: 'array', items: { type: 'string' }, description: 'Personas relacionadas (por nombre): la tarea aparece en su ficha' },
               duracion: DURATION,
+              insistir: NAG,
             },
             required: ['titulo'],
           },
@@ -118,6 +120,7 @@ export const TOOLS = [
               proyecto: { type: ['string', 'null'], description: 'Nombre del proyecto, o null para sacarla' },
               hecha: { type: 'boolean' },
               duracion: { type: ['integer', 'null'], minimum: 1, description: 'Minutos estimados, o null para quitarla' },
+              insistir: { type: ['integer', 'null'], minimum: 5, description: 'Repetir el aviso cada N minutos hasta que la haga, o null para dejar de insistir' },
             },
             required: ['id'],
           },

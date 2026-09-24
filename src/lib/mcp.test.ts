@@ -222,4 +222,15 @@ describe('conector MCP', () => {
     await call(store, 'actualizar_tareas', { cambios: [{ id: task().id, duracion: null }] })
     expect(task().data.estimate).toBeUndefined()
   })
+
+  it('insistir hasta que lo haga', async () => {
+    const store = memoryStore(base())
+    const r = await call(store, 'crear_tareas', { tareas: [{ titulo: 'Tomar la pastilla', fecha: '2026-09-24', hora: '22:00', insistir: 10 }] })
+    expect(r.text).toContain('insiste cada 10 min')
+    const task = () => [...store.rows.values()].find((x) => x.data.title === 'Tomar la pastilla')!
+    expect(task().data.nag).toBe(10)
+    expect(typeof task().data.remindAt).toBe('number')
+    await call(store, 'actualizar_tareas', { cambios: [{ id: task().id, insistir: null }] })
+    expect(task().data.nag).toBeUndefined()
+  })
 })

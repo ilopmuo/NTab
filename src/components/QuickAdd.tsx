@@ -42,6 +42,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   if (parsed.recurrence) final.recurrence = parsed.recurrence
   if (parsed.reminder) final.reminder = parsed.reminder
   if (parsed.estimate) final.estimate = parsed.estimate
+  if (parsed.nag) final.nag = parsed.nag
   if (parsed.people?.length) final.people = [...new Set([...(defaults?.people ?? []), ...parsed.people])]
   if (parsed.projectId) {
     final.projectId = parsed.projectId

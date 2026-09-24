@@ -228,3 +228,20 @@ describe('duración estimada', () => {
     expect(p('leer 30 páginas').estimate).toBeUndefined()
   })
 })
+
+describe('insistir', () => {
+  it('insísteme y hasta que lo haga', () => {
+    const a = p('tomar la pastilla a las 22 insísteme')
+    expect(a.title).toBe('Tomar la pastilla')
+    expect(a.nag).toBe(10)
+    expect(a.reminder).toEqual({ before: 0 })
+    expect(a.dueTime).toBe('22:00')
+    const b = p('sacar la basura hoy a las 21 hasta que lo haga')
+    expect(b.title).toBe('Sacar la basura')
+    expect(b.nag).toBe(10)
+    expect(p('regar insiste cada 5 minutos').nag).toBe(5)
+  })
+  it('respeta el aviso que ya había', () => {
+    expect(p('llamar mañana a las 10 avísame 15 minutos antes insísteme').reminder).toEqual({ before: 15 })
+  })
+})

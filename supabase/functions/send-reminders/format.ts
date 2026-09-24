@@ -13,6 +13,8 @@ export interface DueReminder {
   due_time: string | null
   amount: number | string | null
   currency: string | null
+  /** repetición de un aviso insistente (1, 2…) */
+  repeat?: number | null
 }
 
 export interface PushPayload {
@@ -74,7 +76,8 @@ export function buildPayload(r: DueReminder, tz = 'Europe/Madrid', now = new Dat
       key,
     }
   }
-  const body = when ? `${cap(when)}${r.due_time ? ` a las ${r.due_time}` : ''}` : r.due_time ? `A las ${r.due_time}` : 'Recordatorio'
+  let body = when ? `${cap(when)}${r.due_time ? ` a las ${r.due_time}` : ''}` : r.due_time ? `A las ${r.due_time}` : 'Recordatorio'
+  if (r.repeat) body = `Sigue pendiente · ${body.charAt(0).toLowerCase()}${body.slice(1)}`
   return { title: r.title, body, url: `./#/task/${r.item_id}`, tag: `tasks-${r.item_id}`, key, taskId: r.item_id }
 }
 

@@ -6,6 +6,7 @@ import { chargeWhen, money } from '@/lib/finance'
 import { toast, ui } from '@/app/store'
 import { navigate } from '@/app/router'
 import { prefs } from '@/lib/prefs'
+import { nagSlot } from '@/lib/reminders'
 import { chime, primeSound } from './sound'
 import { askPermission } from './push'
 
@@ -147,6 +148,24 @@ export function startLocalReminders() {
       )
       void showSystemNotification(`tasks-${t.id}`, t.title, when, `./#/task/${t.id}`, `tasks-${t.id}-${t.remindAt}`)
     }
+    // Avisos insistentes: se repiten hasta que la tarea se hace o se pospone
+    const nags = (await db.tasks.where('done').equals(0).toArray())
+      .filter((t) => t.nag && t.remindAt !== undefined)
+      .map((t) => ({ t, slot: nagSlot(t.remindAt!, t.nag!, now) }))
+      .filter(({ t, slot }) => slot && slot.at > last0 && !seen.has(`${t.id}:${slot.at}`))
+    for (const { t, slot } of nags) {
+      seen.add(`${t.id}:${slot!.at}`)
+      toast(
+        `Sigue pendiente: ${t.title}`,
+        [
+          { label: 'Hecho', run: () => void applyReminderAction('done', t.id) },
+          { label: `${SNOOZE_MINUTES} min`, run: () => void applyReminderAction('snooze', t.id) },
+        ],
+        20_000,
+        { icon: 'bell', onClick: () => openTaskFromNotification(t.id) },
+      )
+      void showSystemNotification(`tasks-${t.id}`, t.title, 'Sigue pendiente', `./#/task/${t.id}`, `tasks-${t.id}-${slot!.at}`)
+    }
     // Pagos: aviso días antes del cargo
     const subs = (await db.subscriptions.toArray()).filter(
       (x) => x.active && x.remindAt !== undefined && x.remindAt > last0 && x.remindAt <= now && !seen.has(`${x.id}:${x.remindAt}`),
@@ -175,7 +194,7 @@ export function startLocalReminders() {
       void showSystemNotification(`habits-${h.id}`, h.name, 'Aún no lo has marcado hoy. ¿Lo haces ahora?', './#/habits', `habits-${h.id}-${day}`, h.id)
     }
     if (habits.length) saveSeen(seen)
-    if (due.length || subs.length || pending.length) {
+    if (due.length || nags.length || subs.length || pending.length) {
       saveSeen(seen)
       if (prefs.reminderSound) chime()
     }

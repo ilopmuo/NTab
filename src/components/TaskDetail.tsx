@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, Hash, Hourglass, ListChecks, Plus, Repeat, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Task } from '@/db/types'
@@ -11,7 +11,7 @@ import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor } from '@/lib/tasks'
 import { uid } from '@/lib/id'
 import { durationLabel, parseDuration } from '@/lib/duration'
-import { REMINDER_OPTIONS, reminderLabel, reminderValue } from '@/lib/reminders'
+import { NAG_OPTIONS, REMINDER_OPTIONS, nagLabel, reminderLabel, reminderValue } from '@/lib/reminders'
 import { toast, ui, useUI } from '@/app/store'
 import { Checkbox, completeWithFeedback } from './TaskItem'
 import { Button, Group, IconButton, Modal, Segmented, Switch, Textarea, cx, spring, useMediaQuery } from './ui'
@@ -319,7 +319,24 @@ function TaskDetail({ task }: { task: Task }) {
               </Button>
             </div>
           )}
-          <ReminderRow task={task} onChange={(reminder) => set({ reminder })} />
+          <ReminderRow task={task} onChange={(reminder) => set({ reminder, ...(reminder ? {} : { nag: undefined }) })} />
+          {task.reminder && (
+            <Row
+              icon={<Repeat2 size={16} strokeWidth={2.4} />}
+              color={task.nag ? 'var(--c-blue)' : 'var(--c-muted)'}
+              label="Insistir hasta que lo haga"
+              value={task.nag ? `Repite el aviso ${nagLabel(task.nag)} (hasta 12 veces)` : undefined}
+            >
+              <select value={task.nag ?? 0} onChange={(e) => set({ nag: Number(e.target.value) || undefined })} className={cx(fieldCls, 'appearance-none pr-3')}>
+                <option value={0}>No insistir</option>
+                {NAG_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
+          )}
         </Group>
 
         <Group>

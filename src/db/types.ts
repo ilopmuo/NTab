@@ -126,6 +126,8 @@ export interface Task {
   /** duración estimada en minutos */
   estimate?: number
   reminder?: Reminder | null
+  /** insistir: repetir el aviso cada N minutos hasta que se complete o se posponga */
+  nag?: number
   /** momento del aviso ya calculado (ms); lo usa el servidor para enviar la notificación */
   remindAt?: number
   order: number

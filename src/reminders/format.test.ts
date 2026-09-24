@@ -36,6 +36,13 @@ describe('texto de las notificaciones', () => {
     expect(buildPayload({ ...base, due_date: '2026-09-25', due_time: null }, 'Europe/Madrid', now).body).toBe('Mañana')
   })
 
+  it('repeticiones de un aviso insistente', () => {
+    const p = buildPayload({ ...base, repeat: 2 }, 'Europe/Madrid', now)
+    expect(p.body).toBe('Sigue pendiente · hoy a las 10:00')
+    // Misma etiqueta que el aviso original: lo sustituye en vez de acumularse
+    expect(p.tag).toBe('tasks-t1')
+  })
+
   it('cargos de suscripciones', () => {
     const p = buildPayload({ ...base, tbl: 'subscriptions', item_id: 's1', title: 'Netflix', due_date: '2026-09-26', due_time: null, amount: '12.99', currency: 'EUR' }, 'Europe/Madrid', now)
     expect(p.title).toBe('Netflix')

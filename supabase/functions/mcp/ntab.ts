@@ -34,6 +34,8 @@ export interface Task {
   recurrence?: Recurrence
   /** duración estimada en minutos */
   estimate?: number
+  /** repetir el aviso cada N minutos hasta que se haga */
+  nag?: number
   reminder?: Reminder | null
   remindAt?: number
   order: number
@@ -190,6 +192,7 @@ function taskLine(t: Task, ix: Index, today: string) {
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
     t.people?.length ? ` · con ${ix.personNames(t.people).join(', ')}` : '',
     t.estimate ? ` · ~${minutesLabel(t.estimate)}` : '',
+    t.nag ? ` · insiste cada ${t.nag} min` : '',
     t.recurrence ? ' · se repite' : '',
     t.subtasks?.length ? ` · subtareas ${t.subtasks.filter((s) => s.done).length}/${t.subtasks.length}` : '',
     t.done ? ' · HECHA' : '',
@@ -362,6 +365,7 @@ export interface NewTask {
   subtareas?: string[]
   personas?: string[]
   duracion?: number
+  insistir?: number
 }
 
 export interface Change {
@@ -374,6 +378,7 @@ export interface Change {
   proyecto?: string | null
   hecha?: boolean
   duracion?: number | null
+  insistir?: number | null
 }
 
 export interface WriteResult {
@@ -418,6 +423,12 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
     if (who.ids.length) task.people = who.ids
     const est = cleanMinutes(n.duracion)
     if (est) task.estimate = est
+    const nag = cleanMinutes(n.insistir)
+    if (nag) {
+      task.nag = Math.max(5, nag)
+      // Insistir necesita un aviso: a la hora de la tarea
+      if (task.dueTime && task.reminder === undefined) task.reminder = { before: 0 }
+    }
     task = withReminder(task, env)
     out.writes.push({ tbl: 'tasks', id: task.id, data: task as unknown as Data })
     out.report.push(
@@ -445,6 +456,14 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
     if (prio !== undefined) t.priority = prio
     if (c.duracion === null) delete t.estimate
     else if (cleanMinutes(c.duracion)) t.estimate = cleanMinutes(c.duracion)
+    if (c.insistir === null) delete t.nag
+    else if (cleanMinutes(c.insistir)) {
+      t.nag = Math.max(5, cleanMinutes(c.insistir)!)
+      if (t.dueTime && !t.reminder) {
+        t.reminder = { before: 0 }
+        t = withReminder(t, env)
+      }
+    }
     if (c.fecha === null) {
       delete t.dueDate
       delete t.dueTime
