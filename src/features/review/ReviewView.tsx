@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Cake, CalendarRange, Check, Folder, Inbox, PartyPopper, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Cake, CalendarRange, Check, Folder, Inbox, Minus, PartyPopper, Plus, Sparkles, Target } from 'lucide-react'
 import { db } from '@/db/db'
 import { createTask, setSetting, updateTask } from '@/db/actions'
 import { useLookup, useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, dateLabel, today } from '@/lib/dates'
 import { completionRate } from '@/lib/habits'
+import { goalPace, goalProgress } from '@/lib/goals'
 import { dueForContact, upcomingBirthdays } from '@/lib/people'
 import { isInbox } from '@/lib/tasks'
 import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { Icon } from '@/components/icons'
 import { InlineAdd, TaskList } from '@/components/TaskList'
-import { Button, Card, Textarea, bouncy, cx, spring } from '@/components/ui'
+import { Button, Card, IconButton, ProgressRing, Textarea, bouncy, cx, spring } from '@/components/ui'
 import { AnimatePresence, motion } from 'motion/react'
 import { SectionIcon, section } from '@/app/sections'
 import { useHabits } from '../habits/useHabits'
@@ -23,6 +24,7 @@ const STEPS = [
   { key: 'inbox', title: 'Procesa la bandeja', icon: Inbox, hint: 'Para cada cosa: ponle fecha, muévela a un proyecto o bórrala.' },
   { key: 'overdue', title: 'Lo atrasado', icon: AlertTriangle, hint: 'Sé honesto: ¿lo vas a hacer? Reprograma o elimina.' },
   { key: 'projects', title: 'Tus proyectos', icon: Folder, hint: 'Cada proyecto activo necesita al menos un siguiente paso claro.' },
+  { key: 'goals', title: 'Tus objetivos', icon: Target, hint: '¿Te acercas a lo que quieres? Actualiza la cifra o dale un siguiente paso.' },
   { key: 'week', title: 'La semana que viene', icon: CalendarRange, hint: 'Echa un vistazo a lo que viene y prepárate.' },
   { key: 'habits', title: 'Tus hábitos', icon: Sparkles, hint: 'Cómo ha ido la semana.' },
   { key: 'done', title: '¡Listo!', icon: PartyPopper, hint: '' },
@@ -97,6 +99,7 @@ export function ReviewView() {
             {s.key === 'inbox' && <InboxStep />}
             {s.key === 'overdue' && <OverdueStep />}
             {s.key === 'projects' && <ProjectsStep />}
+            {s.key === 'goals' && <GoalsStep />}
             {s.key === 'week' && <WeekStep />}
             {s.key === 'habits' && <HabitsStep />}
             {s.key === 'done' && <DoneStep />}
@@ -229,6 +232,62 @@ function ProjectsStep() {
             {!open.length && (
               <div className="mt-2">
                 <InlineAdd defaults={{ projectId: p.id, areaId: p.areaId }} placeholder="Añadir siguiente paso" />
+              </div>
+            )}
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+
+const PACE = { late: 'Fuera de plazo', behind: 'Vas con retraso', ok: 'Vas bien' } as const
+
+function GoalsStep() {
+  const { projects } = useLookup()
+  const goals = useLiveQuery(() => db.goals.where('status').equals('active').toArray(), []) ?? []
+  const tasks = useLiveQuery(() => db.tasks.where('projectId').above('').toArray(), []) ?? []
+  if (!goals.length)
+    return (
+      <p className="text-[14px] text-muted">
+        No tienes objetivos en marcha.{' '}
+        <a href={href('/goals')} className="font-semibold text-blue hover:underline">
+          Crear uno
+        </a>
+      </p>
+    )
+  return (
+    <div className="space-y-3">
+      {goals.map((g) => {
+        const p = goalProgress(g, projects, tasks)
+        const pace = goalPace(g, p.value)
+        const stalled = g.kind === 'projects' && p.projects.length > 0 && p.projects.every((x) => x.open === 0 && x.value < 1)
+        return (
+          <Card key={g.id} className="flex items-center gap-4 p-4">
+            <div className="relative shrink-0">
+              <ProgressRing value={p.value} size={48} stroke={6} color="var(--c-blue)" track="var(--c-fill)" />
+              <span className="font-num absolute inset-0 flex items-center justify-center text-[11px] font-bold">{Math.round(p.value * 100)}%</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <a href={href('/goals')} className="block truncate text-[16px] font-semibold">
+                {g.title}
+              </a>
+              <p className="text-[13px] text-muted">
+                {p.label}
+                {pace && <span className={cx('font-semibold', pace === 'ok' ? 'text-muted' : 'text-fg')}> · {PACE[pace]}</span>}
+              </p>
+              {stalled && <p className="mt-0.5 text-[13px] font-semibold text-fg">Sus proyectos no tienen tareas: añade un siguiente paso.</p>}
+              {g.kind === 'projects' && !p.projects.length && <p className="mt-0.5 text-[13px] text-muted">Vincúlale algún proyecto para medir el avance.</p>}
+            </div>
+            {g.kind === 'number' && (
+              <div className="flex items-center rounded-full bg-fill">
+                <IconButton label="Restar" onClick={() => db.goals.update(g.id, { current: Math.max(0, (g.current ?? 0) - 1) })} className="h-8 w-8">
+                  <Minus size={15} strokeWidth={2.6} />
+                </IconButton>
+                <span className="font-num min-w-7 text-center text-[14px] font-bold">{g.current ?? 0}</span>
+                <IconButton label="Sumar" onClick={() => db.goals.update(g.id, { current: (g.current ?? 0) + 1 })} className="h-8 w-8">
+                  <Plus size={15} strokeWidth={2.6} />
+                </IconButton>
               </div>
             )}
           </Card>

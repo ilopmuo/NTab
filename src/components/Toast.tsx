@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Check } from 'lucide-react'
+import { Bell, Check } from 'lucide-react'
 import { setUI, useUI } from '@/app/store'
 import { spring } from './ui'
 
@@ -19,21 +19,47 @@ export function Toast() {
             transition={spring}
             className="glass-thick pointer-events-auto flex items-center gap-3 rounded-full py-2 pr-2 pl-3 text-[14px] font-medium"
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green text-on-green">
-              <Check size={13} strokeWidth={3} />
-            </span>
-            <span className="max-w-[60vw] truncate">{t.message}</span>
-            {t.action ? (
+            {t.icon === 'bell' ? (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
+                <Bell size={12} strokeWidth={2.8} />
+              </span>
+            ) : (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green text-on-green">
+                <Check size={13} strokeWidth={3} />
+              </span>
+            )}
+            {t.onClick ? (
               <button
                 type="button"
                 onClick={() => {
-                  t.action!.run()
+                  t.onClick!()
                   setUI({ toast: null })
                 }}
-                className="rounded-full bg-accent-soft px-3 py-1.5 text-[13px] font-bold text-blue transition-transform active:scale-95"
+                className="max-w-[46vw] truncate text-left"
               >
-                {t.action.label}
+                {t.message}
               </button>
+            ) : (
+              <span className="max-w-[60vw] truncate">{t.message}</span>
+            )}
+            {t.actions.length ? (
+              t.actions.map((a, i) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  onClick={() => {
+                    a.run()
+                    setUI({ toast: null })
+                  }}
+                  className={
+                    i === 0
+                      ? 'shrink-0 rounded-full bg-accent-soft px-3 py-1.5 text-[13px] font-bold text-blue transition-transform active:scale-95'
+                      : 'shrink-0 rounded-full bg-fill px-3 py-1.5 text-[13px] font-bold text-fg transition-transform active:scale-95'
+                  }
+                >
+                  {a.label}
+                </button>
+              ))
             ) : (
               <span className="w-1" />
             )}

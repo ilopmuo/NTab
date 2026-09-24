@@ -422,3 +422,13 @@ enabled = true
 # del cron solo envía los avisos que ya tocan, así que no necesita más control.
 # (verify_jwt no es compatible con las nuevas claves de firma de Supabase.)
 verify_jwt = false
+
+[functions.calendar]
+enabled = true
+# Los calendarios (Apple, Google, Outlook) no envían sesión: el token del enlace es la llave.
+verify_jwt = false
+
+[functions.mcp]
+enabled = true
+# Claude se conecta con la URL privada (token en la ruta), sin sesión de Supabase.
+verify_jwt = false

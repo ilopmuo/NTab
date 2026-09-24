@@ -22,6 +22,7 @@ import {
   Trash2,
   Upload,
   Loader2,
+  Sunrise,
   MonitorSmartphone,
   Volume2,
 } from 'lucide-react'
@@ -41,6 +42,8 @@ import { Group, IconButton, PageHeader, Segmented, Switch, cx } from '@/componen
 import { disablePush, enablePush, getPushState, testNotification, type PushState } from '@/reminders/push'
 import { testHere } from '@/reminders/local'
 import { AreaForm } from '../areas/AreaForm'
+import { CalendarBlock } from './CalendarBlock'
+import { ClaudeBlock } from './ClaudeBlock'
 import { Page } from '../Page'
 
 /** Icono cuadrado de color, como en la app Ajustes */
@@ -190,6 +193,9 @@ function NotificationsBlock() {
   const [error, setError] = useState<string | null>(null)
   const autoRemind = useLiveQuery(() => db.settings.get('autoRemind'), [])
   const sound = useLiveQuery(() => db.settings.get('reminderSound'), [])
+  const digestRow = useLiveQuery(() => db.settings.get('dailyDigest'), [])
+  const digest = { enabled: false, time: '08:00', ...(digestRow?.value as { enabled?: boolean; time?: string } | undefined) }
+  const setDigest = (patch: Partial<typeof digest>) => void setSetting('dailyDigest', { ...digest, ...patch })
   useEffect(() => {
     void getPushState().then(setState)
   }, [])
@@ -268,6 +274,29 @@ function NotificationsBlock() {
       <Row
         glyph={
           <Glyph c="gray">
+            <Sunrise size={15} strokeWidth={2.4} />
+          </Glyph>
+        }
+        label="Resumen de la mañana"
+        detail={digest.enabled ? 'Lo que tienes hoy, en una notificación' : 'Una notificación diaria con lo que toca hoy'}
+        right={
+          <span className="flex items-center gap-2">
+            {digest.enabled && (
+              <input
+                type="time"
+                aria-label="Hora del resumen"
+                value={digest.time}
+                onChange={(e) => e.target.value && setDigest({ time: e.target.value })}
+                className="font-num h-8 rounded-lg bg-fill px-2 text-[14px] font-semibold"
+              />
+            )}
+            <Switch label="Resumen de la mañana" checked={digest.enabled} onChange={(v) => setDigest({ enabled: v })} />
+          </span>
+        }
+      />
+      <Row
+        glyph={
+          <Glyph c="gray">
             <Volume2 size={15} strokeWidth={2.4} />
           </Glyph>
         }
@@ -324,6 +353,8 @@ export function SettingsView() {
       <AccountCard />
 
       <NotificationsBlock />
+      <ClaudeBlock />
+      <CalendarBlock />
 
       <Block title="Apariencia">
         <Row

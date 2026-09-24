@@ -62,3 +62,19 @@ describe('hooks de avisos', () => {
     prefs.autoRemind = true
   })
 })
+
+describe('cambiar el tipo de aviso', () => {
+  const { db } = openDatabase('reminders-kind-test')
+  installReminderHooks(db)
+  it('de "antes" a una hora concreta y vuelta', async () => {
+    prefs.autoRemind = true
+    await db.tasks.add({ ...base, id: 'k', dueDate: '2026-09-24', dueTime: '10:00' })
+    expect((await db.tasks.get('k'))?.remindAt).toBe(dueMoment('2026-09-24', '10:00'))
+    await db.tasks.update('k', { reminder: { at: 123456 } })
+    expect((await db.tasks.get('k'))?.remindAt).toBe(123456)
+    await db.tasks.update('k', { reminder: { before: 15 } })
+    const t = await db.tasks.get('k')
+    expect(t?.reminder).toEqual({ before: 15 })
+    expect(t?.remindAt).toBe(dueMoment('2026-09-24', '10:00') - 15 * 60_000)
+  })
+})

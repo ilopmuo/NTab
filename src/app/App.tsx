@@ -23,14 +23,14 @@ import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 import { TaskDetailPanel } from '@/components/TaskDetail'
 import { Toast } from '@/components/Toast'
 import { cx } from '@/components/ui'
-import { useRoute } from './router'
+import { navigate, useRoute } from './router'
 import { useGlobalShortcuts } from './shortcuts'
 import { Sidebar } from './Sidebar'
 import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
 import { useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
-import { openTaskFromNotification } from '@/reminders/local'
+import { applyReminderAction, openTaskFromNotification } from '@/reminders/local'
 import { ReauthBanner } from '@/sync/ReauthBanner'
 import { AuthScreen } from '@/features/auth/AuthScreen'
 import { RecoveryModal } from '@/features/auth/RecoveryModal'
@@ -122,9 +122,15 @@ function Workspace() {
   const { path, parts } = useRoute()
   const panelOpen = useUI((s) => !!s.selectedTaskId)
 
-  // Enlace de una notificación: #/task/<id> abre la tarea sobre Hoy
+  // Enlace de una notificación: #/task/<id> abre la tarea sobre Hoy;
+  // #/task/<id>/done o /snooze viene de los botones con la app cerrada
   useEffect(() => {
-    if (parts[0] === 'task' && parts[1]) openTaskFromNotification(parts[1])
+    if (parts[0] !== 'task' || !parts[1]) return
+    const action = parts[2]
+    if (action === 'done' || action === 'snooze') {
+      navigate('/today')
+      void applyReminderAction(action, parts[1])
+    } else openTaskFromNotification(parts[1])
   }, [parts])
 
   useEffect(() => {

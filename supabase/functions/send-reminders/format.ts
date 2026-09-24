@@ -20,6 +20,10 @@ export interface PushPayload {
   body: string
   url: string
   tag: string
+  /** aviso concreto (elemento + momento): si la app abierta ya lo dio, no vuelve a sonar */
+  key?: string
+  /** para los botones de la notificación (Hecho / Posponer) */
+  taskId?: string
 }
 
 const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -58,6 +62,7 @@ function money(amount: number | string, currency: string | null) {
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 export function buildPayload(r: DueReminder, tz = 'Europe/Madrid', now = new Date()): PushPayload {
+  const key = `${r.tbl}-${r.item_id}-${Date.parse(r.remind_at)}`
   const when = r.due_date ? dayLabel(r.due_date, now, tz) : null
   if (r.tbl === 'subscriptions') {
     const amount = r.amount != null ? money(r.amount, r.currency) : ''
@@ -66,8 +71,41 @@ export function buildPayload(r: DueReminder, tz = 'Europe/Madrid', now = new Dat
       body: [amount && `Cargo de ${amount}`, when].filter(Boolean).join(' ') || 'Próximo cargo',
       url: './#/finance',
       tag: `subscriptions-${r.item_id}`,
+      key,
     }
   }
   const body = when ? `${cap(when)}${r.due_time ? ` a las ${r.due_time}` : ''}` : r.due_time ? `A las ${r.due_time}` : 'Recordatorio'
-  return { title: r.title, body, url: `./#/task/${r.item_id}`, tag: `tasks-${r.item_id}` }
+  return { title: r.title, body, url: `./#/task/${r.item_id}`, tag: `tasks-${r.item_id}`, key, taskId: r.item_id }
+}
+
+export interface DueDigest {
+  user_id: string
+  local_date: string
+  tz: string
+  today_count: number
+  overdue_count: number
+  titles: string[] | null
+  payments: number
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
+/** Resumen de la mañana: "3 tareas para hoy · 1 atrasada" + las primeras */
+export function buildDigest(d: DueDigest, now = new Date()): PushPayload {
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: d.tz, hour: '2-digit', hour12: false }).format(now))
+  const hello = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches'
+  const parts = [
+    d.today_count ? plural(d.today_count, 'tarea para hoy', 'tareas para hoy') : '',
+    d.overdue_count ? plural(d.overdue_count, 'atrasada', 'atrasadas') : '',
+    d.payments ? plural(d.payments, 'pago', 'pagos') : '',
+  ].filter(Boolean)
+  const titles = (d.titles ?? []).filter(Boolean)
+  const total = d.today_count + d.overdue_count
+  const list = titles.length ? `\n${titles.join(' · ')}${total > titles.length ? ' …' : ''}` : ''
+  return {
+    title: `${hello} ☀️`,
+    body: parts.length ? `${parts.join(' · ')}${list}` : 'Hoy no tienes nada planificado. Buen día para adelantar algo.',
+    url: './#/today',
+    tag: `digest-${d.local_date}`,
+  }
 }

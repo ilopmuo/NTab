@@ -8,7 +8,7 @@
 //   VAPID_SUBJECT      opcional, p. ej. "mailto:tu@email.com"
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { buildPayload, type DueReminder } from './format.ts'
+import { buildDigest, buildPayload, type DueDigest, type DueReminder } from './format.ts'
 
 const PUBLIC_KEY =
   Deno.env.get('VAPID_PUBLIC_KEY') ?? 'BITtwUVzfRk6yMCn5x36uN9n3nRV7fpCXOyk_bf1RwMYryFTJ54C6HbJFCzdNVPNVMBuTzlT3OEOYbwM6eH3CJM'
@@ -82,12 +82,35 @@ Deno.serve(async (req) => {
   }
   if (body.test) return sendTest(req, admin, Number(body.delay) || 0)
 
-  const { data: due, error } = await admin.rpc('due_reminders', { window_minutes: 15 })
-  if (error) return json({ error: error.message }, 500)
-  const reminders = (due ?? []) as DueReminder[]
-  if (!reminders.length) return json({ sent: 0 })
+  const [remindersRes, digestsRes] = await Promise.all([
+    admin.rpc('due_reminders', { window_minutes: 15 }),
+    admin.rpc('due_digests', { window_minutes: 15 }),
+  ])
+  if (remindersRes.error) return json({ error: remindersRes.error.message }, 500)
+  // Si la migración del resumen aún no está aplicada, los avisos siguen funcionando
+  if (digestsRes.error) console.error('due_digests', digestsRes.error.message)
 
-  const users = [...new Set(reminders.map((r) => r.user_id))]
+  // Cada envío: a quién, qué (según la zona horaria del dispositivo) y qué apuntar al terminar
+  interface Job {
+    user_id: string
+    payload: (tz: string) => unknown
+    log: { user_id: string; tbl: string; item_id: string; remind_at: string }
+  }
+  const jobs: Job[] = [
+    ...((remindersRes.data ?? []) as DueReminder[]).map((r) => ({
+      user_id: r.user_id,
+      payload: (tz: string) => buildPayload(r, tz),
+      log: { user_id: r.user_id, tbl: r.tbl, item_id: r.item_id, remind_at: r.remind_at },
+    })),
+    ...((digestsRes.data ?? []) as DueDigest[]).map((d) => ({
+      user_id: d.user_id,
+      payload: () => buildDigest(d),
+      log: { user_id: d.user_id, tbl: 'digest', item_id: d.local_date, remind_at: new Date().toISOString() },
+    })),
+  ]
+  if (!jobs.length) return json({ sent: 0 })
+
+  const users = [...new Set(jobs.map((j) => j.user_id))]
   const { data: subsData, error: subsError } = await admin.from('push_subscriptions').select('endpoint,user_id,p256dh,auth,tz').in('user_id', users)
   if (subsError) return json({ error: subsError.message }, 500)
   const subs = (subsData ?? []) as Subscription[]
@@ -95,17 +118,17 @@ Deno.serve(async (req) => {
   let sent = 0
   const gone = new Set<string>()
   const used = new Set<string>()
-  const log: { user_id: string; tbl: string; item_id: string; remind_at: string }[] = []
+  const log: Job['log'][] = []
 
-  for (const r of reminders) {
-    const mine = subs.filter((s) => s.user_id === r.user_id && !gone.has(s.endpoint))
+  for (const job of jobs) {
+    const mine = subs.filter((s) => s.user_id === job.user_id && !gone.has(s.endpoint))
     let delivered = false
     let transient = false
     for (const s of mine) {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify(buildPayload(r, s.tz ?? 'Europe/Madrid')),
+          JSON.stringify(job.payload(s.tz ?? 'Europe/Madrid')),
           { TTL: 60 * 60, urgency: 'high' },
         )
         delivered = true
@@ -122,7 +145,7 @@ Deno.serve(async (req) => {
       }
     }
     // Si falló por un error temporal, no se apunta: se reintenta en el siguiente minuto
-    if (delivered || !transient) log.push({ user_id: r.user_id, tbl: r.tbl, item_id: r.item_id, remind_at: r.remind_at })
+    if (delivered || !transient) log.push(job.log)
   }
 
   if (log.length) await admin.from('push_log').upsert(log, { onConflict: 'user_id,tbl,item_id,remind_at', ignoreDuplicates: true })

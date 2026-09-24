@@ -113,14 +113,12 @@ export function installReminderHooks(target: NTabDB) {
     else obj.remindAt = at
   })
   target.tasks.hook('updating', (mods, _pk, obj) => {
+    // Dexie da los cambios por ruta ("reminder.at"), y undefined = se borra
     const m = mods as Record<string, unknown>
-    const relevant = ['reminder', 'dueDate', 'dueTime'].some((k) => k in m)
-    if (!relevant) return
-    const next = { ...obj } as Record<string, unknown>
-    for (const [k, v] of Object.entries(m)) {
-      if (v === undefined) delete next[k]
-      else next[k] = v
-    }
+    const touches = (k: string) => Object.keys(m).some((p) => p === k || p.startsWith(`${k}.`))
+    if (!['reminder', 'dueDate', 'dueTime'].some(touches)) return
+    const next = Dexie.deepClone(obj) as unknown as Record<string, unknown>
+    for (const [k, v] of Object.entries(m)) Dexie.setByKeyPath(next, k, v)
     const merged = withDefaultReminder(next as unknown as Task, prefs.autoRemind)
     const changes: Partial<Task> = {}
     if (merged.reminder !== next.reminder) changes.reminder = merged.reminder
