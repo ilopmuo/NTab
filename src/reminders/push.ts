@@ -66,7 +66,7 @@ function keyToBytes(base64: string) {
  * Pide permiso. En algunas versiones de iOS la promesa no se resuelve nunca,
  * así que también se escucha la versión con callback y se vigila el permiso.
  */
-function askPermission(): Promise<NotificationPermission> {
+export function askPermission(): Promise<NotificationPermission> {
   return new Promise((resolve) => {
     let done = false
     const finish = (p: NotificationPermission) => {

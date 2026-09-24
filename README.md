@@ -83,7 +83,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 - Cada tarea (y cada pago) guarda el momento de su aviso (`remindAt`), que viaja con la sincronización.
 - Cada minuto, `pg_cron` llama a la Edge Function `send-reminders` (`supabase/functions/`), que busca los avisos pendientes con `due_reminders()` y los envía por Web Push a los dispositivos suscritos.
-- Con la app abierta, los avisos salen dentro de la app (`src/reminders/local.ts`).
+- Con la app abierta (`src/reminders/local.ts`), el aviso sale dentro de la app, como notificación del sistema y con sonido. El push del servidor para ese mismo aviso ya no vuelve a sonar en ese dispositivo (`public/push-sw.js`).
 - En el iPhone hacen falta iOS 16.4 o posterior y la app añadida a la pantalla de inicio. Se activan en **Ajustes → Avisos**.
 - Configuración única en Supabase: el secreto `VAPID_PRIVATE_KEY` de la Edge Function (la clave pública está en `src/reminders/push.ts`).
 

@@ -22,6 +22,8 @@ import {
   Trash2,
   Upload,
   Loader2,
+  MonitorSmartphone,
+  Volume2,
 } from 'lucide-react'
 import { openAuth, signOut, syncNow, useSync } from '@/sync/service'
 import { syncLabel } from '@/sync/SyncBadge'
@@ -37,6 +39,7 @@ import { setTheme, useTheme } from '@/app/theme'
 import { AreaBadge } from '@/components/icons'
 import { Group, IconButton, PageHeader, Segmented, Switch, cx } from '@/components/ui'
 import { disablePush, enablePush, getPushState, testNotification, type PushState } from '@/reminders/push'
+import { testHere } from '@/reminders/local'
 import { AreaForm } from '../areas/AreaForm'
 import { Page } from '../Page'
 
@@ -164,6 +167,11 @@ function AccountCard() {
   )
 }
 
+/** Cuando el navegador tiene permiso pero el sistema operativo no enseña los avisos */
+const OS_HELP = navigator.userAgent.includes('Mac')
+  ? 'En el Mac: Ajustes del Sistema → Notificaciones → tu navegador (Chrome, Safari…) → Permitir notificaciones, estilo «Alertas» y sonido. Revisa también que no esté activo un modo de Concentración.'
+  : 'En Windows: Configuración → Sistema → Notificaciones → activa tu navegador y el sonido. Revisa también el modo No molestar / Asistente de concentración.'
+
 const PUSH_HELP: Record<PushState, string> = {
   on: 'Te llegarán los avisos aunque NTab esté cerrada.',
   off: 'Actívalo para recibir los avisos aunque NTab esté cerrada.',
@@ -181,9 +189,18 @@ function NotificationsBlock() {
   const [testing, setTesting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const autoRemind = useLiveQuery(() => db.settings.get('autoRemind'), [])
+  const sound = useLiveQuery(() => db.settings.get('reminderSound'), [])
   useEffect(() => {
     void getPushState().then(setState)
   }, [])
+  const tryHere = async () => {
+    setError(null)
+    const r = await testHere()
+    if (r === 'shown') toast(`¿No ves la notificación? ${OS_HELP}`, undefined, 12_000)
+    else if (r === 'denied') setError('El navegador tiene bloqueadas las notificaciones de NTab. Actívalas en los ajustes del sitio (el candado junto a la dirección).')
+    else setError('Este navegador no permite notificaciones.')
+    void getPushState().then(setState)
+  }
   const toggle = (on: boolean) => {
     if (!sync.user) return openAuth()
     const userId = sync.user.id
@@ -247,6 +264,25 @@ function NotificationsBlock() {
             onChange={(v) => void setSetting('autoRemind', v)}
           />
         }
+      />
+      <Row
+        glyph={
+          <Glyph c="gray">
+            <Volume2 size={15} strokeWidth={2.4} />
+          </Glyph>
+        }
+        label="Sonido con la app abierta"
+        right={<Switch label="Sonido con la app abierta" checked={sound?.value !== false} onChange={(v) => void setSetting('reminderSound', v)} />}
+      />
+      <Row
+        glyph={
+          <Glyph c="gray">
+            <MonitorSmartphone size={15} strokeWidth={2.4} />
+          </Glyph>
+        }
+        label="Probar en este dispositivo"
+        detail="Sonido y notificación al momento, sin pasar por el servidor"
+        onClick={() => void tryHere()}
       />
       {state === 'on' && (
         <Row

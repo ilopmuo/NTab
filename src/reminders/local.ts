@@ -3,12 +3,16 @@ import { rollSubscriptions } from '@/db/actions'
 import { chargeWhen, money } from '@/lib/finance'
 import { toast, ui } from '@/app/store'
 import { navigate } from '@/app/router'
-import { isPushEnabledHere } from './push'
+import { prefs } from '@/lib/prefs'
+import { chime, primeSound } from './sound'
+import { askPermission } from './push'
 
 /**
- * Avisos con la app abierta (o en segundo plano en el ordenador). Cuando el
- * dispositivo tiene activadas las notificaciones push, el servidor se encarga
- * de avisar con la app cerrada y aquí solo se muestra el aviso dentro de la app.
+ * Avisos con la app abierta (o en segundo plano en el ordenador): aviso dentro
+ * de la app, sonido y notificación del sistema. La notificación usa la misma
+ * etiqueta que la del servidor y se apunta en la caché "ntab-alerted": cuando
+ * llega el push del mismo aviso, el service worker ve que ya se avisó y no
+ * vuelve a sonar (ver public/push-sw.js).
  */
 const SEEN_KEY = 'ntab-reminded'
 const CHECK_MS = 15_000
@@ -33,9 +37,22 @@ export function openTaskFromNotification(id: string) {
   ui.openTask(id)
 }
 
-async function showSystemNotification(tag: string, title: string, body: string, url: string) {
+const ALERTED_CACHE = 'ntab-alerted'
+
+/** Apunta que este aviso ya se ha dado en este dispositivo */
+async function markAlerted(tag: string) {
+  try {
+    const cache = await caches.open(ALERTED_CACHE)
+    await cache.put(new Request(`./__alerted/${tag}`), new Response(String(Date.now())))
+  } catch {
+    /* sin Cache API */
+  }
+}
+
+async function showSystemNotification(tag: string, title: string, body: string, url: string, mark = true) {
+  if (mark) await markAlerted(tag)
   if (!('Notification' in window) || Notification.permission !== 'granted') return
-  const options: NotificationOptions = { body, tag, icon: './icon-192.png', badge: './icon-192.png', data: { url } }
+  const options: NotificationOptions = { body, tag, icon: './icon-192.png', badge: './icon-192.png', data: { url }, requireInteraction: true }
   try {
     const reg = await navigator.serviceWorker?.getRegistration()
     if (reg) return void (await reg.showNotification(title, options))
@@ -46,6 +63,7 @@ async function showSystemNotification(tag: string, title: string, body: string, 
 }
 
 export function startLocalReminders() {
+  primeSound()
   let last = Date.now() - 60_000
   const seen = loadSeen()
   const check = async () => {
@@ -59,8 +77,7 @@ export function startLocalReminders() {
       seen.add(`${t.id}:${t.remindAt}`)
       const when = t.dueTime ? `A las ${t.dueTime}` : 'Hoy'
       toast(`⏰ ${t.title}`, { label: 'Ver', run: () => openTaskFromNotification(t.id) }, 15_000)
-      // Con push activo el aviso del sistema ya lo manda el servidor
-      if (!isPushEnabledHere() && document.visibilityState !== 'visible') void showSystemNotification(`task-${t.id}`, t.title, when, `./#/task/${t.id}`)
+      void showSystemNotification(`tasks-${t.id}`, t.title, when, `./#/task/${t.id}`)
     }
     // Pagos: aviso días antes del cargo
     const subs = (await db.subscriptions.toArray()).filter(
@@ -70,9 +87,12 @@ export function startLocalReminders() {
       seen.add(`${x.id}:${x.remindAt}`)
       const body = `${money(x.amount, x.currency)} · ${chargeWhen(x.nextDate).toLowerCase()}`
       toast(`💳 ${x.name}: ${body}`, { label: 'Ver', run: () => navigate('/finance') }, 15_000)
-      if (!isPushEnabledHere() && document.visibilityState !== 'visible') void showSystemNotification(`sub-${x.id}`, x.name, `Cargo de ${body}`, './#/finance')
+      void showSystemNotification(`subscriptions-${x.id}`, x.name, `Cargo de ${body}`, './#/finance')
     }
-    if (due.length || subs.length) saveSeen(seen)
+    if (due.length || subs.length) {
+      saveSeen(seen)
+      if (prefs.reminderSound) chime()
+    }
   }
   void check()
   const timer = setInterval(() => void check(), CHECK_MS)
@@ -86,4 +106,17 @@ export function startLocalReminders() {
     clearInterval(timer)
     document.removeEventListener('visibilitychange', onVisible)
   }
+}
+
+/**
+ * Prueba en este dispositivo, sin servidor: sonido y notificación del sistema
+ * al momento. Sirve para ver si el sistema operativo deja mostrar avisos.
+ */
+export async function testHere(): Promise<'shown' | 'denied' | 'unsupported'> {
+  chime()
+  if (!('Notification' in window)) return 'unsupported'
+  const permission = Notification.permission === 'default' ? await askPermission() : Notification.permission
+  if (permission !== 'granted') return 'denied'
+  await showSystemNotification('ntab-test-local', 'NTab', 'Así te avisaré de tus tareas ⏰', './#/settings', false)
+  return 'shown'
 }
