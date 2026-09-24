@@ -20,6 +20,9 @@
 | **Revisión semanal** | Asistente de 6 pasos para vaciar la cabeza y planificar la semana |
 | **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada. Botones «Hecho» y «Posponer 15 min» |
 | **Resumen de la mañana** | Una notificación diaria, a la hora que elijas, con lo que tienes hoy |
+| **Siri y Atajos** | «Oye Siri, apunta en NTab…» o Compartir → NTab desde cualquier app, con el mismo lenguaje natural |
+| **Planificar el día** | Un minuto por la mañana: lo atrasado, la bandeja y lo que viene, a hoy o a otro día |
+| **Modo foco** | Temporizador a pantalla completa con la tarea y sus subtareas; avisa al terminar |
 | **Claude** | Conector para usar NTab desde Claude con tu suscripción: «¿qué tengo esta semana?», «planifícame el día», «apunta lo de este email» |
 | **Calendario** | Suscríbete desde Calendario del iPhone, Google u Outlook y verás tus tareas, pagos y cumpleaños |
 | **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo |
@@ -93,7 +96,8 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 ## Claude y calendario
 
 - **Conector para Claude** (`supabase/functions/mcp`): servidor MCP por HTTP. Cada usuario tiene una URL privada (`mcp_connectors.token`) que se crea en Ajustes → Claude y se añade en Claude → Ajustes → Conectores → Añadir conector personalizado. Se usa con la suscripción de Claude, sin claves de API.
-  - Herramientas: `ver_resumen`, `buscar_tareas`, `crear_tareas`, `actualizar_tareas`, `crear_nota` y `marcar_habito`.
+  - Herramientas: `ver_resumen`, `buscar_tareas`, `crear_tareas`, `actualizar_tareas`, `crear_nota`, `marcar_habito`, `crear_proyecto`, `actualizar_objetivo`, `registrar_contacto` y `marcar_pago`.
+- **Captura** (`supabase/functions/capture`): URL privada (`capture_keys.token`) que solo añade tareas. Los Atajos de iOS le envían el texto (Siri o Compartir) y responde con una frase de confirmación. Usa el mismo analizador que la app (`supabase/functions/_shared/parse.ts`).
   - Escribe en `records` con el mismo formato que la app (avisos automáticos y tareas que se repiten incluidos), así que los cambios llegan a los dispositivos por la sincronización en tiempo real.
 - **Calendario** (`supabase/functions/calendar`): enlace privado por usuario (`calendar_feeds.token`) que sirve un `.ics` con tareas con fecha, pagos y cumpleaños. Se crea y se cambia en Ajustes → Calendario.
   - Google Calendar tarda horas en refrescar los calendarios suscritos. Para tenerlo al día (también lo que se borra), Ajustes → Calendario → Google Calendar da un script de Google Apps Script (`src/features/settings/googleScript.ts`). Se pega en script.google.com y cada 5 minutos lee `?format=json` y crea, cambia o borra los eventos del calendario «NTab».

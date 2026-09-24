@@ -443,3 +443,89 @@ export function markHabit(rows: Row[], args: { habito?: string; fecha?: string; 
   const id = env.newId()
   return { writes: [{ tbl: 'habitLogs', id, data: { id, habitId: habit.id, date } }], deletes: [], report: [`«${str(habit.name)}» marcado como hecho el ${date}.`] }
 }
+
+// ── Proyectos, objetivos, personas y pagos ────────────────────
+
+export function createProject(rows: Row[], args: { nombre?: string; area?: string; descripcion?: string; limite?: string }, env: Env): WriteResult {
+  const name = str(args.nombre).trim()
+  if (!name) return { writes: [], report: ['Falta el nombre del proyecto.'] }
+  const ix = new Index(rows)
+  const existing = findByName(ix.projects, name)
+  if (existing && fold(str(existing.name)) === fold(name)) return { writes: [], report: [`Ya existe el proyecto «${str(existing.name)}».`] }
+  const area = args.area ? findByName(ix.areas, args.area) : undefined
+  const project: Data = { id: env.newId(), name, description: str(args.descripcion), status: 'active', color: '#0A84FF', order: env.now, createdAt: env.now }
+  if (area) project.areaId = area.id
+  if (isYmd(args.limite)) project.deadline = args.limite
+  return {
+    writes: [{ tbl: 'projects', id: String(project.id), data: project }],
+    report: [`Proyecto creado: «${name}»${area ? ` en ${str(area.name)}` : ''}${project.deadline ? `, límite ${project.deadline}` : ''}.${args.area && !area ? ` (No encontré el área «${args.area}».)` : ''}`],
+  }
+}
+
+export function updateGoal(rows: Row[], args: { objetivo?: string; cifra?: number; sumar?: number; conseguido?: boolean }, env: Env): WriteResult {
+  const goals: Data[] = rows.filter((r) => r.tbl === 'goals' && r.data.status !== 'dropped').map((r) => ({ ...r.data, id: r.id }))
+  const g = findByName(goals, str(args.objetivo), 'title')
+  if (!g) return { writes: [], report: [`No hay ningún objetivo que se llame «${str(args.objetivo)}». Objetivos: ${goals.map((x) => str(x.title)).join(', ') || 'ninguno'}.`] }
+  const next: Data = { ...g }
+  const out: string[] = []
+  if (typeof args.cifra === 'number' || typeof args.sumar === 'number') {
+    if (g.kind !== 'number') return { writes: [], report: [`«${str(g.title)}» se mide con sus proyectos, no con una cifra.`] }
+    next.current = Math.max(0, typeof args.cifra === 'number' ? args.cifra : num(g.current) + (args.sumar ?? 0))
+    out.push(`«${str(g.title)}»: ${num(next.current)} de ${num(g.target)}${g.unit ? ` ${str(g.unit)}` : ''}.`)
+  }
+  if (args.conseguido === true) {
+    next.status = 'done'
+    next.completedAt = env.now
+    out.push(`«${str(g.title)}» marcado como conseguido. 🎉`)
+  } else if (args.conseguido === false && g.status === 'done') {
+    next.status = 'active'
+    delete next.completedAt
+    out.push(`«${str(g.title)}» vuelve a estar en marcha.`)
+  }
+  if (!out.length) return { writes: [], report: ['No había nada que cambiar (usa cifra, sumar o conseguido).'] }
+  return { writes: [{ tbl: 'goals', id: String(g.id), data: next }], report: out }
+}
+
+const KINDS: Record<string, 'call' | 'message' | 'meeting' | 'email' | 'other'> = {
+  llamada: 'call',
+  mensaje: 'message',
+  reunion: 'meeting',
+  email: 'email',
+  otro: 'other',
+}
+
+export function logContact(rows: Row[], args: { persona?: string; tipo?: string; resumen?: string; fecha?: string }, env: Env): WriteResult {
+  const people: Data[] = rows.filter((r) => r.tbl === 'people').map((r) => ({ ...r.data, id: r.id }))
+  const person = findByName(people, str(args.persona))
+  if (!person) return { writes: [], report: [`No encuentro a «${str(args.persona)}» en tus personas.`] }
+  const date = isYmd(args.fecha) ? args.fecha : ymdIn(env.now, env.tz)
+  const id = env.newId()
+  const interaction: Data = { id, personId: person.id, date, kind: KINDS[fold(str(args.tipo))] ?? 'other', summary: str(args.resumen), createdAt: env.now }
+  const writes: Row[] = [{ tbl: 'interactions', id, data: interaction }]
+  if (!isYmd(person.lastContact) || (person.lastContact as string) < date) writes.push({ tbl: 'people', id: String(person.id), data: { ...person, lastContact: date } })
+  return { writes, report: [`Apuntado: ${fold(str(args.tipo)) || 'contacto'} con ${str(person.name)} el ${date}.`] }
+}
+
+/** Siguiente cargo, respetando el día del mes original (31 → 28 → 31) */
+export function advanceCharge(from: string, cycle: string, anchorDay?: number): string {
+  if (cycle === 'week') return addDays(from, 7)
+  const months = cycle === 'year' ? 12 : cycle === 'quarter' ? 3 : 1
+  const next = addMonths(`${from.slice(0, 8)}01`, months)
+  const [y, m] = next.split('-').map(Number)
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate()
+  const day = Math.min(anchorDay || Number(from.slice(8, 10)), last)
+  return `${next.slice(0, 8)}${String(day).padStart(2, '0')}`
+}
+
+export function markPaid(rows: Row[], args: { pago?: string }, env: Env): WriteResult {
+  const subs: Data[] = rows.filter((r) => r.tbl === 'subscriptions' && r.data.active !== false).map((r) => ({ ...r.data, id: r.id }))
+  const s = findByName(subs, str(args.pago))
+  if (!s) return { writes: [], report: [`No hay ningún pago activo que se llame «${str(args.pago)}».`] }
+  if (!isYmd(s.nextDate)) return { writes: [], report: ['Ese pago no tiene fecha.'] }
+  const nextDate = advanceCharge(s.nextDate as string, str(s.cycle) || 'month', num(s.anchorDay) || undefined)
+  const next: Data = { ...s, nextDate }
+  const days = typeof s.notifyDays === 'number' ? s.notifyDays : null
+  if (days === null) delete next.remindAt
+  else next.remindAt = zonedToUtc(addDays(nextDate, -days), '09:00', env.tz)
+  return { writes: [{ tbl: 'subscriptions', id: String(s.id), data: next }], report: [`«${str(s.name)}» pagado. Próximo cargo: ${nextDate}.`] }
+}

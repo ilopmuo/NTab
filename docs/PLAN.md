@@ -149,13 +149,15 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 6 — Captura y foco** · Siri y Atajos (captura por voz y desde Compartir), planificar el día, modo foco, más herramientas en el conector de Claude.
 - ✅ **Fase 5 — Conectado** · Sincronización multi-dispositivo, conector para Claude, calendario suscribible, resumen de la mañana, Posponer/Hecho desde el aviso, objetivos en la revisión semanal.
 
 ### Ideas para siguientes iteraciones
 
 - Reordenar tareas arrastrando.
 - Conector de Claude con inicio de sesión OAuth (en vez de URL privada).
-- Más herramientas en el conector: pagos, objetivos, personas.
+- Reordenar tareas arrastrando (hoy el orden es automático: fecha, hora y prioridad).
+- Estadísticas de foco: cuántas sesiones y minutos por semana.
 - Leer Gmail o Google Calendar directamente (requiere OAuth de Google).
 
 ## 8. Atajos de teclado
