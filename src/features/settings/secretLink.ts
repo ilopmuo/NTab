@@ -7,7 +7,7 @@ import { toast } from '@/app/store'
  * Enlace privado por usuario (tablas calendar_feeds y mcp_connectors): una fila
  * con un token secreto que el servidor genera. Crearlo, copiarlo y cambiarlo.
  */
-export function useSecretLink(table: 'calendar_feeds' | 'mcp_connectors' | 'capture_keys', extra: () => Record<string, unknown>) {
+export function useSecretLink(table: 'calendar_feeds' | 'mcp_connectors', extra: () => Record<string, unknown>) {
   const sync = useSync()
   const userId = sync.user?.id
   // undefined = cargando; null = aún no existe
