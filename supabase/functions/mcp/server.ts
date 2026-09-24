@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, createNote, createProject, createTasks, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, createNote, createProject, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -200,6 +200,30 @@ export const TOOLS = [
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
+  {
+    name: 'ver_plantillas',
+    title: 'Ver plantillas',
+    description: 'Lista las plantillas del usuario (listas reutilizables: maleta de viaje, cierre de mes…) con sus tareas.',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  {
+    name: 'usar_plantilla',
+    title: 'Usar plantilla',
+    description:
+      'Crea las tareas de una plantilla con fechas relativas al día de inicio. Con como="proyecto" crea además un proyecto; con proyecto="nombre" (sin como) las añade a un proyecto existente.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plantilla: { type: 'string', description: 'Nombre de la plantilla' },
+        fecha_inicio: DATE,
+        como: { type: 'string', enum: ['proyecto', 'tareas'], description: 'proyecto: crea un proyecto nuevo; tareas: tareas sueltas (por defecto)' },
+        proyecto: { type: 'string', description: 'Nombre del proyecto nuevo, o de uno existente donde añadirlas' },
+      },
+      required: ['plantilla'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
 ]
 
 interface RpcRequest {
@@ -241,6 +265,13 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       const r = markHabit(rows, args, env)
       if (r.writes.length || r.deletes.length) await store.save(r.writes, r.deletes)
       return text(r.report.join('\n'))
+    }
+    case 'ver_plantillas':
+      return text(listTemplates(rows))
+    case 'usar_plantilla': {
+      const r = useTemplate(rows, args, env)
+      if (r.writes.length) await store.save(r.writes)
+      return text(r.report.join('\n'), !r.writes.length)
     }
     case 'crear_proyecto':
     case 'actualizar_objetivo':

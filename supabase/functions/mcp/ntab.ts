@@ -7,6 +7,7 @@
  * app: mismo formato, avisos automáticos y tareas que se repiten.
  */
 import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, weekday, ymdIn, zonedToUtc } from '../_shared/time.ts'
+import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -528,4 +529,70 @@ export function markPaid(rows: Row[], args: { pago?: string }, env: Env): WriteR
   if (days === null) delete next.remindAt
   else next.remindAt = zonedToUtc(addDays(nextDate, -days), '09:00', env.tz)
   return { writes: [{ tbl: 'subscriptions', id: String(s.id), data: next }], report: [`«${str(s.name)}» pagado. Próximo cargo: ${nextDate}.`] }
+}
+
+// ── Plantillas ────────────────────────────────────────────────
+
+export function listTemplates(rows: Row[]): string {
+  const tpls = rows.filter((r) => r.tbl === 'templates')
+  if (!tpls.length) return 'No hay plantillas. Se crean en NTab → Plantillas (o guardando un proyecto como plantilla).'
+  return tpls
+    .map((t) => {
+      const items = (Array.isArray(t.data.items) ? t.data.items : []) as TemplateItemLike[]
+      const lines = items.map((it) => `  - ${it.title}${typeof it.offset === 'number' ? ` (día ${it.offset})` : ''}`)
+      return [`${str(t.data.name)} (${items.length} tareas):`, ...lines].join('\n')
+    })
+    .join('\n\n')
+}
+
+export function useTemplate(rows: Row[], args: { plantilla?: string; fecha_inicio?: string; como?: string; proyecto?: string }, env: Env): WriteResult {
+  const tpls: Data[] = rows.filter((r) => r.tbl === 'templates').map((r) => ({ ...r.data, id: r.id }))
+  const tpl = findByName(tpls, str(args.plantilla))
+  if (!tpl) return { writes: [], report: [`No hay ninguna plantilla que se llame «${str(args.plantilla)}». Plantillas: ${tpls.map((t) => str(t.name)).join(', ') || 'ninguna'}.`] }
+  const ix = new Index(rows)
+  const today = ymdIn(env.now, env.tz)
+  const start = isYmd(args.fecha_inicio) ? args.fecha_inicio : today
+  const writes: Row[] = []
+  let projectId: string | undefined
+  let areaId: string | undefined
+  let where = ''
+  if (args.como === 'proyecto') {
+    const name = str(args.proyecto).trim() || str(tpl.name)
+    const project: Data = { id: env.newId(), name, description: '', status: 'active', color: '#0A84FF', order: env.now, createdAt: env.now }
+    writes.push({ tbl: 'projects', id: String(project.id), data: project })
+    projectId = String(project.id)
+    where = ` en el proyecto nuevo «${name}»`
+  } else if (args.proyecto) {
+    const p = findByName(ix.projects, args.proyecto)
+    if (!p) return { writes: [], report: [`No encontré el proyecto «${args.proyecto}».`] }
+    projectId = String(p.id)
+    areaId = p.areaId ? String(p.areaId) : undefined
+    where = ` en «${str(p.name)}»`
+  }
+  const items = (Array.isArray(tpl.items) ? tpl.items : []) as TemplateItemLike[]
+  const created: Task[] = []
+  expandTemplate(items, start).forEach((x, i) => {
+    let task: Task = {
+      id: env.newId(),
+      title: x.title,
+      notes: '',
+      done: 0,
+      priority: x.priority,
+      tags: [],
+      subtasks: x.subtasks.map((s) => ({ id: env.newId(), title: s, done: false })),
+      order: env.now + i,
+      createdAt: env.now,
+    }
+    if (x.dueDate) task.dueDate = x.dueDate
+    if (x.dueTime) task.dueTime = x.dueTime
+    if (projectId) task.projectId = projectId
+    if (areaId) task.areaId = areaId
+    task = withReminder(task, env)
+    created.push(task)
+    writes.push({ tbl: 'tasks', id: task.id, data: task as unknown as Data })
+  })
+  return {
+    writes,
+    report: [`Plantilla «${str(tpl.name)}» usada${where}, empezando ${relDay(start, today)} (${start}):`, ...created.map((t) => taskLine(t, ix, today))],
+  }
 }

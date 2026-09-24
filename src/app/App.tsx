@@ -10,6 +10,7 @@ import { LogbookView } from '@/features/Logbook'
 import { NotesView } from '@/features/notes/NotesView'
 import { PlanView } from '@/features/plan/PlanView'
 import { TrashView } from '@/features/trash/TrashView'
+import { TemplatesView } from '@/features/templates/TemplatesView'
 import { PeopleView } from '@/features/people/PeopleView'
 import { PersonView } from '@/features/people/PersonView'
 import { ProjectView } from '@/features/projects/ProjectView'
@@ -74,6 +75,8 @@ function Screen() {
       return <LogbookView />
     case 'trash':
       return <TrashView />
+    case 'templates':
+      return <TemplatesView />
     case 'settings':
       return <SettingsView />
     default:
@@ -96,6 +99,7 @@ const TITLES: Record<string, string> = {
   plan: 'Planificar el día',
   logbook: 'Completadas',
   trash: 'Papelera',
+  templates: 'Plantillas',
   settings: 'Ajustes',
 }
 

@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
