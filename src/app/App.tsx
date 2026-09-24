@@ -6,6 +6,7 @@ import { FocusMode } from '@/features/focus/FocusMode'
 import { DragGhost } from '@/components/dayDrag'
 import { SelectionBar } from '@/features/select/SelectionBar'
 import { RoutineRunner } from '@/features/routines/RoutineRunner'
+import { WhatNow } from '@/features/whatnow/WhatNow'
 import { runner } from '@/features/routines/useRoutines'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
@@ -47,12 +48,14 @@ const loaders = {
   TagView: () => import('@/features/TagView').then((m) => ({ default: m.TagView })),
   UpcomingView: () => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView })),
   ThingsView: () => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView })),
+  MenuView: () => import('@/features/menu/MenuView').then((m) => ({ default: m.MenuView })),
+  ExpensesView: () => import('@/features/expenses/ExpensesView').then((m) => ({ default: m.ExpensesView })),
   JournalView: () => import('@/features/journal/JournalView').then((m) => ({ default: m.JournalView })),
   ShoppingView: () => import('@/features/shopping/ShoppingView').then((m) => ({ default: m.ShoppingView })),
   TrackersView: () => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView })),
   RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView)
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
 
 /** Precarga el resto de vistas cuando el navegador está libre */
 function preloadViews() {
@@ -84,6 +87,10 @@ function Screen() {
       return <ShoppingView />
     case 'journal':
       return <JournalView date={id} />
+    case 'expenses':
+      return <ExpensesView />
+    case 'menu':
+      return <MenuView />
     case 'notes':
       return <NotesView id={id} />
     case 'people':
@@ -128,6 +135,8 @@ const TITLES: Record<string, string> = {
   trackers: 'Última vez',
   shopping: 'Compra',
   journal: 'Diario',
+  expenses: 'Gastos',
+  menu: 'Menú',
   notes: 'Notas',
   people: 'Personas',
   projects: 'Proyectos',
@@ -243,6 +252,7 @@ function Workspace() {
       <RecoveryModal />
       <FocusMode />
       <RoutineRunner />
+      <WhatNow />
       <DragGhost />
       <SelectionBar />
       <Toast />

@@ -9,6 +9,8 @@
 import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, weekday, ymdIn, zonedToUtc } from '../_shared/time.ts'
 import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
+import { suggest, type Energy } from '../_shared/suggest.ts'
+import { CATEGORIES, categoryFor, money, monthSummary, parseExpense } from '../_shared/expenses.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -331,6 +333,16 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     .filter((r) => r.tbl === 'journal' && typeof r.data.mood === 'number' && r.id >= addDays(today, -6))
     .sort((a, b) => a.id.localeCompare(b.id))
   if (moods.length) s.push(`\nÁNIMO ÚLTIMOS DÍAS (diario, 1 muy mal – 5 muy bien): ${moods.map((r) => `${relDay(r.id, today)} ${num(r.data.mood)}`).join('; ')}. Tenlo en cuenta al proponer planes.`)
+
+  const month = monthSummary(expenseRows(rows), today.slice(0, 7), today)
+  const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
+  if (month.count || budget) s.push(`\nGASTOS DE ESTE MES: ${money(month.total)}${budget ? ` de un presupuesto de ${money(budget)}` : ''}${month.projection > month.total ? ` (a este ritmo, ${money(month.projection)} a fin de mes)` : ''}.`)
+
+  const countdowns = rows.filter((r) => r.tbl === 'countdowns' && isYmd(r.data.date) && (r.data.date as string) >= today).sort((a, b) => str(a.data.date).localeCompare(str(b.data.date)))
+  if (countdowns.length) s.push(`\nCUENTAS ATRÁS: ${countdowns.slice(0, 6).map((r) => `${str(r.data.name)} (${r.data.date}, faltan ${diffDays(r.data.date as string, today)} días)`).join('; ')}`)
+
+  const meals = rows.filter((r) => r.tbl === 'menu' && r.data.date === today)
+  if (meals.length) s.push(`\nMENÚ DE HOY: ${meals.map((r) => `${str(r.data.meal)}: ${menuName(rows, r.data)}`).join('; ')}`)
 
   const shopping = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
   if (shopping.length) s.push(`\nLISTA DE LA COMPRA (${shopping.length}): ${shopping.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
@@ -1010,5 +1022,146 @@ export function writeJournal(rows: Row[], args: { texto?: string; animo?: number
   return {
     writes: [{ tbl: 'journal', id: date, data: d }],
     report: [`Apuntado en el diario de ${relDay(date, today)}${typeof d.mood === 'number' ? ` (ánimo: ${MOOD_WORDS[d.mood as number]})` : ''}.`],
+  }
+}
+
+// ── ¿Qué hago ahora? ──────────────────────────────────────────
+
+export function whatNow(rows: Row[], args: { minutos?: number; energia?: string }, env: Env): string {
+  const ix = new Index(rows)
+  const today = ymdIn(env.now, env.tz)
+  const [h, m] = hhmmIn(env.now, env.tz).split(':').map(Number)
+  const minutes = typeof args.minutos === 'number' && args.minutos > 0 ? Math.round(args.minutos) : 30
+  const energy: Energy = args.energia === 'poca' ? 'low' : args.energia === 'mucha' ? 'high' : 'normal'
+  const open = ix.tasks.filter((t) => !t.done)
+  const list = suggest(open, { minutes, energy, today, nowMin: h * 60 + m, now: env.now })
+  if (!list.length) return open.length ? `Nada pendiente cabe en ${minutes} minutos.` : 'No tiene nada pendiente.'
+  return [
+    `Para ${minutes} minutos con energía ${args.energia ?? 'normal'}, en este orden:`,
+    ...list.slice(0, 5).map((s, i) => `${i + 1}. [${s.task.id}] ${s.task.title} — ${s.reasons.join(', ')}`),
+  ].join('\n')
+}
+
+// ── Gastos ────────────────────────────────────────────────────
+
+function expenseRows(rows: Row[]) {
+  return rows.filter((r) => r.tbl === 'expenses' && typeof r.data.amount === 'number' && isYmd(r.data.date)).map((r) => ({ amount: r.data.amount as number, category: str(r.data.category) || 'otros', date: r.data.date as string, note: str(r.data.note) }))
+}
+const catLabel = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Otros'
+
+export function addExpenseTool(rows: Row[], args: { texto?: string; importe?: number; concepto?: string; categoria?: string; fecha?: string }, env: Env): WriteResult {
+  const today = ymdIn(env.now, env.tz)
+  let amount: number | undefined
+  let note = str(args.concepto).trim()
+  let date = isYmd(args.fecha) && args.fecha <= today ? args.fecha : today
+  if (args.texto) {
+    const p = parseExpense(str(args.texto))
+    if (p) {
+      amount = p.amount
+      note = note || p.note
+      if (!isYmd(args.fecha)) date = addDays(today, -p.daysAgo)
+    }
+  }
+  if (typeof args.importe === 'number' && args.importe > 0) amount = Math.round(args.importe * 100) / 100
+  if (!amount) return { writes: [], report: ['Falta el importe del gasto.'] }
+  note = note || 'Gasto'
+  const category = CATEGORIES.some((c) => c.id === args.categoria) ? args.categoria! : categoryFor(note)
+  const id = env.newId()
+  const monthBefore = monthSummary(expenseRows(rows), date.slice(0, 7), today).total
+  const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
+  const total = monthBefore + amount
+  return {
+    writes: [{ tbl: 'expenses', id, data: { id, amount, note: note.charAt(0).toUpperCase() + note.slice(1), category, date, createdAt: env.now } }],
+    report: [`Apuntado: ${money(amount)} · ${note} (${catLabel(category)}, ${relDay(date, today)}). Este mes: ${money(total)}${budget ? ` de ${money(budget)}${total > budget ? ' — SE HA PASADO DEL PRESUPUESTO' : ''}` : ''}.`],
+  }
+}
+
+export function listExpenses(rows: Row[], args: { mes?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const month = /^\d{4}-\d{2}$/.test(str(args.mes)) ? str(args.mes) : today.slice(0, 7)
+  const all = expenseRows(rows)
+  const s = monthSummary(all, month, today)
+  if (!s.count) return `No hay gastos apuntados en ${month}.`
+  const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
+  const lines = [
+    `Gastos de ${month}: ${money(s.total)} en ${s.count} gastos${budget ? `, presupuesto ${money(budget)}` : ''}${s.projection > s.total ? `; a este ritmo, ${money(s.projection)} a fin de mes` : ''}.`,
+    'Por categoría:',
+    ...s.byCategory.map((c) => `- ${catLabel(c.id)}: ${money(c.amount)} (${Math.round((c.amount / s.total) * 100)} %)`),
+    'Últimos:',
+    ...all
+      .filter((e) => e.date.startsWith(month))
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 10)
+      .map((e) => `- ${e.date} ${money(e.amount)} ${e.note}`),
+  ]
+  return lines.join('\n')
+}
+
+// ── Menú ──────────────────────────────────────────────────────
+
+function menuName(rows: Row[], d: Data) {
+  if (d.recipeId) return str(rows.find((r) => r.tbl === 'recipes' && r.id === d.recipeId)?.data.name) || str(d.text) || '?'
+  return str(d.text)
+}
+
+export function readMenu(rows: Row[], args: { desde?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const from = isYmd(args.desde) ? args.desde : weekStart(today)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(from, i))
+  const lines = days.map((d) => {
+    const get = (m: string) => {
+      const r = rows.find((x) => x.tbl === 'menu' && x.id === `${d}:${m}`)
+      return r ? menuName(rows, r.data) : '—'
+    }
+    return `- ${relDay(d, today)} (${d}): comida ${get('comida')} · cena ${get('cena')}`
+  })
+  const recipes = rows.filter((r) => r.tbl === 'recipes').map((r) => str(r.data.name))
+  return [...lines, `Recetas guardadas: ${recipes.join(', ') || 'ninguna'}.`].join('\n')
+}
+
+export function planMenu(rows: Row[], args: { comidas?: unknown }, _env: Env): WriteResult {
+  const list = Array.isArray(args.comidas) ? (args.comidas as { fecha?: string; comida?: string; cena?: string }[]) : []
+  const recipes: Data[] = rows.filter((r) => r.tbl === 'recipes').map((r) => ({ ...r.data, id: r.id }))
+  const writes: Row[] = []
+  const report: string[] = []
+  for (const day of list) {
+    if (!isYmd(day?.fecha)) continue
+    for (const meal of ['comida', 'cena'] as const) {
+      const v = str(day[meal]).trim()
+      if (!v) continue
+      const r = findByName(recipes, v)
+      const exact = r && fold(str(r.name)) === fold(v)
+      const id = `${day.fecha}:${meal}`
+      writes.push({ tbl: 'menu', id, data: exact ? { id, date: day.fecha, meal, recipeId: String(r!.id) } : { id, date: day.fecha, meal, text: v } })
+      report.push(`${day.fecha} ${meal}: ${exact ? str(r!.name) + ' (receta)' : v}`)
+    }
+  }
+  if (!writes.length) return { writes: [], report: ['No había comidas que poner (cada día: fecha y comida y/o cena).'] }
+  return { writes, report: ['Menú actualizado:', ...report, 'Con recetas guardadas, en NTab → Menú puede añadir sus ingredientes a la compra en un toque.'] }
+}
+
+export function createRecipe(rows: Row[], args: { nombre?: string; ingredientes?: unknown; notas?: string }, env: Env): WriteResult {
+  const name = str(args.nombre).trim()
+  const ingredients = Array.isArray(args.ingredientes) ? args.ingredientes.map((x) => String(x).trim()).filter(Boolean) : []
+  if (!name) return { writes: [], report: ['Falta el nombre de la receta.'] }
+  const existing = rows.find((r) => r.tbl === 'recipes' && fold(str(r.data.name)) === fold(name))
+  const id = existing?.id ?? env.newId()
+  const data: Data = { ...(existing?.data ?? { createdAt: env.now }), id, name, ingredients }
+  if (args.notas) data.notes = str(args.notas)
+  return { writes: [{ tbl: 'recipes', id, data }], report: [`Receta ${existing ? 'actualizada' : 'guardada'}: ${name} (${ingredients.length} ingredientes).`] }
+}
+
+// ── Cuentas atrás ─────────────────────────────────────────────
+
+export function addCountdown(rows: Row[], args: { nombre?: string; fecha?: string }, env: Env): WriteResult {
+  const name = str(args.nombre).trim()
+  const today = ymdIn(env.now, env.tz)
+  if (!name || !isYmd(args.fecha)) return { writes: [], report: ['Falta el nombre o la fecha (YYYY-MM-DD).'] }
+  if (args.fecha < today) return { writes: [], report: ['Esa fecha ya ha pasado.'] }
+  const existing = rows.find((r) => r.tbl === 'countdowns' && fold(str(r.data.name)) === fold(name))
+  const id = existing?.id ?? env.newId()
+  return {
+    writes: [{ tbl: 'countdowns', id, data: { id, name, date: args.fecha, icon: str(existing?.data.icon) || 'sparkles', createdAt: num(existing?.data.createdAt) || env.now } }],
+    report: [`Cuenta atrás ${existing ? 'cambiada' : 'creada'}: ${name}, ${relDay(args.fecha, today)} (faltan ${diffDays(args.fecha, today)} días). La verá en Hoy.`],
   }
 }

@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Area, Goal, Habit, Interaction, Note, Person, Project, JournalEntry, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, Expense, JournalEntry, MenuSlot, Recipe, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
@@ -568,4 +568,43 @@ export async function saveJournal(date: string, patch: Partial<Omit<JournalEntry
     const cur = await db.journal.get(date)
     await db.journal.put({ id: date, text: '', good: [], ...cur, ...patch, updatedAt: Date.now() })
   })
+}
+
+// ── Gastos ────────────────────────────────────────────────────
+
+export async function addExpense(data: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+  const e: Expense = { id: uid(), createdAt: Date.now(), ...data }
+  await db.expenses.add(e)
+  return e
+}
+
+// ── Menú ──────────────────────────────────────────────────────
+
+export async function saveRecipe(data: Partial<Recipe> & { name: string; ingredients: string[] }, id?: string): Promise<string> {
+  if (id) {
+    await db.recipes.update(id, data)
+    return id
+  }
+  const r: Recipe = { id: uid(), createdAt: Date.now(), ...data }
+  await db.recipes.add(r)
+  return r.id
+}
+
+export async function deleteRecipe(id: string) {
+  await db.transaction('rw', db.recipes, db.menu, db.trash, async () => {
+    const r = await db.recipes.get(id)
+    if (!r) return
+    await putInTrash('recipes', r)
+    await db.recipes.delete(id)
+    // Las comidas que la usaban se quedan con el nombre como texto
+    const slots = await db.menu.filter((s) => s.recipeId === id).toArray()
+    for (const s of slots) await db.menu.put({ id: s.id, date: s.date, meal: s.meal, text: r.name })
+  })
+}
+
+/** Pone (o quita, con null) lo que se come en una comida */
+export async function setMenuSlot(date: string, meal: MenuSlot['meal'], value: { recipeId?: string; text?: string } | null) {
+  const id = `${date}:${meal}`
+  if (!value || (!value.recipeId && !value.text?.trim())) return void (await db.menu.delete(id))
+  await db.menu.put({ id, date, meal, ...(value.recipeId ? { recipeId: value.recipeId } : { text: value.text!.trim() }) })
 }

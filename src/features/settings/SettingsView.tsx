@@ -25,7 +25,7 @@ import {
   Sunrise,
   MonitorSmartphone,
   Volume2,
-} from 'lucide-react'
+ SlidersHorizontal} from 'lucide-react'
 import { openAuth, signOut, syncNow, useSync } from '@/sync/service'
 import { syncLabel } from '@/sync/SyncBadge'
 import type { Area } from '@/db/types'
@@ -37,6 +37,7 @@ import { seedIfEmpty } from '@/db/seed'
 import { SectionIcon, section, type Tint } from '@/app/sections'
 import { setUI, toast, ui, useUI } from '@/app/store'
 import { setTheme, useTheme } from '@/app/theme'
+import { TodayCardsEditor } from '../today/cards'
 import { AreaBadge } from '@/components/icons'
 import { Group, IconButton, PageHeader, Segmented, Switch, cx } from '@/components/ui'
 import { disablePush, enablePush, getPushState, testNotification, type PushState } from '@/reminders/push'
@@ -347,6 +348,7 @@ export function SettingsView() {
     })
   }
 
+  const [todayCards, setTodayCards] = useState(false)
   return (
     <Page>
       <PageHeader icon={<SectionIcon def={section('settings')} size={40} />} title="Ajustes" />
@@ -378,7 +380,18 @@ export function SettingsView() {
             />
           }
         />
+        <Row
+          glyph={
+            <Glyph c="blue">
+              <SlidersHorizontal size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Personalizar Hoy"
+          detail="Qué tarjetas ves y en qué orden"
+          onClick={() => setTodayCards(true)}
+        />
       </Block>
+      <TodayCardsEditor open={todayCards} onClose={() => setTodayCards(false)} />
 
       <Block title="Áreas de vida" footer="Las grandes parcelas de tu vida. Cada tarea, proyecto y nota puede pertenecer a una.">
         {areas.map((a, i) => (

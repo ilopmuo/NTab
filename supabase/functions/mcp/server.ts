@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -20,6 +20,8 @@ const INSTRUCTIONS = `NTab es la app con la que el usuario organiza su vida: tar
 - Para lo que no puede olvidar (pastillas, llamadas importantes), crea la tarea con hora e insistir.
 - Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
 - Si te cuenta qué tal su día y quiere guardarlo, usa escribir_diario.
+- Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto. Ante «tengo un rato, ¿qué hago?», usa que_hago.
+- Para comidas de la semana, planificar_menu (y crear_receta para guardar recetas con sus ingredientes).
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
 - Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
 - Al planificar, ten en cuenta sus reuniones y la carga del día (duración estimada de las tareas); si un día pasa de 6 h, propón mover algo.
@@ -215,6 +217,83 @@ export const TOOLS = [
     description: 'Marca como devuelto un préstamo (lo que prestó o lo que le prestaron).',
     inputSchema: { type: 'object', properties: { cosa: { type: 'string', description: 'Nombre de la cosa o de la persona' } }, required: ['cosa'] },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'apuntar_gasto',
+    title: 'Apuntar un gasto',
+    description: 'Apunta un gasto. Vale texto libre («12,50 café», «ayer 20 cena») o importe y concepto. La categoría se pone sola si no la das.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string' },
+        importe: { type: 'number', description: 'En euros' },
+        concepto: { type: 'string' },
+        categoria: { type: 'string', enum: ['super', 'comer', 'transporte', 'casa', 'ocio', 'salud', 'ropa', 'regalos', 'otros'] },
+        fecha: DATE,
+      },
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'ver_gastos',
+    title: 'Ver gastos',
+    description: 'Gastos de un mes (por defecto el actual): total, presupuesto, proyección, por categoría y los últimos.',
+    inputSchema: { type: 'object', properties: { mes: { type: 'string', description: 'YYYY-MM' } } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'ver_menu',
+    title: 'Ver el menú',
+    description: 'El menú de la semana (comida y cena de cada día) y las recetas guardadas.',
+    inputSchema: { type: 'object', properties: { desde: { ...DATE, description: 'Primer día (por defecto, el lunes de esta semana)' } } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'planificar_menu',
+    title: 'Planificar el menú',
+    description: 'Pone qué se come en varios días. Si el plato coincide con una receta guardada, se enlaza (y sus ingredientes pueden ir a la compra). Propón el menú antes de guardarlo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        comidas: {
+          type: 'array',
+          items: { type: 'object', properties: { fecha: DATE, comida: { type: 'string' }, cena: { type: 'string' } }, required: ['fecha'] },
+        },
+      },
+      required: ['comidas'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'crear_receta',
+    title: 'Guardar una receta',
+    description: 'Guarda (o actualiza por nombre) una receta con sus ingredientes, uno por elemento, con cantidad («6 huevos», «200 g de harina»).',
+    inputSchema: {
+      type: 'object',
+      properties: { nombre: { type: 'string' }, ingredientes: { type: 'array', items: { type: 'string' } }, notas: { type: 'string' } },
+      required: ['nombre', 'ingredientes'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'cuenta_atras',
+    title: 'Crear una cuenta atrás',
+    description: 'Crea (o cambia por nombre) una cuenta atrás para algo que espera: vacaciones, una boda, un examen. Se ve en Hoy.',
+    inputSchema: { type: 'object', properties: { nombre: { type: 'string' }, fecha: DATE }, required: ['nombre', 'fecha'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'que_hago',
+    title: '¿Qué hago ahora?',
+    description: 'Propone qué tareas hacer ahora según el tiempo que tiene y su energía (atrasadas, para hoy, prioridad, lo que cabe). Úsalo ante «tengo media hora, ¿qué hago?».',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        minutos: { type: 'integer', minimum: 5, description: 'Tiempo disponible (por defecto 30)' },
+        energia: { type: 'string', enum: ['poca', 'normal', 'mucha'] },
+      },
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'ver_diario',
@@ -435,9 +514,19 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(lastTime(await store.load(), args, env))
     case 'ver_compra':
       return text(listShopping(await store.load()))
+    case 'ver_menu':
+      return text(readMenu(await store.load(), args, env))
+    case 'ver_gastos':
+      return text(listExpenses(await store.load(), args, env))
+    case 'que_hago':
+      return text(whatNow(await store.load(), args, env))
     case 'ver_diario':
       return text(readJournal(await store.load(), args, env))
     case 'crear_proyecto':
+    case 'cuenta_atras':
+    case 'planificar_menu':
+    case 'crear_receta':
+    case 'apuntar_gasto':
     case 'escribir_diario':
     case 'anadir_compra':
     case 'lo_he_hecho':
@@ -447,7 +536,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'actualizar_objetivo':
     case 'registrar_contacto':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

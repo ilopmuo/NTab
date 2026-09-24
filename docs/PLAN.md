@@ -149,6 +149,7 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 13 — Todo bajo control** · «¿Qué hago ahora?» según el tiempo y la energía, gastos con presupuesto mensual, menú semanal con recetas que llenan la compra, cuentas atrás y Hoy personalizable; todo también desde Claude.
 - ✅ **Fase 12 — Tu día a día** · Lista de la compra por pasillos (escrita o dictada, «lo de siempre»), «Última vez» con aviso cuando toca y diario con ánimo, tres cosas buenas y lo hecho del día; todo también desde Claude.
 - ✅ **Fase 11 — Tu memoria externa** · Avisos insistentes, rutinas paso a paso, Cosas (dónde está, préstamos y caducidades), el día hora a hora con «Colocar en huecos», procesar la bandeja carta a carta y dictado por voz; todo también desde Claude.
 - ✅ **Fase 10 — Se siente viva** · Deslizar tareas (hecha / mañana) con háptica, chispas al completar y «Día completado» con confeti, contadores que ruedan, tema con revelado circular, avisos con tiempo para deshacer y que se apartan deslizando, barra de pestañas que se encoge, detalles de estilo en móvil.
@@ -174,7 +175,7 @@ src/
 |-------|--------|
 | `N` | Nueva tarea (captura rápida) |
 | `⌘K` / `Ctrl K` | Paleta de comandos / búsqueda |
-| `G` luego `H` / `I` / `U` / `C` / `B` / `E` / `K` / `V` / `A` / `D` / `O` / `P` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Rutinas / Cosas / Última vez / Compra / Diario / Notas / Personas / Proyectos / Objetivos / Pagos |
+| `G` luego `H` / `I` / `U` / `C` / `B` / `E` / `K` / `V` / `A` / `Z` / `D` / `W` / `O` / `P` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Rutinas / Cosas / Última vez / Compra / Menú / Diario / Gastos / Notas / Personas / Proyectos / Objetivos / Pagos |
 | `Esc` | Cerrar panel o modal, o salir de la selección |
 | `⌘`/`Ctrl` + clic | Seleccionar varias tareas |
 | `?` | Ver todos los atajos |

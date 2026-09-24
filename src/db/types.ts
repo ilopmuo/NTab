@@ -280,6 +280,49 @@ export interface JournalEntry {
   updatedAt: number
 }
 
+/** Un gasto («12,50 café») */
+export interface Expense {
+  id: ID
+  /** en euros */
+  amount: number
+  note: string
+  /** ver src/lib/expenses.ts */
+  category: string
+  /** YYYY-MM-DD */
+  date: string
+  createdAt: number
+}
+
+/** Receta: ingredientes tal cual se escriben («2 huevos», «200 g de harina») */
+export interface Recipe {
+  id: ID
+  name: string
+  ingredients: string[]
+  notes?: string
+  createdAt: number
+}
+
+/** Una comida del menú semanal. id = `${fecha}:${comida}` */
+export interface MenuSlot {
+  id: string
+  /** YYYY-MM-DD */
+  date: string
+  meal: 'comida' | 'cena'
+  recipeId?: ID
+  /** si no es una receta guardada («sobras», «fuera») */
+  text?: string
+}
+
+/** Cuenta atrás para algo que esperas */
+export interface Countdown {
+  id: ID
+  name: string
+  /** YYYY-MM-DD */
+  date: string
+  icon: string
+  createdAt: number
+}
+
 export interface HabitLog {
   id: ID
   habitId: ID
@@ -323,7 +366,7 @@ export interface Setting {
 export interface TrashItem {
   /** `${tbl}:${itemId}` */
   id: string
-  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals' | 'routines' | 'things' | 'trackers'
+  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals' | 'routines' | 'things' | 'trackers' | 'recipes'
   itemId: ID
   title: string
   data: Record<string, unknown>
