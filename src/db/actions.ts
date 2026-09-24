@@ -1,11 +1,12 @@
 import { db } from './db'
-import type { Area, Goal, Habit, Interaction, Note, Person, Project, Routine, Subscription, Task, Thing, Tracker } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
 import { advanceCharge, rollForward } from '@/lib/finance'
 import { putInTrash } from './trash'
 import { withDate } from '@/lib/trackers'
+import { aisleFor, itemKey, type ParsedItem } from '@/lib/shopping'
 
 // ── Tareas ────────────────────────────────────────────────────
 
@@ -498,5 +499,63 @@ export async function deleteTracker(id: string) {
     if (!t) return
     await putInTrash('trackers', t)
     await db.trackers.delete(id)
+  })
+}
+
+// ── Compra ────────────────────────────────────────────────────
+
+/** Añade cosas a la lista (sin repetir lo que ya está pendiente). Devuelve lo añadido. */
+export async function addShoppingItems(items: ParsedItem[]): Promise<ShoppingItem[]> {
+  return db.transaction('rw', db.shopping, db.pantry, async () => {
+    const pantry = await db.pantry.toArray()
+    const known = Object.fromEntries(pantry.map((p) => [p.id, p.aisle]))
+    const pending = (await db.shopping.where('checked').equals(0).toArray()).map((x) => ({ x, key: itemKey(x.name) }))
+    const added: ShoppingItem[] = []
+    let order = Date.now()
+    for (const it of items) {
+      const key = itemKey(it.name)
+      const same = pending.find((p) => p.key === key)
+      if (same) {
+        if (it.qty && it.qty !== same.x.qty) await db.shopping.update(same.x.id, { qty: it.qty })
+        continue
+      }
+      const item: ShoppingItem = { id: uid(), name: it.name, aisle: aisleFor(it.name, known), checked: 0, order: order++, createdAt: Date.now(), ...(it.qty ? { qty: it.qty } : {}) }
+      await db.shopping.add(item)
+      pending.push({ x: item, key })
+      added.push(item)
+    }
+    return added
+  })
+}
+
+export async function toggleShopping(id: string) {
+  const it = await db.shopping.get(id)
+  if (it) await db.shopping.update(id, { checked: it.checked ? 0 : 1 })
+}
+
+/** Cambia el pasillo y lo recuerda para la próxima vez */
+export async function setShoppingAisle(id: string, aisle: string) {
+  await db.transaction('rw', db.shopping, db.pantry, async () => {
+    const it = await db.shopping.get(id)
+    if (!it) return
+    await db.shopping.update(id, { aisle })
+    const key = itemKey(it.name)
+    const p = await db.pantry.get(key)
+    await db.pantry.put({ id: key, name: it.name, aisle, count: p?.count ?? 0, lastAt: p?.lastAt ?? 0 })
+  })
+}
+
+/** Terminar la compra: lo del carro sale de la lista y cuenta para «lo de siempre» */
+export async function finishShopping(): Promise<ShoppingItem[]> {
+  return db.transaction('rw', db.shopping, db.pantry, async () => {
+    const bought = await db.shopping.where('checked').equals(1).toArray()
+    const now = Date.now()
+    for (const it of bought) {
+      const key = itemKey(it.name)
+      const p = await db.pantry.get(key)
+      await db.pantry.put({ id: key, name: it.name, aisle: it.aisle, count: (p?.count ?? 0) + 1, lastAt: now })
+    }
+    await db.shopping.bulkDelete(bought.map((b) => b.id))
+    return bought
   })
 }

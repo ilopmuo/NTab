@@ -11,7 +11,7 @@ import { ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
 
 const TILES = ['today', 'upcoming', 'inbox', 'calendar', 'habits', 'notes'].map(section)
-const MORE = ['routines', 'trackers', 'things', 'people', 'projects', 'templates', 'goals', 'finance', 'review'].map(section)
+const MORE = ['shopping', 'routines', 'trackers', 'things', 'people', 'projects', 'templates', 'goals', 'finance', 'review'].map(section)
 const FOOT = ['logbook', 'trash', 'settings'].map(section)
 
 /** Lista inteligente en cuadrícula, como en Recordatorios */
@@ -144,7 +144,7 @@ function SidebarContent() {
               active={is(d.path)}
               icon={<SectionIcon def={d} size={24} square />}
               label={d.label}
-              count={d.id === 'people' ? c.peopleDue : undefined}
+              count={d.id === 'people' ? c.peopleDue : d.id === 'shopping' ? c.shopping : undefined}
               countTone={d.id === 'people' ? 'var(--c-purple)' : undefined}
             />
           ))}

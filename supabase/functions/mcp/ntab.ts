@@ -8,6 +8,7 @@
  */
 import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, weekday, ymdIn, zonedToUtc } from '../_shared/time.ts'
 import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
+import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -325,6 +326,9 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     }
   }
   if (people.length) s.push(`\nPERSONAS:`, ...people)
+
+  const shopping = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
+  if (shopping.length) s.push(`\nLISTA DE LA COMPRA (${shopping.length}): ${shopping.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
 
   const trackers = rows.filter((r) => r.tbl === 'trackers' && !r.data.archived)
   const dueTrackers = trackers.filter((r) => {
@@ -922,4 +926,46 @@ export function logLastTime(rows: Row[], args: { cosa?: string; fecha?: string; 
     writes: [{ tbl: 'trackers', id: String(existing?.id ?? d.id), data: d }],
     report: [`${existing ? 'Apuntado' : 'Creado y apuntado'}: ${trackerLine(d, today)}${at ? `. Le avisaré el ${ymdIn(at, env.tz)}` : ''}.`],
   }
+}
+
+// ── Compra ────────────────────────────────────────────────────
+
+export function listShopping(rows: Row[]): string {
+  const items = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
+  if (!items.length) return 'La lista de la compra está vacía.'
+  const out: string[] = []
+  for (const a of AISLES) {
+    const list = items.filter((r) => (r.data.aisle ?? 'otros') === a.id)
+    if (list.length) out.push(`${a.label}: ${list.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
+  }
+  return out.join('\n')
+}
+
+export function addShopping(rows: Row[], args: { cosas?: unknown }, env: Env): WriteResult {
+  const text = Array.isArray(args.cosas) ? args.cosas.map(String).join('\n') : str(args.cosas)
+  const parsed = parseItems(text)
+  if (!parsed.length) return { writes: [], report: ['No he entendido qué añadir.'] }
+  const known = Object.fromEntries(rows.filter((r) => r.tbl === 'pantry').map((r) => [r.id, str(r.data.aisle)]))
+  const pending = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked).map((r) => ({ r, key: itemKey(str(r.data.name)) }))
+  const writes: Row[] = []
+  const added: string[] = []
+  const already: string[] = []
+  parsed.forEach((it, i) => {
+    const key = itemKey(it.name)
+    const same = pending.find((p) => p.key === key)
+    if (same) {
+      already.push(it.name)
+      if (it.qty && it.qty !== same.r.data.qty) writes.push({ tbl: 'shopping', id: same.r.id, data: { ...same.r.data, qty: it.qty } })
+      return
+    }
+    const id = env.newId()
+    const data: Data = { id, name: it.name, aisle: aisleFor(it.name, known), checked: 0, order: env.now + i, createdAt: env.now }
+    if (it.qty) data.qty = it.qty
+    writes.push({ tbl: 'shopping', id, data })
+    pending.push({ r: { tbl: 'shopping', id, data }, key })
+    added.push(`${it.name}${it.qty ? ` (${it.qty})` : ''}`)
+  })
+  const report = [added.length ? `Añadido a la compra: ${added.join(', ')}.` : 'No había nada nuevo que añadir.']
+  if (already.length) report.push(`Ya estaba: ${already.join(', ')}.`)
+  return { writes, report }
 }

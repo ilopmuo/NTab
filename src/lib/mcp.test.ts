@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -276,5 +276,15 @@ describe('conector MCP', () => {
     expect(r.text).toContain('Apuntado: Cambiar las sábanas · última vez hoy')
     expect(r.text).toContain('2 veces apuntado')
     expect((await call(store, 'ver_resumen')).text).not.toContain('TOCA HACER')
+  })
+
+  it('compra: añadir sin repetir y verla por pasillos', async () => {
+    const store = memoryStore(base())
+    let r = await call(store, 'anadir_compra', { cosas: 'leche, 2 barras de pan y detergente' })
+    expect(r.text).toBe('Añadido a la compra: Leche, Pan (2 barras), Detergente.')
+    r = await call(store, 'anadir_compra', { cosas: ['leche', 'plátanos'] })
+    expect(r.text).toBe('Añadido a la compra: Plátanos.\nYa estaba: Leche.')
+    expect((await call(store, 'ver_compra')).text).toBe('Fruta y verdura: Plátanos\nPanadería: Pan (2 barras)\nLácteos y huevos: Leche\nLimpieza y hogar: Detergente')
+    expect((await call(store, 'ver_resumen')).text).toContain('LISTA DE LA COMPRA (4)')
   })
 })
