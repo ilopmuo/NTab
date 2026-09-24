@@ -4,6 +4,7 @@ import { TodayView } from '@/features/Today'
 import { CommandPalette } from '@/components/CommandPalette'
 import { FocusMode } from '@/features/focus/FocusMode'
 import { DragGhost } from '@/components/dayDrag'
+import { SelectionBar } from '@/features/select/SelectionBar'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 import { TaskDetailPanel } from '@/components/TaskDetail'
@@ -213,6 +214,7 @@ function Workspace() {
       <RecoveryModal />
       <FocusMode />
       <DragGhost />
+      <SelectionBar />
       <Toast />
     </div>
   )

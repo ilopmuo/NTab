@@ -9,6 +9,7 @@ const GROUPS: [string, [string[], string][]][] = [
       [['⌘', 'K'], 'Buscar y comandos'],
       [['?'], 'Esta ayuda'],
       [['Esc'], 'Cerrar panel'],
+      [['⌘', 'clic'], 'Seleccionar varias tareas'],
     ],
   ],
   [
@@ -38,6 +39,7 @@ const GROUPS: [string, [string[], string][]][] = [
       [['!alta'], 'Prioridad'],
       [['#tag'], 'Etiqueta'],
       [['+Proyecto'], 'Proyecto o área'],
+      [['~30m'], 'Duración estimada'],
       [['⌘', '↵'], 'Añadir y seguir'],
     ],
   ],

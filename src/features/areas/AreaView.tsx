@@ -12,6 +12,7 @@ import { Page } from '../Page'
 import { ProjectCard } from '../projects/ProjectCard'
 import { ProjectForm } from '../projects/ProjectForm'
 import { AreaForm } from './AreaForm'
+import { SelectButton } from '@/features/select/SelectionBar'
 
 export function AreaView({ id }: { id: string }) {
   const area = useLiveQuery(() => db.areas.get(id), [id])
@@ -33,9 +34,12 @@ export function AreaView({ id }: { id: string }) {
         title={area.name}
         subtitle={`${tasks.filter((t) => !t.done).length} tareas pendientes · ${projects.length} ${projects.length === 1 ? 'proyecto' : 'proyectos'}`}
         actions={
-          <IconButton label="Editar área" filled onClick={() => setEditing(true)}>
-            <Pencil size={15} strokeWidth={2.3} />
-          </IconButton>
+          <>
+            <SelectButton />
+            <IconButton label="Editar área" filled onClick={() => setEditing(true)}>
+              <Pencil size={15} strokeWidth={2.3} />
+            </IconButton>
+          </>
         }
       />
 

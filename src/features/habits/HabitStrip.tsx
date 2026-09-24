@@ -6,6 +6,7 @@ import { href } from '@/app/router'
 import { Icon } from '@/components/icons'
 import { Card, bouncy, cx } from '@/components/ui'
 import { useHabits } from './useHabits'
+import { haptic } from '@/lib/haptics'
 
 /** Hábitos de hoy como interruptores de la app Casa: se encienden al tocarlos */
 export function HabitStrip() {
@@ -44,7 +45,10 @@ export function HabitStrip() {
                 key={h.id}
                 type="button"
                 whileTap={{ scale: 0.94 }}
-                onClick={() => toggleHabit(h.id, today)}
+                onClick={() => {
+                  haptic()
+                  void toggleHabit(h.id, today)
+                }}
                 className={cx(
                   'relative flex flex-col items-start gap-2 overflow-hidden rounded-[14px] p-2.5 text-left transition-colors duration-300',
                   done ? 'text-black' : 'bg-fill-2',

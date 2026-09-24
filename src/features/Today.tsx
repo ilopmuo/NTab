@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, CalendarCheck, ChevronRight, PartyPopper, RefreshCcw, Sun } from 'lucide-react'
+import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, Sun } from 'lucide-react'
+import { DayComplete } from '@/components/Celebrate'
 import { db } from '@/db/db'
 import { updateTask } from '@/db/actions'
 import { useOpenTasks } from '@/db/hooks'
@@ -14,11 +15,13 @@ import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/com
 import { HabitStrip } from './habits/HabitStrip'
 import { useHabits } from './habits/useHabits'
 import { Agenda } from './today/Agenda'
+import { useEvents } from '@/lib/calendarEvents'
 import { DayRings } from './today/DayRings'
 import { PaymentsCard } from './today/PaymentsCard'
 import { PeopleCard } from './today/PeopleCard'
 import { WeekStrip } from './today/WeekStrip'
 import { Page } from './Page'
+import { SelectButton } from '@/features/select/SelectionBar'
 
 const PARTS = [
   { id: 'morning', title: 'Por la mañana', test: (t?: string) => !!t && t < '12:00' },
@@ -39,7 +42,12 @@ export function TodayView() {
   // null = nunca se ha planificado; undefined = aún cargando
   const lastPlan = useLiveQuery(() => db.settings.get('lastPlan').then((r) => r ?? null), [])
   const { habits, byHabit } = useHabits(7)
+  const cal = useEvents(t, t)
+  const todayEvents = cal.events.filter((e) => (e.allDay ? e.start <= t && e.end > t : new Date(e.start).toDateString() === new Date().toDateString()))
   const [showDone, setShowDone] = useState(false)
+  // Confeti solo si el día se completa ahora (no al volver a la pantalla)
+  const lastPending = useRef<number | null>(null)
+  const [justFinished, setJustFinished] = useState(false)
 
   const { overdue, todays, weekOpen } = useMemo(() => {
     const list = open ?? []
@@ -51,9 +59,16 @@ export function TodayView() {
     }
   }, [open, t, monday])
 
-  if (!open) return null
   const done = doneToday?.filter((x) => x.done) ?? []
   const pending = todays.length + overdue.length
+  const ready = !!open && !!doneToday
+  useEffect(() => {
+    if (!ready) return
+    if (lastPending.current !== null && lastPending.current > 0 && pending === 0 && done.length > 0) setJustFinished(true)
+    lastPending.current = pending
+  }, [ready, pending, done.length])
+
+  if (!open) return null
   const total = pending + done.length
   const scheduledHabits = (habits ?? []).filter((h) => isScheduled(h, t))
   const habitsDone = scheduledHabits.filter((h) => byHabit.get(h.id)?.has(t)).length
@@ -81,7 +96,7 @@ export function TodayView() {
 
   return (
     <Page wide>
-      <PageHeader eyebrow={longDateLabel(t)} tint="var(--c-blue)" title={greeting()} subtitle={summary} />
+      <PageHeader eyebrow={longDateLabel(t)} tint="var(--c-blue)" title={greeting()} subtitle={summary} actions={<SelectButton />} />
 
       <div
         className={cx(
@@ -175,7 +190,7 @@ export function TodayView() {
             </Group>
           ) : pending === 0 ? (
             <Group className="mb-8">
-              <Empty icon={<PartyPopper size={28} strokeWidth={2.2} />} color="var(--c-green)" title="¡Lo has hecho todo!" hint="Buen trabajo. Mañana más." />
+              <DayComplete count={done.length} celebrate={justFinished} />
             </Group>
           ) : (
             <>
@@ -213,7 +228,7 @@ export function TodayView() {
         </div>
 
         <aside className="min-w-0 space-y-4 [grid-area:side]">
-          <Agenda tasks={todays} />
+          <Agenda tasks={todays} events={todayEvents} names={cal.names} />
           <HabitStrip />
           <WeekStrip tasks={open} />
           <PaymentsCard />

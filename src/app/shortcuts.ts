@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { SECTIONS } from './sections'
 import { navigate } from './router'
 import { getUI, ui } from './store'
+import { selection } from '@/features/select/selection'
 
 function isTyping(e: KeyboardEvent) {
   const el = e.target as HTMLElement | null
@@ -20,7 +21,8 @@ export function useGlobalShortcuts() {
       }
       if (e.key === 'Escape') {
         const s = getUI()
-        if (s.selectedTaskId) ui.closeTask()
+        if (selection.get().active) selection.clear()
+        else if (s.selectedTaskId) ui.closeTask()
         else if (s.sidebarOpen) ui.sidebar(false)
         return
       }

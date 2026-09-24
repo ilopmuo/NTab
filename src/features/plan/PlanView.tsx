@@ -1,16 +1,19 @@
 import { useMemo } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, CalendarCheck, Check, Inbox, Sun, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, CalendarRange, Check, Inbox, Sun, X } from 'lucide-react'
 import { mutateTask, setSetting, toggleTask } from '@/db/actions'
 import { useLookup, useOpenTasks } from '@/db/hooks'
 import type { Task } from '@/db/types'
 import { addDaysYmd, longDateLabel, relativeDays, today } from '@/lib/dates'
 import { isInbox, sortTasks } from '@/lib/tasks'
+import { dayLoad, durationLabel } from '@/lib/duration'
+import { eventMinutes, eventTime, eventsByDay, useEvents } from '@/lib/calendarEvents'
 import { navigate } from '@/app/router'
 import { toast, ui } from '@/app/store'
 import { Checkbox } from '@/components/TaskItem'
 import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
+import { LOAD_HINT, LoadBar } from './LoadBar'
 
 const PRIO = ['', '!', '!!', '!!!']
 
@@ -79,6 +82,11 @@ export function PlanView() {
     }
   }, [open, t])
 
+  const cal = useEvents(t, t)
+  const events = eventsByDay(cal.events).get(t) ?? []
+  const meetings = events.filter((e) => !e.allDay).sort((a, b) => a.start.localeCompare(b.start))
+  const allDay = events.filter((e) => e.allDay)
+
   if (!open) return null
 
   const where = (x: Task) => projects.find((p) => p.id === x.projectId)?.name
@@ -112,8 +120,9 @@ export function PlanView() {
   }
 
   const nothing = !overdue.length && !inbox.length && !soon.length
-  const load = todays.length
-  const loadHint = load === 0 ? 'Nada para hoy todavía.' : load <= 5 ? 'Un día asumible.' : load <= 8 ? 'Un día cargado: ¿seguro que todo es para hoy?' : 'Demasiado para un día. Pasa algo a mañana.'
+  const load = dayLoad(todays, meetings.map(eventMinutes))
+  // Sin duraciones ni reuniones, se juzga por el número de tareas
+  const level = load.total ? load.level : todays.length === 0 ? 'free' : todays.length <= 5 ? 'ok' : todays.length <= 8 ? 'busy' : 'over'
 
   return (
     <Page>
@@ -122,12 +131,35 @@ export function PlanView() {
       <Section
         title="Para hoy"
         count={todays.length}
-        action={<span className={cx('text-[13px] font-semibold', load > 8 ? 'text-fg' : 'text-muted')}>{loadHint}</span>}
       >
+        {(load.total > 0 || todays.length > 0) && <LoadBar load={load} hint={LOAD_HINT[level]} className="mb-3 px-1" />}
+        {(meetings.length > 0 || allDay.length > 0) && (
+          <Group className="mb-3">
+            {allDay.map((e) => (
+              <div key={e.id} className="flex items-center gap-3 px-4 py-2.5 text-[15px] text-muted shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
+                <CalendarRange size={16} strokeWidth={2.2} className="shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{e.title}</span>
+                <span className="text-[12.5px]">todo el día</span>
+              </div>
+            ))}
+            {meetings.map((e) => (
+              <div key={e.id} className="flex items-center gap-3 px-4 py-2.5 shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
+                <span className="font-num w-11 shrink-0 text-[13px] font-semibold text-muted">{eventTime(e)}</span>
+                <span className="h-7 w-[3px] shrink-0 rounded-full bg-line-strong" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] text-muted">{e.title}</span>
+                  <span className="block truncate text-[12.5px] text-faint">
+                    {[durationLabel(eventMinutes(e)), cal.names[e.sourceId], e.location].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </Group>
+        )}
         <Group>
           <AnimatePresence initial={false}>
             {todays.map((x) => (
-              <Row key={x.id} task={x} meta={[x.dueTime, where(x)].filter(Boolean).join(' · ') || undefined} actions={[toTomorrow]} />
+              <Row key={x.id} task={x} meta={[x.dueTime, x.estimate && durationLabel(x.estimate), where(x)].filter(Boolean).join(' · ') || undefined} actions={[toTomorrow]} />
             ))}
           </AnimatePresence>
           {!todays.length && <p className="px-4 py-3 text-[14px] text-muted">Trae aquí lo que quieras hacer hoy.</p>}

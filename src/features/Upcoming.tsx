@@ -7,6 +7,7 @@ import { PageHeader, Section, cx } from '@/components/ui'
 import { useDropOver } from '@/components/dayDrag'
 import type { Task } from '@/db/types'
 import { Page } from './Page'
+import { SelectButton } from '@/features/select/SelectionBar'
 
 export function UpcomingView() {
   const tasks = useOpenTasks()
@@ -23,6 +24,7 @@ export function UpcomingView() {
         icon={<SectionIcon def={section('upcoming')} size={40} />}
         title="Próximo"
         subtitle={`${total} ${total === 1 ? 'tarea programada' : 'tareas programadas'} a partir de hoy`}
+        actions={<SelectButton />}
       />
       {overdue.length > 0 && (
         <Section title="Atrasadas" count={overdue.length} tone="red">

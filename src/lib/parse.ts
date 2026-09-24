@@ -2,6 +2,7 @@ import { addMonths, addWeeks, addYears } from 'date-fns'
 import type { Priority, Recurrence, Reminder } from '@/db/types'
 import { addDaysYmd, fromYmd, ymd } from './dates'
 import { firstOccurrence } from './recurrence'
+import { parseDuration } from './duration'
 
 export interface ParseTarget {
   id: string
@@ -29,6 +30,8 @@ export interface ParsedTask {
   areaId?: string
   recurrence?: Recurrence
   reminder?: Reminder
+  /** duración estimada en minutos ("~30m", "~1h30") */
+  estimate?: number
 }
 
 // Límites de palabra que funcionan con acentos y ñ (\b no los entiende).
@@ -288,6 +291,14 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
       out.reminder = { before }
     },
   )
+
+  // ── Duración ──────────────────────────────────────────────
+  // "~30m", "~45 min", "~2h", "~1h30", "~1,5h" (antes que la hora: "2h" no es una hora)
+  take(new RegExp(`${B}~\\s*(\\d+(?:[.,]\\d+)?\\s*(?:h|hrs?|horas?|m|min|mins|minutos?)?(?:\\s*\\d{1,2}\\s*(?:m|min)?)?)${E}`, 'i'), (m) => {
+    const min = parseDuration(m[1].replace(/\s+/g, ''))
+    if (!min) return false
+    out.estimate = min
+  })
 
   // ── Hora ──────────────────────────────────────────────────
   if (!take(new RegExp(`${B}(?:a\\s+)?(?:al\\s+)?mediod[ií]a${E}`, 'i'), () => void (out.dueTime = '12:00'))) {

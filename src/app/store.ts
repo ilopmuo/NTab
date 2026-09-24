@@ -14,7 +14,7 @@ export interface UIState {
   sidebarOpen: boolean
   /** abre el formulario de creación de la vista correspondiente */
   creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | 'template' | null
-  toast: { id: number; message: string; actions: ToastAction[]; icon: 'check' | 'bell'; onClick?: () => void } | null
+  toast: { id: number; message: string; actions: ToastAction[]; icon: 'check' | 'bell'; onClick?: () => void; duration: number } | null
 }
 
 let state: UIState = {
@@ -69,6 +69,6 @@ export function toast(
   clearTimeout(toastTimer)
   const id = Date.now()
   const actions = action ? (Array.isArray(action) ? action : [action]) : []
-  setUI({ toast: { id, message, actions, icon: opts.icon ?? 'check', onClick: opts.onClick } })
+  setUI({ toast: { id, message, actions, icon: opts.icon ?? 'check', onClick: opts.onClick, duration: durationMs } })
   toastTimer = setTimeout(() => setUI((s) => (s.toast?.id === id ? { toast: null } : {})), durationMs)
 }

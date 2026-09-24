@@ -79,4 +79,8 @@ describe('eventos en JSON (script de Google Calendar)', () => {
     expect(buildEvents(input)[0].hash).toBe(a)
     expect(buildEvents({ ...input, tasks: [{ ...input.tasks[0], title: 'Llamar al banco (urgente)' }] })[0].hash).not.toBe(a)
   })
+  it('con duración estimada, el evento dura eso', () => {
+    const ics = buildCalendar({ tz: 'Europe/Madrid', appUrl: 'https://ntab.vercel.app/', now, tasks: [{ id: 't4', title: 'Informe', dueDate: '2026-09-24', dueTime: '16:00', estimate: 90 }], payments: [], birthdays: [] })
+    expect(ics).toContain('DTSTART:20260924T140000Z\r\nDTEND:20260924T153000Z')
+  })
 })

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, Hash, Hourglass, ListChecks, Plus, Repeat, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Task } from '@/db/types'
@@ -10,6 +10,7 @@ import { addDaysYmd, dateLabel, fromYmd, longDateLabel, today, WEEK_ORDER, WEEKD
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor } from '@/lib/tasks'
 import { uid } from '@/lib/id'
+import { durationLabel, parseDuration } from '@/lib/duration'
 import { REMINDER_OPTIONS, reminderLabel, reminderValue } from '@/lib/reminders'
 import { toast, ui, useUI } from '@/app/store'
 import { Checkbox, completeWithFeedback } from './TaskItem'
@@ -284,6 +285,7 @@ function TaskDetail({ task }: { task: Task }) {
               className={fieldCls}
             />
           </Row>
+          <EstimateRow value={task.estimate} onChange={(estimate) => set({ estimate })} />
           <Row icon={<Repeat size={16} strokeWidth={2.4} />} color="var(--c-gray)" label="Repetir" value={task.recurrence ? recurrenceLabel(task.recurrence) : undefined}>
             <select value={kind} onChange={(e) => setRepeat(e.target.value as RepeatKind)} className={cx(fieldCls, 'appearance-none pr-3')}>
               <option value="none">No se repite</option>
@@ -575,6 +577,40 @@ function RecurrenceEditor({ value, onChange }: { value: Recurrence; onChange: (r
 }
 
 /** Fila "Aviso": cuándo te avisa NTab (notificación en el móvil u ordenador) */
+function EstimateRow({ value, onChange }: { value?: number; onChange: (v: number | undefined) => void }) {
+  const [custom, setCustom] = useState('')
+  const quick = [15, 30, 60, 120]
+  const commit = () => {
+    const v = parseDuration(custom)
+    if (v) onChange(v)
+    setCustom('')
+  }
+  return (
+    <Row
+      icon={<Hourglass size={15} strokeWidth={2.4} />}
+      color="var(--c-text)"
+      label="Duración"
+      value={value ? `${durationLabel(value)} aprox.` : undefined}
+      onClear={value ? () => onChange(undefined) : undefined}
+    >
+      {quick.map((m) => (
+        <Pill key={m} active={value === m} onClick={() => onChange(m)} color="var(--c-text)">
+          {durationLabel(m)}
+        </Pill>
+      ))}
+      <input
+        value={custom}
+        onChange={(e) => setCustom(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), commit())}
+        placeholder="Otra: 1h30"
+        aria-label="Otra duración"
+        className={cx(fieldCls, 'w-[104px] placeholder:text-faint')}
+      />
+    </Row>
+  )
+}
+
 function ReminderRow({ task, onChange }: { task: Task; onChange: (r: Reminder | null) => void }) {
   const value = reminderValue(task.reminder)
   const toLocalInput = (ms: number) => {

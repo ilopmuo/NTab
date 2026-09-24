@@ -207,3 +207,24 @@ describe('repetir desde que se completa', () => {
     expect(parseQuickAdd('llamar desde que la haga', ctx).recurrence).toBeUndefined()
   })
 })
+
+describe('duración estimada', () => {
+  it('~30m, ~2h, ~1h30, ~1,5h, ~45', () => {
+    expect(p('escribir el informe ~30m').estimate).toBe(30)
+    expect(p('escribir el informe ~2h').estimate).toBe(120)
+    expect(p('escribir el informe ~1h30').estimate).toBe(90)
+    expect(p('escribir el informe ~1,5h').estimate).toBe(90)
+    expect(p('escribir el informe ~45 min').estimate).toBe(45)
+    expect(p('escribir el informe ~45').estimate).toBe(45)
+  })
+  it('no se confunde con la hora ni queda en el título', () => {
+    const r = p('Revisar contrato mañana a las 10 ~2h !alta')
+    expect(r.title).toBe('Revisar contrato')
+    expect(r.estimate).toBe(120)
+    expect(r.dueTime).toBe('10:00')
+    expect(r.dueDate).toBe('2026-09-24')
+  })
+  it('sin ~ no hay duración', () => {
+    expect(p('leer 30 páginas').estimate).toBeUndefined()
+  })
+})

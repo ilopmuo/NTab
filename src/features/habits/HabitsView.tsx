@@ -12,6 +12,7 @@ import { Button, Empty, Group, PageHeader, ProgressRing, bouncy, cx, spring } fr
 import { Page } from '../Page'
 import { HabitForm } from './HabitForm'
 import { useHabits } from './useHabits'
+import { haptic } from '@/lib/haptics'
 
 const PRESETS = [
   { name: 'Beber 2 L de agua', icon: 'droplet', color: '#40C8E0' },
@@ -115,7 +116,7 @@ export function HabitsView() {
                   const on = done.has(d)
                   const isToday = d === today
                   return (
-                    <button key={d} type="button" onClick={() => toggleHabit(h.id, d)} title={fmt(d, "EEEE d 'de' MMMM")} className="flex flex-col items-center gap-1">
+                    <button key={d} type="button" onClick={() => (haptic(), void toggleHabit(h.id, d))} title={fmt(d, "EEEE d 'de' MMMM")} className="flex flex-col items-center gap-1">
                       <span className={cx('text-[11px] font-semibold', isToday ? 'text-blue' : 'text-faint')}>{WEEKDAYS_SHORT[fromYmd(d).getDay()]}</span>
                       <motion.span
                         whileTap={{ scale: 0.8 }}

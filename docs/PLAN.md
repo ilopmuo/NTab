@@ -149,6 +149,8 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 10 — Se siente viva** · Deslizar tareas (hecha / mañana) con háptica, chispas al completar y «Día completado» con confeti, contadores que ruedan, tema con revelado circular, avisos con tiempo para deshacer y que se apartan deslizando, barra de pestañas que se encoge, detalles de estilo en móvil.
+- ✅ **Fase 9 — Tu día completo** · Eventos de tus calendarios (Google, iCloud, Outlook) en Hoy, Calendario, Planificar y Claude; duración estimada de las tareas y carga del día; selección múltiple con acciones en bloque.
 - ✅ **Fase 8 — Personas y rutinas** · @personas en las tareas, recordatorios de hábitos, repetir desde que se completa y saltar una vez, carga por vistas y atajos del icono.
 - ✅ **Fase 7 — Nada se pierde** · Papelera de 30 días, plantillas, arrastrar tareas a otro día, «Tu semana» con registro de foco.
 - ✅ **Fase 6 — Captura y foco** · Planificar el día, modo foco, más herramientas en el conector de Claude.
@@ -160,7 +162,8 @@ src/
 - Conector de Claude con inicio de sesión OAuth (en vez de URL privada).
 - Reordenar tareas arrastrando dentro de una lista (hoy el orden es automático: fecha, hora y prioridad).
 - Buscar en la papelera y recuperar varias cosas a la vez.
-- Leer Gmail o Google Calendar directamente (requiere OAuth de Google).
+- Leer Gmail directamente (requiere OAuth de Google).
+- Colocar tareas en los huecos libres entre reuniones.
 
 ## 8. Atajos de teclado
 
@@ -169,5 +172,6 @@ src/
 | `N` | Nueva tarea (captura rápida) |
 | `⌘K` / `Ctrl K` | Paleta de comandos / búsqueda |
 | `G` luego `H` / `I` / `U` / `C` / `B` / `O` / `P` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Notas / Personas / Proyectos / Objetivos / Pagos |
-| `Esc` | Cerrar panel o modal |
+| `Esc` | Cerrar panel o modal, o salir de la selección |
+| `⌘`/`Ctrl` + clic | Seleccionar varias tareas |
 | `?` | Ver todos los atajos |

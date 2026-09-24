@@ -1,7 +1,8 @@
-import { AtSign, Bell, Calendar, Clock, Flag, Folder, Hash, Repeat } from 'lucide-react'
+import { AtSign, Bell, Calendar, Clock, Flag, Folder, Hash, Hourglass, Repeat } from 'lucide-react'
 import type { ParsedTask } from '@/lib/parse'
 import { useLookup } from '@/db/hooks'
 import { dateLabel } from '@/lib/dates'
+import { durationLabel } from '@/lib/duration'
 import { recurrenceLabel } from '@/lib/recurrence'
 import { reminderLabel } from '@/lib/reminders'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor } from '@/lib/tasks'
@@ -31,7 +32,7 @@ export function ParsedChips({ parsed, className }: { parsed: ParsedTask; classNa
   const p = project(parsed.projectId)
   const a = area(parsed.areaId)
   const who = (parsed.people ?? []).map(person).filter((x) => !!x)
-  const has = parsed.dueDate || parsed.dueTime || parsed.priority || parsed.tags.length || p || a || parsed.recurrence || parsed.reminder || who.length
+  const has = parsed.dueDate || parsed.dueTime || parsed.priority || parsed.tags.length || p || a || parsed.recurrence || parsed.reminder || parsed.estimate || who.length
   if (!has) return null
   return (
     <div className={cx('flex flex-wrap gap-1.5', className)}>
@@ -45,6 +46,12 @@ export function ParsedChips({ parsed, className }: { parsed: ParsedTask; classNa
         <Chip color="var(--c-teal)">
           <Clock size={13} strokeWidth={2.4} />
           {parsed.dueTime}
+        </Chip>
+      )}
+      {parsed.estimate && (
+        <Chip color="var(--c-text)">
+          <Hourglass size={13} strokeWidth={2.4} />
+          {durationLabel(parsed.estimate)}
         </Chip>
       )}
       {parsed.reminder && (

@@ -57,8 +57,9 @@ export function TaskList({
             layout="position"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 32, delay: Math.min(i, 12) * 0.03 } }}
-            exit={{ opacity: 0, height: 0, transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
-            className={cx(rowSeparator, 'overflow-hidden')}
+            // Recorta solo al plegarse; si no, las chispas de la casilla saldrían cortadas
+            exit={{ opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
+            className={rowSeparator}
           >
             <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} draggable={draggable} />
           </motion.div>
@@ -102,6 +103,7 @@ export function InlineAdd({
     if (parsed.dueTime) data.dueTime = parsed.dueTime
     if (parsed.recurrence) data.recurrence = parsed.recurrence
     if (parsed.reminder) data.reminder = parsed.reminder
+    if (parsed.estimate) data.estimate = parsed.estimate
     if (parsed.people?.length) data.people = [...new Set([...(defaults?.people ?? []), ...parsed.people])]
     if (parsed.projectId) {
       data.projectId = parsed.projectId

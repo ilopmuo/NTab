@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
       notes: typeof r.data.notes === 'string' ? r.data.notes : undefined,
       dueDate: r.data.dueDate as string,
       dueTime: typeof r.data.dueTime === 'string' ? r.data.dueTime : undefined,
+      estimate: typeof r.data.estimate === 'number' ? r.data.estimate : undefined,
       priority: typeof r.data.priority === 'number' ? r.data.priority : undefined,
       projectName: typeof r.data.projectId === 'string' ? projects.get(r.data.projectId) : undefined,
     }))

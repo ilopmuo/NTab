@@ -43,6 +43,7 @@ import { disablePush, enablePush, getPushState, testNotification, type PushState
 import { testHere } from '@/reminders/local'
 import { AreaForm } from '../areas/AreaForm'
 import { CalendarBlock } from './CalendarBlock'
+import { CalendarSourcesBlock } from './CalendarSourcesBlock'
 import { ClaudeBlock } from './ClaudeBlock'
 import { Page } from '../Page'
 
@@ -354,6 +355,7 @@ export function SettingsView() {
 
       <NotificationsBlock />
       <ClaudeBlock />
+      <CalendarSourcesBlock />
       <CalendarBlock />
 
       <Block title="Apariencia">
