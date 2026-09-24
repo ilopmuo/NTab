@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDigest, buildHabitPayload, buildPayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
+import { buildDigest, buildHabitPayload, buildJournalPayload, buildPayload, buildRoutinePayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
 
 // Jueves 24 de septiembre de 2026, 10:00 en Madrid
 const now = new Date('2026-09-24T08:00:00Z')
@@ -34,6 +34,13 @@ describe('texto de las notificaciones', () => {
       taskId: 't1',
     })
     expect(buildPayload({ ...base, due_date: '2026-09-25', due_time: null }, 'Europe/Madrid', now).body).toBe('Mañana')
+  })
+
+  it('repeticiones de un aviso insistente', () => {
+    const p = buildPayload({ ...base, repeat: 2 }, 'Europe/Madrid', now)
+    expect(p.body).toBe('Sigue pendiente · hoy a las 10:00')
+    // Misma etiqueta que el aviso original: lo sustituye en vez de acumularse
+    expect(p.tag).toBe('tasks-t1')
   })
 
   it('cargos de suscripciones', () => {
@@ -71,5 +78,31 @@ describe('recordatorio de hábito', () => {
       key: 'habits-h1-2026-09-24',
       habitId: 'h1',
     })
+  })
+})
+
+describe('rutinas y cosas', () => {
+  it('aviso de rutina', () => {
+    const p = buildRoutinePayload({ user_id: 'u', routine_id: 'r1', name: 'Antes de salir de casa', steps: 5, local_date: '2026-09-24', remind_time: '08:00' })
+    expect(p).toMatchObject({ title: 'Antes de salir de casa', url: './#/routine/r1', tag: 'routines-r1', key: 'routines-r1-2026-09-24' })
+    expect(p.body).toContain('5 pasos')
+  })
+  it('préstamos y caducidades', () => {
+    const t = { ...base, tbl: 'things', item_id: 'c1', due_time: 'lent', currency: 'Ana', title: 'Taladro' }
+    expect(buildPayload(t, 'Europe/Madrid', now).body).toBe('Se lo prestaste a Ana. ¿Te lo ha devuelto?')
+    const d = buildPayload({ ...t, due_time: 'document', due_date: '2026-10-24', title: 'Pasaporte' }, 'Europe/Madrid', now)
+    expect(d.body).toBe('Caduca el sábado 24. Toca renovarlo.')
+    expect(d.url).toBe('./#/things')
+  })
+})
+
+describe('última vez y diario', () => {
+  it('aviso de «última vez»', () => {
+    const p = buildPayload({ ...base, tbl: 'trackers', item_id: 'k1', title: 'Cambiar las sábanas', due_date: '2026-09-08', due_time: 'tracker', currency: '14' }, 'Europe/Madrid', now)
+    expect(p.body).toBe('La última vez fue hace 16 días (sueles cada 14). ¿Toca ya?')
+    expect(p.url).toBe('./#/trackers')
+  })
+  it('aviso del diario', () => {
+    expect(buildJournalPayload({ user_id: 'u', local_date: '2026-09-24', done_today: 3 })).toMatchObject({ title: '¿Qué tal el día?', url: './#/journal', key: 'journal-2026-09-24' })
   })
 })

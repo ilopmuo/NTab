@@ -8,6 +8,7 @@
  */
 import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, weekday, ymdIn, zonedToUtc } from '../_shared/time.ts'
 import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
+import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -34,6 +35,8 @@ export interface Task {
   recurrence?: Recurrence
   /** duración estimada en minutos */
   estimate?: number
+  /** repetir el aviso cada N minutos hasta que se haga */
+  nag?: number
   reminder?: Reminder | null
   remindAt?: number
   order: number
@@ -190,6 +193,7 @@ function taskLine(t: Task, ix: Index, today: string) {
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
     t.people?.length ? ` · con ${ix.personNames(t.people).join(', ')}` : '',
     t.estimate ? ` · ~${minutesLabel(t.estimate)}` : '',
+    t.nag ? ` · insiste cada ${t.nag} min` : '',
     t.recurrence ? ' · se repite' : '',
     t.subtasks?.length ? ` · subtareas ${t.subtasks.filter((s) => s.done).length}/${t.subtasks.length}` : '',
     t.done ? ' · HECHA' : '',
@@ -286,6 +290,18 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     s.push(`\nHÁBITOS DE HOY: ${habits.map((h) => `${str(h.data.name)} (${doneIds.has(h.id) ? 'hecho' : 'pendiente'})`).join('; ')}`)
   }
 
+  const routines = rows.filter((r) => r.tbl === 'routines' && !r.data.archived && Array.isArray(r.data.days) && (r.data.days as number[]).includes(weekday(today)))
+  if (routines.length) {
+    s.push(`\nRUTINAS DE HOY (listas de pasos que hace siempre igual):`)
+    for (const r of routines) {
+      const steps = (Array.isArray(r.data.steps) ? r.data.steps : []) as { id: string; title: string }[]
+      const run = rows.find((x) => x.tbl === 'routineRuns' && x.data.routineId === r.id && x.data.date === today)
+      const done = new Set((run?.data.done as string[] | undefined) ?? [])
+      const left = steps.filter((st) => !done.has(st.id)).map((st) => st.title)
+      s.push(`- ${str(r.data.name)}${isHhmm(r.data.time) ? ` (${r.data.time})` : ''}: ${left.length ? `${steps.length - left.length} de ${steps.length} pasos; faltan: ${left.join(', ')}` : 'hecha'}`)
+    }
+  }
+
   const payments = rows
     .filter((r) => r.tbl === 'subscriptions' && r.data.active !== false && isYmd(r.data.nextDate) && (r.data.nextDate as string) <= addDays(today, 30))
     .sort((a, b) => str(a.data.nextDate).localeCompare(str(b.data.nextDate)))
@@ -310,6 +326,35 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     }
   }
   if (people.length) s.push(`\nPERSONAS:`, ...people)
+
+  const moods = rows
+    .filter((r) => r.tbl === 'journal' && typeof r.data.mood === 'number' && r.id >= addDays(today, -6))
+    .sort((a, b) => a.id.localeCompare(b.id))
+  if (moods.length) s.push(`\nÁNIMO ÚLTIMOS DÍAS (diario, 1 muy mal – 5 muy bien): ${moods.map((r) => `${relDay(r.id, today)} ${num(r.data.mood)}`).join('; ')}. Tenlo en cuenta al proponer planes.`)
+
+  const shopping = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
+  if (shopping.length) s.push(`\nLISTA DE LA COMPRA (${shopping.length}): ${shopping.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
+
+  const trackers = rows.filter((r) => r.tbl === 'trackers' && !r.data.archived)
+  const dueTrackers = trackers.filter((r) => {
+    const last = (r.data.log as string[] | undefined)?.[0]
+    return num(r.data.every) > 0 && (!last || diffDays(today, last) >= num(r.data.every))
+  })
+  if (dueTrackers.length) {
+    s.push(`\nTOCA HACER (según «Última vez»):`)
+    for (const r of dueTrackers) s.push(`- ${trackerLine(r.data, today)}`)
+  }
+
+  const things = rows.filter((r) => r.tbl === 'things' && !r.data.returned)
+  const lent = things.filter((t) => t.data.kind === 'lent')
+  const borrowed = things.filter((t) => t.data.kind === 'borrowed')
+  const expiring = things.filter((t) => t.data.kind === 'document' && isYmd(t.data.expires) && diffDays(t.data.expires as string, today) <= Math.max(num(t.data.notifyDays), 30))
+  if (lent.length || borrowed.length || expiring.length) {
+    s.push(`\nCOSAS (usa donde_esta para buscar dónde guardó algo):`)
+    for (const t of lent) s.push(`- Prestado: ${thingLine(t.data, today)}`)
+    for (const t of borrowed) s.push(`- Me prestaron: ${thingLine(t.data, today)}`)
+    for (const t of expiring) s.push(`- Caduca: ${thingLine(t.data, today)}`)
+  }
   if (ix.projects.length) s.push(`\nPROYECTOS (para asignar tareas): ${ix.projects.map((p) => str(p.name)).join('; ')}`)
   return s.join('\n')
 }
@@ -362,6 +407,7 @@ export interface NewTask {
   subtareas?: string[]
   personas?: string[]
   duracion?: number
+  insistir?: number
 }
 
 export interface Change {
@@ -374,6 +420,7 @@ export interface Change {
   proyecto?: string | null
   hecha?: boolean
   duracion?: number | null
+  insistir?: number | null
 }
 
 export interface WriteResult {
@@ -418,6 +465,12 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
     if (who.ids.length) task.people = who.ids
     const est = cleanMinutes(n.duracion)
     if (est) task.estimate = est
+    const nag = cleanMinutes(n.insistir)
+    if (nag) {
+      task.nag = Math.max(5, nag)
+      // Insistir necesita un aviso: a la hora de la tarea
+      if (task.dueTime && task.reminder === undefined) task.reminder = { before: 0 }
+    }
     task = withReminder(task, env)
     out.writes.push({ tbl: 'tasks', id: task.id, data: task as unknown as Data })
     out.report.push(
@@ -445,6 +498,14 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
     if (prio !== undefined) t.priority = prio
     if (c.duracion === null) delete t.estimate
     else if (cleanMinutes(c.duracion)) t.estimate = cleanMinutes(c.duracion)
+    if (c.insistir === null) delete t.nag
+    else if (cleanMinutes(c.insistir)) {
+      t.nag = Math.max(5, cleanMinutes(c.insistir)!)
+      if (t.dueTime && !t.reminder) {
+        t.reminder = { before: 0 }
+        t = withReminder(t, env)
+      }
+    }
     if (c.fecha === null) {
       delete t.dueDate
       delete t.dueTime
@@ -672,5 +733,282 @@ export function useTemplate(rows: Row[], args: { plantilla?: string; fecha_inici
   return {
     writes,
     report: [`Plantilla «${str(tpl.name)}» usada${where}, empezando ${relDay(start, today)} (${start}):`, ...created.map((t) => taskLine(t, ix, today))],
+  }
+}
+
+// ── Rutinas ───────────────────────────────────────────────────
+
+const DAY_WORDS: Record<string, number[]> = {
+  todos: [0, 1, 2, 3, 4, 5, 6],
+  laborables: [1, 2, 3, 4, 5],
+  'fines de semana': [0, 6],
+}
+
+export function createRoutine(rows: Row[], args: { nombre?: string; pasos?: unknown; dias?: unknown; hora?: string }, env: Env): WriteResult {
+  const name = str(args.nombre).trim()
+  const steps = Array.isArray(args.pasos) ? args.pasos.map((x) => String(x).trim()).filter(Boolean) : []
+  if (!name || !steps.length) return { writes: [], report: ['Falta el nombre o los pasos de la rutina.'] }
+  const exists = rows.find((r) => r.tbl === 'routines' && !r.data.archived && fold(str(r.data.name)) === fold(name))
+  if (exists) return { writes: [], report: [`Ya existe la rutina «${str(exists.data.name)}».`] }
+  let days = [0, 1, 2, 3, 4, 5, 6]
+  if (Array.isArray(args.dias)) {
+    const d = args.dias.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+    if (d.length) days = [...new Set(d)]
+  } else if (typeof args.dias === 'string' && DAY_WORDS[fold(args.dias)]) days = DAY_WORDS[fold(args.dias)]
+  const routine: Data = {
+    id: env.newId(),
+    name,
+    icon: 'list',
+    steps: steps.map((title) => ({ id: env.newId(), title })),
+    days,
+    archived: 0,
+    order: env.now,
+    createdAt: env.now,
+  }
+  if (isHhmm(args.hora)) routine.time = normTime(args.hora!)
+  return {
+    writes: [{ tbl: 'routines', id: String(routine.id), data: routine }],
+    report: [`Rutina creada: «${name}» con ${steps.length} pasos${routine.time ? `, aviso a las ${routine.time}` : ''}. La tiene en NTab → Rutinas y en Hoy.`],
+  }
+}
+
+// ── Cosas ─────────────────────────────────────────────────────
+
+const THING_KINDS: Record<string, 'stored' | 'lent' | 'borrowed' | 'document'> = {
+  guardado: 'stored',
+  prestado: 'lent',
+  'me lo prestaron': 'borrowed',
+  caduca: 'document',
+}
+
+function thingLine(d: Data, today: string) {
+  const parts = [str(d.name)]
+  if (d.kind === 'lent') parts.push(`lo tiene ${str(d.personName) || 'alguien'}${isYmd(d.since) ? ` desde ${d.since}` : ''}${isYmd(d.returnBy) ? `, reclamar ${relDay(d.returnBy as string, today)} (${d.returnBy})` : ''}`)
+  if (d.kind === 'borrowed') parts.push(`de ${str(d.personName) || 'alguien'}${isYmd(d.returnBy) ? `, devolver ${relDay(d.returnBy as string, today)} (${d.returnBy})` : ''}`)
+  if (d.kind === 'document' && isYmd(d.expires)) {
+    const n = diffDays(d.expires as string, today)
+    parts.push(n < 0 ? `CADUCÓ el ${d.expires}` : `caduca ${relDay(d.expires as string, today)} (${d.expires})`)
+  }
+  if (d.location) parts.push(`está en: ${str(d.location)}`)
+  if (d.notes) parts.push(`nota: ${str(d.notes)}`)
+  if (d.returned) parts.push('ya devuelto')
+  return parts.join(' · ')
+}
+
+/** Igual que computeThingRemindAt de la app, en la zona horaria del usuario */
+function thingRemindAt(d: Data, env: Env): number | undefined {
+  let when: number | undefined
+  if (d.kind === 'document' && isYmd(d.expires)) {
+    when = zonedToUtc(addDays(d.expires as string, -(num(d.notifyDays) || 30)), '09:00', env.tz)
+    // Ya dentro del margen: a las 9:00 siguientes, si aún no ha caducado
+    if (when <= env.now) {
+      const today = ymdIn(env.now, env.tz)
+      const nine = zonedToUtc(today, '09:00', env.tz)
+      const next = nine > env.now ? nine : zonedToUtc(addDays(today, 1), '09:00', env.tz)
+      when = next <= zonedToUtc(d.expires as string, '09:00', env.tz) ? next : undefined
+    }
+  }
+  else if (d.kind === 'lent' && isYmd(d.returnBy) && !d.returned) when = zonedToUtc(d.returnBy as string, '10:00', env.tz)
+  else if (d.kind === 'borrowed' && isYmd(d.returnBy) && !d.returned) when = zonedToUtc(addDays(d.returnBy as string, -1), '09:00', env.tz)
+  return when !== undefined && when > env.now ? when : undefined
+}
+
+const foldAll = (s: string) => fold(s)
+
+export function whereIs(rows: Row[], args: { busqueda?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const all = rows.filter((r) => r.tbl === 'things')
+  const words = foldAll(str(args.busqueda)).split(/\s+/).filter(Boolean)
+  const hits = all.filter((r) => {
+    const hay = foldAll([r.data.name, r.data.location, r.data.personName, r.data.notes].map(str).join(' '))
+    return words.every((w) => hay.includes(w))
+  })
+  if (!all.length) return 'Aún no ha apuntado ninguna cosa en NTab (Cosas).'
+  if (!hits.length) return `No hay nada apuntado que coincida con «${str(args.busqueda)}». Cosas apuntadas: ${all.map((r) => str(r.data.name)).slice(0, 40).join(', ')}.`
+  return hits.slice(0, 30).map((r) => `- [${r.id}] ${thingLine(r.data, today)}`).join('\n')
+}
+
+export function saveThing(
+  rows: Row[],
+  args: { nombre?: string; tipo?: string; donde?: string; persona?: string; desde?: string; devolver?: string; caduca?: string; avisar_dias?: number; notas?: string },
+  env: Env,
+): WriteResult {
+  const name = str(args.nombre).trim()
+  if (!name) return { writes: [], report: ['Falta el nombre de la cosa.'] }
+  const today = ymdIn(env.now, env.tz)
+  const ix = new Index(rows)
+  const things = rows.filter((r) => r.tbl === 'things')
+  const existing = things.find((r) => fold(str(r.data.name)) === fold(name) && !r.data.returned)
+  const kind = THING_KINDS[fold(str(args.tipo))] ?? (existing?.data.kind as string | undefined) ?? (args.persona ? 'lent' : args.caduca ? 'document' : 'stored')
+  const d: Data = existing ? { ...existing.data } : { id: env.newId(), name, kind, createdAt: env.now }
+  d.kind = kind
+  if (args.donde !== undefined) d.location = str(args.donde).trim() || undefined
+  if (args.notas !== undefined) d.notes = str(args.notas).trim() || undefined
+  if (args.persona) {
+    const p = findByName(ix.people, str(args.persona).replace(/^@/, ''))
+    d.personName = p ? str(p.name) : str(args.persona)
+    if (p) d.personId = p.id
+    else delete d.personId
+  }
+  if (kind === 'lent' || kind === 'borrowed') d.since = isYmd(args.desde) ? args.desde : (d.since ?? today)
+  if (isYmd(args.devolver)) d.returnBy = args.devolver
+  if (isYmd(args.caduca)) d.expires = args.caduca
+  if (typeof args.avisar_dias === 'number' && args.avisar_dias > 0) d.notifyDays = Math.round(args.avisar_dias)
+  if (kind === 'document' && !d.notifyDays) d.notifyDays = 30
+  if ((kind === 'lent' || kind === 'borrowed') && !d.personName) return { writes: [], report: ['Para un préstamo hace falta la persona.'] }
+  if (kind === 'document' && !isYmd(d.expires)) return { writes: [], report: ['Para algo que caduca hace falta la fecha (caduca: YYYY-MM-DD).'] }
+  d.updatedAt = env.now
+  const at = thingRemindAt(d, env)
+  if (at === undefined) delete d.remindAt
+  else d.remindAt = at
+  for (const k of Object.keys(d)) if (d[k] === undefined) delete d[k]
+  return {
+    writes: [{ tbl: 'things', id: String(existing?.id ?? d.id), data: d }],
+    report: [`${existing ? 'Actualizado' : 'Apuntado'}: ${thingLine(d, today)}${at ? ` · te avisaré el ${ymdIn(at, env.tz)}` : ''}.`],
+  }
+}
+
+export function markReturned(rows: Row[], args: { cosa?: string }, env: Env): WriteResult {
+  const q = fold(str(args.cosa))
+  const loans = rows.filter((r) => r.tbl === 'things' && (r.data.kind === 'lent' || r.data.kind === 'borrowed') && !r.data.returned)
+  const hit = loans.find((r) => fold(str(r.data.name)) === q) ?? loans.find((r) => fold(str(r.data.name)).includes(q) || fold(str(r.data.personName)).includes(q))
+  if (!hit) return { writes: [], report: [`No hay ningún préstamo abierto de «${str(args.cosa)}». Préstamos: ${loans.map((r) => str(r.data.name)).join(', ') || 'ninguno'}.`] }
+  const d: Data = { ...hit.data, returned: 1, updatedAt: env.now }
+  delete d.remindAt
+  return { writes: [{ tbl: 'things', id: hit.id, data: d }], report: [`«${str(d.name)}» marcado como devuelto.`] }
+}
+
+// ── Última vez ────────────────────────────────────────────────
+
+function trackerLine(d: Data, today: string) {
+  const log = (d.log as string[] | undefined) ?? []
+  const last = log[0]
+  const every = num(d.every)
+  const parts = [str(d.name)]
+  parts.push(last ? `última vez ${relDay(last, today)} (${last}, hace ${diffDays(today, last)} días)` : 'nunca apuntado')
+  if (every) parts.push(`cada ${every} días`)
+  if (log.length > 1) parts.push(`${log.length} veces apuntado`)
+  return parts.join(' · ')
+}
+
+/** Igual que computeTrackerRemindAt de la app, en la zona horaria del usuario */
+function trackerRemindAt(d: Data, env: Env): number | undefined {
+  const last = (d.log as string[] | undefined)?.[0]
+  const every = num(d.every)
+  if (!every || !last || d.archived) return undefined
+  const at = zonedToUtc(addDays(last, every), '10:00', env.tz)
+  if (at > env.now) return at
+  const today = ymdIn(env.now, env.tz)
+  const ten = zonedToUtc(today, '10:00', env.tz)
+  return ten > env.now ? ten : zonedToUtc(addDays(today, 1), '10:00', env.tz)
+}
+
+export function lastTime(rows: Row[], args: { cosa?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const all = rows.filter((r) => r.tbl === 'trackers' && !r.data.archived)
+  if (!all.length) return 'Aún no apunta nada en «Última vez». Puedes empezar con lo_he_hecho.'
+  const q = fold(str(args.cosa))
+  const hits = q ? all.filter((r) => fold(str(r.data.name)).includes(q) || q.split(/\s+/).every((w) => fold(str(r.data.name)).includes(w))) : all
+  if (!hits.length) return `No hay nada que se parezca a «${str(args.cosa)}». Tiene: ${all.map((r) => str(r.data.name)).join(', ')}.`
+  return hits.map((r) => `- ${trackerLine(r.data, today)}`).join('\n')
+}
+
+export function logLastTime(rows: Row[], args: { cosa?: string; fecha?: string; cada_dias?: number }, env: Env): WriteResult {
+  const name = str(args.cosa).trim()
+  if (!name) return { writes: [], report: ['Falta qué ha hecho.'] }
+  const today = ymdIn(env.now, env.tz)
+  const date = isYmd(args.fecha) && args.fecha <= today ? args.fecha : today
+  const existing = rows.find((r) => r.tbl === 'trackers' && !r.data.archived && fold(str(r.data.name)) === fold(name)) ??
+    rows.find((r) => r.tbl === 'trackers' && !r.data.archived && fold(str(r.data.name)).includes(fold(name)))
+  const d: Data = existing ? { ...existing.data } : { id: env.newId(), name: name.charAt(0).toUpperCase() + name.slice(1), icon: 'circle', log: [], archived: 0, order: env.now, createdAt: env.now }
+  const log = [...new Set([date, ...((d.log as string[]) ?? [])])].sort((a, b) => b.localeCompare(a)).slice(0, 200)
+  d.log = log
+  if (typeof args.cada_dias === 'number' && args.cada_dias > 0) d.every = Math.round(args.cada_dias)
+  const at = trackerRemindAt(d, env)
+  if (at === undefined) delete d.remindAt
+  else d.remindAt = at
+  return {
+    writes: [{ tbl: 'trackers', id: String(existing?.id ?? d.id), data: d }],
+    report: [`${existing ? 'Apuntado' : 'Creado y apuntado'}: ${trackerLine(d, today)}${at ? `. Le avisaré el ${ymdIn(at, env.tz)}` : ''}.`],
+  }
+}
+
+// ── Compra ────────────────────────────────────────────────────
+
+export function listShopping(rows: Row[]): string {
+  const items = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
+  if (!items.length) return 'La lista de la compra está vacía.'
+  const out: string[] = []
+  for (const a of AISLES) {
+    const list = items.filter((r) => (r.data.aisle ?? 'otros') === a.id)
+    if (list.length) out.push(`${a.label}: ${list.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
+  }
+  return out.join('\n')
+}
+
+export function addShopping(rows: Row[], args: { cosas?: unknown }, env: Env): WriteResult {
+  const text = Array.isArray(args.cosas) ? args.cosas.map(String).join('\n') : str(args.cosas)
+  const parsed = parseItems(text)
+  if (!parsed.length) return { writes: [], report: ['No he entendido qué añadir.'] }
+  const known = Object.fromEntries(rows.filter((r) => r.tbl === 'pantry').map((r) => [r.id, str(r.data.aisle)]))
+  const pending = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked).map((r) => ({ r, key: itemKey(str(r.data.name)) }))
+  const writes: Row[] = []
+  const added: string[] = []
+  const already: string[] = []
+  parsed.forEach((it, i) => {
+    const key = itemKey(it.name)
+    const same = pending.find((p) => p.key === key)
+    if (same) {
+      already.push(it.name)
+      if (it.qty && it.qty !== same.r.data.qty) writes.push({ tbl: 'shopping', id: same.r.id, data: { ...same.r.data, qty: it.qty } })
+      return
+    }
+    const id = env.newId()
+    const data: Data = { id, name: it.name, aisle: aisleFor(it.name, known), checked: 0, order: env.now + i, createdAt: env.now }
+    if (it.qty) data.qty = it.qty
+    writes.push({ tbl: 'shopping', id, data })
+    pending.push({ r: { tbl: 'shopping', id, data }, key })
+    added.push(`${it.name}${it.qty ? ` (${it.qty})` : ''}`)
+  })
+  const report = [added.length ? `Añadido a la compra: ${added.join(', ')}.` : 'No había nada nuevo que añadir.']
+  if (already.length) report.push(`Ya estaba: ${already.join(', ')}.`)
+  return { writes, report }
+}
+
+// ── Diario ────────────────────────────────────────────────────
+
+const MOOD_WORDS = ['', 'muy mal', 'mal', 'normal', 'bien', 'muy bien']
+
+export function readJournal(rows: Row[], args: { desde?: string; hasta?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const from = isYmd(args.desde) ? args.desde : addDays(today, -6)
+  const to = isYmd(args.hasta) ? args.hasta : today
+  const list = rows.filter((r) => r.tbl === 'journal' && r.id >= from && r.id <= to).sort((a, b) => a.id.localeCompare(b.id))
+  if (!list.length) return `No hay nada en el diario entre ${from} y ${to}.`
+  return list
+    .map((r) => {
+      const d = r.data
+      const good = Array.isArray(d.good) && d.good.length ? ` · cosas buenas: ${(d.good as string[]).join('; ')}` : ''
+      return `- ${relDay(r.id, today)} (${r.id})${typeof d.mood === 'number' ? `, ánimo ${MOOD_WORDS[d.mood as number] ?? d.mood}` : ''}: ${str(d.text).trim() || '(sin texto)'}${good}`
+    })
+    .join('\n')
+}
+
+export function writeJournal(rows: Row[], args: { texto?: string; animo?: number; cosas_buenas?: unknown; fecha?: string }, env: Env): WriteResult {
+  const today = ymdIn(env.now, env.tz)
+  const date = isYmd(args.fecha) && args.fecha <= today ? args.fecha : today
+  const cur = rows.find((r) => r.tbl === 'journal' && r.id === date)?.data ?? { id: date, text: '', good: [] }
+  const d: Data = { ...cur, id: date, updatedAt: env.now }
+  const text = str(args.texto).trim()
+  // Se añade a lo que ya hubiera escrito ese día
+  if (text) d.text = [str(cur.text).trim(), text].filter(Boolean).join('\n\n')
+  if (typeof args.animo === 'number' && args.animo >= 1 && args.animo <= 5) d.mood = Math.round(args.animo)
+  if (Array.isArray(args.cosas_buenas)) d.good = [...((cur.good as string[]) ?? []), ...args.cosas_buenas.map(String).filter(Boolean)].slice(0, 3)
+  if (!Array.isArray(d.good)) d.good = []
+  if (typeof d.text !== 'string') d.text = ''
+  if (!text && d.mood === cur.mood && !Array.isArray(args.cosas_buenas)) return { writes: [], report: ['No había nada que apuntar.'] }
+  return {
+    writes: [{ tbl: 'journal', id: date, data: d }],
+    report: [`Apuntado en el diario de ${relDay(date, today)}${typeof d.mood === 'number' ? ` (ánimo: ${MOOD_WORDS[d.mood as number]})` : ''}.`],
   }
 }

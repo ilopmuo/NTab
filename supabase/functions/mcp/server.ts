@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -15,7 +15,11 @@ export interface Store {
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
 export const SERVER_INFO = { name: 'ntab', title: 'NTab', version: '1.0.0' }
 
-const INSTRUCTIONS = `NTab es la app con la que el usuario organiza su vida: tareas, proyectos, hábitos, objetivos, pagos y personas. Es muy despistado: ayúdale a no olvidar nada.
+const INSTRUCTIONS = `NTab es la app con la que el usuario organiza su vida: tareas, proyectos, hábitos, rutinas, objetivos, pagos, personas y sus cosas. Es muy despistado: ayúdale a no olvidar nada.
+- Ante «¿dónde dejé…?», «¿quién tiene mi…?» o «¿cuándo caduca…?», usa donde_esta; si te cuenta dónde guarda algo, a quién presta algo o que algo caduca, apúntalo con guardar_cosa.
+- Para lo que no puede olvidar (pastillas, llamadas importantes), crea la tarea con hora e insistir.
+- Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
+- Si te cuenta qué tal su día y quiere guardarlo, usa escribir_diario.
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
 - Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
 - Al planificar, ten en cuenta sus reuniones y la carga del día (duración estimada de las tareas); si un día pasa de 6 h, propón mover algo.
@@ -25,6 +29,7 @@ const INSTRUCTIONS = `NTab es la app con la que el usuario organiza su vida: tar
 const DATE = { type: 'string', description: 'YYYY-MM-DD' }
 const TIME = { type: 'string', description: 'HH:MM (24 h)' }
 const PRIORITY = { type: 'integer', minimum: 0, maximum: 3, description: '0 ninguna, 1 baja, 2 media, 3 alta' }
+const NAG = { type: 'integer', minimum: 5, description: 'Repetir el aviso cada N minutos hasta que la marque como hecha (para lo que no puede olvidar: pastillas, llamadas…). Necesita hora.' }
 const DURATION = { type: 'integer', minimum: 1, description: 'Minutos que calculas que llevará (para no sobrecargar el día)' }
 
 export const TOOLS = [
@@ -87,6 +92,7 @@ export const TOOLS = [
               subtareas: { type: 'array', items: { type: 'string' } },
               personas: { type: 'array', items: { type: 'string' }, description: 'Personas relacionadas (por nombre): la tarea aparece en su ficha' },
               duracion: DURATION,
+              insistir: NAG,
             },
             required: ['titulo'],
           },
@@ -118,6 +124,7 @@ export const TOOLS = [
               proyecto: { type: ['string', 'null'], description: 'Nombre del proyecto, o null para sacarla' },
               hecha: { type: 'boolean' },
               duracion: { type: ['integer', 'null'], minimum: 1, description: 'Minutos estimados, o null para quitarla' },
+              insistir: { type: ['integer', 'null'], minimum: 5, description: 'Repetir el aviso cada N minutos hasta que la haga, o null para dejar de insistir' },
             },
             required: ['id'],
           },
@@ -170,6 +177,120 @@ export const TOOLS = [
         limite: DATE,
       },
       required: ['nombre'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'donde_esta',
+    title: 'Dónde está',
+    description: 'Busca en sus Cosas: dónde guardó algo, qué ha prestado y a quién, qué le han prestado y qué caduca. Úsalo ante «¿dónde dejé…?», «¿quién tiene mi…?», «¿cuándo caduca…?».',
+    inputSchema: { type: 'object', properties: { busqueda: { type: 'string', description: 'Palabras: la cosa, el sitio o la persona' } }, required: ['busqueda'] },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'guardar_cosa',
+    title: 'Apuntar una cosa',
+    description:
+      'Apunta o actualiza (por nombre) una cosa: dónde la guardó, a quién se la prestó (tipo "prestado" + persona), quién se la prestó ("me lo prestaron") o cuándo caduca un documento o garantía ("caduca" + fecha). NTab avisa de las caducidades y de reclamar o devolver préstamos.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string' },
+        tipo: { type: 'string', enum: ['guardado', 'prestado', 'me lo prestaron', 'caduca'] },
+        donde: { type: 'string', description: 'Dónde está guardado' },
+        persona: { type: 'string', description: 'Para préstamos' },
+        desde: DATE,
+        devolver: { ...DATE, description: 'YYYY-MM-DD: cuándo reclamarlo o devolverlo' },
+        caduca: { ...DATE, description: 'YYYY-MM-DD: fecha de caducidad' },
+        avisar_dias: { type: 'integer', minimum: 1, description: 'Días antes de caducar para avisar (por defecto 30)' },
+        notas: { type: 'string' },
+      },
+      required: ['nombre'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'marcar_devuelto',
+    title: 'Marcar préstamo devuelto',
+    description: 'Marca como devuelto un préstamo (lo que prestó o lo que le prestaron).',
+    inputSchema: { type: 'object', properties: { cosa: { type: 'string', description: 'Nombre de la cosa o de la persona' } }, required: ['cosa'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'ver_diario',
+    title: 'Leer el diario',
+    description: 'Lee su diario (ánimo, texto y cosas buenas de cada día). Por defecto, la última semana. Úsalo para hablar de cómo le va o hacer una revisión.',
+    inputSchema: { type: 'object', properties: { desde: DATE, hasta: DATE } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'escribir_diario',
+    title: 'Escribir en el diario',
+    description: 'Apunta en su diario cómo le ha ido el día: texto (se añade a lo que ya hubiera), ánimo de 1 (muy mal) a 5 (muy bien) y hasta tres cosas buenas. Úsalo si te cuenta su día y quiere guardarlo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string' },
+        animo: { type: 'integer', minimum: 1, maximum: 5 },
+        cosas_buenas: { type: 'array', items: { type: 'string' }, maxItems: 3 },
+        fecha: DATE,
+      },
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'ver_compra',
+    title: 'Ver la lista de la compra',
+    description: 'La lista de la compra pendiente, ordenada por pasillos.',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'anadir_compra',
+    title: 'Añadir a la compra',
+    description: 'Añade cosas a la lista de la compra. Acepta texto libre con cantidades («leche, 2 barras de pan y detergente») o una lista. NTab las ordena por pasillos y no repite lo que ya está.',
+    inputSchema: {
+      type: 'object',
+      properties: { cosas: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Lo que hay que comprar' } },
+      required: ['cosas'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'ultima_vez',
+    title: 'Última vez',
+    description: '¿Cuándo fue la última vez que hizo algo que hace de vez en cuando (cambiar las sábanas, ir al dentista, regar las plantas)? Sin «cosa», lista todo.',
+    inputSchema: { type: 'object', properties: { cosa: { type: 'string' } } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'lo_he_hecho',
+    title: 'Apuntar que lo ha hecho',
+    description: 'Apunta en «Última vez» que ha hecho algo hoy (o en «fecha»). Si no existe, lo crea. Con cada_dias, NTab le avisa cuando vuelva a tocar.',
+    inputSchema: {
+      type: 'object',
+      properties: { cosa: { type: 'string' }, fecha: DATE, cada_dias: { type: 'integer', minimum: 1, description: 'Cada cuántos días debería hacerlo' } },
+      required: ['cosa'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'crear_rutina',
+    title: 'Crear rutina',
+    description:
+      'Crea una rutina: una lista corta de pasos que hace siempre igual («Antes de salir de casa»: llaves, cartera, móvil…). NTab le avisa a la hora y le guía paso a paso. Para lo que se repite con varios pasos, mejor una rutina que muchas tareas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string' },
+        pasos: { type: 'array', items: { type: 'string' }, minItems: 1, description: 'Pasos cortos, en orden' },
+        dias: {
+          description: 'Días en que toca: lista de números (0 domingo … 6 sábado) o "todos", "laborables", "fines de semana". Por defecto, todos.',
+          oneOf: [{ type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } }, { type: 'string' }],
+        },
+        hora: { ...TIME, description: 'HH:MM para avisarle de empezarla (opcional)' },
+      },
+      required: ['nombre', 'pasos'],
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
@@ -308,11 +429,25 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)
     }
+    case 'donde_esta':
+      return text(whereIs(await store.load(), args, env))
+    case 'ultima_vez':
+      return text(lastTime(await store.load(), args, env))
+    case 'ver_compra':
+      return text(listShopping(await store.load()))
+    case 'ver_diario':
+      return text(readJournal(await store.load(), args, env))
     case 'crear_proyecto':
+    case 'escribir_diario':
+    case 'anadir_compra':
+    case 'lo_he_hecho':
+    case 'guardar_cosa':
+    case 'marcar_devuelto':
+    case 'crear_rutina':
     case 'actualizar_objetivo':
     case 'registrar_contacto':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { crear_proyecto: createProject, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

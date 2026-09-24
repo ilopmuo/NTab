@@ -13,6 +13,10 @@ import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
 import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/components/ui'
 import { HabitStrip } from './habits/HabitStrip'
+import { RoutinesCard } from './routines/RoutinesCard'
+import { JournalPrompt } from './journal/JournalPrompt'
+import { ThingsAttention } from './things/ThingsAttention'
+import { TrackersDue } from './trackers/TrackersDue'
 import { useHabits } from './habits/useHabits'
 import { Agenda } from './today/Agenda'
 import { useEvents } from '@/lib/calendarEvents'
@@ -229,6 +233,10 @@ export function TodayView() {
 
         <aside className="min-w-0 space-y-4 [grid-area:side]">
           <Agenda tasks={todays} events={todayEvents} names={cal.names} />
+          <JournalPrompt />
+          <RoutinesCard />
+          <TrackersDue />
+          <ThingsAttention />
           <HabitStrip />
           <WeekStrip tasks={open} />
           <PaymentsCard />

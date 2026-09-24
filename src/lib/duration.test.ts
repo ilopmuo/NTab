@@ -22,3 +22,20 @@ describe('duración', () => {
     expect(dayLoad([{ estimate: 300 }], [120]).level).toBe('over')
   })
 })
+
+import { NAG_MAX, nagSlot } from './reminders'
+
+describe('avisos insistentes', () => {
+  const at = Date.UTC(2026, 8, 24, 8, 0)
+  const min = 60_000
+  it('cuenta las repeticiones', () => {
+    expect(nagSlot(at, 10, at - min)).toBeNull()
+    expect(nagSlot(at, 10, at + 9 * min)).toBeNull()
+    expect(nagSlot(at, 10, at + 10 * min)).toEqual({ n: 1, at: at + 10 * min })
+    expect(nagSlot(at, 10, at + 35 * min)).toEqual({ n: 3, at: at + 30 * min })
+  })
+  it('se cansa tras NAG_MAX', () => {
+    expect(nagSlot(at, 5, at + NAG_MAX * 5 * min)?.n).toBe(NAG_MAX)
+    expect(nagSlot(at, 5, at + (NAG_MAX + 1) * 5 * min)).toBeNull()
+  })
+})

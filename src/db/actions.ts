@@ -1,10 +1,12 @@
 import { db } from './db'
-import type { Area, Goal, Habit, Interaction, Note, Person, Project, Subscription, Task } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, JournalEntry, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
 import { advanceCharge, rollForward } from '@/lib/finance'
 import { putInTrash } from './trash'
+import { withDate } from '@/lib/trackers'
+import { aisleFor, itemKey, type ParsedItem } from '@/lib/shopping'
 
 // ── Tareas ────────────────────────────────────────────────────
 
@@ -373,4 +375,197 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 
 export async function setSetting(key: string, value: unknown) {
   await db.settings.put({ key, value })
+}
+
+// ── Rutinas ───────────────────────────────────────────────────
+
+export async function createRoutine(data: Partial<Routine> & { name: string }): Promise<Routine> {
+  const routine: Routine = {
+    id: uid(),
+    icon: 'list',
+    steps: [],
+    days: [0, 1, 2, 3, 4, 5, 6],
+    archived: 0,
+    order: Date.now(),
+    createdAt: Date.now(),
+    // Los campos sin valor no pisan los de por defecto (p. ej. días de una idea)
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.routines.add(routine)
+  return routine
+}
+
+export async function deleteRoutine(id: string) {
+  await db.transaction('rw', db.routines, db.routineRuns, db.trash, async () => {
+    const routine = await db.routines.get(id)
+    if (!routine) return
+    const runs = await db.routineRuns.where('routineId').equals(id).toArray()
+    await putInTrash('routines', routine, { related: runs.map((r) => ({ tbl: 'routineRuns', data: r as unknown as Record<string, unknown> })) })
+    await db.routineRuns.where('routineId').equals(id).delete()
+    await db.routines.delete(id)
+  })
+}
+
+/** Marca o desmarca un paso de la rutina en un día. Devuelve si ha quedado completa. */
+export async function toggleRoutineStep(routine: Routine, date: string, stepId: string, on?: boolean): Promise<boolean> {
+  return db.transaction('rw', db.routineRuns, async () => {
+    const run = await db.routineRuns.where('[routineId+date]').equals([routine.id, date]).first()
+    const done = new Set(run?.done ?? [])
+    const want = on ?? !done.has(stepId)
+    if (want) done.add(stepId)
+    else done.delete(stepId)
+    const list = routine.steps.map((s) => s.id).filter((s) => done.has(s))
+    const complete = routine.steps.length > 0 && list.length === routine.steps.length
+    const completedAt = complete ? (run?.completedAt ?? Date.now()) : undefined
+    if (run) await db.routineRuns.update(run.id, { done: list, completedAt })
+    else await db.routineRuns.add({ id: uid(), routineId: routine.id, date, done: list, ...(completedAt ? { completedAt } : {}) })
+    return complete
+  })
+}
+
+/** Empieza de nuevo la rutina de ese día */
+export async function resetRoutineRun(routineId: string, date: string) {
+  const run = await db.routineRuns.where('[routineId+date]').equals([routineId, date]).first()
+  if (run) await db.routineRuns.update(run.id, { done: [], completedAt: undefined })
+}
+
+// ── Cosas ─────────────────────────────────────────────────────
+
+export async function createThing(data: Partial<Thing> & { name: string; kind: Thing['kind'] }): Promise<Thing> {
+  const now = Date.now()
+  const thing: Thing = {
+    id: uid(),
+    createdAt: now,
+    updatedAt: now,
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.things.add(thing)
+  return thing
+}
+
+export async function updateThing(id: string, changes: Partial<Thing>) {
+  await db.things.update(id, { ...changes, updatedAt: Date.now() })
+}
+
+export async function deleteThing(id: string) {
+  await db.transaction('rw', db.things, db.trash, async () => {
+    const thing = await db.things.get(id)
+    if (!thing) return
+    await putInTrash('things', thing)
+    await db.things.delete(id)
+  })
+}
+
+/** Pone hora a varias tareas de una vez (colocar en huecos). Devuelve cómo estaban. */
+export async function setTaskTimes(times: { id: string; time: string }[]): Promise<Task[]> {
+  return db.transaction('rw', db.tasks, async () => {
+    const before = (await db.tasks.bulkGet(times.map((t) => t.id))).filter((t): t is Task => !!t)
+    for (const { id, time } of times) await db.tasks.where('id').equals(id).modify((t) => void (t.dueTime = time))
+    return structuredClone(before)
+  })
+}
+
+// ── Última vez ────────────────────────────────────────────────
+
+export async function createTracker(data: Partial<Tracker> & { name: string }): Promise<Tracker> {
+  const tracker: Tracker = {
+    id: uid(),
+    icon: 'circle',
+    log: [],
+    archived: 0,
+    order: Date.now(),
+    createdAt: Date.now(),
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.trackers.add(tracker)
+  return tracker
+}
+
+/** Apunta que se ha hecho ese día. Devuelve el historial anterior (para deshacer). */
+export async function logTracker(id: string, date = today()): Promise<string[] | undefined> {
+  const t = await db.trackers.get(id)
+  if (!t) return
+  await db.trackers.update(id, { log: withDate(t.log, date) })
+  return t.log
+}
+
+export async function setTrackerLog(id: string, log: string[]) {
+  await db.trackers.update(id, { log })
+}
+
+export async function deleteTracker(id: string) {
+  await db.transaction('rw', db.trackers, db.trash, async () => {
+    const t = await db.trackers.get(id)
+    if (!t) return
+    await putInTrash('trackers', t)
+    await db.trackers.delete(id)
+  })
+}
+
+// ── Compra ────────────────────────────────────────────────────
+
+/** Añade cosas a la lista (sin repetir lo que ya está pendiente). Devuelve lo añadido. */
+export async function addShoppingItems(items: ParsedItem[]): Promise<ShoppingItem[]> {
+  return db.transaction('rw', db.shopping, db.pantry, async () => {
+    const pantry = await db.pantry.toArray()
+    const known = Object.fromEntries(pantry.map((p) => [p.id, p.aisle]))
+    const pending = (await db.shopping.where('checked').equals(0).toArray()).map((x) => ({ x, key: itemKey(x.name) }))
+    const added: ShoppingItem[] = []
+    let order = Date.now()
+    for (const it of items) {
+      const key = itemKey(it.name)
+      const same = pending.find((p) => p.key === key)
+      if (same) {
+        if (it.qty && it.qty !== same.x.qty) await db.shopping.update(same.x.id, { qty: it.qty })
+        continue
+      }
+      const item: ShoppingItem = { id: uid(), name: it.name, aisle: aisleFor(it.name, known), checked: 0, order: order++, createdAt: Date.now(), ...(it.qty ? { qty: it.qty } : {}) }
+      await db.shopping.add(item)
+      pending.push({ x: item, key })
+      added.push(item)
+    }
+    return added
+  })
+}
+
+export async function toggleShopping(id: string) {
+  const it = await db.shopping.get(id)
+  if (it) await db.shopping.update(id, { checked: it.checked ? 0 : 1 })
+}
+
+/** Cambia el pasillo y lo recuerda para la próxima vez */
+export async function setShoppingAisle(id: string, aisle: string) {
+  await db.transaction('rw', db.shopping, db.pantry, async () => {
+    const it = await db.shopping.get(id)
+    if (!it) return
+    await db.shopping.update(id, { aisle })
+    const key = itemKey(it.name)
+    const p = await db.pantry.get(key)
+    await db.pantry.put({ id: key, name: it.name, aisle, count: p?.count ?? 0, lastAt: p?.lastAt ?? 0 })
+  })
+}
+
+/** Terminar la compra: lo del carro sale de la lista y cuenta para «lo de siempre» */
+export async function finishShopping(): Promise<ShoppingItem[]> {
+  return db.transaction('rw', db.shopping, db.pantry, async () => {
+    const bought = await db.shopping.where('checked').equals(1).toArray()
+    const now = Date.now()
+    for (const it of bought) {
+      const key = itemKey(it.name)
+      const p = await db.pantry.get(key)
+      await db.pantry.put({ id: key, name: it.name, aisle: it.aisle, count: (p?.count ?? 0) + 1, lastAt: now })
+    }
+    await db.shopping.bulkDelete(bought.map((b) => b.id))
+    return bought
+  })
+}
+
+// ── Diario ────────────────────────────────────────────────────
+
+/** Guarda (o completa) la entrada de un día */
+export async function saveJournal(date: string, patch: Partial<Omit<JournalEntry, 'id'>>) {
+  await db.transaction('rw', db.journal, async () => {
+    const cur = await db.journal.get(date)
+    await db.journal.put({ id: date, text: '', good: [], ...cur, ...patch, updatedAt: Date.now() })
+  })
 }

@@ -1,8 +1,10 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Area, FocusLog, Goal, Habit, HabitLog, Interaction, Note, Person, Project, Setting, Subscription, Task, Template, TrashItem } from './types'
+import type { Area, FocusLog, Goal, Habit, HabitLog, Interaction, Note, Person, Project, Routine, RoutineRun, Setting, Subscription, Task, Template, Thing, Tracker, TrashItem, ShoppingItem, PantryItem, JournalEntry } from './types'
 import { createTracking, type OutboxEntry } from '@/sync/tracking'
 import { computeRemindAt, withDefaultReminder } from '@/lib/reminders'
 import { computeSubRemindAt } from '@/lib/finance'
+import { computeThingRemindAt } from '@/lib/things'
+import { computeTrackerRemindAt } from '@/lib/trackers'
 import { prefs } from '@/lib/prefs'
 
 /** Estado interno de la sincronización (solo de este dispositivo, nunca se sube) */
@@ -25,6 +27,13 @@ export class NTabDB extends Dexie {
   trash!: EntityTable<TrashItem, 'id'>
   templates!: EntityTable<Template, 'id'>
   focusLogs!: EntityTable<FocusLog, 'id'>
+  routines!: EntityTable<Routine, 'id'>
+  routineRuns!: EntityTable<RoutineRun, 'id'>
+  things!: EntityTable<Thing, 'id'>
+  trackers!: EntityTable<Tracker, 'id'>
+  shopping!: EntityTable<ShoppingItem, 'id'>
+  pantry!: EntityTable<PantryItem, 'id'>
+  journal!: EntityTable<JournalEntry, 'id'>
   settings!: EntityTable<Setting, 'key'>
   /** cambios locales pendientes de subir */
   _outbox!: EntityTable<OutboxEntry, 'key'>
@@ -60,6 +69,17 @@ export class NTabDB extends Dexie {
       templates: 'id, order',
       focusLogs: 'id, date, taskId',
     })
+    this.version(6).stores({
+      routines: 'id, archived, order',
+      routineRuns: 'id, routineId, date, [routineId+date]',
+      things: 'id, kind, personId, expires, updatedAt',
+    })
+    this.version(7).stores({
+      trackers: 'id, archived, order',
+      shopping: 'id, checked, aisle, order',
+      pantry: 'id, count, lastAt',
+      journal: 'id, mood, updatedAt',
+    })
   }
 }
 
@@ -78,6 +98,13 @@ export const TABLES = [
   'trash',
   'templates',
   'focusLogs',
+  'routines',
+  'routineRuns',
+  'things',
+  'trackers',
+  'shopping',
+  'pantry',
+  'journal',
   'settings',
 ] as const
 export type TableName = (typeof TABLES)[number]
@@ -155,3 +182,37 @@ export function installReminderHooks(target: NTabDB) {
   })
 }
 installReminderHooks(db)
+
+/** Cosas: aviso de caducidad o de devolución (lo usa también el servidor) */
+export function installThingHooks(target: NTabDB) {
+  target.things.hook('creating', (_pk, obj) => {
+    const at = computeThingRemindAt(obj)
+    if (at === undefined) delete obj.remindAt
+    else obj.remindAt = at
+  })
+  target.things.hook('updating', (mods, _pk, obj) => {
+    const m = mods as Record<string, unknown>
+    if (!['kind', 'expires', 'notifyDays', 'returnBy', 'returned'].some((k) => k in m)) return
+    const at = computeThingRemindAt({ ...obj, ...m } as Thing)
+    return at !== obj.remindAt ? { remindAt: at } : undefined
+  })
+}
+installThingHooks(db)
+
+/** «Última vez»: aviso cuando toca (lo mira también el servidor) */
+export function installTrackerHooks(target: NTabDB) {
+  target.trackers.hook('creating', (_pk, obj) => {
+    const at = computeTrackerRemindAt(obj)
+    if (at === undefined) delete obj.remindAt
+    else obj.remindAt = at
+  })
+  target.trackers.hook('updating', (mods, _pk, obj) => {
+    const m = mods as Record<string, unknown>
+    if (!Object.keys(m).some((k) => k === 'every' || k === 'archived' || k.startsWith('log'))) return
+    const next = Dexie.deepClone(obj) as unknown as Record<string, unknown>
+    for (const [k, v] of Object.entries(m)) Dexie.setByKeyPath(next, k, v)
+    const at = computeTrackerRemindAt(next as unknown as Tracker)
+    return at !== obj.remindAt ? { remindAt: at } : undefined
+  })
+}
+installTrackerHooks(db)

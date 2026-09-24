@@ -51,5 +51,11 @@ Glifos sobre círculos o cuadrados de relleno gris (`--c-fill`). La sección act
 | Avisos | Cápsula con una barra del tiempo que queda para deshacer; se aparta deslizándola |
 | Barra de pestañas | Se encoge (sin textos) al bajar por una pantalla y vuelve al subir, como en iOS 26 |
 | Estados vacíos | El icono flota muy suavemente |
+| Rutina paso a paso | Un paso en grande que entra de lado; la barra de pasos se llena en lima; confeti al terminar |
+| Procesar la bandeja | Mazo de cartas: la de arriba se arrastra y gira con el dedo (→ hoy, ← luego) y sale volando; las de detrás suben |
+| Hora a hora | Al «Colocar en huecos», los bloques de las tareas aparecen en su hueco con un muelle |
+| Dictado | El micrófono se pone lima y late mientras escucha |
+| Ánimo del diario | Cinco caras en gris; la elegida crece con un muelle y se rellena (gris para lo malo, azul para bien, lima para muy bien). El mapa de ánimo usa los mismos colores |
+| Compra | Lo que vas a añadir aparece en píldoras con su pasillo mientras escribes; al marcar, la fila baja al carro |
 
 La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el interruptor nativo oculto (`src/lib/haptics.ts`).

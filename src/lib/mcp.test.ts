@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -221,5 +221,83 @@ describe('conector MCP', () => {
     expect(task().data.estimate).toBe(90)
     await call(store, 'actualizar_tareas', { cambios: [{ id: task().id, duracion: null }] })
     expect(task().data.estimate).toBeUndefined()
+  })
+
+  it('insistir hasta que lo haga', async () => {
+    const store = memoryStore(base())
+    const r = await call(store, 'crear_tareas', { tareas: [{ titulo: 'Tomar la pastilla', fecha: '2026-09-24', hora: '22:00', insistir: 10 }] })
+    expect(r.text).toContain('insiste cada 10 min')
+    const task = () => [...store.rows.values()].find((x) => x.data.title === 'Tomar la pastilla')!
+    expect(task().data.nag).toBe(10)
+    expect(typeof task().data.remindAt).toBe('number')
+    await call(store, 'actualizar_tareas', { cambios: [{ id: task().id, insistir: null }] })
+    expect(task().data.nag).toBeUndefined()
+  })
+
+  it('rutinas: crear y verlas en el resumen', async () => {
+    const store = memoryStore(base())
+    const r = await call(store, 'crear_rutina', { nombre: 'Antes de salir', pasos: ['Llaves', 'Cartera', 'Móvil'], dias: 'todos', hora: '8:05' })
+    expect(r.text).toContain('Rutina creada: «Antes de salir» con 3 pasos, aviso a las 08:05')
+    const routine = [...store.rows.values()].find((x) => x.tbl === 'routines')!
+    const first = (routine.data.steps as { id: string }[])[0].id
+    await store.save([{ tbl: 'routineRuns', id: 'run', data: { routineId: routine.id, date: '2026-09-24', done: [first] } }])
+    const summary = (await call(store, 'ver_resumen')).text
+    expect(summary).toContain('- Antes de salir (08:05): 1 de 3 pasos; faltan: Cartera, Móvil')
+    expect((await call(store, 'crear_rutina', { nombre: 'antes de salir', pasos: ['x'] })).text).toContain('Ya existe')
+  })
+
+  it('cosas: apuntar, buscar, préstamos y caducidades', async () => {
+    const store = memoryStore(base())
+    let r = await call(store, 'guardar_cosa', { nombre: 'Pasaporte', donde: 'Cajón del escritorio', tipo: 'caduca', caduca: '2027-03-01' })
+    expect(r.text).toContain('Apuntado: Pasaporte · caduca')
+    expect(r.text).toContain('está en: Cajón del escritorio')
+    expect(r.text).toContain('te avisaré el 2027-01-30')
+    r = await call(store, 'guardar_cosa', { nombre: 'Taladro', tipo: 'prestado', persona: 'Ana', devolver: '2026-10-01' })
+    expect(r.text).toContain('lo tiene Ana')
+    const taladro = [...store.rows.values()].find((x) => x.data.name === 'Taladro')!
+    expect(taladro.data.personId).toBe('x1')
+    expect(typeof taladro.data.remindAt).toBe('number')
+    expect((await call(store, 'donde_esta', { busqueda: 'cajon' })).text).toContain('Pasaporte')
+    expect((await call(store, 'donde_esta', { busqueda: 'ana' })).text).toContain('Taladro')
+    expect((await call(store, 'ver_resumen')).text).toContain('- Prestado: Taladro · lo tiene Ana')
+    r = await call(store, 'marcar_devuelto', { cosa: 'taladro' })
+    expect(r.text).toBe('«Taladro» marcado como devuelto.')
+    expect((await call(store, 'guardar_cosa', { nombre: 'Libro', tipo: 'prestado' })).text).toContain('hace falta la persona')
+  })
+
+  it('última vez: apuntar, consultar y lo que toca', async () => {
+    const store = memoryStore(base())
+    let r = await call(store, 'lo_he_hecho', { cosa: 'cambiar las sábanas', fecha: '2026-09-01', cada_dias: 14 })
+    expect(r.text).toContain('Creado y apuntado: Cambiar las sábanas · última vez')
+    expect(r.text).toContain('Le avisaré el 2026-09-25')
+    expect((await call(store, 'ultima_vez', { cosa: 'sabanas' })).text).toContain('hace 23 días')
+    expect((await call(store, 'ver_resumen')).text).toContain('TOCA HACER')
+    r = await call(store, 'lo_he_hecho', { cosa: 'sábanas' })
+    expect(r.text).toContain('Apuntado: Cambiar las sábanas · última vez hoy')
+    expect(r.text).toContain('2 veces apuntado')
+    expect((await call(store, 'ver_resumen')).text).not.toContain('TOCA HACER')
+  })
+
+  it('compra: añadir sin repetir y verla por pasillos', async () => {
+    const store = memoryStore(base())
+    let r = await call(store, 'anadir_compra', { cosas: 'leche, 2 barras de pan y detergente' })
+    expect(r.text).toBe('Añadido a la compra: Leche, Pan (2 barras), Detergente.')
+    r = await call(store, 'anadir_compra', { cosas: ['leche', 'plátanos'] })
+    expect(r.text).toBe('Añadido a la compra: Plátanos.\nYa estaba: Leche.')
+    expect((await call(store, 'ver_compra')).text).toBe('Fruta y verdura: Plátanos\nPanadería: Pan (2 barras)\nLácteos y huevos: Leche\nLimpieza y hogar: Detergente')
+    expect((await call(store, 'ver_resumen')).text).toContain('LISTA DE LA COMPRA (4)')
+  })
+
+  it('diario: escribir, añadir y leer; ánimo en el resumen', async () => {
+    const store = memoryStore(base())
+    let r = await call(store, 'escribir_diario', { texto: 'Buen día de trabajo.', animo: 4, cosas_buenas: ['Terminé el informe'] })
+    expect(r.text).toBe('Apuntado en el diario de hoy (ánimo: bien).')
+    r = await call(store, 'escribir_diario', { texto: 'Por la tarde, cine.' })
+    const entry = [...store.rows.values()].find((x) => x.tbl === 'journal')!
+    expect(entry.id).toBe('2026-09-24')
+    expect(entry.data.text).toBe('Buen día de trabajo.\n\nPor la tarde, cine.')
+    expect(entry.data.mood).toBe(4)
+    expect((await call(store, 'ver_diario', {})).text).toContain('ánimo bien: Buen día de trabajo.')
+    expect((await call(store, 'ver_resumen')).text).toContain('ÁNIMO ÚLTIMOS DÍAS (diario, 1 muy mal – 5 muy bien): hoy 4')
   })
 })

@@ -149,6 +149,8 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 12 — Tu día a día** · Lista de la compra por pasillos (escrita o dictada, «lo de siempre»), «Última vez» con aviso cuando toca y diario con ánimo, tres cosas buenas y lo hecho del día; todo también desde Claude.
+- ✅ **Fase 11 — Tu memoria externa** · Avisos insistentes, rutinas paso a paso, Cosas (dónde está, préstamos y caducidades), el día hora a hora con «Colocar en huecos», procesar la bandeja carta a carta y dictado por voz; todo también desde Claude.
 - ✅ **Fase 10 — Se siente viva** · Deslizar tareas (hecha / mañana) con háptica, chispas al completar y «Día completado» con confeti, contadores que ruedan, tema con revelado circular, avisos con tiempo para deshacer y que se apartan deslizando, barra de pestañas que se encoge, detalles de estilo en móvil.
 - ✅ **Fase 9 — Tu día completo** · Eventos de tus calendarios (Google, iCloud, Outlook) en Hoy, Calendario, Planificar y Claude; duración estimada de las tareas y carga del día; selección múltiple con acciones en bloque.
 - ✅ **Fase 8 — Personas y rutinas** · @personas en las tareas, recordatorios de hábitos, repetir desde que se completa y saltar una vez, carga por vistas y atajos del icono.
@@ -163,7 +165,8 @@ src/
 - Reordenar tareas arrastrando dentro de una lista (hoy el orden es automático: fecha, hora y prioridad).
 - Buscar en la papelera y recuperar varias cosas a la vez.
 - Leer Gmail directamente (requiere OAuth de Google).
-- Colocar tareas en los huecos libres entre reuniones.
+- Mover bloques en «Hora a hora» arrastrándolos.
+- Rutinas ligadas a un lugar (al salir o llegar a casa) cuando la web lo permita.
 
 ## 8. Atajos de teclado
 
@@ -171,7 +174,7 @@ src/
 |-------|--------|
 | `N` | Nueva tarea (captura rápida) |
 | `⌘K` / `Ctrl K` | Paleta de comandos / búsqueda |
-| `G` luego `H` / `I` / `U` / `C` / `B` / `O` / `P` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Notas / Personas / Proyectos / Objetivos / Pagos |
+| `G` luego `H` / `I` / `U` / `C` / `B` / `E` / `K` / `V` / `A` / `D` / `O` / `P` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Rutinas / Cosas / Última vez / Compra / Diario / Notas / Personas / Proyectos / Objetivos / Pagos |
 | `Esc` | Cerrar panel o modal, o salir de la selección |
 | `⌘`/`Ctrl` + clic | Seleccionar varias tareas |
 | `?` | Ver todos los atajos |

@@ -126,6 +126,8 @@ export interface Task {
   /** duración estimada en minutos */
   estimate?: number
   reminder?: Reminder | null
+  /** insistir: repetir el aviso cada N minutos hasta que se complete o se posponga */
+  nag?: number
   /** momento del aviso ya calculado (ms); lo usa el servidor para enviar la notificación */
   remindAt?: number
   order: number
@@ -156,6 +158,126 @@ export interface Habit {
   archived: 0 | 1
   order: number
   createdAt: number
+}
+
+/** Rutina: pasos que se repiten a una hora («Antes de salir de casa») */
+export interface RoutineStep {
+  id: ID
+  title: string
+}
+
+export interface Routine {
+  id: ID
+  name: string
+  icon: string
+  steps: RoutineStep[]
+  /** días de la semana en que toca (0 = domingo) */
+  days: number[]
+  /** HH:MM: aviso para empezarla */
+  time?: string
+  archived: 0 | 1
+  order: number
+  createdAt: number
+}
+
+/** Lo hecho de una rutina un día concreto (se reinicia cada día) */
+export interface RoutineRun {
+  id: ID
+  routineId: ID
+  /** YYYY-MM-DD */
+  date: string
+  /** pasos marcados */
+  done: ID[]
+  /** cuando se marcaron todos */
+  completedAt?: number
+}
+
+/**
+ * Cosas y papeles: dónde está algo, qué se ha prestado y lo que caduca.
+ * - stored: guardado en un sitio («Pasaporte → cajón del escritorio»)
+ * - lent: prestado a alguien; borrowed: me lo han prestado
+ * - document: documento o garantía que caduca
+ */
+export type ThingKind = 'stored' | 'lent' | 'borrowed' | 'document'
+
+export interface Thing {
+  id: ID
+  name: string
+  kind: ThingKind
+  /** dónde está guardado */
+  location?: string
+  notes?: string
+  /** foto pequeña (JPEG en data URL) */
+  photo?: string
+  /** persona del préstamo (de Personas) */
+  personId?: ID
+  /** nombre, si la persona no está en Personas */
+  personName?: string
+  /** YYYY-MM-DD: desde cuándo (préstamos) */
+  since?: string
+  /** YYYY-MM-DD: cuándo debería volver (préstamos) */
+  returnBy?: string
+  /** YYYY-MM-DD: caducidad (documentos, garantías) */
+  expires?: string
+  /** días antes de caducar para avisar */
+  notifyDays?: number
+  /** préstamo ya devuelto (se guarda como historial) */
+  returned?: 0 | 1
+  /** momento del aviso ya calculado (ms): caducidad o devolución */
+  remindAt?: number
+  createdAt: number
+  updatedAt: number
+}
+
+/** «Última vez»: algo que se hace de vez en cuando («cambiar las sábanas») */
+export interface Tracker {
+  id: ID
+  name: string
+  icon: string
+  /** fechas en que se hizo (YYYY-MM-DD), de la más reciente a la más antigua */
+  log: string[]
+  /** cada cuántos días toca (opcional): avisa cuando se pasa */
+  every?: number
+  /** momento del aviso ya calculado (ms) */
+  remindAt?: number
+  archived: 0 | 1
+  order: number
+  createdAt: number
+}
+
+/** Lista de la compra */
+export interface ShoppingItem {
+  id: ID
+  name: string
+  /** cantidad tal cual («2», «1 kg», «una docena») */
+  qty?: string
+  /** pasillo: fruta, lacteos, limpieza… (ver src/lib/shopping.ts) */
+  aisle: string
+  /** 1 = ya en el carro */
+  checked: 0 | 1
+  order: number
+  createdAt: number
+}
+
+/** Lo que se suele comprar (para «lo de siempre»). id = nombre normalizado */
+export interface PantryItem {
+  id: ID
+  name: string
+  aisle: string
+  count: number
+  lastAt: number
+}
+
+/** Diario: una entrada por día (id = fecha) */
+export interface JournalEntry {
+  /** YYYY-MM-DD */
+  id: string
+  /** 1 (muy mal) … 5 (muy bien) */
+  mood?: number
+  text: string
+  /** hasta 3 cosas buenas del día */
+  good: string[]
+  updatedAt: number
 }
 
 export interface HabitLog {
@@ -201,7 +323,7 @@ export interface Setting {
 export interface TrashItem {
   /** `${tbl}:${itemId}` */
   id: string
-  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals'
+  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals' | 'routines' | 'things' | 'trackers'
   itemId: ID
   title: string
   data: Record<string, unknown>

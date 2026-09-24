@@ -15,6 +15,7 @@ export function useNavCounts() {
   const logs = useLiveQuery(() => db.habitLogs.where('date').equals(t).toArray(), [t]) ?? []
   const notes = useLiveQuery(() => db.notes.count(), []) ?? 0
   const people = useLiveQuery(() => db.people.toArray(), []) ?? []
+  const shopping = useLiveQuery(() => db.shopping.where('checked').equals(0).count(), []) ?? 0
 
   return useMemo(() => {
     const week = addDaysYmd(t, 7)
@@ -37,8 +38,9 @@ export function useNavCounts() {
       habitsLeft: scheduled.filter((h) => !doneIds.has(h.id)).length,
       notes,
       peopleDue: dueForContact(people, t).length,
+      shopping,
       byProject,
       byArea,
     }
-  }, [tasks, habits, logs, notes, people, t])
+  }, [tasks, habits, logs, notes, people, shopping, t])
 }

@@ -13,6 +13,9 @@ const TITLE_FIELD: Record<Tbl, string> = {
   habits: 'name',
   subscriptions: 'name',
   goals: 'title',
+  routines: 'name',
+  things: 'name',
+  trackers: 'name',
 }
 
 export const trashKey = (tbl: Tbl, id: string) => `${tbl}:${id}`
@@ -30,7 +33,7 @@ export async function putInTrash(tbl: Tbl, data: object, extra: Pick<TrashItem, 
 
 /** Devuelve algo de la papelera a su sitio, con lo que se borró con él */
 export async function restoreFromTrash(key: string): Promise<TrashItem | undefined> {
-  const tables = [db.trash, db.tasks, db.notes, db.projects, db.people, db.habits, db.subscriptions, db.goals, db.interactions, db.habitLogs]
+  const tables = [db.trash, db.tasks, db.notes, db.projects, db.people, db.habits, db.subscriptions, db.goals, db.interactions, db.habitLogs, db.routines, db.routineRuns, db.things, db.trackers]
   return db.transaction('rw', tables, async () => {
     const item = await db.trash.get(key)
     if (!item) return undefined

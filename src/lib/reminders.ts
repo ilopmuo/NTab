@@ -51,3 +51,32 @@ export function reminderLabel(r: Reminder | null | undefined): string | undefine
   }
   return REMINDER_OPTIONS.find((o) => o.value === String(r.before))?.label ?? `${r.before} minutos antes`
 }
+
+// ── Avisos insistentes ────────────────────────────────────────
+
+/** Repeticiones como mucho (con 10 min, dos horas insistiendo) */
+export const NAG_MAX = 12
+
+export const NAG_OPTIONS: { value: number; label: string }[] = [
+  { value: 5, label: 'Cada 5 minutos' },
+  { value: 10, label: 'Cada 10 minutos' },
+  { value: 15, label: 'Cada 15 minutos' },
+  { value: 30, label: 'Cada 30 minutos' },
+  { value: 60, label: 'Cada hora' },
+]
+
+export function nagLabel(nag: number) {
+  return NAG_OPTIONS.find((o) => o.value === nag)?.label.toLowerCase() ?? `cada ${nag} minutos`
+}
+
+/**
+ * Última repetición que ya toca (1 = la primera tras el aviso) y su momento.
+ * La misma cuenta la hace el servidor en `due_nags()`.
+ */
+export function nagSlot(remindAt: number, nag: number, now: number): { n: number; at: number } | null {
+  if (!(nag >= 1) || now <= remindAt) return null
+  const step = nag * 60_000
+  const n = Math.floor((now - remindAt) / step)
+  if (n < 1 || n > NAG_MAX) return null
+  return { n, at: remindAt + n * step }
+}

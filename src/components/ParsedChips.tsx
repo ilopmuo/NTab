@@ -1,10 +1,10 @@
-import { AtSign, Bell, Calendar, Clock, Flag, Folder, Hash, Hourglass, Repeat } from 'lucide-react'
+import { AtSign, Bell, Calendar, Clock, Flag, Folder, Hash, Hourglass, Repeat, Repeat2 } from 'lucide-react'
 import type { ParsedTask } from '@/lib/parse'
 import { useLookup } from '@/db/hooks'
 import { dateLabel } from '@/lib/dates'
 import { durationLabel } from '@/lib/duration'
 import { recurrenceLabel } from '@/lib/recurrence'
-import { reminderLabel } from '@/lib/reminders'
+import { nagLabel, reminderLabel } from '@/lib/reminders'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor } from '@/lib/tasks'
 import { Icon } from './icons'
 import { motion } from 'motion/react'
@@ -58,6 +58,12 @@ export function ParsedChips({ parsed, className }: { parsed: ParsedTask; classNa
         <Chip color="var(--c-blue)">
           <Bell size={13} strokeWidth={2.4} />
           {reminderLabel(parsed.reminder)}
+        </Chip>
+      )}
+      {parsed.nag && (
+        <Chip color="var(--c-blue)">
+          <Repeat2 size={13} strokeWidth={2.4} />
+          Insiste {nagLabel(parsed.nag)}
         </Chip>
       )}
       {parsed.recurrence && (

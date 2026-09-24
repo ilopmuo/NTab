@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { CalendarClock } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { ui } from '@/app/store'
+import { href } from '@/app/router'
 import { eventMinutes, eventTime, type CalEvent } from '@/lib/calendarEvents'
 import { dayLoad } from '@/lib/duration'
 import { LoadBar } from '../plan/LoadBar'
@@ -46,6 +47,9 @@ export function Agenda({ tasks, events = [], names = {} }: { tasks: Task[]; even
       <div className="mb-2 flex items-center gap-2">
         <CalendarClock size={16} className="text-fg" strokeWidth={2.4} />
         <h3 className="text-[15px] font-bold">Agenda</h3>
+        <a href={href('/plan')} className="ml-auto text-[13px] font-semibold text-blue hover:underline">
+          Organizar
+        </a>
       </div>
       {allDay.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">

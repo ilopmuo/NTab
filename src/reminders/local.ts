@@ -6,6 +6,9 @@ import { chargeWhen, money } from '@/lib/finance'
 import { toast, ui } from '@/app/store'
 import { navigate } from '@/app/router'
 import { prefs } from '@/lib/prefs'
+import { nagSlot } from '@/lib/reminders'
+import { routineProgress, routineToday } from '@/lib/routines'
+import { runner } from '@/features/routines/useRoutines'
 import { chime, primeSound } from './sound'
 import { askPermission } from './push'
 
@@ -147,6 +150,24 @@ export function startLocalReminders() {
       )
       void showSystemNotification(`tasks-${t.id}`, t.title, when, `./#/task/${t.id}`, `tasks-${t.id}-${t.remindAt}`)
     }
+    // Avisos insistentes: se repiten hasta que la tarea se hace o se pospone
+    const nags = (await db.tasks.where('done').equals(0).toArray())
+      .filter((t) => t.nag && t.remindAt !== undefined)
+      .map((t) => ({ t, slot: nagSlot(t.remindAt!, t.nag!, now) }))
+      .filter(({ t, slot }) => slot && slot.at > last0 && !seen.has(`${t.id}:${slot.at}`))
+    for (const { t, slot } of nags) {
+      seen.add(`${t.id}:${slot!.at}`)
+      toast(
+        `Sigue pendiente: ${t.title}`,
+        [
+          { label: 'Hecho', run: () => void applyReminderAction('done', t.id) },
+          { label: `${SNOOZE_MINUTES} min`, run: () => void applyReminderAction('snooze', t.id) },
+        ],
+        20_000,
+        { icon: 'bell', onClick: () => openTaskFromNotification(t.id) },
+      )
+      void showSystemNotification(`tasks-${t.id}`, t.title, 'Sigue pendiente', `./#/task/${t.id}`, `tasks-${t.id}-${slot!.at}`)
+    }
     // Pagos: aviso días antes del cargo
     const subs = (await db.subscriptions.toArray()).filter(
       (x) => x.active && x.remindAt !== undefined && x.remindAt > last0 && x.remindAt <= now && !seen.has(`${x.id}:${x.remindAt}`),
@@ -156,6 +177,23 @@ export function startLocalReminders() {
       const body = `${money(x.amount, x.currency)} · ${chargeWhen(x.nextDate).toLowerCase()}`
       toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate('/finance') }, 15_000, { icon: 'bell' })
       void showSystemNotification(`subscriptions-${x.id}`, x.name, `Cargo de ${body}`, './#/finance', `subscriptions-${x.id}-${x.remindAt}`)
+    }
+    // Cosas: caducidades y préstamos
+    const things = (await db.things.toArray()).filter((x) => !x.returned && x.remindAt !== undefined && x.remindAt > last0 && x.remindAt <= now && !seen.has(`${x.id}:${x.remindAt}`))
+    for (const x of things) {
+      seen.add(`${x.id}:${x.remindAt}`)
+      const body = x.kind === 'lent' ? `Se lo prestaste a ${x.personName ?? 'alguien'}. ¿Te lo ha devuelto?` : x.kind === 'borrowed' ? `Tienes que devolvérselo a ${x.personName ?? 'alguien'}.` : 'Caduca pronto. Toca renovarlo.'
+      toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate(`/things/${x.id}`) }, 15_000, { icon: 'bell' })
+      void showSystemNotification(`things-${x.id}`, x.name, body, './#/things', `things-${x.id}-${x.remindAt}`)
+    }
+    // «Última vez»: toca volver a hacerlo
+    const trackers = (await db.trackers.where('archived').equals(0).toArray()).filter((x) => x.remindAt !== undefined && x.remindAt > last0 && x.remindAt <= now && !seen.has(`${x.id}:${x.remindAt}`))
+    for (const x of trackers) {
+      seen.add(`${x.id}:${x.remindAt}`)
+      const days = x.log[0] ? Math.round((Date.parse(today()) - Date.parse(x.log[0])) / 864e5) : 0
+      const body = `La última vez fue hace ${days} ${days === 1 ? 'día' : 'días'}. ¿Toca ya?`
+      toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate('/trackers') }, 15_000, { icon: 'bell' })
+      void showSystemNotification(`trackers-${x.id}`, x.name, body, './#/trackers', `trackers-${x.id}-${x.remindAt}`)
     }
     // Hábitos con hora de aviso que aún no están hechos hoy
     const day = today()
@@ -174,8 +212,33 @@ export function startLocalReminders() {
       })
       void showSystemNotification(`habits-${h.id}`, h.name, 'Aún no lo has marcado hoy. ¿Lo haces ahora?', './#/habits', `habits-${h.id}-${day}`, h.id)
     }
-    if (habits.length) saveSeen(seen)
-    if (due.length || subs.length || pending.length) {
+    // Rutinas con hora que aún no están completas
+    const routines = (await db.routines.where('archived').equals(0).toArray()).filter(
+      (r) => r.time && r.steps.length && routineToday(r, day) && nowHm >= r.time && minutesBetween(r.time, nowHm) < 15 && !seen.has(`routine:${r.id}:${day}`),
+    )
+    const startNow: typeof routines = []
+    for (const r of routines) {
+      seen.add(`routine:${r.id}:${day}`)
+      const run = await db.routineRuns.where('[routineId+date]').equals([r.id, day]).first()
+      if (routineProgress(r, run).complete) continue
+      startNow.push(r)
+      toast(`Es la hora: ${r.name}`, { label: 'Empezar', run: () => runner.open(r.id) }, 20_000, { icon: 'bell', onClick: () => runner.open(r.id) })
+      void showSystemNotification(`routines-${r.id}`, r.name, `Es la hora: ${r.steps.length} pasos. Toca para hacerla paso a paso.`, `./#/routine/${r.id}`, `routines-${r.id}-${day}`)
+    }
+    // Diario: por la noche, si hoy aún no se ha escrito
+    const jr = (await db.settings.get('journalReminder'))?.value as { enabled?: boolean; time?: string } | undefined
+    let journalDue = false
+    if (jr?.enabled && jr.time && nowHm >= jr.time && minutesBetween(jr.time, nowHm) < 15 && !seen.has(`journal:${day}`)) {
+      seen.add(`journal:${day}`)
+      const entry = await db.journal.get(day)
+      if (!(entry && (entry.mood || entry.text.trim()))) {
+        journalDue = true
+        toast('¿Qué tal el día? Apúntalo en un minuto', { label: 'Escribir', run: () => navigate('/journal') }, 20_000, { icon: 'bell' })
+        void showSystemNotification('journal', '¿Qué tal el día?', 'Apunta cómo te ha ido en un minuto.', './#/journal', `journal-${day}`)
+      }
+    }
+    if (habits.length || routines.length || journalDue) saveSeen(seen)
+    if (due.length || nags.length || subs.length || things.length || trackers.length || pending.length || startNow.length || journalDue) {
       saveSeen(seen)
       if (prefs.reminderSound) chime()
     }
