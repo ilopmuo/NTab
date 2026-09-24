@@ -34,6 +34,9 @@
 | **Avisos insistentes** | «insísteme» o «hasta que lo haga»: el aviso se repite cada 10 minutos (o lo que elijas) hasta que la marcas, también con la app cerrada |
 | **Rutinas** | Listas de pasos que haces siempre igual («Antes de salir de casa»: llaves, cartera, móvil…). Te avisa a su hora y te guía paso a paso a pantalla completa |
 | **Cosas** | Dónde guardaste algo (con foto), qué has prestado y a quién, qué te han prestado y qué caduca (DNI, ITV, garantías), con avisos. Búsqueda «¿Dónde está…?» |
+| **Compra** | Escribe o dicta todo de golpe («leche, 2 barras de pan y detergente»): cada cosa va a su pasillo, con cantidades, «lo de siempre» y «Terminar compra» |
+| **Última vez** | ¿Cuándo cambiaste las sábanas o fuiste al dentista? Un toque para apuntarlo; si le pones «cada N días», te avisa cuando toca |
+| **Diario** | Un minuto al día: ánimo, unas líneas y tres cosas buenas; lo que hiciste se apunta solo. Racha, tendencia y mapa de ánimo |
 | **Hora a hora** | En «Planifica tu día», el día con reuniones y tareas; «Colocar en huecos» da hora a lo que no la tiene, entre reuniones y lo importante primero |
 | **Procesar la bandeja** | Una tarea cada vez, como un mazo de cartas: hoy, mañana, otro día, a una lista, hecha, borrar o luego |
 | **Dictado** | Botón de micrófono en la captura rápida: dices la tarea y se entiende igual que escrita |
@@ -92,7 +95,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 ## Atajos
 
-`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`O`/`P`/`J`/`T`/`F`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias
+`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`D`/`O`/`P`/`J`/`T`/`F`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias
 
 ## En el iPhone o el iPad
 
@@ -115,14 +118,16 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 - Además de las tareas y los pagos, el servidor avisa de:
   - repeticiones de los avisos insistentes (`due_nags`, cada `nag` minutos hasta 12 veces);
   - rutinas a su hora si no están hechas (`due_routine_reminders`);
-  - cosas: reclamar o devolver un préstamo y lo que caduca (`due_reminders` incluye la tabla `things`).
+  - cosas: reclamar o devolver un préstamo y lo que caduca (`due_reminders` incluye la tabla `things`);
+  - «Última vez» cuando vuelve a tocar (`due_reminders` incluye `trackers`);
+  - el diario por la noche si aún no se ha escrito (`due_journal_reminders`, hora en `settings/journalReminder`).
 - En el iPhone hacen falta iOS 16.4 o posterior y la app añadida a la pantalla de inicio. Se activan en **Ajustes → Avisos**.
 - Configuración única en Supabase: el secreto `VAPID_PRIVATE_KEY` de la Edge Function (la clave pública está en `src/reminders/push.ts`).
 
 ## Claude y calendario
 
 - **Conector para Claude** (`supabase/functions/mcp`): servidor MCP por HTTP. Cada usuario tiene una URL privada (`mcp_connectors.token`) que se crea en Ajustes → Claude y se añade en Claude → Ajustes → Conectores → Añadir conector personalizado. Se usa con la suscripción de Claude, sin claves de API.
-  - Herramientas: `ver_resumen`, `ver_eventos`, `buscar_tareas`, `crear_tareas`, `actualizar_tareas`, `crear_nota`, `marcar_habito`, `crear_proyecto`, `donde_esta`, `guardar_cosa`, `marcar_devuelto`, `crear_rutina`, `actualizar_objetivo`, `registrar_contacto`, `marcar_pago`, `ver_plantillas` y `usar_plantilla`.
+  - Herramientas: `ver_resumen`, `ver_eventos`, `buscar_tareas`, `crear_tareas`, `actualizar_tareas`, `crear_nota`, `marcar_habito`, `crear_proyecto`, `donde_esta`, `guardar_cosa`, `marcar_devuelto`, `ver_compra`, `anadir_compra`, `ultima_vez`, `lo_he_hecho`, `ver_diario`, `escribir_diario`, `crear_rutina`, `actualizar_objetivo`, `registrar_contacto`, `marcar_pago`, `ver_plantillas` y `usar_plantilla`.
   - Escribe en `records` con el mismo formato que la app (avisos automáticos y tareas que se repiten incluidos), así que los cambios llegan a los dispositivos por la sincronización en tiempo real.
 - **Calendario** (`supabase/functions/calendar`): enlace privado por usuario (`calendar_feeds.token`) que sirve un `.ics` con tareas con fecha, pagos y cumpleaños. Se crea y se cambia en Ajustes → Calendario.
   - Google Calendar tarda horas en refrescar los calendarios suscritos. Para tenerlo al día (también lo que se borra), Ajustes → Calendario → Google Calendar da un script de Google Apps Script (`src/features/settings/googleScript.ts`). Se pega en script.google.com y cada 5 minutos lee `?format=json` y crea, cambia o borra los eventos del calendario «NTab».
