@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, CalendarCheck, ChevronRight, PartyPopper, RefreshCcw, Sun } from 'lucide-react'
+import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, Sun } from 'lucide-react'
+import { DayComplete } from '@/components/Celebrate'
 import { db } from '@/db/db'
 import { updateTask } from '@/db/actions'
 import { useOpenTasks } from '@/db/hooks'
@@ -44,6 +45,9 @@ export function TodayView() {
   const cal = useEvents(t, t)
   const todayEvents = cal.events.filter((e) => (e.allDay ? e.start <= t && e.end > t : new Date(e.start).toDateString() === new Date().toDateString()))
   const [showDone, setShowDone] = useState(false)
+  // Confeti solo si el día se completa ahora (no al volver a la pantalla)
+  const lastPending = useRef<number | null>(null)
+  const [justFinished, setJustFinished] = useState(false)
 
   const { overdue, todays, weekOpen } = useMemo(() => {
     const list = open ?? []
@@ -55,9 +59,16 @@ export function TodayView() {
     }
   }, [open, t, monday])
 
-  if (!open) return null
   const done = doneToday?.filter((x) => x.done) ?? []
   const pending = todays.length + overdue.length
+  const ready = !!open && !!doneToday
+  useEffect(() => {
+    if (!ready) return
+    if (lastPending.current !== null && lastPending.current > 0 && pending === 0 && done.length > 0) setJustFinished(true)
+    lastPending.current = pending
+  }, [ready, pending, done.length])
+
+  if (!open) return null
   const total = pending + done.length
   const scheduledHabits = (habits ?? []).filter((h) => isScheduled(h, t))
   const habitsDone = scheduledHabits.filter((h) => byHabit.get(h.id)?.has(t)).length
@@ -179,7 +190,7 @@ export function TodayView() {
             </Group>
           ) : pending === 0 ? (
             <Group className="mb-8">
-              <Empty icon={<PartyPopper size={28} strokeWidth={2.2} />} color="var(--c-green)" title="¡Lo has hecho todo!" hint="Buen trabajo. Mañana más." />
+              <DayComplete count={done.length} celebrate={justFinished} />
             </Group>
           ) : (
             <>

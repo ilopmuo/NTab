@@ -43,4 +43,13 @@ Glifos sobre círculos o cuadrados de relleno gris (`--c-fill`). La sección act
 | Completar tarea | El círculo se rellena con un muelle, el ✓ se dibuja y la fila se pliega |
 | Selección en la barra lateral | La píldora se desliza al nuevo elemento (*shared layout*) |
 | Hojas y modales | Suben o crecen con muelle; en móvil se cierran arrastrando hacia abajo |
-| Anillos y números | Se llenan y cuentan desde cero al aparecer |
+| Anillos y números | Se llenan y cuentan desde cero al aparecer; los contadores ruedan al cambiar (el número viejo sale, el nuevo entra en la dirección del cambio) |
+| Completar | Chispas lima y azul salen de la casilla, con toque háptico |
+| Día completado | El anillo lima se cierra, se dibuja el ✓ y cae confeti (solo si acaba de pasar, no al volver a Hoy) |
+| Deslizar una tarea (táctil) | → hecha (lima), ← a mañana (azul). La franja se colorea al pasar el umbral, con toque háptico; si no llega, vuelve con muelle |
+| Cambio de tema | El tema nuevo se revela en un círculo que crece desde el botón (*View Transitions*) |
+| Avisos | Cápsula con una barra del tiempo que queda para deshacer; se aparta deslizándola |
+| Barra de pestañas | Se encoge (sin textos) al bajar por una pantalla y vuelve al subir, como en iOS 26 |
+| Estados vacíos | El icono flota muy suavemente |
+
+La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el interruptor nativo oculto (`src/lib/haptics.ts`).

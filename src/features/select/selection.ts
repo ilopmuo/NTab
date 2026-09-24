@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { haptic } from '@/lib/haptics'
 
 /**
  * Selección múltiple de tareas. Se entra con el botón «Seleccionar» de las
@@ -27,6 +28,7 @@ export const selection = {
   get: () => state,
   start: (id?: string) => set({ active: true, ids: new Set(id ? [id] : []) }),
   toggle: (id: string) => {
+    haptic()
     const ids = new Set(state.ids)
     if (ids.has(id)) ids.delete(id)
     else ids.add(id)

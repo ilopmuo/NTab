@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Moon, Plus, Search, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'
-import { Kbd, cx, spring, useMediaQuery } from '@/components/ui'
+import { Kbd, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
 import { SyncBadge } from '@/sync/SyncBadge'
 import { useNavCounts } from './counts'
 import { href, useRoute } from './router'
@@ -38,7 +38,7 @@ function Tile({ def, count, active }: { def: SectionDef; count: number | string;
         ) : (
           <SectionIcon def={def} size={28} />
         )}
-        <span className={cx('font-num text-[22px] leading-none font-bold', !active && 'text-fg')}>{count}</span>
+        <RollingNumber value={count} className={cx('text-[22px] leading-none font-bold', !active && 'text-fg')} />
       </div>
       <span className={cx('truncate text-[13px] font-semibold', active ? 'text-white/90' : 'text-muted')}>{def.short}</span>
     </a>
@@ -76,9 +76,7 @@ function Row({
       <span className="relative flex w-6 shrink-0 justify-center">{icon}</span>
       <span className="relative min-w-0 flex-1 truncate">{label}</span>
       {!!count && (
-        <span className="font-num relative text-[13px] font-medium" style={{ color: countTone ?? 'var(--c-muted)' }}>
-          {count}
-        </span>
+        <RollingNumber value={count} className="text-[13px] font-medium" style={{ color: countTone ?? 'var(--c-muted)' }} />
       )}
     </a>
   )

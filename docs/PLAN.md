@@ -149,6 +149,7 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 10 — Se siente viva** · Deslizar tareas (hecha / mañana) con háptica, chispas al completar y «Día completado» con confeti, contadores que ruedan, tema con revelado circular, avisos con tiempo para deshacer y que se apartan deslizando, barra de pestañas que se encoge, detalles de estilo en móvil.
 - ✅ **Fase 9 — Tu día completo** · Eventos de tus calendarios (Google, iCloud, Outlook) en Hoy, Calendario, Planificar y Claude; duración estimada de las tareas y carga del día; selección múltiple con acciones en bloque.
 - ✅ **Fase 8 — Personas y rutinas** · @personas en las tareas, recordatorios de hábitos, repetir desde que se completa y saltar una vez, carga por vistas y atajos del icono.
 - ✅ **Fase 7 — Nada se pierde** · Papelera de 30 días, plantillas, arrastrar tareas a otro día, «Tu semana» con registro de foco.

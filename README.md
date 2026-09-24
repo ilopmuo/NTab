@@ -31,6 +31,7 @@
 | **Tus calendarios** | Conecta Google, iCloud u Outlook (su dirección .ics) y tus reuniones salen en la Agenda de Hoy, en el Calendario y al planificar el día |
 | **Duración y carga del día** | `~30m`, `~1h30` al escribir: la Agenda y «Planifica tu día» suman tareas y reuniones y avisan si el día no cabe |
 | **Selección múltiple** | «Seleccionar» en las listas (o `⌘`/`Ctrl` + clic): mueve a hoy, mañana o una fecha, cambia lista o prioridad, completa o borra varias a la vez |
+| **Deslizar** (móvil) | Desliza una tarea → para completarla o ← para pasarla a mañana, con vibración en el iPhone |
 | **Arrastrar** | En Calendario y Próximo, arrastra una tarea a otro día (en el móvil, pulsación larga) |
 | **Claude** | Conector para usar NTab desde Claude con tu suscripción: «¿qué tengo esta semana?», «planifícame el día», «apunta lo de este email» |
 | **Calendario** | Suscríbete desde Calendario del iPhone, Google u Outlook y verás tus tareas, pagos y cumpleaños |
@@ -63,7 +64,9 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
   - arranque animado;
   - transiciones entre vistas;
   - casillas que se rellenan con un muelle;
-  - hojas que se cierran arrastrando.
+  - hojas que se cierran arrastrando;
+  - chispas al completar y confeti al acabar el día;
+  - contadores que ruedan, tema que cambia en círculo y barra de pestañas que se encoge al bajar.
 
 ## Lenguaje natural
 

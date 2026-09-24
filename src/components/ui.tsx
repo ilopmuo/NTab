@@ -58,6 +58,41 @@ export function CountUp({ value, className }: { value: number; className?: strin
   )
 }
 
+/**
+ * Número que rueda al cambiar (el viejo sale y el nuevo entra, hacia arriba
+ * si sube y hacia abajo si baja), como los contadores de iOS.
+ */
+export function RollingNumber({ value, className, style }: { value: number | string; className?: string; style?: React.CSSProperties }) {
+  const num = (v: number | string) => (typeof v === 'number' ? v : parseFloat(v) || 0)
+  const prev = useRef(value)
+  const dir = num(value) >= num(prev.current) ? 1 : -1
+  useEffect(() => {
+    prev.current = value
+  }, [value])
+  return (
+    <span className={cx('font-num relative inline-flex overflow-hidden', className)} style={style}>
+      <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+        <motion.span
+          key={String(value)}
+          custom={dir}
+          variants={{
+            enter: (d: number) => ({ y: `${d * 70}%`, opacity: 0, filter: 'blur(2px)' }),
+            center: { y: '0%', opacity: 1, filter: 'blur(0px)' },
+            exit: (d: number) => ({ y: `${d * -70}%`, opacity: 0, filter: 'blur(2px)' }),
+          }}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ type: 'spring', stiffness: 520, damping: 34 }}
+          className="inline-block"
+        >
+          {value}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  )
+}
+
 // ── Botones ───────────────────────────────────────────────────
 
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'tinted'
@@ -375,7 +410,10 @@ export function Empty({
         className="mb-4 flex h-16 w-16 items-center justify-center rounded-full"
         style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
       >
-        {icon}
+        {/* Flota suavemente, para que la pantalla vacía no parezca muerta */}
+        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }} className="flex">
+          {icon}
+        </motion.span>
       </motion.div>
       <p className="text-[17px] font-semibold">{title}</p>
       {hint && <p className="mt-1 max-w-xs text-[14px] leading-snug text-muted">{hint}</p>}
@@ -409,7 +447,7 @@ export function Section({
         <h3 className="text-[19px] font-bold tracking-tight" style={{ color: tone ? TONES[tone] : undefined }}>
           {title}
         </h3>
-        {count !== undefined && count > 0 && <span className="font-num text-[15px] font-semibold text-faint">{count}</span>}
+        {count !== undefined && count > 0 && <RollingNumber value={count} className="text-[15px] font-semibold text-faint" />}
         <div className="ml-auto">{action}</div>
       </div>
       {children}

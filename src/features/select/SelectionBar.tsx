@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { CalendarDays, Check, CheckSquare, Flag, Folder, Sun, Sunrise, Trash2, X } from 'lucide-react'
+import { CalendarDays, Check, CheckSquare, Flag, Folder, ListChecks, Sun, Sunrise, Trash2, X } from 'lucide-react'
 import { completeTasks, deleteTask, mutateTasks, restoreTasks } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import type { Priority, Task } from '@/db/types'
@@ -17,14 +17,17 @@ export function SelectButton({ small }: { small?: boolean }) {
   return (
     <button
       type="button"
+      aria-label={active ? 'Terminar de seleccionar' : 'Seleccionar tareas'}
       onClick={() => (active ? selection.clear() : selection.start())}
       className={cx(
-        'shrink-0 rounded-full font-semibold transition-all active:scale-95',
-        small ? 'h-8 px-3 text-[13px]' : 'h-9 px-3.5 text-[14px]',
+        'flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold transition-all active:scale-95',
+        // En el móvil, solo el icono para no apretar el título
+        small ? 'h-8 px-3 text-[13px]' : 'h-9 px-3.5 text-[14px] max-sm:w-9 max-sm:px-0',
         active ? 'bg-accent text-white' : 'bg-fill text-fg hover:bg-press',
       )}
     >
-      {active ? 'Listo' : 'Seleccionar'}
+      {!small && (active ? <Check size={17} strokeWidth={2.6} className="sm:hidden" /> : <ListChecks size={17} strokeWidth={2.3} className="sm:hidden" />)}
+      <span className={cx(!small && 'max-sm:hidden')}>{active ? 'Listo' : 'Seleccionar'}</span>
     </button>
   )
 }
