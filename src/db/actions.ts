@@ -1,8 +1,9 @@
 import { db } from './db'
-import type { Area, Habit, Interaction, Note, Person, Project, Task } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, Subscription, Task } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
+import { advanceCharge, rollForward } from '@/lib/finance'
 
 // ── Tareas ────────────────────────────────────────────────────
 
@@ -87,8 +88,9 @@ export async function createArea(data: Partial<Area> & { name: string }): Promis
 }
 
 export async function deleteArea(id: string) {
-  await db.transaction('rw', [db.areas, db.projects, db.tasks, db.notes], async () => {
+  await db.transaction('rw', [db.areas, db.projects, db.tasks, db.notes, db.goals], async () => {
     await db.projects.where('areaId').equals(id).modify({ areaId: undefined })
+    await db.goals.where('areaId').equals(id).modify({ areaId: undefined })
     await db.tasks.where('areaId').equals(id).modify({ areaId: undefined })
     await db.notes.where('areaId').equals(id).modify({ areaId: undefined })
     await db.areas.delete(id)
@@ -201,6 +203,75 @@ export async function deletePerson(id: string) {
     await db.interactions.where('personId').equals(id).delete()
     await db.people.delete(id)
   })
+}
+
+// ── Objetivos ─────────────────────────────────────────────────
+
+export async function createGoal(data: Partial<Goal> & { title: string }): Promise<Goal> {
+  const goal: Goal = {
+    id: uid(),
+    why: '',
+    kind: 'projects',
+    status: 'active',
+    order: Date.now(),
+    createdAt: Date.now(),
+    ...data,
+  }
+  await db.goals.add(goal)
+  return goal
+}
+
+export async function setGoalStatus(id: string, status: Goal['status']) {
+  await db.goals.update(id, { status, completedAt: status === 'done' ? Date.now() : undefined })
+}
+
+/** Vincula exactamente estos proyectos al objetivo (y desvincula el resto) */
+export async function linkGoalProjects(goalId: string, projectIds: string[]) {
+  await db.transaction('rw', db.projects, async () => {
+    await db.projects.where('goalId').equals(goalId).filter((p) => !projectIds.includes(p.id)).modify({ goalId: undefined })
+    if (projectIds.length) await db.projects.where('id').anyOf(projectIds).modify({ goalId })
+  })
+}
+
+export async function deleteGoal(id: string) {
+  await db.transaction('rw', db.goals, db.projects, async () => {
+    await db.projects.where('goalId').equals(id).modify({ goalId: undefined })
+    await db.goals.delete(id)
+  })
+}
+
+// ── Pagos recurrentes ─────────────────────────────────────────
+
+export async function createSubscription(data: Partial<Subscription> & { name: string; amount: number; nextDate: string }): Promise<Subscription> {
+  const sub: Subscription = {
+    id: uid(),
+    kind: 'sub',
+    currency: 'EUR',
+    cycle: 'month',
+    active: true,
+    category: '',
+    notifyDays: 1,
+    notes: '',
+    createdAt: Date.now(),
+    anchorDay: Number(data.nextDate.slice(8, 10)),
+    ...data,
+  }
+  await db.subscriptions.add(sub)
+  return sub
+}
+
+/** Recibo pagado: pasa al siguiente cargo */
+export async function markPaid(s: Subscription) {
+  await db.subscriptions.update(s.id, { nextDate: advanceCharge(s.nextDate, s.cycle, s.anchorDay) })
+}
+
+/** Las suscripciones se cobran solas: las fechas pasadas avanzan al siguiente cargo */
+export async function rollSubscriptions(ref = today()) {
+  const past = await db.subscriptions.where('nextDate').below(ref).toArray()
+  for (const s of past) {
+    if (s.kind !== 'sub' || !s.active) continue
+    await db.subscriptions.update(s.id, { nextDate: rollForward(s, ref) })
+  }
 }
 
 // ── Ajustes ───────────────────────────────────────────────────

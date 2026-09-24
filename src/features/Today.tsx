@@ -15,6 +15,7 @@ import { HabitStrip } from './habits/HabitStrip'
 import { useHabits } from './habits/useHabits'
 import { Agenda } from './today/Agenda'
 import { DayRings } from './today/DayRings'
+import { PaymentsCard } from './today/PaymentsCard'
 import { PeopleCard } from './today/PeopleCard'
 import { WeekStrip } from './today/WeekStrip'
 import { Page } from './Page'
@@ -184,6 +185,7 @@ export function TodayView() {
           <Agenda tasks={todays} />
           <HabitStrip />
           <WeekStrip tasks={open} />
+          <PaymentsCard />
           <PeopleCard people={people} />
         </aside>
       </div>

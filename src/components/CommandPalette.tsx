@@ -11,8 +11,10 @@ import {
   Search,
   Sparkles,
   SunMoon,
+  Target,
   User,
   UserPlus,
+  Wallet,
 } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
@@ -121,7 +123,7 @@ function Palette() {
       ...tasks.map((t) => [t.title, ...t.tags].join(' ')),
       ...notes.map((n) => `${n.title} ${n.content.slice(0, 200)}`),
       ...people.map((p) => `${p.name} ${p.company}`),
-      'nueva tarea añadir crear nota proyecto hábito persona contacto cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
+      'nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
   }, [q, areas, projects, tasks, notes, people])
@@ -177,6 +179,12 @@ function Palette() {
           </Item>
           <Item value="nueva persona contacto crear" icon={<G c="purple"><UserPlus size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/people'), ui.create('person')))}>
             Nueva persona
+          </Item>
+          <Item value="nuevo objetivo meta crear" icon={<G c="blue"><Target size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/goals'), ui.create('goal')))}>
+            Nuevo objetivo
+          </Item>
+          <Item value="nuevo pago suscripción recibo gasto crear" icon={<G c="gray"><Wallet size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/finance'), ui.create('subscription')))}>
+            Nuevo pago o suscripción
           </Item>
           <Item value="cambiar tema oscuro claro" icon={<G c="gray"><SunMoon size={14} strokeWidth={2.4} /></G>} onSelect={run(toggleTheme)}>
             Cambiar tema claro / oscuro

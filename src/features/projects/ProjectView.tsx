@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { CheckCircle2, ChevronRight, FileText, Pause, Pencil, Play, Plus, StickyNote, Trash2 } from 'lucide-react'
+import { CheckCircle2, ChevronRight, FileText, Pause, Pencil, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import { createNote, deleteProject } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
@@ -20,6 +20,7 @@ export function ProjectView({ id }: { id: string }) {
   const tasks = useLiveQuery(() => db.tasks.where('projectId').equals(id).toArray(), [id])
   const notes = useLiveQuery(() => db.notes.where('projectId').equals(id).toArray(), [id]) ?? []
   const areas = useAreas()
+  const goal = useLiveQuery(() => (project?.goalId ? db.goals.get(project.goalId) : undefined), [project?.goalId])
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showDone, setShowDone] = useState(false)
@@ -41,10 +42,19 @@ export function ProjectView({ id }: { id: string }) {
   return (
     <Page>
       <header className="mb-8">
-        {area && (
-          <a href={href(`/area/${area.id}`)} className="mb-3 inline-flex items-center gap-2 text-[14px] font-semibold text-muted transition-colors hover:text-fg">
-            <AreaBadge icon={area.icon} size={22} /> {area.name}
-          </a>
+        {(area || goal) && (
+          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {area && (
+              <a href={href(`/area/${area.id}`)} className="inline-flex items-center gap-2 text-[14px] font-semibold text-muted transition-colors hover:text-fg">
+                <AreaBadge icon={area.icon} size={22} /> {area.name}
+              </a>
+            )}
+            {goal && (
+              <a href={href('/goals')} className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-muted transition-colors hover:text-fg">
+                <Target size={15} strokeWidth={2.4} /> {goal.title}
+              </a>
+            )}
+          </div>
         )}
         <div className="flex items-center gap-4">
           <div className="relative shrink-0">

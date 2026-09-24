@@ -8,7 +8,7 @@ export interface UIState {
   helpOpen: boolean
   sidebarOpen: boolean
   /** abre el formulario de creación de la vista correspondiente */
-  creating: 'project' | 'habit' | 'person' | 'area' | null
+  creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | null
   toast: { id: number; message: string; action?: { label: string; run: () => void } } | null
 }
 

@@ -35,7 +35,62 @@ export interface Project {
   status: ProjectStatus
   deadline?: string
   color: string
+  /** objetivo al que contribuye */
+  goalId?: ID
   order: number
+  createdAt: number
+}
+
+export type GoalStatus = 'active' | 'done' | 'dropped'
+
+/**
+ * Objetivo: algo que quiero conseguir. El progreso sale de
+ * - `projects`: los proyectos vinculados (proyecto terminado = 100 %, si no, sus tareas);
+ * - `number`: una cifra que actualizo a mano (`current` de `target`, p. ej. 3 de 12 libros).
+ */
+export interface Goal {
+  id: ID
+  title: string
+  /** por qué me importa */
+  why: string
+  areaId?: ID
+  kind: 'projects' | 'number'
+  target?: number
+  current?: number
+  /** "libros", "kg", "€"… */
+  unit?: string
+  /** YYYY-MM-DD */
+  deadline?: string
+  status: GoalStatus
+  order: number
+  createdAt: number
+  completedAt?: number
+}
+
+export type BillingCycle = 'week' | 'month' | 'quarter' | 'year'
+
+/**
+ * Pago que se repite: una suscripción (se cobra sola; la fecha avanza sola)
+ * o un recibo (hay que pagarlo; avanza al marcarlo como pagado).
+ */
+export interface Subscription {
+  id: ID
+  name: string
+  kind: 'sub' | 'bill'
+  amount: number
+  currency: string
+  cycle: BillingCycle
+  /** próximo cargo, YYYY-MM-DD */
+  nextDate: string
+  /** día del mes del cargo (para no ir perdiendo días con los meses cortos) */
+  anchorDay?: number
+  active: boolean
+  category: string
+  /** días antes del cargo para avisar (null = sin aviso) */
+  notifyDays: number | null
+  /** momento del aviso ya calculado (ms), como en las tareas */
+  remindAt?: number
+  notes: string
   createdAt: number
 }
 

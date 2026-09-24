@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { AreaView } from '@/features/areas/AreaView'
 import { CalendarView } from '@/features/calendar/CalendarView'
+import { FinanceView } from '@/features/finance/FinanceView'
+import { GoalsView } from '@/features/goals/GoalsView'
 import { HabitsView } from '@/features/habits/HabitsView'
 import { InboxView } from '@/features/Inbox'
 import { LogbookView } from '@/features/Logbook'
@@ -57,6 +59,10 @@ function Screen() {
       return <AreaView id={id} />
     case 'tag':
       return <TagView tag={id} />
+    case 'goals':
+      return <GoalsView />
+    case 'finance':
+      return <FinanceView />
     case 'review':
       return <ReviewView />
     case 'logbook':
@@ -77,6 +83,8 @@ const TITLES: Record<string, string> = {
   notes: 'Notas',
   people: 'Personas',
   projects: 'Proyectos',
+  goals: 'Objetivos',
+  finance: 'Pagos',
   review: 'Revisión',
   logbook: 'Completadas',
   settings: 'Ajustes',

@@ -1,7 +1,8 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Area, Habit, HabitLog, Interaction, Note, Person, Project, Setting, Task } from './types'
+import type { Area, Goal, Habit, HabitLog, Interaction, Note, Person, Project, Setting, Subscription, Task } from './types'
 import { createTracking, type OutboxEntry } from '@/sync/tracking'
 import { computeRemindAt, withDefaultReminder } from '@/lib/reminders'
+import { computeSubRemindAt } from '@/lib/finance'
 import { prefs } from '@/lib/prefs'
 
 /** Estado interno de la sincronización (solo de este dispositivo, nunca se sube) */
@@ -19,6 +20,8 @@ export class NTabDB extends Dexie {
   habitLogs!: EntityTable<HabitLog, 'id'>
   people!: EntityTable<Person, 'id'>
   interactions!: EntityTable<Interaction, 'id'>
+  goals!: EntityTable<Goal, 'id'>
+  subscriptions!: EntityTable<Subscription, 'id'>
   settings!: EntityTable<Setting, 'key'>
   /** cambios locales pendientes de subir */
   _outbox!: EntityTable<OutboxEntry, 'key'>
@@ -41,6 +44,11 @@ export class NTabDB extends Dexie {
       _outbox: 'key, ts',
       _local: 'key',
     })
+    this.version(3).stores({
+      projects: 'id, areaId, status, order, goalId',
+      goals: 'id, status, areaId, order',
+      subscriptions: 'id, nextDate, active',
+    })
   }
 }
 
@@ -54,6 +62,8 @@ export const TABLES = [
   'habitLogs',
   'people',
   'interactions',
+  'goals',
+  'subscriptions',
   'settings',
 ] as const
 export type TableName = (typeof TABLES)[number]
@@ -117,6 +127,19 @@ export function installReminderHooks(target: NTabDB) {
     const at = computeRemindAt(merged)
     if (at !== obj.remindAt) changes.remindAt = at
     return Object.keys(changes).length ? changes : undefined
+  })
+
+  // Pagos: avisar `notifyDays` antes del próximo cargo
+  target.subscriptions.hook('creating', (_pk, obj) => {
+    const at = computeSubRemindAt(obj)
+    if (at === undefined) delete obj.remindAt
+    else obj.remindAt = at
+  })
+  target.subscriptions.hook('updating', (mods, _pk, obj) => {
+    const m = mods as Record<string, unknown>
+    if (!['nextDate', 'notifyDays', 'active'].some((k) => k in m)) return
+    const at = computeSubRemindAt({ ...obj, ...m } as Subscription)
+    return at !== obj.remindAt ? { remindAt: at } : undefined
   })
 }
 installReminderHooks(db)

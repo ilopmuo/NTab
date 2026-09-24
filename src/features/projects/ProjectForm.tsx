@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import type { Project } from '@/db/types'
 import { db } from '@/db/db'
 import { createProject } from '@/db/actions'
@@ -41,9 +42,11 @@ function Form({
   const [description, setDescription] = useState(project?.description ?? '')
   const [areaId, setAreaId] = useState(project?.areaId ?? defaultAreaId ?? '')
   const [deadline, setDeadline] = useState(project?.deadline ?? '')
+  const [goalId, setGoalId] = useState(project?.goalId ?? '')
+  const goals = useLiveQuery(() => db.goals.where('status').equals('active').toArray(), []) ?? []
   const save = async () => {
     if (!name.trim()) return
-    const data = { name: name.trim(), description, areaId: areaId || undefined, deadline: deadline || undefined }
+    const data = { name: name.trim(), description, areaId: areaId || undefined, deadline: deadline || undefined, goalId: goalId || undefined }
     if (project) {
       await db.transaction('rw', db.projects, db.tasks, async () => {
         await db.projects.update(project.id, data)
@@ -90,6 +93,18 @@ function Form({
             <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </Field>
         </div>
+        {(goals.length > 0 || goalId) && (
+          <Field label="Objetivo">
+            <Select value={goalId} onChange={(e) => setGoalId(e.target.value)}>
+              <option value="">Ninguno</option>
+              {goals.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.title}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
       </div>
       <div className="flex justify-end gap-2 px-5 pt-1 pb-5">
         <Button type="button" variant="ghost" onClick={onClose}>
