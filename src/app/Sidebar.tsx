@@ -12,7 +12,7 @@ import { toggleTheme, useTheme } from './theme'
 
 const TILES = ['today', 'upcoming', 'inbox', 'calendar', 'habits', 'notes'].map(section)
 const MORE = ['people', 'projects', 'goals', 'finance', 'review'].map(section)
-const FOOT = ['logbook', 'settings'].map(section)
+const FOOT = ['logbook', 'trash', 'settings'].map(section)
 
 /** Lista inteligente en cuadrícula, como en Recordatorios */
 function Tile({ def, count, active }: { def: SectionDef; count: number | string; active: boolean }) {

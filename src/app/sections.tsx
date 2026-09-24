@@ -10,6 +10,7 @@ import {
   Settings,
   StickyNote,
   Target,
+  Trash2,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -44,6 +45,7 @@ export const SECTIONS: SectionDef[] = [
   { id: 'goals', path: '/goals', label: 'Objetivos', short: 'Objetivos', icon: Target, tint: 'blue', key: 'T' },
   { id: 'finance', path: '/finance', label: 'Pagos', short: 'Pagos', icon: Wallet, tint: 'blue', key: 'F' },
   { id: 'review', path: '/review', label: 'Revisión semanal', short: 'Revisión', icon: RefreshCcw, tint: 'blue', key: 'R' },
+  { id: 'trash', path: '/trash', label: 'Papelera', short: 'Papelera', icon: Trash2, tint: 'blue', key: 'X' },
   { id: 'logbook', path: '/logbook', label: 'Completadas', short: 'Completadas', icon: Archive, tint: 'blue', key: 'L' },
   { id: 'settings', path: '/settings', label: 'Ajustes', short: 'Ajustes', icon: Settings, tint: 'blue', key: 'S' },
 ]

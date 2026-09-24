@@ -188,3 +188,48 @@ export interface Setting {
   key: string
   value: unknown
 }
+
+/** Algo borrado: se puede recuperar durante 30 días */
+export interface TrashItem {
+  /** `${tbl}:${itemId}` */
+  id: string
+  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals'
+  itemId: ID
+  title: string
+  data: Record<string, unknown>
+  /** registros que se borraron con él (tareas de un proyecto, historial de una persona…) */
+  related?: { tbl: string; data: Record<string, unknown> }[]
+  /** registros que perdieron el enlace (p. ej. tareas de un proyecto): se vuelven a enlazar al recuperarlo */
+  unlinked?: { tbl: 'tasks' | 'notes' | 'projects'; id: ID; field: 'projectId' | 'goalId' }[]
+  deletedAt: number
+}
+
+export interface TemplateItem {
+  title: string
+  /** días desde el inicio (0 = el día de inicio); sin valor = sin fecha */
+  offset?: number
+  time?: string
+  priority?: Priority
+  subtasks?: string[]
+}
+
+/** Lista reutilizable: maleta de viaje, cierre de mes… */
+export interface Template {
+  id: ID
+  name: string
+  icon: string
+  items: TemplateItem[]
+  order: number
+  createdAt: number
+}
+
+/** Sesión de foco terminada (para las estadísticas) */
+export interface FocusLog {
+  id: ID
+  taskId: ID
+  title: string
+  /** YYYY-MM-DD */
+  date: string
+  minutes: number
+  endedAt: number
+}

@@ -4,6 +4,7 @@ import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
 import { advanceCharge, rollForward } from '@/lib/finance'
+import { putInTrash } from './trash'
 
 // ── Tareas ────────────────────────────────────────────────────
 
@@ -64,8 +65,34 @@ export async function toggleTask(task: Task): Promise<Task | undefined> {
   })
 }
 
+/** Borra una tarea (va a la papelera) */
 export async function deleteTask(id: string) {
-  await db.tasks.delete(id)
+  await db.transaction('rw', db.tasks, db.trash, async () => {
+    const task = await db.tasks.get(id)
+    if (!task) return
+    await putInTrash('tasks', task)
+    await db.tasks.delete(id)
+  })
+}
+
+/** Borra una nota (va a la papelera) */
+export async function deleteNote(id: string) {
+  await db.transaction('rw', db.notes, db.trash, async () => {
+    const note = await db.notes.get(id)
+    if (!note) return
+    await putInTrash('notes', note)
+    await db.notes.delete(id)
+  })
+}
+
+/** Borra un pago recurrente (va a la papelera) */
+export async function deleteSubscription(id: string) {
+  await db.transaction('rw', db.subscriptions, db.trash, async () => {
+    const sub = await db.subscriptions.get(id)
+    if (!sub) return
+    await putInTrash('subscriptions', sub)
+    await db.subscriptions.delete(id)
+  })
 }
 
 export async function duplicateTask(task: Task) {
@@ -112,7 +139,18 @@ export async function createProject(data: Partial<Project> & { name: string }): 
 }
 
 export async function deleteProject(id: string, withTasks: boolean) {
-  await db.transaction('rw', [db.projects, db.tasks, db.notes], async () => {
+  await db.transaction('rw', [db.projects, db.tasks, db.notes, db.trash], async () => {
+    const project = await db.projects.get(id)
+    if (!project) return
+    const tasks = await db.tasks.where('projectId').equals(id).toArray()
+    const notes = await db.notes.where('projectId').equals(id).toArray()
+    await putInTrash('projects', project, {
+      related: withTasks ? tasks.map((t) => ({ tbl: 'tasks', data: t as unknown as Record<string, unknown> })) : [],
+      unlinked: [
+        ...(withTasks ? [] : tasks.map((t) => ({ tbl: 'tasks' as const, id: t.id, field: 'projectId' as const }))),
+        ...notes.map((n) => ({ tbl: 'notes' as const, id: n.id, field: 'projectId' as const })),
+      ],
+    })
     if (withTasks) await db.tasks.where('projectId').equals(id).delete()
     else await db.tasks.where('projectId').equals(id).modify({ projectId: undefined })
     await db.notes.where('projectId').equals(id).modify({ projectId: undefined })
@@ -164,7 +202,11 @@ export async function toggleHabit(habitId: string, date: string) {
 }
 
 export async function deleteHabit(id: string) {
-  await db.transaction('rw', db.habits, db.habitLogs, async () => {
+  await db.transaction('rw', db.habits, db.habitLogs, db.trash, async () => {
+    const habit = await db.habits.get(id)
+    if (!habit) return
+    const logs = await db.habitLogs.where('habitId').equals(id).toArray()
+    await putInTrash('habits', habit, { related: logs.map((l) => ({ tbl: 'habitLogs', data: l as unknown as Record<string, unknown> })) })
     await db.habitLogs.where('habitId').equals(id).delete()
     await db.habits.delete(id)
   })
@@ -199,7 +241,11 @@ export async function logInteraction(data: Omit<Interaction, 'id' | 'createdAt'>
 }
 
 export async function deletePerson(id: string) {
-  await db.transaction('rw', db.people, db.interactions, async () => {
+  await db.transaction('rw', db.people, db.interactions, db.trash, async () => {
+    const person = await db.people.get(id)
+    if (!person) return
+    const history = await db.interactions.where('personId').equals(id).toArray()
+    await putInTrash('people', person, { related: history.map((i) => ({ tbl: 'interactions', data: i as unknown as Record<string, unknown> })) })
     await db.interactions.where('personId').equals(id).delete()
     await db.people.delete(id)
   })
@@ -234,7 +280,11 @@ export async function linkGoalProjects(goalId: string, projectIds: string[]) {
 }
 
 export async function deleteGoal(id: string) {
-  await db.transaction('rw', db.goals, db.projects, async () => {
+  await db.transaction('rw', db.goals, db.projects, db.trash, async () => {
+    const goal = await db.goals.get(id)
+    if (!goal) return
+    const linked = await db.projects.where('goalId').equals(id).primaryKeys()
+    await putInTrash('goals', goal, { unlinked: linked.map((p) => ({ tbl: 'projects' as const, id: String(p), field: 'goalId' as const })) })
     await db.projects.where('goalId').equals(id).modify({ goalId: undefined })
     await db.goals.delete(id)
   })

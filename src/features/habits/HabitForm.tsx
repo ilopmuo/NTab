@@ -4,6 +4,7 @@ import { db } from '@/db/db'
 import { createHabit, deleteHabit } from '@/db/actions'
 import { WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { ICONS, Icon } from '@/components/icons'
+import { toastTrashed } from '../trash/undo'
 import { Button, Field, Input, Modal, ModalHeader, cx } from '@/components/ui'
 
 
@@ -84,7 +85,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
       <div className="flex items-center gap-2 px-5 pt-1 pb-5">
         {habit && (
           <>
-            <Button type="button" variant="danger" onClick={async () => (await deleteHabit(habit.id), onClose())}>
+            <Button type="button" variant="danger" onClick={async () => (await deleteHabit(habit.id), onClose(), toastTrashed('Hábito en la papelera', 'habits', habit.id))}>
               Eliminar
             </Button>
             <Button type="button" variant="ghost" onClick={async () => (await db.habits.update(habit.id, { archived: 1 }), onClose())}>

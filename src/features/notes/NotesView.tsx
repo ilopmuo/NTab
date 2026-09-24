@@ -5,8 +5,9 @@ import { es } from 'date-fns/locale'
 import { ArrowLeft, ListPlus, Pin, PinOff, Plus, Search, StickyNote, Trash2 } from 'lucide-react'
 import { SectionIcon, section } from '@/app/sections'
 import { db } from '@/db/db'
+import { toastTrashed } from '../trash/undo'
 import type { Note } from '@/db/types'
-import { createNote, createTask, updateNote } from '@/db/actions'
+import { createNote, createTask, updateNote, deleteNote } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
@@ -186,10 +187,11 @@ function NoteEditor({ note }: { note: Note }) {
             label="Eliminar nota"
             className="hover:!text-red"
             onClick={async () => {
-              const copy = { ...note, title, content }
-              await db.notes.delete(note.id)
+              // Guardar lo último escrito antes de mandarla a la papelera
+              await db.notes.update(note.id, { title, content })
+              await deleteNote(note.id)
               navigate('/notes')
-              toast('Nota eliminada', { label: 'Deshacer', run: () => void db.notes.add(copy) })
+              toastTrashed('Nota en la papelera', 'notes', note.id)
             }}
           >
             <Trash2 size={15} />

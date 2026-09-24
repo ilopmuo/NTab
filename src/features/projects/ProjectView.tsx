@@ -14,6 +14,7 @@ import { TaskList } from '@/components/TaskList'
 import { Button, Empty, Group, Modal, ModalHeader, ProgressRing, Section, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectForm } from './ProjectForm'
+import { toastTrashed } from '../trash/undo'
 
 export function ProjectView({ id }: { id: string }) {
   const project = useLiveQuery(() => db.projects.get(id), [id])
@@ -171,6 +172,7 @@ export function ProjectView({ id }: { id: string }) {
             onClick={async () => {
               await deleteProject(id, false)
               navigate(area ? `/area/${area.id}` : '/projects')
+              toastTrashed('Proyecto en la papelera', 'projects', id)
             }}
           >
             Conservarlas (pasan a {area ? area.name : 'la Bandeja'})
@@ -180,6 +182,7 @@ export function ProjectView({ id }: { id: string }) {
             onClick={async () => {
               await deleteProject(id, true)
               navigate(area ? `/area/${area.id}` : '/projects')
+              toastTrashed('Proyecto y tareas en la papelera', 'projects', id)
             }}
           >
             Eliminar también las tareas

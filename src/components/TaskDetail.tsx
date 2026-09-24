@@ -4,7 +4,6 @@ import { Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repe
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Task } from '@/db/types'
-import { db } from '@/db/db'
 import { useLookup, useTask } from '@/db/hooks'
 import { deleteTask, duplicateTask, mutateTask, updateTask } from '@/db/actions'
 import { addDaysYmd, dateLabel, fromYmd, longDateLabel, today, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
@@ -16,6 +15,7 @@ import { toast, ui, useUI } from '@/app/store'
 import { Checkbox, completeWithFeedback } from './TaskItem'
 import { Button, Group, IconButton, Modal, Segmented, Textarea, cx, spring, useMediaQuery } from './ui'
 import { focus } from '@/features/focus/focus'
+import { toastTrashed } from '@/features/trash/undo'
 
 /**
  * Detalle de tarea. En pantallas anchas es un inspector lateral de cristal;
@@ -214,9 +214,8 @@ function TaskDetail({ task }: { task: Task }) {
           className="h-8 w-8 hover:!text-red"
           onClick={async () => {
             ui.closeTask()
-            const copy = { ...task }
             await deleteTask(task.id)
-            toast('Tarea eliminada', { label: 'Deshacer', run: () => void db.tasks.add(copy) })
+            toastTrashed('Tarea en la papelera', 'tasks', task.id)
           }}
         >
           <Trash2 size={14} strokeWidth={2.3} />

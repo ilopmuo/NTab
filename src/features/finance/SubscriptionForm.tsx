@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { BillingCycle, Subscription } from '@/db/types'
 import { db } from '@/db/db'
-import { createSubscription } from '@/db/actions'
+import { createSubscription, deleteSubscription } from '@/db/actions'
+import { toastTrashed } from '../trash/undo'
 import { CYCLES, NOTIFY_OPTIONS, rollForward } from '@/lib/finance'
 import { addDaysYmd, today } from '@/lib/dates'
 import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, Switch, Textarea } from '@/components/ui'
@@ -125,7 +126,7 @@ function Form({ sub, onClose }: { sub?: Subscription; onClose: () => void }) {
       </div>
       <div className="flex items-center gap-2 px-5 pt-1 pb-5">
         {sub && (
-          <Button type="button" variant="danger" onClick={async () => (await db.subscriptions.delete(sub.id), onClose())}>
+          <Button type="button" variant="danger" onClick={async () => (await deleteSubscription(sub.id), onClose(), toastTrashed('Pago en la papelera', 'subscriptions', sub.id))}>
             Eliminar
           </Button>
         )}

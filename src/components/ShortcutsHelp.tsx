@@ -25,6 +25,7 @@ const GROUPS: [string, [string[], string][]][] = [
       [['G', 'T'], 'Objetivos'],
       [['G', 'F'], 'Pagos'],
       [['G', 'R'], 'Revisión semanal'],
+      [['G', 'X'], 'Papelera'],
       [['G', 'S'], 'Ajustes'],
     ],
   ],
