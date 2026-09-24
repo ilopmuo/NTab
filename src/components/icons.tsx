@@ -38,6 +38,12 @@ import {
   PenLine,
   Pill,
   Footprints,
+  KeyRound,
+  Bed,
+  Backpack,
+  Shirt,
+  DoorOpen,
+  Utensils,
 } from 'lucide-react'
 
 export const ICONS: Record<string, LucideIcon> = {
@@ -79,6 +85,12 @@ export const ICONS: Record<string, LucideIcon> = {
   gift: Gift,
   dog: Dog,
   baby: Baby,
+  key: KeyRound,
+  bed: Bed,
+  backpack: Backpack,
+  shirt: Shirt,
+  door: DoorOpen,
+  food: Utensils,
 }
 
 export function Icon({

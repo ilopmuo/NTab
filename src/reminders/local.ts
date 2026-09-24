@@ -7,6 +7,8 @@ import { toast, ui } from '@/app/store'
 import { navigate } from '@/app/router'
 import { prefs } from '@/lib/prefs'
 import { nagSlot } from '@/lib/reminders'
+import { routineProgress, routineToday } from '@/lib/routines'
+import { runner } from '@/features/routines/useRoutines'
 import { chime, primeSound } from './sound'
 import { askPermission } from './push'
 
@@ -193,8 +195,21 @@ export function startLocalReminders() {
       })
       void showSystemNotification(`habits-${h.id}`, h.name, 'Aún no lo has marcado hoy. ¿Lo haces ahora?', './#/habits', `habits-${h.id}-${day}`, h.id)
     }
-    if (habits.length) saveSeen(seen)
-    if (due.length || nags.length || subs.length || pending.length) {
+    // Rutinas con hora que aún no están completas
+    const routines = (await db.routines.where('archived').equals(0).toArray()).filter(
+      (r) => r.time && r.steps.length && routineToday(r, day) && nowHm >= r.time && minutesBetween(r.time, nowHm) < 15 && !seen.has(`routine:${r.id}:${day}`),
+    )
+    const startNow: typeof routines = []
+    for (const r of routines) {
+      seen.add(`routine:${r.id}:${day}`)
+      const run = await db.routineRuns.where('[routineId+date]').equals([r.id, day]).first()
+      if (routineProgress(r, run).complete) continue
+      startNow.push(r)
+      toast(`Es la hora: ${r.name}`, { label: 'Empezar', run: () => runner.open(r.id) }, 20_000, { icon: 'bell', onClick: () => runner.open(r.id) })
+      void showSystemNotification(`routines-${r.id}`, r.name, `Es la hora: ${r.steps.length} pasos. Toca para hacerla paso a paso.`, `./#/routine/${r.id}`, `routines-${r.id}-${day}`)
+    }
+    if (habits.length || routines.length) saveSeen(seen)
+    if (due.length || nags.length || subs.length || pending.length || startNow.length) {
       saveSeen(seen)
       if (prefs.reminderSound) chime()
     }

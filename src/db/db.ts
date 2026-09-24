@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Area, FocusLog, Goal, Habit, HabitLog, Interaction, Note, Person, Project, Setting, Subscription, Task, Template, TrashItem } from './types'
+import type { Area, FocusLog, Goal, Habit, HabitLog, Interaction, Note, Person, Project, Routine, RoutineRun, Setting, Subscription, Task, Template, Thing, TrashItem } from './types'
 import { createTracking, type OutboxEntry } from '@/sync/tracking'
 import { computeRemindAt, withDefaultReminder } from '@/lib/reminders'
 import { computeSubRemindAt } from '@/lib/finance'
@@ -25,6 +25,9 @@ export class NTabDB extends Dexie {
   trash!: EntityTable<TrashItem, 'id'>
   templates!: EntityTable<Template, 'id'>
   focusLogs!: EntityTable<FocusLog, 'id'>
+  routines!: EntityTable<Routine, 'id'>
+  routineRuns!: EntityTable<RoutineRun, 'id'>
+  things!: EntityTable<Thing, 'id'>
   settings!: EntityTable<Setting, 'key'>
   /** cambios locales pendientes de subir */
   _outbox!: EntityTable<OutboxEntry, 'key'>
@@ -60,6 +63,11 @@ export class NTabDB extends Dexie {
       templates: 'id, order',
       focusLogs: 'id, date, taskId',
     })
+    this.version(6).stores({
+      routines: 'id, archived, order',
+      routineRuns: 'id, routineId, date, [routineId+date]',
+      things: 'id, kind, personId, expires, updatedAt',
+    })
   }
 }
 
@@ -78,6 +86,9 @@ export const TABLES = [
   'trash',
   'templates',
   'focusLogs',
+  'routines',
+  'routineRuns',
+  'things',
   'settings',
 ] as const
 export type TableName = (typeof TABLES)[number]

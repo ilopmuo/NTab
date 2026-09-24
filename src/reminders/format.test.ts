@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDigest, buildHabitPayload, buildPayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
+import { buildDigest, buildHabitPayload, buildPayload, buildRoutinePayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
 
 // Jueves 24 de septiembre de 2026, 10:00 en Madrid
 const now = new Date('2026-09-24T08:00:00Z')
@@ -78,5 +78,20 @@ describe('recordatorio de hábito', () => {
       key: 'habits-h1-2026-09-24',
       habitId: 'h1',
     })
+  })
+})
+
+describe('rutinas y cosas', () => {
+  it('aviso de rutina', () => {
+    const p = buildRoutinePayload({ user_id: 'u', routine_id: 'r1', name: 'Antes de salir de casa', steps: 5, local_date: '2026-09-24', remind_time: '08:00' })
+    expect(p).toMatchObject({ title: 'Antes de salir de casa', url: './#/routine/r1', tag: 'routines-r1', key: 'routines-r1-2026-09-24' })
+    expect(p.body).toContain('5 pasos')
+  })
+  it('préstamos y caducidades', () => {
+    const t = { ...base, tbl: 'things', item_id: 'c1', due_time: 'lent', currency: 'Ana', title: 'Taladro' }
+    expect(buildPayload(t, 'Europe/Madrid', now).body).toBe('Se lo prestaste a Ana. ¿Te lo ha devuelto?')
+    const d = buildPayload({ ...t, due_time: 'document', due_date: '2026-10-24', title: 'Pasaporte' }, 'Europe/Madrid', now)
+    expect(d.body).toBe('Caduca el sábado 24. Toca renovarlo.')
+    expect(d.url).toBe('./#/things')
   })
 })

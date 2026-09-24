@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -177,6 +177,26 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'crear_rutina',
+    title: 'Crear rutina',
+    description:
+      'Crea una rutina: una lista corta de pasos que hace siempre igual («Antes de salir de casa»: llaves, cartera, móvil…). NTab le avisa a la hora y le guía paso a paso. Para lo que se repite con varios pasos, mejor una rutina que muchas tareas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string' },
+        pasos: { type: 'array', items: { type: 'string' }, minItems: 1, description: 'Pasos cortos, en orden' },
+        dias: {
+          description: 'Días en que toca: lista de números (0 domingo … 6 sábado) o "todos", "laborables", "fines de semana". Por defecto, todos.',
+          oneOf: [{ type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } }, { type: 'string' }],
+        },
+        hora: { ...TIME, description: 'HH:MM para avisarle de empezarla (opcional)' },
+      },
+      required: ['nombre', 'pasos'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
     name: 'actualizar_objetivo',
     title: 'Actualizar objetivo',
     description: 'Actualiza un objetivo: poner la cifra (cifra), sumarle algo (sumar, p. ej. 1 libro más) o marcarlo como conseguido.',
@@ -312,10 +332,11 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(r.report.join('\n'), !r.writes.length)
     }
     case 'crear_proyecto':
+    case 'crear_rutina':
     case 'actualizar_objetivo':
     case 'registrar_contacto':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { crear_proyecto: createProject, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

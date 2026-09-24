@@ -1,5 +1,6 @@
 import { Command, defaultFilter } from 'cmdk'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { runner } from '@/features/routines/useRoutines'
 import { useMemo, useState } from 'react'
 import {
   CheckCircle2,
@@ -17,6 +18,7 @@ import {
   User,
   UserPlus,
   Wallet,
+  ListChecks,
 } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
@@ -107,6 +109,7 @@ function Palette() {
   const tasks = useLiveQuery(() => db.tasks.toArray(), []) ?? []
   const notes = useLiveQuery(() => db.notes.toArray(), []) ?? []
   const people = useLiveQuery(() => db.people.toArray(), []) ?? []
+  const routines = useLiveQuery(() => db.routines.where('archived').equals(0).toArray(), []) ?? []
   const go = (path: string) => {
     ui.palette(false)
     navigate(path)
@@ -125,6 +128,7 @@ function Palette() {
       ...tasks.map((t) => [t.title, ...t.tags].join(' ')),
       ...notes.map((n) => `${n.title} ${n.content.slice(0, 200)}`),
       ...people.map((p) => `${p.name} ${p.company}`),
+      ...routines.map((r) => `rutina empezar ${r.name}`),
       'plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
@@ -178,6 +182,9 @@ function Palette() {
           </Item>
           <Item value="nuevo hábito crear" icon={<G c="green"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/habits'), ui.create('habit')))}>
             Nuevo hábito
+          </Item>
+          <Item value="nueva rutina crear checklist lista de pasos" icon={<G c="blue"><ListChecks size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/routines'), ui.create('routine')))}>
+            Nueva rutina
           </Item>
           <Item value="nueva persona contacto crear" icon={<G c="purple"><UserPlus size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/people'), ui.create('person')))}>
             Nueva persona
@@ -246,6 +253,13 @@ function Palette() {
               {notes.map((n) => (
                 <Item key={n.id} value={`n:${n.id}`} keywords={[n.title, n.content.slice(0, 200)]} icon={<FileText size={17} style={{ color: tint('yellow') }} />} onSelect={() => go(`/notes/${n.id}`)}>
                   {n.title || 'Sin título'}
+                </Item>
+              ))}
+            </Command.Group>
+            <Command.Group heading="Rutinas" className={groupCls}>
+              {routines.map((r) => (
+                <Item key={r.id} value={`r:${r.id}`} keywords={['rutina', 'empezar', r.name]} icon={<ListChecks size={17} />} onSelect={run(() => runner.open(r.id))} hint="Empezar">
+                  {r.name}
                 </Item>
               ))}
             </Command.Group>

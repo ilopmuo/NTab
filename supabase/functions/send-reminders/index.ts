@@ -8,7 +8,7 @@
 //   VAPID_SUBJECT      opcional, p. ej. "mailto:tu@email.com"
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { buildDigest, buildHabitPayload, buildPayload, type DueDigest, type DueHabit, type DueReminder } from './format.ts'
+import { buildDigest, buildHabitPayload, buildPayload, buildRoutinePayload, type DueDigest, type DueHabit, type DueReminder, type DueRoutine } from './format.ts'
 
 const PUBLIC_KEY =
   Deno.env.get('VAPID_PUBLIC_KEY') ?? 'BITtwUVzfRk6yMCn5x36uN9n3nRV7fpCXOyk_bf1RwMYryFTJ54C6HbJFCzdNVPNVMBuTzlT3OEOYbwM6eH3CJM'
@@ -82,17 +82,19 @@ Deno.serve(async (req) => {
   }
   if (body.test) return sendTest(req, admin, Number(body.delay) || 0)
 
-  const [remindersRes, digestsRes, habitsRes, nagsRes] = await Promise.all([
+  const [remindersRes, digestsRes, habitsRes, nagsRes, routinesRes] = await Promise.all([
     admin.rpc('due_reminders', { window_minutes: 15 }),
     admin.rpc('due_digests', { window_minutes: 15 }),
     admin.rpc('due_habit_reminders', { window_minutes: 15 }),
     admin.rpc('due_nags', { window_minutes: 15 }),
+    admin.rpc('due_routine_reminders', { window_minutes: 15 }),
   ])
   if (remindersRes.error) return json({ error: remindersRes.error.message }, 500)
   // Si la migración del resumen aún no está aplicada, los avisos siguen funcionando
   if (digestsRes.error) console.error('due_digests', digestsRes.error.message)
   if (habitsRes.error) console.error('due_habit_reminders', habitsRes.error.message)
   if (nagsRes.error) console.error('due_nags', nagsRes.error.message)
+  if (routinesRes.error) console.error('due_routine_reminders', routinesRes.error.message)
 
   // Cada envío: a quién, qué (según la zona horaria del dispositivo) y qué apuntar al terminar
   interface Job {
@@ -116,6 +118,11 @@ Deno.serve(async (req) => {
       user_id: d.user_id,
       payload: () => buildDigest(d),
       log: { user_id: d.user_id, tbl: 'digest', item_id: d.local_date, remind_at: new Date().toISOString() },
+    })),
+    ...((routinesRes.data ?? []) as DueRoutine[]).map((x) => ({
+      user_id: x.user_id,
+      payload: () => buildRoutinePayload(x),
+      log: { user_id: x.user_id, tbl: 'routines', item_id: `${x.routine_id}:${x.local_date}`, remind_at: new Date().toISOString() },
     })),
     ...((habitsRes.data ?? []) as DueHabit[]).map((h) => ({
       user_id: h.user_id,

@@ -160,6 +160,75 @@ export interface Habit {
   createdAt: number
 }
 
+/** Rutina: pasos que se repiten a una hora («Antes de salir de casa») */
+export interface RoutineStep {
+  id: ID
+  title: string
+}
+
+export interface Routine {
+  id: ID
+  name: string
+  icon: string
+  steps: RoutineStep[]
+  /** días de la semana en que toca (0 = domingo) */
+  days: number[]
+  /** HH:MM: aviso para empezarla */
+  time?: string
+  archived: 0 | 1
+  order: number
+  createdAt: number
+}
+
+/** Lo hecho de una rutina un día concreto (se reinicia cada día) */
+export interface RoutineRun {
+  id: ID
+  routineId: ID
+  /** YYYY-MM-DD */
+  date: string
+  /** pasos marcados */
+  done: ID[]
+  /** cuando se marcaron todos */
+  completedAt?: number
+}
+
+/**
+ * Cosas y papeles: dónde está algo, qué se ha prestado y lo que caduca.
+ * - stored: guardado en un sitio («Pasaporte → cajón del escritorio»)
+ * - lent: prestado a alguien; borrowed: me lo han prestado
+ * - document: documento o garantía que caduca
+ */
+export type ThingKind = 'stored' | 'lent' | 'borrowed' | 'document'
+
+export interface Thing {
+  id: ID
+  name: string
+  kind: ThingKind
+  /** dónde está guardado */
+  location?: string
+  notes?: string
+  /** foto pequeña (JPEG en data URL) */
+  photo?: string
+  /** persona del préstamo (de Personas) */
+  personId?: ID
+  /** nombre, si la persona no está en Personas */
+  personName?: string
+  /** YYYY-MM-DD: desde cuándo (préstamos) */
+  since?: string
+  /** YYYY-MM-DD: cuándo debería volver (préstamos) */
+  returnBy?: string
+  /** YYYY-MM-DD: caducidad (documentos, garantías) */
+  expires?: string
+  /** días antes de caducar para avisar */
+  notifyDays?: number
+  /** préstamo ya devuelto (se guarda como historial) */
+  returned?: 0 | 1
+  /** momento del aviso ya calculado (ms): caducidad o devolución */
+  remindAt?: number
+  createdAt: number
+  updatedAt: number
+}
+
 export interface HabitLog {
   id: ID
   habitId: ID
@@ -203,7 +272,7 @@ export interface Setting {
 export interface TrashItem {
   /** `${tbl}:${itemId}` */
   id: string
-  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals'
+  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals' | 'routines' | 'things'
   itemId: ID
   title: string
   data: Record<string, unknown>

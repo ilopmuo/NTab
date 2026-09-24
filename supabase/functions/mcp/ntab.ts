@@ -289,6 +289,18 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     s.push(`\nHÁBITOS DE HOY: ${habits.map((h) => `${str(h.data.name)} (${doneIds.has(h.id) ? 'hecho' : 'pendiente'})`).join('; ')}`)
   }
 
+  const routines = rows.filter((r) => r.tbl === 'routines' && !r.data.archived && Array.isArray(r.data.days) && (r.data.days as number[]).includes(weekday(today)))
+  if (routines.length) {
+    s.push(`\nRUTINAS DE HOY (listas de pasos que hace siempre igual):`)
+    for (const r of routines) {
+      const steps = (Array.isArray(r.data.steps) ? r.data.steps : []) as { id: string; title: string }[]
+      const run = rows.find((x) => x.tbl === 'routineRuns' && x.data.routineId === r.id && x.data.date === today)
+      const done = new Set((run?.data.done as string[] | undefined) ?? [])
+      const left = steps.filter((st) => !done.has(st.id)).map((st) => st.title)
+      s.push(`- ${str(r.data.name)}${isHhmm(r.data.time) ? ` (${r.data.time})` : ''}: ${left.length ? `${steps.length - left.length} de ${steps.length} pasos; faltan: ${left.join(', ')}` : 'hecha'}`)
+    }
+  }
+
   const payments = rows
     .filter((r) => r.tbl === 'subscriptions' && r.data.active !== false && isYmd(r.data.nextDate) && (r.data.nextDate as string) <= addDays(today, 30))
     .sort((a, b) => str(a.data.nextDate).localeCompare(str(b.data.nextDate)))
@@ -691,5 +703,41 @@ export function useTemplate(rows: Row[], args: { plantilla?: string; fecha_inici
   return {
     writes,
     report: [`Plantilla «${str(tpl.name)}» usada${where}, empezando ${relDay(start, today)} (${start}):`, ...created.map((t) => taskLine(t, ix, today))],
+  }
+}
+
+// ── Rutinas ───────────────────────────────────────────────────
+
+const DAY_WORDS: Record<string, number[]> = {
+  todos: [0, 1, 2, 3, 4, 5, 6],
+  laborables: [1, 2, 3, 4, 5],
+  'fines de semana': [0, 6],
+}
+
+export function createRoutine(rows: Row[], args: { nombre?: string; pasos?: unknown; dias?: unknown; hora?: string }, env: Env): WriteResult {
+  const name = str(args.nombre).trim()
+  const steps = Array.isArray(args.pasos) ? args.pasos.map((x) => String(x).trim()).filter(Boolean) : []
+  if (!name || !steps.length) return { writes: [], report: ['Falta el nombre o los pasos de la rutina.'] }
+  const exists = rows.find((r) => r.tbl === 'routines' && !r.data.archived && fold(str(r.data.name)) === fold(name))
+  if (exists) return { writes: [], report: [`Ya existe la rutina «${str(exists.data.name)}».`] }
+  let days = [0, 1, 2, 3, 4, 5, 6]
+  if (Array.isArray(args.dias)) {
+    const d = args.dias.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+    if (d.length) days = [...new Set(d)]
+  } else if (typeof args.dias === 'string' && DAY_WORDS[fold(args.dias)]) days = DAY_WORDS[fold(args.dias)]
+  const routine: Data = {
+    id: env.newId(),
+    name,
+    icon: 'list',
+    steps: steps.map((title) => ({ id: env.newId(), title })),
+    days,
+    archived: 0,
+    order: env.now,
+    createdAt: env.now,
+  }
+  if (isHhmm(args.hora)) routine.time = normTime(args.hora!)
+  return {
+    writes: [{ tbl: 'routines', id: String(routine.id), data: routine }],
+    report: [`Rutina creada: «${name}» con ${steps.length} pasos${routine.time ? `, aviso a las ${routine.time}` : ''}. La tiene en NTab → Rutinas y en Hoy.`],
   }
 }

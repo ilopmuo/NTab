@@ -66,6 +66,20 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 export function buildPayload(r: DueReminder, tz = 'Europe/Madrid', now = new Date()): PushPayload {
   const key = `${r.tbl}-${r.item_id}-${Date.parse(r.remind_at)}`
   const when = r.due_date ? dayLabel(r.due_date, now, tz) : null
+  if (r.tbl === 'things') {
+    // due_date: fecha (caducidad o devolución); due_time: tipo; currency: persona
+    const who = r.currency || 'alguien'
+    const date = r.due_date ? dayLabel(r.due_date, now, tz) : null
+    const body =
+      r.due_time === 'lent'
+        ? `Se lo prestaste a ${who}. ¿Te lo ha devuelto?`
+        : r.due_time === 'borrowed'
+          ? `Tienes que devolvérselo a ${who}${date ? ` (${date})` : ''}.`
+          : date
+            ? `Caduca ${date}. Toca renovarlo.`
+            : 'Revisa la fecha de caducidad.'
+    return { title: r.title, body, url: './#/things', tag: `things-${r.item_id}`, key }
+  }
   if (r.tbl === 'subscriptions') {
     const amount = r.amount != null ? money(r.amount, r.currency) : ''
     return {
@@ -131,5 +145,24 @@ export function buildHabitPayload(h: DueHabit): PushPayload & { habitId: string 
     tag: `habits-${h.habit_id}`,
     key: `habits-${h.habit_id}-${h.local_date}`,
     habitId: h.habit_id,
+  }
+}
+
+export interface DueRoutine {
+  user_id: string
+  routine_id: string
+  name: string
+  steps: number
+  local_date: string
+  remind_time: string
+}
+
+export function buildRoutinePayload(x: DueRoutine): PushPayload {
+  return {
+    title: x.name,
+    body: `Es la hora: ${x.steps} ${x.steps === 1 ? 'paso' : 'pasos'}. Toca para hacerla paso a paso.`,
+    url: `./#/routine/${x.routine_id}`,
+    tag: `routines-${x.routine_id}`,
+    key: `routines-${x.routine_id}-${x.local_date}`,
   }
 }

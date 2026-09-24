@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Area, Goal, Habit, Interaction, Note, Person, Project, Subscription, Task } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, Routine, Subscription, Task } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
@@ -373,4 +373,56 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 
 export async function setSetting(key: string, value: unknown) {
   await db.settings.put({ key, value })
+}
+
+// ── Rutinas ───────────────────────────────────────────────────
+
+export async function createRoutine(data: Partial<Routine> & { name: string }): Promise<Routine> {
+  const routine: Routine = {
+    id: uid(),
+    icon: 'list',
+    steps: [],
+    days: [0, 1, 2, 3, 4, 5, 6],
+    archived: 0,
+    order: Date.now(),
+    createdAt: Date.now(),
+    // Los campos sin valor no pisan los de por defecto (p. ej. días de una idea)
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.routines.add(routine)
+  return routine
+}
+
+export async function deleteRoutine(id: string) {
+  await db.transaction('rw', db.routines, db.routineRuns, db.trash, async () => {
+    const routine = await db.routines.get(id)
+    if (!routine) return
+    const runs = await db.routineRuns.where('routineId').equals(id).toArray()
+    await putInTrash('routines', routine, { related: runs.map((r) => ({ tbl: 'routineRuns', data: r as unknown as Record<string, unknown> })) })
+    await db.routineRuns.where('routineId').equals(id).delete()
+    await db.routines.delete(id)
+  })
+}
+
+/** Marca o desmarca un paso de la rutina en un día. Devuelve si ha quedado completa. */
+export async function toggleRoutineStep(routine: Routine, date: string, stepId: string, on?: boolean): Promise<boolean> {
+  return db.transaction('rw', db.routineRuns, async () => {
+    const run = await db.routineRuns.where('[routineId+date]').equals([routine.id, date]).first()
+    const done = new Set(run?.done ?? [])
+    const want = on ?? !done.has(stepId)
+    if (want) done.add(stepId)
+    else done.delete(stepId)
+    const list = routine.steps.map((s) => s.id).filter((s) => done.has(s))
+    const complete = routine.steps.length > 0 && list.length === routine.steps.length
+    const completedAt = complete ? (run?.completedAt ?? Date.now()) : undefined
+    if (run) await db.routineRuns.update(run.id, { done: list, completedAt })
+    else await db.routineRuns.add({ id: uid(), routineId: routine.id, date, done: list, ...(completedAt ? { completedAt } : {}) })
+    return complete
+  })
+}
+
+/** Empieza de nuevo la rutina de ese día */
+export async function resetRoutineRun(routineId: string, date: string) {
+  const run = await db.routineRuns.where('[routineId+date]').equals([routineId, date]).first()
+  if (run) await db.routineRuns.update(run.id, { done: [], completedAt: undefined })
 }

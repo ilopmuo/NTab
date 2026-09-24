@@ -5,6 +5,8 @@ import { CommandPalette } from '@/components/CommandPalette'
 import { FocusMode } from '@/features/focus/FocusMode'
 import { DragGhost } from '@/components/dayDrag'
 import { SelectionBar } from '@/features/select/SelectionBar'
+import { RoutineRunner } from '@/features/routines/RoutineRunner'
+import { runner } from '@/features/routines/useRoutines'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 import { TaskDetailPanel } from '@/components/TaskDetail'
@@ -44,8 +46,9 @@ const loaders = {
   SettingsView: () => import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
   TagView: () => import('@/features/TagView').then((m) => ({ default: m.TagView })),
   UpcomingView: () => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView })),
+  RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView)
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView)
 
 /** Precarga el resto de vistas cuando el navegador está libre */
 function preloadViews() {
@@ -67,6 +70,8 @@ function Screen() {
       return <CalendarView />
     case 'habits':
       return <HabitsView />
+    case 'routines':
+      return <RoutinesView />
     case 'notes':
       return <NotesView id={id} />
     case 'people':
@@ -106,6 +111,7 @@ const TITLES: Record<string, string> = {
   upcoming: 'Próximo',
   calendar: 'Calendario',
   habits: 'Hábitos',
+  routines: 'Rutinas',
   notes: 'Notas',
   people: 'Personas',
   projects: 'Proyectos',
@@ -161,6 +167,12 @@ function Workspace() {
       ui.quickAdd()
       return
     }
+    // Aviso de una rutina: se abre paso a paso sobre Hoy
+    if (parts[0] === 'routine' && parts[1]) {
+      navigate('/today')
+      runner.open(parts[1])
+      return
+    }
     if (parts[0] === 'habit' && parts[1] && parts[2] === 'habit-done') {
       navigate('/habits')
       void applyReminderAction('habit-done', parts[1])
@@ -213,6 +225,7 @@ function Workspace() {
       <ShortcutsHelp />
       <RecoveryModal />
       <FocusMode />
+      <RoutineRunner />
       <DragGhost />
       <SelectionBar />
       <Toast />
