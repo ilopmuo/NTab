@@ -3,7 +3,7 @@
  * Calendario de Apple, Google Calendar u Outlook. Sin dependencias de Deno para
  * poder probarlo con los tests de la app (src/lib/ics.test.ts).
  */
-import { zonedToUtc } from '../_shared/time.ts'
+import { addDays, ymdIn, zonedToUtc } from '../_shared/time.ts'
 
 export { zonedToUtc }
 
@@ -168,4 +168,88 @@ export function buildCalendar(input: IcsInput): string {
 
   lines.push('END:VCALENDAR')
   return lines.map(fold).join('\r\n') + '\r\n'
+}
+
+// ── Versión JSON (para el script de Google Calendar) ──────────
+
+/** Evento listo para copiar a otro calendario */
+export interface FeedEvent {
+  uid: string
+  title: string
+  allDay: boolean
+  /** YYYY-MM-DD (todo el día) o ISO en UTC */
+  start: string
+  end: string
+  description: string
+  /** huella del contenido: si no cambia, no hace falta tocar el evento */
+  hash: string
+}
+
+function hash(s: string) {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
+
+function feedEvent(e: Omit<FeedEvent, 'hash'>): FeedEvent {
+  return { ...e, hash: hash([e.title, e.allDay, e.start, e.end, e.description].join('|')) }
+}
+
+/**
+ * Los mismos eventos que el .ics, como lista. Los cumpleaños van como días
+ * sueltos (este año y el siguiente) en vez de una regla de repetición.
+ */
+export function buildEvents(input: IcsInput): FeedEvent[] {
+  const now = (input.now ?? new Date()).getTime()
+  const today = ymdIn(now, input.tz)
+  const base = input.appUrl ? input.appUrl.replace(/#.*$/, '').replace(/\/?$/, '/') : null
+  const link = (path: string) => (base ? `Abrir en NTab: ${base}#${path}` : '')
+  const out: FeedEvent[] = []
+
+  for (const t of input.tasks) {
+    if (!t.dueDate) continue
+    const description = [t.projectName && `Proyecto: ${t.projectName}`, t.notes?.trim(), link(`/task/${encodeURIComponent(t.id)}`)].filter(Boolean).join('\n\n')
+    if (t.dueTime) {
+      const start = zonedToUtc(t.dueDate, t.dueTime, input.tz)
+      out.push(feedEvent({ uid: `task-${t.id}`, title: t.title, allDay: false, start: new Date(start).toISOString(), end: new Date(start + TASK_MINUTES * 60_000).toISOString(), description }))
+    } else {
+      out.push(feedEvent({ uid: `task-${t.id}`, title: t.title, allDay: true, start: t.dueDate, end: nextDay(t.dueDate), description }))
+    }
+  }
+
+  for (const p of input.payments) {
+    out.push(
+      feedEvent({
+        uid: `payment-${p.id}-${p.nextDate}`,
+        title: `💳 ${p.name} · ${money(p.amount, p.currency)}`,
+        allDay: true,
+        start: p.nextDate,
+        end: nextDay(p.nextDate),
+        description: link('/finance'),
+      }),
+    )
+  }
+
+  const year = Number(today.slice(0, 4))
+  for (const b of input.birthdays) {
+    const md = b.birthday.slice(-5)
+    if (!/^\d{2}-\d{2}$/.test(md)) continue
+    for (const y of [year, year + 1]) {
+      const date = `${y}-${md}`
+      // 29 de febrero en años no bisiestos: el 28
+      const valid = new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date ? date : `${y}-02-28`
+      if (valid < addDays(today, -7)) continue
+      out.push(
+        feedEvent({
+          uid: `birthday-${b.id}-${y}`,
+          title: `🎂 Cumpleaños de ${b.name}`,
+          allDay: true,
+          start: valid,
+          end: nextDay(valid),
+          description: link(`/people/${encodeURIComponent(b.id)}`),
+        }),
+      )
+    }
+  }
+  return out
 }

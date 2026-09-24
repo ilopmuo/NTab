@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCalendar, escapeText, fold, zonedToUtc } from '../../supabase/functions/calendar/ics'
+import { buildCalendar, buildEvents, escapeText, fold, zonedToUtc } from '../../supabase/functions/calendar/ics'
 
 const now = new Date('2026-09-24T08:00:00Z')
 
@@ -47,5 +47,36 @@ describe('calendario ICS', () => {
     expect(ics.match(/RRULE:FREQ=YEARLY/g)).toHaveLength(2)
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(5)
     expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true)
+  })
+})
+
+describe('eventos en JSON (script de Google Calendar)', () => {
+  const input = {
+    tz: 'Europe/Madrid',
+    appUrl: 'https://ntab.vercel.app/',
+    now,
+    tasks: [
+      { id: 't1', title: 'Llamar al banco', dueDate: '2026-09-24', dueTime: '10:00', projectName: 'Casa' },
+      { id: 't2', title: 'Comprar pan', dueDate: '2026-09-25' },
+    ],
+    payments: [{ id: 's1', name: 'Netflix', amount: 12.99, nextDate: '2026-09-26' }],
+    birthdays: [{ id: 'p1', name: 'Ana', birthday: '1990-03-15' }, { id: 'p2', name: 'Leo', birthday: '02-29' }],
+  }
+  it('tareas con hora, de día completo, pagos y cumpleaños', () => {
+    const ev = buildEvents(input)
+    const byUid = Object.fromEntries(ev.map((e) => [e.uid, e]))
+    expect(byUid['task-t1']).toMatchObject({ allDay: false, start: '2026-09-24T08:00:00.000Z', end: '2026-09-24T08:30:00.000Z' })
+    expect(byUid['task-t1'].description).toBe('Proyecto: Casa\n\nAbrir en NTab: https://ntab.vercel.app/#/task/t1')
+    expect(byUid['task-t2']).toMatchObject({ allDay: true, start: '2026-09-25', end: '2026-09-26' })
+    expect(byUid['payment-s1-2026-09-26'].title).toMatch(/^💳 Netflix · 12,99/)
+    // El cumpleaños de marzo de este año ya pasó: solo el del año que viene
+    expect(ev.filter((e) => e.uid.startsWith('birthday-p1')).map((e) => e.start)).toEqual(['2027-03-15'])
+    // 29 de febrero en año no bisiesto → 28
+    expect(ev.filter((e) => e.uid.startsWith('birthday-p2')).map((e) => e.start)).toEqual(['2027-02-28'])
+  })
+  it('la huella cambia solo si cambia el evento', () => {
+    const a = buildEvents(input)[0].hash
+    expect(buildEvents(input)[0].hash).toBe(a)
+    expect(buildEvents({ ...input, tasks: [{ ...input.tasks[0], title: 'Llamar al banco (urgente)' }] })[0].hash).not.toBe(a)
   })
 })
