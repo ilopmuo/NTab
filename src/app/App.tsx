@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { AreaView } from '@/features/areas/AreaView'
 import { CalendarView } from '@/features/calendar/CalendarView'
+import { FinanceView } from '@/features/finance/FinanceView'
+import { GoalsView } from '@/features/goals/GoalsView'
 import { HabitsView } from '@/features/habits/HabitsView'
 import { InboxView } from '@/features/Inbox'
 import { LogbookView } from '@/features/Logbook'
@@ -28,6 +30,7 @@ import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
 import { useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
+import { openTaskFromNotification } from '@/reminders/local'
 import { ReauthBanner } from '@/sync/ReauthBanner'
 import { AuthScreen } from '@/features/auth/AuthScreen'
 import { RecoveryModal } from '@/features/auth/RecoveryModal'
@@ -56,6 +59,10 @@ function Screen() {
       return <AreaView id={id} />
     case 'tag':
       return <TagView tag={id} />
+    case 'goals':
+      return <GoalsView />
+    case 'finance':
+      return <FinanceView />
     case 'review':
       return <ReviewView />
     case 'logbook':
@@ -76,6 +83,8 @@ const TITLES: Record<string, string> = {
   notes: 'Notas',
   people: 'Personas',
   projects: 'Proyectos',
+  goals: 'Objetivos',
+  finance: 'Pagos',
   review: 'Revisión',
   logbook: 'Completadas',
   settings: 'Ajustes',
@@ -112,6 +121,11 @@ function Workspace() {
   useGlobalShortcuts()
   const { path, parts } = useRoute()
   const panelOpen = useUI((s) => !!s.selectedTaskId)
+
+  // Enlace de una notificación: #/task/<id> abre la tarea sobre Hoy
+  useEffect(() => {
+    if (parts[0] === 'task' && parts[1]) openTaskFromNotification(parts[1])
+  }, [parts])
 
   useEffect(() => {
     document.title = `${TITLES[parts[0]] ?? 'NTab'} · NTab`

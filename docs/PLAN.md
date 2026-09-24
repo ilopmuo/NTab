@@ -34,9 +34,9 @@
 | 12 | **Notas** | Notas rápidas, fijadas, enlazadas a áreas y proyectos | 2 |
 | 13 | **Personas** (mini-CRM) | Contactos, último contacto, "llámale cada X días", cumpleaños | 3 |
 | 14 | **Revisión semanal** | Asistente paso a paso: vaciar bandeja, revisar proyectos, planificar semana | 3 |
-| 15 | **Objetivos** | Metas trimestrales/anuales vinculadas a proyectos | 4 |
-| 16 | **Finanzas ligeras** | Suscripciones, pagos recurrentes, vencimientos | 4 |
-| 17 | **Recordatorios** | Notificaciones del navegador a la hora de la tarea | 4 |
+| 15 | **Objetivos** | Metas medidas con una cifra o con los proyectos que las hacen avanzar; ritmo frente a la fecha límite | 4 |
+| 16 | **Pagos** (finanzas ligeras) | Suscripciones y recibos, total al mes y al año, aviso antes de cada cargo | 4 |
+| 17 | **Recordatorios** | Aviso por tarea y notificaciones push con la app cerrada (Web Push) | 4 |
 | 18 | **Sincronización** | Mismos datos en móvil y ordenador (Supabase o similar) | 5 |
 | 19 | **Asistente IA** | "¿Qué tengo esta semana?", planificar el día, convertir un email en tareas | 5 |
 | 20 | **Integraciones** | Google Calendar, Gmail → tareas | 5 |
@@ -68,10 +68,15 @@ La vista previa muestra en tiempo real qué ha entendido (chips de fecha, priori
 
 ```
 Area      { id, name, icon, color, order }
-Project   { id, name, areaId?, description, status: active|paused|done, deadline?, color, order, createdAt }
+Project   { id, name, areaId?, goalId?, description, status: active|paused|done, deadline?, color, order, createdAt }
 Task      { id, title, notes, done, priority: 0..3, dueDate? (YYYY-MM-DD), dueTime? (HH:mm),
-            projectId?, areaId?, tags[], subtasks[{id,title,done}], recurrence?, order,
+            projectId?, areaId?, tags[], subtasks[{id,title,done}], recurrence?,
+            reminder? ({before: min} | {at: ms} | null), remindAt? (ms, calculado), order,
             createdAt, completedAt? }
+Goal      { id, title, why, areaId?, kind: projects|number, current?, target?, unit?, deadline?,
+            status: active|done|dropped, order, createdAt, completedAt? }
+Subscription { id, name, kind: sub|bill, amount, currency, cycle: week|month|quarter|year,
+            nextDate, anchorDay?, active, category, notifyDays?, remindAt? (ms, calculado), notes, createdAt }
 Recurrence{ freq: day|week|month|year, interval, weekdays?[] }
 Note      { id, title, content, areaId?, projectId?, pinned, createdAt, updatedAt }
 Habit     { id, name, icon, color, days[0..6], archived, order, createdAt }
@@ -143,15 +148,14 @@ src/
 - ✅ **Fase 1 — Núcleo** · Shell, diseño, Hoy, Bandeja, Próximo, Áreas, Proyectos, tareas completas, captura NL, `⌘K`, ajustes, copias.
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
-- ⏳ **Fase 4 — Automatización** · Objetivos, Finanzas ligeras, notificaciones.
+- ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
 - 🟡 **Fase 5 — Conectado** · ✅ Sincronización multi-dispositivo (Supabase) · ⏳ asistente IA, integraciones.
 
 ### Ideas para siguientes iteraciones
 
-- Recordatorios con notificaciones del navegador a la hora de la tarea.
 - Reordenar tareas arrastrando.
-- Objetivos trimestrales con proyectos vinculados y progreso agregado.
-- Suscripciones y pagos recurrentes con total mensual.
+- Objetivos en la revisión semanal.
+- Posponer un aviso desde la propia notificación.
 - Asistente IA: "planifícame el día", "convierte este email en tareas".
 
 ## 8. Atajos de teclado
@@ -160,6 +164,6 @@ src/
 |-------|--------|
 | `N` | Nueva tarea (captura rápida) |
 | `⌘K` / `Ctrl K` | Paleta de comandos / búsqueda |
-| `G` luego `H` / `I` / `U` / `C` / `B` / `O` / `P` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Notas / Personas |
+| `G` luego `H` / `I` / `U` / `C` / `B` / `O` / `P` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Notas / Personas / Proyectos / Objetivos / Pagos |
 | `Esc` | Cerrar panel o modal |
 | `?` | Ver todos los atajos |

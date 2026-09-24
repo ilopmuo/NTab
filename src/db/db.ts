@@ -1,6 +1,9 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Area, Habit, HabitLog, Interaction, Note, Person, Project, Setting, Task } from './types'
+import type { Area, Goal, Habit, HabitLog, Interaction, Note, Person, Project, Setting, Subscription, Task } from './types'
 import { createTracking, type OutboxEntry } from '@/sync/tracking'
+import { computeRemindAt, withDefaultReminder } from '@/lib/reminders'
+import { computeSubRemindAt } from '@/lib/finance'
+import { prefs } from '@/lib/prefs'
 
 /** Estado interno de la sincronización (solo de este dispositivo, nunca se sube) */
 export interface LocalMeta {
@@ -17,6 +20,8 @@ export class NTabDB extends Dexie {
   habitLogs!: EntityTable<HabitLog, 'id'>
   people!: EntityTable<Person, 'id'>
   interactions!: EntityTable<Interaction, 'id'>
+  goals!: EntityTable<Goal, 'id'>
+  subscriptions!: EntityTable<Subscription, 'id'>
   settings!: EntityTable<Setting, 'key'>
   /** cambios locales pendientes de subir */
   _outbox!: EntityTable<OutboxEntry, 'key'>
@@ -39,6 +44,11 @@ export class NTabDB extends Dexie {
       _outbox: 'key, ts',
       _local: 'key',
     })
+    this.version(3).stores({
+      projects: 'id, areaId, status, order, goalId',
+      goals: 'id, status, areaId, order',
+      subscriptions: 'id, nextDate, active',
+    })
   }
 }
 
@@ -52,6 +62,8 @@ export const TABLES = [
   'habitLogs',
   'people',
   'interactions',
+  'goals',
+  'subscriptions',
   'settings',
 ] as const
 export type TableName = (typeof TABLES)[number]
@@ -86,3 +98,48 @@ export const rawDb = opened.raw
 db.areas.hook('reading', modernColor)
 db.projects.hook('reading', modernColor)
 db.habits.hook('reading', modernColor)
+
+/**
+ * Avisos de tareas: al crear o modificar una tarea se aplica el aviso automático
+ * (si tiene hora y no se ha elegido otro) y se recalcula `remindAt`, que es lo
+ * que mira el servidor para enviar la notificación.
+ */
+export function installReminderHooks(target: NTabDB) {
+  target.tasks.hook('creating', (_pk, obj) => {
+    const t = withDefaultReminder(obj, prefs.autoRemind)
+    if (t.reminder !== obj.reminder) obj.reminder = t.reminder
+    const at = computeRemindAt(obj)
+    if (at === undefined) delete obj.remindAt
+    else obj.remindAt = at
+  })
+  target.tasks.hook('updating', (mods, _pk, obj) => {
+    const m = mods as Record<string, unknown>
+    const relevant = ['reminder', 'dueDate', 'dueTime'].some((k) => k in m)
+    if (!relevant) return
+    const next = { ...obj } as Record<string, unknown>
+    for (const [k, v] of Object.entries(m)) {
+      if (v === undefined) delete next[k]
+      else next[k] = v
+    }
+    const merged = withDefaultReminder(next as unknown as Task, prefs.autoRemind)
+    const changes: Partial<Task> = {}
+    if (merged.reminder !== next.reminder) changes.reminder = merged.reminder
+    const at = computeRemindAt(merged)
+    if (at !== obj.remindAt) changes.remindAt = at
+    return Object.keys(changes).length ? changes : undefined
+  })
+
+  // Pagos: avisar `notifyDays` antes del próximo cargo
+  target.subscriptions.hook('creating', (_pk, obj) => {
+    const at = computeSubRemindAt(obj)
+    if (at === undefined) delete obj.remindAt
+    else obj.remindAt = at
+  })
+  target.subscriptions.hook('updating', (mods, _pk, obj) => {
+    const m = mods as Record<string, unknown>
+    if (!['nextDate', 'notifyDays', 'active'].some((k) => k in m)) return
+    const at = computeSubRemindAt({ ...obj, ...m } as Subscription)
+    return at !== obj.remindAt ? { remindAt: at } : undefined
+  })
+}
+installReminderHooks(db)

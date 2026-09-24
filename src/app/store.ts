@@ -8,7 +8,7 @@ export interface UIState {
   helpOpen: boolean
   sidebarOpen: boolean
   /** abre el formulario de creación de la vista correspondiente */
-  creating: 'project' | 'habit' | 'person' | 'area' | null
+  creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | null
   toast: { id: number; message: string; action?: { label: string; run: () => void } } | null
 }
 
@@ -55,9 +55,9 @@ export const ui = {
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
-export function toast(message: string, action?: { label: string; run: () => void }) {
+export function toast(message: string, action?: { label: string; run: () => void }, durationMs = 4000) {
   clearTimeout(toastTimer)
   const id = Date.now()
   setUI({ toast: { id, message, action } })
-  toastTimer = setTimeout(() => setUI((s) => (s.toast?.id === id ? { toast: null } : {})), 4000)
+  toastTimer = setTimeout(() => setUI((s) => (s.toast?.id === id ? { toast: null } : {})), durationMs)
 }

@@ -18,6 +18,9 @@
 | **Notas** | Autoguardado; las líneas `- [ ] algo` se convierten en tareas con un clic |
 | **Personas** (mini-CRM) | Cumpleaños, historial de contactos y aviso de "hace mucho que no hablas con…" |
 | **Revisión semanal** | Asistente de 6 pasos para vaciar la cabeza y planificar la semana |
+| **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada |
+| **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo |
+| **Pagos** | Suscripciones y recibos: cuánto pagas al mes y al año, y aviso antes de cada cargo |
 | **Paleta** (`⌘K`) | Busca cualquier cosa y ejecuta cualquier acción |
 | **Tema** | Oscuro (por defecto), claro o del sistema |
 | **Sincronización** | Con tu cuenta, los datos están en el iPhone, el iPad y el ordenador, al momento |
@@ -57,10 +60,11 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 | `#etiqueta` | Etiqueta |
 | `+Proyecto` o `+Área` | Dónde va (coincidencia aproximada) |
 | `cada día`, `cada lunes y jueves`, `cada 2 semanas`, `el 1 de cada mes`, `días laborables` | Repetición |
+| `avísame`, `recuérdamelo 1 día antes`, `con aviso 30 minutos antes` | Aviso |
 
 ## Atajos
 
-`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`O`/`P`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar
+`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`O`/`P`/`J`/`T`/`F`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar
 
 ## En el iPhone o el iPad
 
@@ -75,12 +79,20 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 - Primera vez en un dispositivo: si la nube está vacía se suben sus datos; si no, se descargan (o se combinan, si el dispositivo tenía datos propios).
 - Las migraciones están en `supabase/migrations/` y la integración de GitHub de Supabase las aplica al fusionar en `main`.
 
+## Avisos con la app cerrada
+
+- Cada tarea (y cada pago) guarda el momento de su aviso (`remindAt`), que viaja con la sincronización.
+- Cada minuto, `pg_cron` llama a la Edge Function `send-reminders` (`supabase/functions/`), que busca los avisos pendientes con `due_reminders()` y los envía por Web Push a los dispositivos suscritos.
+- Con la app abierta, los avisos salen dentro de la app (`src/reminders/local.ts`).
+- En el iPhone hacen falta iOS 16.4 o posterior y la app añadida a la pantalla de inicio. Se activan en **Ajustes → Avisos**.
+- Configuración única en Supabase: el secreto `VAPID_PRIVATE_KEY` de la Edge Function (la clave pública está en `src/reminders/push.ts`).
+
 ## Desarrollo
 
 ```bash
 npm install
 npm run dev        # servidor de desarrollo
-npm test           # tests (lenguaje natural, repeticiones, rachas, sincronización)
+npm test           # tests (lenguaje natural, repeticiones, rachas, sincronización, avisos, pagos)
 npm run build      # typecheck + build de producción en dist/
 npm run preview    # sirve el build
 ```

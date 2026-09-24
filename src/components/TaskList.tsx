@@ -98,6 +98,7 @@ export function InlineAdd({
     if (parsed.dueDate) data.dueDate = parsed.dueDate
     if (parsed.dueTime) data.dueTime = parsed.dueTime
     if (parsed.recurrence) data.recurrence = parsed.recurrence
+    if (parsed.reminder) data.reminder = parsed.reminder
     if (parsed.projectId) {
       data.projectId = parsed.projectId
       data.areaId = parsed.areaId

@@ -40,6 +40,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   if (parsed.dueDate) final.dueDate = parsed.dueDate
   if (parsed.dueTime) final.dueTime = parsed.dueTime
   if (parsed.recurrence) final.recurrence = parsed.recurrence
+  if (parsed.reminder) final.reminder = parsed.reminder
   if (parsed.projectId) {
     final.projectId = parsed.projectId
     final.areaId = parsed.areaId

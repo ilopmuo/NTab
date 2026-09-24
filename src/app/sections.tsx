@@ -9,7 +9,9 @@ import {
   RefreshCcw,
   Settings,
   StickyNote,
+  Target,
   Users,
+  Wallet,
 } from 'lucide-react'
 import { cx } from '@/components/ui'
 
@@ -39,6 +41,8 @@ export const SECTIONS: SectionDef[] = [
   { id: 'notes', path: '/notes', label: 'Notas', short: 'Notas', icon: StickyNote, tint: 'blue', key: 'O' },
   { id: 'people', path: '/people', label: 'Personas', short: 'Personas', icon: Users, tint: 'blue', key: 'P' },
   { id: 'projects', path: '/projects', label: 'Proyectos', short: 'Proyectos', icon: Layers, tint: 'blue', key: 'J' },
+  { id: 'goals', path: '/goals', label: 'Objetivos', short: 'Objetivos', icon: Target, tint: 'blue', key: 'T' },
+  { id: 'finance', path: '/finance', label: 'Pagos', short: 'Pagos', icon: Wallet, tint: 'blue', key: 'F' },
   { id: 'review', path: '/review', label: 'Revisión semanal', short: 'Revisión', icon: RefreshCcw, tint: 'blue', key: 'R' },
   { id: 'logbook', path: '/logbook', label: 'Completadas', short: 'Completadas', icon: Archive, tint: 'blue', key: 'L' },
   { id: 'settings', path: '/settings', label: 'Ajustes', short: 'Ajustes', icon: Settings, tint: 'blue', key: 'S' },

@@ -6,6 +6,7 @@ import { toast } from '@/app/store'
 import { SyncEngine } from './engine'
 import { SupabaseRemote, supabase } from './supabase'
 import { onLocalChange } from './tracking'
+import { disablePush, isPushEnabledHere } from '@/reminders/push'
 
 export type SyncState = 'loading' | 'signed-out' | 'syncing' | 'synced' | 'pending' | 'offline' | 'error'
 
@@ -254,6 +255,12 @@ export async function signOut() {
   if (pending && !window.confirm(`Hay ${pending} cambios sin subir que se perderán. ¿Cerrar sesión igualmente?`)) return
   if (!pending && !window.confirm('¿Cerrar sesión? Tus datos seguirán en tu cuenta, pero se borrarán de este dispositivo.')) return
   const local = new SyncEngine(rawDb, new SupabaseRemote(''))
+  // Dejar de recibir avisos en este dispositivo
+  try {
+    if (isPushEnabledHere()) await disablePush()
+  } catch {
+    /* sin conexión: el servidor lo limpiará cuando el aviso falle */
+  }
   stop()
   await supabase.auth.signOut({ scope: 'local' })
   await local.resetLocal()

@@ -1,5 +1,5 @@
 import { addMonths, addWeeks, addYears } from 'date-fns'
-import type { Priority, Recurrence } from '@/db/types'
+import type { Priority, Recurrence, Reminder } from '@/db/types'
 import { addDaysYmd, fromYmd, ymd } from './dates'
 import { firstOccurrence } from './recurrence'
 
@@ -24,6 +24,7 @@ export interface ParsedTask {
   projectId?: string
   areaId?: string
   recurrence?: Recurrence
+  reminder?: Reminder
 }
 
 // Límites de palabra que funcionan con acentos y ñ (\b no los entiende).
@@ -59,6 +60,7 @@ const MONTHS: Record<string, number> = {
 const MONTH_RE = '(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)'
 
 const NUMBERS: Record<string, number> = {
+  treinta: 30,
   un: 1,
   una: 1,
   uno: 1,
@@ -247,6 +249,24 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
     if (take(re, (m) => void (out.recurrence = build(m)))) break
   }
 
+  // ── Aviso ─────────────────────────────────────────────────
+  // "recuérdame", "avísame", "avísame 15 minutos antes", "con aviso 1 día antes"
+  take(
+    new RegExp(
+      `${B}(?:recu[eé]rdamelo|recu[eé]rdame|av[ií]same|con\\s+aviso)(?:\\s+(\\d+|un|una|dos|tres|cinco|diez|quince|treinta)\\s+(minutos?|min|horas?|h|d[ií]as?)\\s+antes)?${E}`,
+      'i',
+    ),
+    (m) => {
+      let before = 0
+      if (m[1]) {
+        const n = toNumber(m[1])
+        const u = normalize(m[2])
+        before = u.startsWith('d') ? n * 1440 : u.startsWith('h') ? n * 60 : n
+      }
+      out.reminder = { before }
+    },
+  )
+
   // ── Hora ──────────────────────────────────────────────────
   if (!take(new RegExp(`${B}(?:a\\s+)?(?:al\\s+)?mediod[ií]a${E}`, 'i'), () => void (out.dueTime = '12:00'))) {
     take(
@@ -343,5 +363,7 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
     .replace(/^[\s,;:-]+|[\s,;:-]+$/g, '')
     .replace(/\s+(a|el|la|de|para|y|en)$/i, '')
     .trim()
+  // Primera letra en mayúscula (p. ej. tras quitar "Recuérdame")
+  out.title = out.title.charAt(0).toUpperCase() + out.title.slice(1)
   return out
 }
