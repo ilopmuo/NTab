@@ -56,6 +56,8 @@ Glifos sobre círculos o cuadrados de relleno gris (`--c-fill`). La sección act
 | Hora a hora | Al «Colocar en huecos», los bloques de las tareas aparecen en su hueco con un muelle |
 | Dictado | El micrófono se pone lima y late mientras escucha |
 | Ánimo del diario | Cinco caras en gris; la elegida crece con un muelle y se rellena (gris para lo malo, azul para bien, lima para muy bien). El mapa de ánimo usa los mismos colores |
+| ¿Qué hago ahora? | La propuesta entra desde abajo; «Otra» la cambia con un fundido |
+| Gastos | La cifra del mes aparece al apuntar; barras de presupuesto y categorías crecen con muelle (una sola serie, un solo color: azul) |
 | Compra | Lo que vas a añadir aparece en píldoras con su pasillo mientras escribes; al marcar, la fila baja al carro |
 
 La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el interruptor nativo oculto (`src/lib/haptics.ts`).
