@@ -1,8 +1,9 @@
 // Edge Function: calendario de NTab en formato iCalendar.
 // GET /functions/v1/calendar?token=<token de calendar_feeds>
 // Sin sesión (los calendarios no la envían): el token del enlace es la llave.
+// Con &format=json devuelve los eventos como lista (script de Google Calendar).
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { buildCalendar, type IcsBirthday, type IcsPayment, type IcsTask } from './ics.ts'
+import { buildCalendar, buildEvents, type IcsBirthday, type IcsPayment, type IcsTask } from './ics.ts'
 
 interface RecordRow {
   tbl: string
@@ -13,7 +14,8 @@ interface RecordRow {
 const text = (body: string, status: number) => new Response(body, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
 
 Deno.serve(async (req) => {
-  const token = new URL(req.url).searchParams.get('token') ?? ''
+  const url = new URL(req.url)
+  const token = url.searchParams.get('token') ?? ''
   if (!/^[a-f0-9]{32,128}$/.test(token)) return text('Enlace no válido', 404)
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -62,7 +64,13 @@ Deno.serve(async (req) => {
     .filter((r) => r.tbl === 'people' && typeof r.data.birthday === 'string' && r.data.birthday)
     .map((r) => ({ id: r.id, name: String(r.data.name ?? ''), birthday: r.data.birthday as string }))
 
-  const ics = buildCalendar({ tz: feed.tz || 'Europe/Madrid', appUrl: feed.app_url, tasks, payments, birthdays })
+  const input = { tz: feed.tz || 'Europe/Madrid', appUrl: feed.app_url, tasks, payments, birthdays }
+  if (url.searchParams.get('format') === 'json') {
+    return new Response(JSON.stringify({ tz: input.tz, events: buildEvents(input) }), {
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+    })
+  }
+  const ics = buildCalendar(input)
   return new Response(ics, {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
