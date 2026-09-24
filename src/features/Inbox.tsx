@@ -5,6 +5,7 @@ import { SectionIcon, section } from '@/app/sections'
 import { TaskList } from '@/components/TaskList'
 import { Empty, PageHeader } from '@/components/ui'
 import { Page } from './Page'
+import { SelectButton } from '@/features/select/SelectionBar'
 
 export function InboxView() {
   const tasks = useOpenTasks()
@@ -16,6 +17,7 @@ export function InboxView() {
         icon={<SectionIcon def={section('inbox')} size={40} />}
         title="Bandeja de entrada"
         subtitle="Lo que capturas sin fecha ni lista. Procésalo a menudo: ponle fecha, muévelo o bórralo."
+        actions={<SelectButton />}
       />
       <TaskList
         tasks={inbox}

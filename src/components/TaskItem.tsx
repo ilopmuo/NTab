@@ -12,6 +12,7 @@ import { recurrenceLabel } from '@/lib/recurrence'
 import { toast, ui, useUI } from '@/app/store'
 import { bouncy, cx } from './ui'
 import { dragToDay } from './dayDrag'
+import { selection, useIsPicked, useSelecting } from '@/features/select/selection'
 
 /** Casilla redonda de Recordatorios: se rellena con un muelle y el ✓ se dibuja */
 export function Checkbox({
@@ -90,6 +91,29 @@ export async function completeWithFeedback(task: Task) {
 
 const BANGS = ['', '!', '!!', '!!!']
 
+/** Marca de selección (en lugar de la casilla mientras se eligen tareas) */
+function PickMark({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={on}
+      aria-label={on ? 'Quitar de la selección' : 'Seleccionar'}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className={cx('flex h-[22px] w-[22px] items-center justify-center rounded-full border-[1.6px] transition-colors', on ? 'border-blue bg-blue text-white' : 'border-faint')}
+    >
+      {on && (
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
+          <path d="M3.5 8.4l3 3 6-6.6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
 export const TaskItem = memo(function TaskItem({
   task,
   lookup,
@@ -107,6 +131,8 @@ export const TaskItem = memo(function TaskItem({
   draggable?: boolean
 }) {
   const selected = useUI((s) => s.selectedTaskId === task.id)
+  const picking = useSelecting()
+  const picked = useIsPicked(task.id)
   const [completing, setCompleting] = useState(false)
   const checked = !!task.done || completing
   const t = today()
@@ -192,23 +218,30 @@ export const TaskItem = memo(function TaskItem({
       role="button"
       tabIndex={0}
       {...(draggable ? dragToDay(task) : {})}
-      onClick={() => ui.openTask(task.id)}
+      data-task-id={task.id}
+      aria-pressed={picking ? picked : undefined}
+      onClick={(e) => {
+        // Ctrl/⌘ + clic, o con la selección activa: marcar en vez de abrir
+        if (picking || e.metaKey || e.ctrlKey) return selection.toggle(task.id)
+        ui.openTask(task.id)
+      }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') ui.openTask(task.id)
+        if (e.key === 'Enter') return picking ? selection.toggle(task.id) : ui.openTask(task.id)
         if (e.key === ' ') {
           e.preventDefault()
-          onToggle()
+          if (picking) selection.toggle(task.id)
+          else onToggle()
         }
       }}
       className={cx(
         'group relative flex cursor-default items-start gap-3 px-4 outline-none transition-colors duration-150',
         draggable && 'select-none',
         compact ? 'py-2' : 'py-[11px]',
-        selected ? 'bg-accent-soft' : 'hover:bg-hover focus-visible:bg-hover active:bg-press',
+        picked || (selected && !picking) ? 'bg-accent-soft' : 'hover:bg-hover focus-visible:bg-hover active:bg-press',
       )}
     >
       <div className="pt-px">
-        <Checkbox checked={checked} onChange={onToggle} priority={task.priority} />
+        {picking ? <PickMark on={picked} onClick={() => selection.toggle(task.id)} /> : <Checkbox checked={checked} onChange={onToggle} priority={task.priority} />}
       </div>
       <div className="min-w-0 flex-1">
         <p

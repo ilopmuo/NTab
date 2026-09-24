@@ -4,6 +4,7 @@ import { db } from '@/db/db'
 import { TaskList } from '@/components/TaskList'
 import { PageHeader } from '@/components/ui'
 import { Page } from './Page'
+import { SelectButton } from '@/features/select/SelectionBar'
 
 export function TagView({ tag }: { tag: string }) {
   const tasks = useLiveQuery(() => db.tasks.where('tags').equals(tag).and((t) => !t.done).toArray(), [tag])
@@ -18,6 +19,7 @@ export function TagView({ tag }: { tag: string }) {
         }
         title={tag}
         subtitle={`${tasks.length} ${tasks.length === 1 ? 'tarea pendiente' : 'tareas pendientes'} con esta etiqueta`}
+        actions={<SelectButton />}
       />
       <TaskList tasks={tasks} add={{ defaults: { tags: [tag] } }} />
     </Page>

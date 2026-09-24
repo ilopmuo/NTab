@@ -33,6 +33,35 @@ export async function mutateTask(id: string, fn: (t: Task) => void) {
   await db.tasks.where('id').equals(id).modify(fn)
 }
 
+/** Cambia varias tareas a la vez. Devuelve cómo estaban, para poder deshacer. */
+export async function mutateTasks(ids: string[], fn: (t: Task) => void): Promise<Task[]> {
+  return db.transaction('rw', db.tasks, async () => {
+    const before = (await db.tasks.bulkGet(ids)).filter((t): t is Task => !!t)
+    await db.tasks.where('id').anyOf(ids).modify(fn)
+    return structuredClone(before)
+  })
+}
+
+/** Deja las tareas como estaban (deshacer de las acciones en bloque) */
+export async function restoreTasks(snapshots: Task[], created: string[] = []) {
+  await db.transaction('rw', db.tasks, async () => {
+    if (created.length) await db.tasks.bulkDelete(created)
+    await db.tasks.bulkPut(snapshots)
+  })
+}
+
+/** Completa varias tareas (las que se repiten crean la siguiente) */
+export async function completeTasks(ids: string[]) {
+  const before = (await db.tasks.bulkGet(ids)).filter((t): t is Task => !!t && !t.done)
+  const snapshot = structuredClone(before)
+  const created: string[] = []
+  for (const t of before) {
+    const next = await toggleTask(t)
+    if (next) created.push(next.id)
+  }
+  return { before: snapshot, created }
+}
+
 /**
  * Completa o reabre una tarea. Si es recurrente, al completarla se crea
  * automáticamente la siguiente ocurrencia.

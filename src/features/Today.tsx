@@ -20,6 +20,7 @@ import { PaymentsCard } from './today/PaymentsCard'
 import { PeopleCard } from './today/PeopleCard'
 import { WeekStrip } from './today/WeekStrip'
 import { Page } from './Page'
+import { SelectButton } from '@/features/select/SelectionBar'
 
 const PARTS = [
   { id: 'morning', title: 'Por la mañana', test: (t?: string) => !!t && t < '12:00' },
@@ -84,7 +85,7 @@ export function TodayView() {
 
   return (
     <Page wide>
-      <PageHeader eyebrow={longDateLabel(t)} tint="var(--c-blue)" title={greeting()} subtitle={summary} />
+      <PageHeader eyebrow={longDateLabel(t)} tint="var(--c-blue)" title={greeting()} subtitle={summary} actions={<SelectButton />} />
 
       <div
         className={cx(

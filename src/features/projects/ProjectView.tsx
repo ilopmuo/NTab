@@ -16,6 +16,7 @@ import { Page } from '../Page'
 import { ProjectForm } from './ProjectForm'
 import { toastTrashed } from '../trash/undo'
 import { templateFromProject } from '@/lib/templates'
+import { SelectButton } from '@/features/select/SelectionBar'
 
 export function ProjectView({ id }: { id: string }) {
   const project = useLiveQuery(() => db.projects.get(id), [id])
@@ -103,6 +104,7 @@ export function ProjectView({ id }: { id: string }) {
           <Button size="sm" onClick={() => setEditing(true)}>
             <Pencil size={13} strokeWidth={2.4} /> Editar
           </Button>
+          <SelectButton small />
           <Button
             size="sm"
             onClick={async () => {
