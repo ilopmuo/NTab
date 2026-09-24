@@ -87,8 +87,8 @@ export function InlineAdd({
 }) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
-  const { areas, projects } = useLookup()
-  const parsed = useMemo(() => parseQuickAdd(value, { areas, projects }), [value, areas, projects])
+  const { areas, projects, people } = useLookup()
+  const parsed = useMemo(() => parseQuickAdd(value, { areas, projects, people }), [value, areas, projects, people])
 
   const submit = async () => {
     if (!parsed.title) return
@@ -102,6 +102,7 @@ export function InlineAdd({
     if (parsed.dueTime) data.dueTime = parsed.dueTime
     if (parsed.recurrence) data.recurrence = parsed.recurrence
     if (parsed.reminder) data.reminder = parsed.reminder
+    if (parsed.people?.length) data.people = [...new Set([...(defaults?.people ?? []), ...parsed.people])]
     if (parsed.projectId) {
       data.projectId = parsed.projectId
       data.areaId = parsed.areaId

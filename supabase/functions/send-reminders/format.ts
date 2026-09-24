@@ -110,3 +110,23 @@ export function buildDigest(d: DueDigest, now = new Date()): PushPayload {
     tag: `digest-${d.local_date}`,
   }
 }
+
+export interface DueHabit {
+  user_id: string
+  habit_id: string
+  name: string
+  local_date: string
+  remind_time: string
+}
+
+/** Recordatorio de un hábito que aún no está hecho hoy */
+export function buildHabitPayload(h: DueHabit): PushPayload & { habitId: string } {
+  return {
+    title: h.name,
+    body: 'Aún no lo has marcado hoy. ¿Lo haces ahora?',
+    url: './#/habits',
+    tag: `habits-${h.habit_id}`,
+    key: `habits-${h.habit_id}-${h.local_date}`,
+    habitId: h.habit_id,
+  }
+}

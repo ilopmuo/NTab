@@ -30,8 +30,8 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   const [value, setValue] = useState(initial ?? '')
   const [notes, setNotes] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const { areas, projects, project, area } = useLookup()
-  const parsed = useMemo(() => parseQuickAdd(value, { areas, projects }), [value, areas, projects])
+  const { areas, projects, people, project, area } = useLookup()
+  const parsed = useMemo(() => parseQuickAdd(value, { areas, projects, people }), [value, areas, projects, people])
   const example = useMemo(() => EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)], [])
 
   useEffect(() => inputRef.current?.focus(), [])
@@ -41,6 +41,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   if (parsed.dueTime) final.dueTime = parsed.dueTime
   if (parsed.recurrence) final.recurrence = parsed.recurrence
   if (parsed.reminder) final.reminder = parsed.reminder
+  if (parsed.people?.length) final.people = [...new Set([...(defaults?.people ?? []), ...parsed.people])]
   if (parsed.projectId) {
     final.projectId = parsed.projectId
     final.areaId = parsed.areaId
@@ -110,7 +111,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
             <span className="truncate">{[final.dueDate && dateLabel(final.dueDate), destination].filter(Boolean).join(' · ')}</span>
           )}
           <span className="ml-auto hidden items-center gap-1 text-faint md:flex">
-            <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>!</Kbd>prioridad
+            <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>@</Kbd>persona <Kbd>!</Kbd>prioridad
           </span>
         </div>
         <button

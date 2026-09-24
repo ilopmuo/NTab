@@ -11,6 +11,8 @@ export interface ParseTarget {
 export interface ParseContext {
   projects: (ParseTarget & { areaId?: string })[]
   areas: ParseTarget[]
+  /** para "@Ana" */
+  people?: ParseTarget[]
   /** fecha de referencia (por defecto, ahora) */
   now?: Date
 }
@@ -21,6 +23,8 @@ export interface ParsedTask {
   dueTime?: string
   priority: Priority
   tags: string[]
+  /** personas mencionadas con @ que existen */
+  people?: string[]
   projectId?: string
   areaId?: string
   recurrence?: Recurrence
@@ -171,6 +175,17 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
     return ' '
   })
 
+  // ── Personas ──────────────────────────────────────────────
+  // "@Ana": se enlaza a la persona y el nombre se queda en el título
+  // ("Llamar a @ana" → "Llamar a Ana"); si no existe, solo se quita la @.
+  text = text.replace(new RegExp(`${B}@([\\p{L}\\p{N}_-]+)`, 'gu'), (_, name: string) => {
+    const p = ctx.people?.length ? matchTarget(name, ctx.people) : undefined
+    if (!p) return name
+    out.people = [...new Set([...(out.people ?? []), p.id])]
+    const first = p.name.trim().split(/\s+/)[0]
+    return normalize(first).startsWith(normalize(name)) ? first : name
+  })
+
   // ── Prioridad ─────────────────────────────────────────────
   take(new RegExp(`${B}(!{1,3}|!(alta|media|baja|[123]))${E}`, 'i'), (m) => {
     const raw = normalize(m[1])
@@ -247,6 +262,13 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
   ]
   for (const [re, build] of recurrenceRules) {
     if (take(re, (m) => void (out.recurrence = build(m)))) break
+  }
+  // "cada 3 días desde que la haga": la siguiente cuenta desde que se completa
+  if (out.recurrence) {
+    take(
+      new RegExp(`${B}(?:desde\\s+que\\s+la\\s+(?:haga|complete|termine|hago|completo|termino)|despu[eé]s\\s+de\\s+(?:hacerla|completarla)|tras\\s+(?:hacerla|completarla))${E}`, 'i'),
+      () => void (out.recurrence = { ...out.recurrence!, afterDone: true }),
+    )
   }
 
   // ── Aviso ─────────────────────────────────────────────────

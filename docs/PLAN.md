@@ -149,6 +149,7 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 8 — Personas y rutinas** · @personas en las tareas, recordatorios de hábitos, repetir desde que se completa y saltar una vez, carga por vistas y atajos del icono.
 - ✅ **Fase 7 — Nada se pierde** · Papelera de 30 días, plantillas, arrastrar tareas a otro día, «Tu semana» con registro de foco.
 - ✅ **Fase 6 — Captura y foco** · Planificar el día, modo foco, más herramientas en el conector de Claude.
 - ✅ **Fase 5 — Conectado** · Sincronización multi-dispositivo, conector para Claude, calendario suscribible, resumen de la mañana, Posponer/Hecho desde el aviso, objetivos en la revisión semanal.

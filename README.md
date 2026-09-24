@@ -25,6 +25,9 @@
 | **Plantillas** | Listas que repites (maleta, cierre de mes…): se crean las tareas con sus fechas, como proyecto o sueltas |
 | **Papelera** | Lo que borras se guarda 30 días y se puede recuperar |
 | **Tu semana** | En Completadas: tareas por día, tiempo de foco, hábitos y racha |
+| **Personas en tareas** | Escribe `@Ana` al capturar: la tarea aparece en su ficha como «Pendiente con Ana» |
+| **Recordatorio de hábitos** | Cada hábito puede avisarte a una hora si aún no lo has hecho (con botón «Hecho») |
+| **Repeticiones** | «Cada 3 días desde que la haga» cuenta desde que la completas; «Saltar esta vez» pasa a la siguiente |
 | **Arrastrar** | En Calendario y Próximo, arrastra una tarea a otro día (en el móvil, pulsación larga) |
 | **Claude** | Conector para usar NTab desde Claude con tu suscripción: «¿qué tengo esta semana?», «planifícame el día», «apunta lo de este email» |
 | **Calendario** | Suscríbete desde Calendario del iPhone, Google u Outlook y verás tus tareas, pagos y cumpleaños |
@@ -68,8 +71,10 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 | `!alta` `!media` `!baja`, `!1` `!2` `!3`, `!!!` | Prioridad |
 | `#etiqueta` | Etiqueta |
 | `+Proyecto` o `+Área` | Dónde va (coincidencia aproximada) |
+| `@Ana` | Persona relacionada |
 | `cada día`, `cada lunes y jueves`, `cada 2 semanas`, `el 1 de cada mes`, `días laborables` | Repetición |
 | `avísame`, `recuérdamelo 1 día antes`, `con aviso 30 minutos antes` | Aviso |
+| `cada 3 días desde que la haga` | Repetición contada desde que se completa |
 
 ## Atajos
 

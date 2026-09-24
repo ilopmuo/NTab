@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDigest, buildPayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
+import { buildDigest, buildHabitPayload, buildPayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
 
 // Jueves 24 de septiembre de 2026, 10:00 en Madrid
 const now = new Date('2026-09-24T08:00:00Z')
@@ -58,5 +58,18 @@ describe('resumen de la mañana', () => {
   it('día despejado', () => {
     const p = buildDigest({ ...d, today_count: 0, overdue_count: 0, titles: [], payments: 0 }, now)
     expect(p.body).toMatch(/nada planificado/)
+  })
+})
+
+describe('recordatorio de hábito', () => {
+  it('con botón Hecho y sin repetir en el día', () => {
+    expect(buildHabitPayload({ user_id: 'u', habit_id: 'h1', name: 'Beber agua', local_date: '2026-09-24', remind_time: '21:00' })).toEqual({
+      title: 'Beber agua',
+      body: 'Aún no lo has marcado hoy. ¿Lo haces ahora?',
+      url: './#/habits',
+      tag: 'habits-h1',
+      key: 'habits-h1-2026-09-24',
+      habitId: 'h1',
+    })
   })
 })

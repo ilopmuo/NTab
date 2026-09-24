@@ -1,25 +1,6 @@
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
-import { AreaView } from '@/features/areas/AreaView'
-import { CalendarView } from '@/features/calendar/CalendarView'
-import { FinanceView } from '@/features/finance/FinanceView'
-import { GoalsView } from '@/features/goals/GoalsView'
-import { HabitsView } from '@/features/habits/HabitsView'
-import { InboxView } from '@/features/Inbox'
-import { LogbookView } from '@/features/Logbook'
-import { NotesView } from '@/features/notes/NotesView'
-import { PlanView } from '@/features/plan/PlanView'
-import { TrashView } from '@/features/trash/TrashView'
-import { TemplatesView } from '@/features/templates/TemplatesView'
-import { PeopleView } from '@/features/people/PeopleView'
-import { PersonView } from '@/features/people/PersonView'
-import { ProjectView } from '@/features/projects/ProjectView'
-import { ProjectsView } from '@/features/projects/ProjectsView'
-import { ReviewView } from '@/features/review/ReviewView'
-import { SettingsView } from '@/features/settings/SettingsView'
-import { TagView } from '@/features/TagView'
 import { TodayView } from '@/features/Today'
-import { UpcomingView } from '@/features/Upcoming'
 import { CommandPalette } from '@/components/CommandPalette'
 import { FocusMode } from '@/features/focus/FocusMode'
 import { DragGhost } from '@/components/dayDrag'
@@ -33,12 +14,45 @@ import { useGlobalShortcuts } from './shortcuts'
 import { Sidebar } from './Sidebar'
 import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
-import { useUI } from './store'
+import { ui, useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
 import { applyReminderAction, openTaskFromNotification } from '@/reminders/local'
 import { ReauthBanner } from '@/sync/ReauthBanner'
 import { AuthScreen } from '@/features/auth/AuthScreen'
 import { RecoveryModal } from '@/features/auth/RecoveryModal'
+
+// Hoy se carga con la app; el resto de vistas, al abrirlas (y en segundo plano
+// en cuanto la app está lista, para que navegar siga siendo instantáneo)
+const loaders = {
+  AreaView: () => import('@/features/areas/AreaView').then((m) => ({ default: m.AreaView })),
+  CalendarView: () => import('@/features/calendar/CalendarView').then((m) => ({ default: m.CalendarView })),
+  FinanceView: () => import('@/features/finance/FinanceView').then((m) => ({ default: m.FinanceView })),
+  GoalsView: () => import('@/features/goals/GoalsView').then((m) => ({ default: m.GoalsView })),
+  HabitsView: () => import('@/features/habits/HabitsView').then((m) => ({ default: m.HabitsView })),
+  InboxView: () => import('@/features/Inbox').then((m) => ({ default: m.InboxView })),
+  LogbookView: () => import('@/features/Logbook').then((m) => ({ default: m.LogbookView })),
+  NotesView: () => import('@/features/notes/NotesView').then((m) => ({ default: m.NotesView })),
+  PlanView: () => import('@/features/plan/PlanView').then((m) => ({ default: m.PlanView })),
+  TrashView: () => import('@/features/trash/TrashView').then((m) => ({ default: m.TrashView })),
+  TemplatesView: () => import('@/features/templates/TemplatesView').then((m) => ({ default: m.TemplatesView })),
+  PeopleView: () => import('@/features/people/PeopleView').then((m) => ({ default: m.PeopleView })),
+  PersonView: () => import('@/features/people/PersonView').then((m) => ({ default: m.PersonView })),
+  ProjectView: () => import('@/features/projects/ProjectView').then((m) => ({ default: m.ProjectView })),
+  ProjectsView: () => import('@/features/projects/ProjectsView').then((m) => ({ default: m.ProjectsView })),
+  ReviewView: () => import('@/features/review/ReviewView').then((m) => ({ default: m.ReviewView })),
+  SettingsView: () => import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
+  TagView: () => import('@/features/TagView').then((m) => ({ default: m.TagView })),
+  UpcomingView: () => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView })),
+}
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView)
+
+/** Precarga el resto de vistas cuando el navegador está libre */
+function preloadViews() {
+  const run = () => Object.values(loaders).forEach((load) => void load())
+  const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback
+  if (idle) idle(run)
+  else setTimeout(run, 1500)
+}
 
 function Screen() {
   const { parts } = useRoute()
@@ -133,12 +147,24 @@ export function App() {
 
 function Workspace() {
   useGlobalShortcuts()
+  useEffect(preloadViews, [])
   const { path, parts } = useRoute()
   const panelOpen = useUI((s) => !!s.selectedTaskId)
 
   // Enlace de una notificación: #/task/<id> abre la tarea sobre Hoy;
   // #/task/<id>/done o /snooze viene de los botones con la app cerrada
   useEffect(() => {
+    // Atajo del icono de la app: «Nueva tarea»
+    if (parts[0] === 'new') {
+      navigate('/today')
+      ui.quickAdd()
+      return
+    }
+    if (parts[0] === 'habit' && parts[1] && parts[2] === 'habit-done') {
+      navigate('/habits')
+      void applyReminderAction('habit-done', parts[1])
+      return
+    }
     if (parts[0] !== 'task' || !parts[1]) return
     const action = parts[2]
     if (action === 'done' || action === 'snooze') {
@@ -174,7 +200,9 @@ function Workspace() {
           transition={{ type: 'spring', stiffness: 260, damping: 30, mass: 0.8 }}
           className={cx('min-h-full', screenKey === 'notes' && 'h-full')}
         >
-          <Screen />
+          <Suspense fallback={null}>
+            <Screen />
+          </Suspense>
         </motion.div>
       </main>
       <MobileBar />

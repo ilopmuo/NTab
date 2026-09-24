@@ -8,7 +8,7 @@
 //   VAPID_SUBJECT      opcional, p. ej. "mailto:tu@email.com"
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { buildDigest, buildPayload, type DueDigest, type DueReminder } from './format.ts'
+import { buildDigest, buildHabitPayload, buildPayload, type DueDigest, type DueHabit, type DueReminder } from './format.ts'
 
 const PUBLIC_KEY =
   Deno.env.get('VAPID_PUBLIC_KEY') ?? 'BITtwUVzfRk6yMCn5x36uN9n3nRV7fpCXOyk_bf1RwMYryFTJ54C6HbJFCzdNVPNVMBuTzlT3OEOYbwM6eH3CJM'
@@ -82,13 +82,15 @@ Deno.serve(async (req) => {
   }
   if (body.test) return sendTest(req, admin, Number(body.delay) || 0)
 
-  const [remindersRes, digestsRes] = await Promise.all([
+  const [remindersRes, digestsRes, habitsRes] = await Promise.all([
     admin.rpc('due_reminders', { window_minutes: 15 }),
     admin.rpc('due_digests', { window_minutes: 15 }),
+    admin.rpc('due_habit_reminders', { window_minutes: 15 }),
   ])
   if (remindersRes.error) return json({ error: remindersRes.error.message }, 500)
   // Si la migración del resumen aún no está aplicada, los avisos siguen funcionando
   if (digestsRes.error) console.error('due_digests', digestsRes.error.message)
+  if (habitsRes.error) console.error('due_habit_reminders', habitsRes.error.message)
 
   // Cada envío: a quién, qué (según la zona horaria del dispositivo) y qué apuntar al terminar
   interface Job {
@@ -106,6 +108,11 @@ Deno.serve(async (req) => {
       user_id: d.user_id,
       payload: () => buildDigest(d),
       log: { user_id: d.user_id, tbl: 'digest', item_id: d.local_date, remind_at: new Date().toISOString() },
+    })),
+    ...((habitsRes.data ?? []) as DueHabit[]).map((h) => ({
+      user_id: h.user_id,
+      payload: () => buildHabitPayload(h),
+      log: { user_id: h.user_id, tbl: 'habits', item_id: `${h.habit_id}:${h.local_date}`, remind_at: new Date().toISOString() },
     })),
   ]
   if (!jobs.length) return json({ sent: 0 })

@@ -45,7 +45,8 @@ export async function toggleTask(task: Task): Promise<Task | undefined> {
   return db.transaction('rw', db.tasks, async () => {
     await db.tasks.update(task.id, { done: 1, completedAt: Date.now() })
     if (!task.recurrence) return
-    const base = task.dueDate ?? today()
+    // «Desde que la completo»: la siguiente se cuenta desde hoy
+    const base = task.recurrence.afterDone ? today() : (task.dueDate ?? today())
     let next = nextOccurrence(base, task.recurrence)
     // Si la tarea estaba muy atrasada, no generar ocurrencias en el pasado
     while (next < today()) next = nextOccurrence(next, task.recurrence)
@@ -66,6 +67,16 @@ export async function toggleTask(task: Task): Promise<Task | undefined> {
 }
 
 /** Borra una tarea (va a la papelera) */
+/** Tarea que se repite: saltar esta vez (pasa a la siguiente sin completarla) */
+export async function skipOccurrence(task: Task): Promise<string | undefined> {
+  if (!task.recurrence) return
+  const t = today()
+  let next = nextOccurrence(task.dueDate ?? t, task.recurrence)
+  while (next < t) next = nextOccurrence(next, task.recurrence)
+  await db.tasks.update(task.id, { dueDate: next })
+  return next
+}
+
 export async function deleteTask(id: string) {
   await db.transaction('rw', db.tasks, db.trash, async () => {
     const task = await db.tasks.get(id)

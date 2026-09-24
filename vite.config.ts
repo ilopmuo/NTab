@@ -17,7 +17,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'], importScripts: ['push-sw.js'] },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Solo alfabeto latino: las fuentes griega, cirílica y vietnamita no se usan
+        globIgnores: ['**/inter-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*.woff2'],
+        importScripts: ['push-sw.js'],
+      },
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'NTab',
@@ -32,6 +37,12 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+        ],
+        // Pulsación larga en el icono (Android, Windows, macOS con Chrome/Edge)
+        shortcuts: [
+          { name: 'Nueva tarea', short_name: 'Nueva', url: './#/new', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+          { name: 'Hoy', url: './#/today', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+          { name: 'Planificar el día', short_name: 'Planificar', url: './#/plan', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
         ],
       },
     }),

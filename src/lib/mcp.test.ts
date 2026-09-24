@@ -175,4 +175,16 @@ describe('conector MCP', () => {
     expect(advanceCharge('2026-11-30', 'quarter')).toBe('2027-02-28')
     expect(advanceCharge('2026-09-24', 'year')).toBe('2027-09-24')
   })
+
+  it('personas: crear con @, buscar y resumen', async () => {
+    const store = memoryStore(base())
+    const r = await call(store, 'crear_tareas', { tareas: [{ titulo: 'Devolver el libro', personas: ['@ana', 'Pepe'] }] })
+    expect(r.text).toContain('· con Ana')
+    expect(r.text).toContain('(no encontré a: Pepe)')
+    const created = [...store.rows.values()].find((x) => x.data.title === 'Devolver el libro')!
+    expect(created.data.people).toEqual(['x1'])
+    expect((await call(store, 'buscar_tareas', { persona: 'ana' })).text).toContain('Devolver el libro')
+    expect((await call(store, 'buscar_tareas', { persona: 'nadie' })).text).toMatch(/No hay ninguna persona/)
+    expect((await call(store, 'ver_resumen')).text).toContain('Devolver el libro · sin fecha · con Ana')
+  })
 })

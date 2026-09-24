@@ -9,6 +9,8 @@ export interface Recurrence {
   interval: number
   /** 0 = domingo … 6 = sábado (solo para freq 'week') */
   weekdays?: number[]
+  /** la siguiente se cuenta desde el día en que se completa (no desde la fecha prevista) */
+  afterDone?: boolean
 }
 
 export interface Subtask {
@@ -117,6 +119,8 @@ export interface Task {
   projectId?: ID
   areaId?: ID
   tags: string[]
+  /** personas relacionadas (@Ana): aparecen en su ficha como pendientes */
+  people?: ID[]
   subtasks: Subtask[]
   recurrence?: Recurrence
   reminder?: Reminder | null
@@ -145,6 +149,8 @@ export interface Habit {
   color: string
   /** días de la semana en que toca (0 = domingo) */
   days: number[]
+  /** HH:MM: avisar a esta hora si aún no está hecho */
+  remindTime?: string
   archived: 0 | 1
   order: number
   createdAt: number

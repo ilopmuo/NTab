@@ -1,4 +1,4 @@
-import { Bell, Calendar, Clock, Flag, Folder, Hash, Repeat } from 'lucide-react'
+import { AtSign, Bell, Calendar, Clock, Flag, Folder, Hash, Repeat } from 'lucide-react'
 import type { ParsedTask } from '@/lib/parse'
 import { useLookup } from '@/db/hooks'
 import { dateLabel } from '@/lib/dates'
@@ -27,10 +27,11 @@ function Chip({ children, color }: { children: React.ReactNode; color?: string }
 
 /** Vista previa de lo que el parser ha entendido */
 export function ParsedChips({ parsed, className }: { parsed: ParsedTask; className?: string }) {
-  const { project, area } = useLookup()
+  const { project, area, person } = useLookup()
   const p = project(parsed.projectId)
   const a = area(parsed.areaId)
-  const has = parsed.dueDate || parsed.dueTime || parsed.priority || parsed.tags.length || p || a || parsed.recurrence || parsed.reminder
+  const who = (parsed.people ?? []).map(person).filter((x) => !!x)
+  const has = parsed.dueDate || parsed.dueTime || parsed.priority || parsed.tags.length || p || a || parsed.recurrence || parsed.reminder || who.length
   if (!has) return null
   return (
     <div className={cx('flex flex-wrap gap-1.5', className)}>
@@ -70,6 +71,12 @@ export function ParsedChips({ parsed, className }: { parsed: ParsedTask; classNa
           {p?.name ?? a?.name}
         </Chip>
       )}
+      {who.map((x) => (
+        <Chip key={x!.id} color="var(--c-text)">
+          <AtSign size={13} strokeWidth={2.4} />
+          {x!.name}
+        </Chip>
+      ))}
       {parsed.tags.map((t) => (
         <Chip key={t} color="var(--c-blue)">
           <Hash size={13} strokeWidth={2.6} />
