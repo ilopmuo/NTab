@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, createNote, createTasks, markHabit, searchTasks, updateTasks, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, createNote, createProject, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -141,6 +141,89 @@ export const TOOLS = [
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
+  {
+    name: 'crear_proyecto',
+    title: 'Crear proyecto',
+    description: 'Crea un proyecto (algo que necesita varias tareas: una mudanza, un viaje…). Después se le pueden añadir tareas con crear_tareas indicando el proyecto.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string' },
+        area: { type: 'string', description: 'Área de vida (Trabajo, Personal, Salud…)' },
+        descripcion: { type: 'string', description: '¿Qué significa terminarlo?' },
+        limite: DATE,
+      },
+      required: ['nombre'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'actualizar_objetivo',
+    title: 'Actualizar objetivo',
+    description: 'Actualiza un objetivo: poner la cifra (cifra), sumarle algo (sumar, p. ej. 1 libro más) o marcarlo como conseguido.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        objetivo: { type: 'string', description: 'Nombre del objetivo' },
+        cifra: { type: 'number' },
+        sumar: { type: 'number' },
+        conseguido: { type: 'boolean' },
+      },
+      required: ['objetivo'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'registrar_contacto',
+    title: 'Registrar contacto',
+    description: 'Apunta que ha hablado con una persona (llamada, mensaje, reunión…). Actualiza su último contacto.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        persona: { type: 'string' },
+        tipo: { type: 'string', enum: ['llamada', 'mensaje', 'reunión', 'email', 'otro'] },
+        resumen: { type: 'string', description: 'De qué hablasteis' },
+        fecha: DATE,
+      },
+      required: ['persona'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'marcar_pago',
+    title: 'Marcar pago como pagado',
+    description: 'Marca un recibo o pago recurrente como pagado: pasa al siguiente cargo.',
+    inputSchema: {
+      type: 'object',
+      properties: { pago: { type: 'string', description: 'Nombre del pago (alquiler, luz…)' } },
+      required: ['pago'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'ver_plantillas',
+    title: 'Ver plantillas',
+    description: 'Lista las plantillas del usuario (listas reutilizables: maleta de viaje, cierre de mes…) con sus tareas.',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  {
+    name: 'usar_plantilla',
+    title: 'Usar plantilla',
+    description:
+      'Crea las tareas de una plantilla con fechas relativas al día de inicio. Con como="proyecto" crea además un proyecto; con proyecto="nombre" (sin como) las añade a un proyecto existente.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plantilla: { type: 'string', description: 'Nombre de la plantilla' },
+        fecha_inicio: DATE,
+        como: { type: 'string', enum: ['proyecto', 'tareas'], description: 'proyecto: crea un proyecto nuevo; tareas: tareas sueltas (por defecto)' },
+        proyecto: { type: 'string', description: 'Nombre del proyecto nuevo, o de uno existente donde añadirlas' },
+      },
+      required: ['plantilla'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
 ]
 
 interface RpcRequest {
@@ -182,6 +265,22 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       const r = markHabit(rows, args, env)
       if (r.writes.length || r.deletes.length) await store.save(r.writes, r.deletes)
       return text(r.report.join('\n'))
+    }
+    case 'ver_plantillas':
+      return text(listTemplates(rows))
+    case 'usar_plantilla': {
+      const r = useTemplate(rows, args, env)
+      if (r.writes.length) await store.save(r.writes)
+      return text(r.report.join('\n'), !r.writes.length)
+    }
+    case 'crear_proyecto':
+    case 'actualizar_objetivo':
+    case 'registrar_contacto':
+    case 'marcar_pago': {
+      const fn = { crear_proyecto: createProject, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const r = fn(rows, args, env)
+      if (r.writes.length) await store.save(r.writes)
+      return text(r.report.join('\n'), !r.writes.length)
     }
     default:
       return null

@@ -4,6 +4,7 @@ import type { Goal } from '@/db/types'
 import { db } from '@/db/db'
 import { createGoal, deleteGoal, linkGoalProjects, setGoalStatus } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
+import { toastTrashed } from '../trash/undo'
 import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, Textarea, cx } from '@/components/ui'
 
 export function GoalForm({ goal, open, onClose }: { goal?: Goal; open: boolean; onClose: () => void }) {
@@ -141,7 +142,7 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
       <div className="flex flex-wrap items-center gap-2 px-5 pt-1 pb-5">
         {goal && (
           <>
-            <Button type="button" variant="danger" onClick={async () => (await deleteGoal(goal.id), onClose())}>
+            <Button type="button" variant="danger" onClick={async () => (await deleteGoal(goal.id), onClose(), toastTrashed('Objetivo en la papelera', 'goals', goal.id))}>
               Eliminar
             </Button>
             {goal.status === 'active' ? (

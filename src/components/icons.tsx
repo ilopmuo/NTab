@@ -17,6 +17,7 @@ import {
   Heart,
   Home,
   Leaf,
+  ListChecks,
   type LucideIcon,
   Moon,
   Music,
@@ -41,6 +42,7 @@ import {
 
 export const ICONS: Record<string, LucideIcon> = {
   circle: Circle,
+  list: ListChecks,
   briefcase: Briefcase,
   user: User,
   users: Users,

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { CheckCircle2, ChevronRight, FileText, Pause, Pencil, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
+import { CheckCircle2, ChevronRight, ClipboardList, FileText, Pause, Pencil, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import { createNote, deleteProject } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
@@ -14,6 +14,8 @@ import { TaskList } from '@/components/TaskList'
 import { Button, Empty, Group, Modal, ModalHeader, ProgressRing, Section, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectForm } from './ProjectForm'
+import { toastTrashed } from '../trash/undo'
+import { templateFromProject } from '@/lib/templates'
 
 export function ProjectView({ id }: { id: string }) {
   const project = useLiveQuery(() => db.projects.get(id), [id])
@@ -101,6 +103,15 @@ export function ProjectView({ id }: { id: string }) {
           <Button size="sm" onClick={() => setEditing(true)}>
             <Pencil size={13} strokeWidth={2.4} /> Editar
           </Button>
+          <Button
+            size="sm"
+            onClick={async () => {
+              await templateFromProject(project)
+              toast('Guardado como plantilla', { label: 'Ver', run: () => navigate('/templates') })
+            }}
+          >
+            <ClipboardList size={13} strokeWidth={2.4} /> Guardar como plantilla
+          </Button>
           <Button size="sm" variant="danger" onClick={() => setConfirmDelete(true)}>
             <Trash2 size={13} strokeWidth={2.4} /> Eliminar
           </Button>
@@ -171,6 +182,7 @@ export function ProjectView({ id }: { id: string }) {
             onClick={async () => {
               await deleteProject(id, false)
               navigate(area ? `/area/${area.id}` : '/projects')
+              toastTrashed('Proyecto en la papelera', 'projects', id)
             }}
           >
             Conservarlas (pasan a {area ? area.name : 'la Bandeja'})
@@ -180,6 +192,7 @@ export function ProjectView({ id }: { id: string }) {
             onClick={async () => {
               await deleteProject(id, true)
               navigate(area ? `/area/${area.id}` : '/projects')
+              toastTrashed('Proyecto y tareas en la papelera', 'projects', id)
             }}
           >
             Eliminar también las tareas

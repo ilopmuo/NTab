@@ -8,6 +8,9 @@ import { HabitsView } from '@/features/habits/HabitsView'
 import { InboxView } from '@/features/Inbox'
 import { LogbookView } from '@/features/Logbook'
 import { NotesView } from '@/features/notes/NotesView'
+import { PlanView } from '@/features/plan/PlanView'
+import { TrashView } from '@/features/trash/TrashView'
+import { TemplatesView } from '@/features/templates/TemplatesView'
 import { PeopleView } from '@/features/people/PeopleView'
 import { PersonView } from '@/features/people/PersonView'
 import { ProjectView } from '@/features/projects/ProjectView'
@@ -18,6 +21,8 @@ import { TagView } from '@/features/TagView'
 import { TodayView } from '@/features/Today'
 import { UpcomingView } from '@/features/Upcoming'
 import { CommandPalette } from '@/components/CommandPalette'
+import { FocusMode } from '@/features/focus/FocusMode'
+import { DragGhost } from '@/components/dayDrag'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 import { TaskDetailPanel } from '@/components/TaskDetail'
@@ -65,8 +70,14 @@ function Screen() {
       return <FinanceView />
     case 'review':
       return <ReviewView />
+    case 'plan':
+      return <PlanView />
     case 'logbook':
       return <LogbookView />
+    case 'trash':
+      return <TrashView />
+    case 'templates':
+      return <TemplatesView />
     case 'settings':
       return <SettingsView />
     default:
@@ -86,7 +97,10 @@ const TITLES: Record<string, string> = {
   goals: 'Objetivos',
   finance: 'Pagos',
   review: 'Revisión',
+  plan: 'Planificar el día',
   logbook: 'Completadas',
+  trash: 'Papelera',
+  templates: 'Plantillas',
   settings: 'Ajustes',
 }
 
@@ -169,6 +183,8 @@ function Workspace() {
       <CommandPalette />
       <ShortcutsHelp />
       <RecoveryModal />
+      <FocusMode />
+      <DragGhost />
       <Toast />
     </div>
   )

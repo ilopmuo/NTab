@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { handleMessage, type Store } from '../../supabase/functions/mcp/server'
-import { computeRemindAt, nextOccurrence, type Env, type Row } from '../../supabase/functions/mcp/ntab'
+import { advanceCharge, computeRemindAt, nextOccurrence, type Env, type Row } from '../../supabase/functions/mcp/ntab'
 import { zonedToUtc } from '../../supabase/functions/_shared/time'
 
 // Jueves 24 de septiembre de 2026, 10:00 en Madrid
@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -140,5 +140,39 @@ describe('conector MCP', () => {
     expect(nextOccurrence('2026-09-24', { freq: 'day', interval: 2 })).toBe('2026-09-26')
     expect(nextOccurrence('2024-02-29', { freq: 'year', interval: 1 })).toBe('2025-02-28')
     expect(computeRemindAt({ reminder: { before: 15 }, dueDate: '2026-12-01' }, 'Europe/Madrid')).toBe(Date.parse('2026-12-01T07:45:00Z'))
+  })
+
+  it('proyectos, objetivos, personas y pagos', async () => {
+    const store = memoryStore([
+      ...base(),
+      { tbl: 'goals', id: 'g1', data: { id: 'g1', title: 'Leer 12 libros', kind: 'number', current: 3, target: 12, unit: 'libros', status: 'active' } },
+      { tbl: 'goals', id: 'g2', data: { id: 'g2', title: 'Media maratón', kind: 'projects', status: 'active' } },
+      { tbl: 'subscriptions', id: 'rent', data: { id: 'rent', name: 'Alquiler', kind: 'bill', amount: 750, cycle: 'month', nextDate: '2026-01-31', anchorDay: 31, notifyDays: 1, active: true } },
+    ])
+    const rows = () => [...store.rows.values()]
+
+    expect((await call(store, 'crear_proyecto', { nombre: 'Viaje a Japón', area: 'trabajo', limite: '2027-04-01' })).text).toBe('Proyecto creado: «Viaje a Japón» en Trabajo, límite 2027-04-01.')
+    expect(rows().find((r) => r.tbl === 'projects' && r.data.name === 'Viaje a Japón')!.data).toMatchObject({ status: 'active', areaId: 'a1', deadline: '2027-04-01' })
+    expect((await call(store, 'crear_proyecto', { nombre: 'web nueva' })).isError).toBe(true)
+
+    expect((await call(store, 'actualizar_objetivo', { objetivo: 'leer', sumar: 1 })).text).toBe('«Leer 12 libros»: 4 de 12 libros.')
+    expect((await call(store, 'actualizar_objetivo', { objetivo: 'maraton', cifra: 3 })).isError).toBe(true)
+    await call(store, 'actualizar_objetivo', { objetivo: 'maraton', conseguido: true })
+    expect(store.rows.get('goals:g2')!.data).toMatchObject({ status: 'done', completedAt: NOW })
+
+    expect((await call(store, 'registrar_contacto', { persona: 'ana', tipo: 'llamada', resumen: 'Cumpleaños' })).text).toBe('Apuntado: llamada con Ana el 2026-09-24.')
+    expect(rows().find((r) => r.tbl === 'interactions')!.data).toMatchObject({ personId: 'x1', kind: 'call', date: '2026-09-24', summary: 'Cumpleaños' })
+    expect(store.rows.get('people:x1')!.data.lastContact).toBe('2026-09-24')
+
+    expect((await call(store, 'marcar_pago', { pago: 'alquiler' })).text).toBe('«Alquiler» pagado. Próximo cargo: 2026-02-28.')
+    expect(store.rows.get('subscriptions:rent')!.data.remindAt).toBe(zonedToUtc('2026-02-27', '09:00', 'Europe/Madrid'))
+    await call(store, 'marcar_pago', { pago: 'alquiler' })
+    expect(store.rows.get('subscriptions:rent')!.data.nextDate).toBe('2026-03-31')
+  })
+
+  it('cargos por ciclos', () => {
+    expect(advanceCharge('2026-09-24', 'week')).toBe('2026-10-01')
+    expect(advanceCharge('2026-11-30', 'quarter')).toBe('2027-02-28')
+    expect(advanceCharge('2026-09-24', 'year')).toBe('2027-09-24')
   })
 })

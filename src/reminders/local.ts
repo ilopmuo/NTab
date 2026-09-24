@@ -82,7 +82,7 @@ export const TASK_ACTIONS = [
   { action: 'snooze', title: `Posponer ${SNOOZE_MINUTES} min` },
 ]
 
-async function showSystemNotification(tag: string, title: string, body: string, url: string, key?: string) {
+export async function showSystemNotification(tag: string, title: string, body: string, url: string, key?: string) {
   if (key) await markAlerted(key)
   if (!('Notification' in window) || Notification.permission !== 'granted') return
   const options: NotificationOptions & { actions?: typeof TASK_ACTIONS } = {

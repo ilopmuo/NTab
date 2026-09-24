@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import {
   CheckCircle2,
+  ClipboardList,
   Download,
   FileText,
   FolderPlus,
@@ -10,6 +11,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  Sun,
   SunMoon,
   Target,
   User,
@@ -123,7 +125,7 @@ function Palette() {
       ...tasks.map((t) => [t.title, ...t.tags].join(' ')),
       ...notes.map((n) => `${n.title} ${n.content.slice(0, 200)}`),
       ...people.map((p) => `${p.name} ${p.company}`),
-      'nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
+      'plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
   }, [q, areas, projects, tasks, notes, people])
@@ -185,6 +187,12 @@ function Palette() {
           </Item>
           <Item value="nuevo pago suscripción recibo gasto crear" icon={<G c="gray"><Wallet size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/finance'), ui.create('subscription')))}>
             Nuevo pago o suscripción
+          </Item>
+          <Item value="nueva plantilla lista checklist crear" icon={<G c="gray"><ClipboardList size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/templates'), ui.create('template')))}>
+            Nueva plantilla
+          </Item>
+          <Item value="planificar el dia hoy organizar" icon={<G c="blue"><Sun size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/plan'))}>
+            Planificar el día
           </Item>
           <Item value="conectar claude conector ia asistente" icon={<G c="gray"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/settings'))}>
             Conectar NTab con Claude

@@ -13,7 +13,7 @@ export interface UIState {
   helpOpen: boolean
   sidebarOpen: boolean
   /** abre el formulario de creación de la vista correspondiente */
-  creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | null
+  creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | 'template' | null
   toast: { id: number; message: string; actions: ToastAction[]; icon: 'check' | 'bell'; onClick?: () => void } | null
 }
 

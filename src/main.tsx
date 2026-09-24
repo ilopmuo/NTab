@@ -12,6 +12,7 @@ import { initSync } from './sync/service'
 import { startLookupCache } from './db/hooks'
 import { requestPersistentStorage } from './sync/authStorage'
 import { rollSubscriptions } from './db/actions'
+import { purgeTrash } from './db/trash'
 
 registerSW({ immediate: true })
 void requestPersistentStorage()
@@ -21,6 +22,7 @@ seedIfEmpty().finally(() => {
   watchPrefs(db)
   startLocalReminders()
   void rollSubscriptions()
+  void purgeTrash()
   initSync()
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

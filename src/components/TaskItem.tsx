@@ -10,6 +10,7 @@ import { PRIORITY_COLOR, dateColor } from '@/lib/tasks'
 import { recurrenceLabel } from '@/lib/recurrence'
 import { toast, ui, useUI } from '@/app/store'
 import { bouncy, cx } from './ui'
+import { dragToDay } from './dayDrag'
 
 /** Casilla redonda de Recordatorios: se rellena con un muelle y el ✓ se dibuja */
 export function Checkbox({
@@ -94,12 +95,15 @@ export const TaskItem = memo(function TaskItem({
   hideDate,
   hideProject,
   compact,
+  draggable,
 }: {
   task: Task
   lookup: Lookup
   hideDate?: boolean
   hideProject?: boolean
   compact?: boolean
+  /** se puede arrastrar a otro día (Calendario, Próximo) */
+  draggable?: boolean
 }) {
   const selected = useUI((s) => s.selectedTaskId === task.id)
   const [completing, setCompleting] = useState(false)
@@ -174,6 +178,7 @@ export const TaskItem = memo(function TaskItem({
     <div
       role="button"
       tabIndex={0}
+      {...(draggable ? dragToDay(task) : {})}
       onClick={() => ui.openTask(task.id)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') ui.openTask(task.id)
@@ -184,6 +189,7 @@ export const TaskItem = memo(function TaskItem({
       }}
       className={cx(
         'group relative flex cursor-default items-start gap-3 px-4 outline-none transition-colors duration-150',
+        draggable && 'select-none',
         compact ? 'py-2' : 'py-[11px]',
         selected ? 'bg-accent-soft' : 'hover:bg-hover focus-visible:bg-hover active:bg-press',
       )}

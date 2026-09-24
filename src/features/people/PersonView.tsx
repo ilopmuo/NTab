@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 import { Cake, ChevronLeft, Mail, MessageSquare, Phone, Plus, Trash2, Users, Video, X } from 'lucide-react'
 import { db } from '@/db/db'
 import { createTask, deletePerson, logInteraction } from '@/db/actions'
+import { toastTrashed } from '../trash/undo'
 import type { Interaction, Person } from '@/db/types'
 import { addDaysYmd, dateLabel, diffDays, relativeDays, today } from '@/lib/dates'
 import { nextBirthday } from '@/lib/people'
@@ -99,9 +100,9 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
           filled
           className="ml-auto hover:!text-red"
           onClick={async () => {
-            if (!confirm(`¿Eliminar a ${person.name}?`)) return
             await deletePerson(person.id)
             navigate('/people')
+            toastTrashed(`${person.name} en la papelera`, 'people', person.id)
           }}
         >
           <Trash2 size={15} strokeWidth={2.3} />

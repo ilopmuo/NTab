@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, StickyNote, Trash2, X } from 'lucide-react'
+import { Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Task } from '@/db/types'
-import { db } from '@/db/db'
 import { useLookup, useTask } from '@/db/hooks'
 import { deleteTask, duplicateTask, mutateTask, updateTask } from '@/db/actions'
 import { addDaysYmd, dateLabel, fromYmd, longDateLabel, today, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
@@ -14,7 +13,9 @@ import { uid } from '@/lib/id'
 import { REMINDER_OPTIONS, reminderLabel, reminderValue } from '@/lib/reminders'
 import { toast, ui, useUI } from '@/app/store'
 import { Checkbox, completeWithFeedback } from './TaskItem'
-import { Group, IconButton, Modal, Segmented, Textarea, cx, spring, useMediaQuery } from './ui'
+import { Button, Group, IconButton, Modal, Segmented, Textarea, cx, spring, useMediaQuery } from './ui'
+import { focus } from '@/features/focus/focus'
+import { toastTrashed } from '@/features/trash/undo'
 
 /**
  * Detalle de tarea. En pantallas anchas es un inspector lateral de cristal;
@@ -213,14 +214,25 @@ function TaskDetail({ task }: { task: Task }) {
           className="h-8 w-8 hover:!text-red"
           onClick={async () => {
             ui.closeTask()
-            const copy = { ...task }
             await deleteTask(task.id)
-            toast('Tarea eliminada', { label: 'Deshacer', run: () => void db.tasks.add(copy) })
+            toastTrashed('Tarea en la papelera', 'tasks', task.id)
           }}
         >
           <Trash2 size={14} strokeWidth={2.3} />
         </IconButton>
         <span className="flex-1" />
+        {!task.done && (
+          <Button
+            size="sm"
+            variant="tinted"
+            onClick={() => {
+              ui.closeTask()
+              focus.open(task.id)
+            }}
+          >
+            <Timer size={14} strokeWidth={2.4} /> Enfocarme
+          </Button>
+        )}
         <IconButton label="Cerrar (Esc)" filled className="h-8 w-8" onClick={ui.closeTask}>
           <X size={15} strokeWidth={2.6} />
         </IconButton>

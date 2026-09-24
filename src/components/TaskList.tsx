@@ -26,6 +26,7 @@ export function TaskList({
   bare,
   empty,
   compact,
+  draggable,
   className,
 }: {
   tasks: Task[]
@@ -39,6 +40,8 @@ export function TaskList({
   /** contenido cuando no hay tareas (dentro del bloque) */
   empty?: React.ReactNode
   compact?: boolean
+  /** filas arrastrables a otro día */
+  draggable?: boolean
   className?: string
 }) {
   const lookup = useLookup()
@@ -57,7 +60,7 @@ export function TaskList({
             exit={{ opacity: 0, height: 0, transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
             className={cx(rowSeparator, 'overflow-hidden')}
           >
-            <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} />
+            <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} draggable={draggable} />
           </motion.div>
         ))}
       </AnimatePresence>

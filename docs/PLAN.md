@@ -149,13 +149,16 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 7 — Nada se pierde** · Papelera de 30 días, plantillas, arrastrar tareas a otro día, «Tu semana» con registro de foco.
+- ✅ **Fase 6 — Captura y foco** · Planificar el día, modo foco, más herramientas en el conector de Claude.
 - ✅ **Fase 5 — Conectado** · Sincronización multi-dispositivo, conector para Claude, calendario suscribible, resumen de la mañana, Posponer/Hecho desde el aviso, objetivos en la revisión semanal.
 
 ### Ideas para siguientes iteraciones
 
 - Reordenar tareas arrastrando.
 - Conector de Claude con inicio de sesión OAuth (en vez de URL privada).
-- Más herramientas en el conector: pagos, objetivos, personas.
+- Reordenar tareas arrastrando dentro de una lista (hoy el orden es automático: fecha, hora y prioridad).
+- Buscar en la papelera y recuperar varias cosas a la vez.
 - Leer Gmail o Google Calendar directamente (requiere OAuth de Google).
 
 ## 8. Atajos de teclado
