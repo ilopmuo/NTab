@@ -18,7 +18,10 @@
 | **Notas** | Autoguardado; las líneas `- [ ] algo` se convierten en tareas con un clic |
 | **Personas** (mini-CRM) | Cumpleaños, historial de contactos y aviso de "hace mucho que no hablas con…" |
 | **Revisión semanal** | Asistente de 6 pasos para vaciar la cabeza y planificar la semana |
-| **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada |
+| **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada. Botones «Hecho» y «Posponer 15 min» |
+| **Resumen de la mañana** | Una notificación diaria, a la hora que elijas, con lo que tienes hoy |
+| **Asistente** | «¿Qué tengo esta semana?», «planifícame el día» o pega un email y lo convierte en tareas. Propone y tú apruebas |
+| **Calendario** | Suscríbete desde Calendario del iPhone, Google u Outlook y verás tus tareas, pagos y cumpleaños |
 | **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo |
 | **Pagos** | Suscripciones y recibos: cuánto pagas al mes y al año, y aviso antes de cada cargo |
 | **Paleta** (`⌘K`) | Busca cualquier cosa y ejecuta cualquier acción |
@@ -64,7 +67,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 ## Atajos
 
-`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`O`/`P`/`J`/`T`/`F`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar
+`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`O`/`P`/`A`/`J`/`T`/`F`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar
 
 ## En el iPhone o el iPad
 
@@ -87,12 +90,19 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 - En el iPhone hacen falta iOS 16.4 o posterior y la app añadida a la pantalla de inicio. Se activan en **Ajustes → Avisos**.
 - Configuración única en Supabase: el secreto `VAPID_PRIVATE_KEY` de la Edge Function (la clave pública está en `src/reminders/push.ts`).
 
+## Asistente y calendario
+
+- **Asistente** (`supabase/functions/assistant`): la app manda un resumen de tus datos (tareas, proyectos, objetivos, pagos, personas) y la conversación a una Edge Function, que llama a Claude con dos herramientas: `proponer_tareas` y `proponer_cambios`. Nada se aplica sin que lo confirmes. Solo funciona con sesión iniciada.
+  - Secreto necesario: `ANTHROPIC_API_KEY` (de console.anthropic.com). Opcional: `ANTHROPIC_MODEL` (por defecto `claude-opus-5-5`).
+- **Calendario** (`supabase/functions/calendar`): enlace privado por usuario (`calendar_feeds.token`) que sirve un `.ics` con tareas con fecha, pagos y cumpleaños. Se crea y se cambia en Ajustes → Calendario.
+- **Resumen de la mañana**: `due_digests()` + `send-reminders`, con la hora guardada en el ajuste `dailyDigest`.
+
 ## Desarrollo
 
 ```bash
 npm install
 npm run dev        # servidor de desarrollo
-npm test           # tests (lenguaje natural, repeticiones, rachas, sincronización, avisos, pagos)
+npm test           # tests (lenguaje natural, repeticiones, rachas, sincronización, avisos, pagos, calendario, asistente)
 npm run build      # typecheck + build de producción en dist/
 npm run preview    # sirve el build
 ```

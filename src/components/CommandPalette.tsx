@@ -24,6 +24,7 @@ import { dateLabel } from '@/lib/dates'
 import { navigate } from '@/app/router'
 import { ui, useUI } from '@/app/store'
 import { toggleTheme } from '@/app/theme'
+import { askLater } from '@/features/assistant/chat'
 import { AreaBadge } from './icons'
 import { Kbd, Modal } from './ui'
 import { SECTIONS, SectionIcon, tint, type Tint } from '@/app/sections'
@@ -244,6 +245,20 @@ function Palette() {
                   {p.name}
                 </Item>
               ))}
+            </Command.Group>
+            <Command.Group heading="Asistente" className={groupCls}>
+              <Item
+                value={`asistente preguntar ${q}`}
+                keywords={['asistente', 'preguntar', ...q.split(/\s+/)]}
+                icon={<G c="blue"><Sparkles size={14} strokeWidth={2.4} /></G>}
+                onSelect={run(() => {
+                  askLater(q)
+                  navigate('/assistant')
+                })}
+                hint="Asistente"
+              >
+                Preguntar «{q}»
+              </Item>
             </Command.Group>
             {!hasResults && (
               <Command.Group heading="Sin resultados" className={groupCls}>
