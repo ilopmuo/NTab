@@ -21,6 +21,7 @@ import {
   Sun,
   Trash2,
   Upload,
+  Loader2,
 } from 'lucide-react'
 import { openAuth, signOut, syncNow, useSync } from '@/sync/service'
 import { syncLabel } from '@/sync/SyncBadge'
@@ -85,12 +86,12 @@ function Row({
   )
 }
 
-function Block({ title, footer, children }: { title?: string; footer?: string; children: React.ReactNode }) {
+function Block({ title, footer, alert, children }: { title?: string; footer?: string; alert?: boolean; children: React.ReactNode }) {
   return (
     <section className="mb-8">
       {title && <h2 className="mb-2 px-4 text-[13px] font-medium tracking-wide text-muted uppercase">{title}</h2>}
       <Group>{children}</Group>
-      {footer && <p className="mt-2 px-4 text-[13px] leading-snug text-muted">{footer}</p>}
+      {footer && <p className={cx('mt-2 px-4 text-[13px] leading-snug', alert ? 'font-medium text-fg' : 'text-muted')}>{footer}</p>}
     </section>
   )
 }
@@ -177,25 +178,45 @@ function NotificationsBlock() {
   const sync = useSync()
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const autoRemind = useLiveQuery(() => db.settings.get('autoRemind'), [])
   useEffect(() => {
     void getPushState().then(setState)
   }, [])
-  const toggle = async (on: boolean) => {
+  const toggle = (on: boolean) => {
     if (!sync.user) return openAuth()
+    const userId = sync.user.id
     setBusy(true)
+    setError(null)
+    // enablePush se llama sin esperar a nada: iOS exige que el permiso se pida en el mismo toque
+    const run = on ? enablePush(userId) : disablePush()
+    void run
+      .then((next) => {
+        setState(next)
+        if (next === 'on') toast('Avisos activados en este dispositivo')
+        else if (!on) toast('Avisos desactivados en este dispositivo')
+      })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'No se pudieron activar los avisos'))
+      .finally(() => setBusy(false))
+  }
+  const test = async () => {
+    setTesting(true)
+    setError(null)
     try {
-      setState(on ? await enablePush() : await disablePush())
-      toast(on ? 'Avisos activados en este dispositivo' : 'Avisos desactivados en este dispositivo')
+      const sent = await testNotification(5)
+      if (sent) toast('Aviso enviado: te llegará en unos segundos. Sal a la pantalla de inicio para verlo.', undefined, 8000)
+      else setError('El servidor no encontró este dispositivo. Desactiva y vuelve a activar las notificaciones.')
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'No se pudieron activar los avisos')
+      setError(e instanceof Error ? e.message : 'No se pudo enviar la prueba')
     } finally {
-      setBusy(false)
+      setTesting(false)
     }
   }
   const canToggle = state === 'on' || state === 'off'
+  const footer = error ?? (state ? (sync.user || state !== 'off' ? PUSH_HELP[state] : 'Inicia sesión para recibir los avisos con la app cerrada.') : undefined)
   return (
-    <Block title="Avisos" footer={state ? (sync.user || state !== 'off' ? PUSH_HELP[state] : 'Inicia sesión para recibir los avisos con la app cerrada.') : undefined}>
+    <Block title="Avisos" footer={footer} alert={!!error}>
       <Row
         glyph={
           <Glyph c="blue">
@@ -203,7 +224,13 @@ function NotificationsBlock() {
           </Glyph>
         }
         label="Notificaciones en este dispositivo"
-        right={<Switch label="Notificaciones en este dispositivo" checked={state === 'on'} disabled={!canToggle || busy} onChange={toggle} />}
+        detail={busy ? 'Activando…' : undefined}
+        right={
+          <span className="flex items-center gap-2">
+            {busy && <Loader2 size={16} className="animate-spin text-muted" />}
+            <Switch label="Notificaciones en este dispositivo" checked={state === 'on'} disabled={!canToggle || busy} onChange={toggle} />
+          </span>
+        }
       />
       <Row
         glyph={
@@ -225,11 +252,12 @@ function NotificationsBlock() {
         <Row
           glyph={
             <Glyph c="gray">
-              <Send size={15} strokeWidth={2.4} />
+              {testing ? <Loader2 size={15} strokeWidth={2.4} className="animate-spin" /> : <Send size={15} strokeWidth={2.4} />}
             </Glyph>
           }
-          label="Enviar un aviso de prueba"
-          onClick={() => void testNotification()}
+          label={testing ? 'Enviando…' : 'Enviar un aviso de prueba'}
+          detail="Llega en 5 segundos, como un aviso real"
+          onClick={() => !testing && void test()}
         />
       )}
     </Block>
