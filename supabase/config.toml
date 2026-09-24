@@ -418,4 +418,7 @@ enabled = true
 # La integración de GitHub la despliega al fusionar en main.
 [functions.send-reminders]
 enabled = true
-verify_jwt = true
+# La función comprueba ella misma la sesión en el modo de prueba; la llamada
+# del cron solo envía los avisos que ya tocan, así que no necesita más control.
+# (verify_jwt no es compatible con las nuevas claves de firma de Supabase.)
+verify_jwt = false
