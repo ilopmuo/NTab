@@ -1,0 +1,229 @@
+/**
+ * Servidor MCP (Model Context Protocol) de NTab: responde a los mensajes
+ * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
+ * se puede probar sin Supabase (src/lib/mcp.test.ts).
+ */
+import { buildSummary, createNote, createTasks, markHabit, searchTasks, updateTasks, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+
+export interface Store {
+  load(): Promise<Row[]>
+  save(rows: Row[], deletes?: Row[]): Promise<void>
+}
+
+export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
+export const SERVER_INFO = { name: 'ntab', title: 'NTab', version: '1.0.0' }
+
+const INSTRUCTIONS = `NTab es la app con la que el usuario organiza su vida: tareas, proyectos, hábitos, objetivos, pagos y personas. Es muy despistado: ayúdale a no olvidar nada.
+- Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
+- Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
+- Títulos de tarea cortos y que empiecen por un verbo. Fechas en formato YYYY-MM-DD y horas HH:MM, en su zona horaria.
+- Responde en español.`
+
+const DATE = { type: 'string', description: 'YYYY-MM-DD' }
+const TIME = { type: 'string', description: 'HH:MM (24 h)' }
+const PRIORITY = { type: 'integer', minimum: 0, maximum: 3, description: '0 ninguna, 1 baja, 2 media, 3 alta' }
+
+export const TOOLS = [
+  {
+    name: 'ver_resumen',
+    title: 'Ver resumen de NTab',
+    description:
+      'Resumen completo: fecha y hora actuales, tareas atrasadas, con fecha y sin fecha (con sus id), proyectos, objetivos, hábitos de hoy, pagos próximos y personas (cumpleaños y a quién llamar). Úsalo antes de responder sobre la agenda o planificar.',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  {
+    name: 'buscar_tareas',
+    title: 'Buscar tareas',
+    description: 'Busca tareas por texto, estado, fechas, proyecto o etiqueta. Devuelve sus id para poder cambiarlas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string', description: 'Texto en el título, las notas o las etiquetas' },
+        estado: { type: 'string', enum: ['pendientes', 'hechas', 'todas'], description: 'Por defecto, pendientes' },
+        desde: DATE,
+        hasta: DATE,
+        proyecto: { type: 'string', description: 'Nombre del proyecto' },
+        etiqueta: { type: 'string' },
+        limite: { type: 'integer', minimum: 1, maximum: 200 },
+      },
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  {
+    name: 'crear_tareas',
+    title: 'Crear tareas',
+    description:
+      'Crea una o varias tareas en NTab (por ejemplo, a partir de un email o una lista). Las tareas con hora avisan a su hora si el usuario tiene activado el aviso automático.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tareas: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              titulo: { type: 'string', description: 'Corto, empieza por un verbo' },
+              fecha: DATE,
+              hora: TIME,
+              prioridad: PRIORITY,
+              notas: { type: 'string' },
+              proyecto: { type: 'string', description: 'Nombre de un proyecto existente' },
+              etiquetas: { type: 'array', items: { type: 'string' } },
+              subtareas: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['titulo'],
+          },
+        },
+      },
+      required: ['tareas'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'actualizar_tareas',
+    title: 'Actualizar tareas',
+    description: 'Cambia tareas existentes por su id: título, fecha, hora, prioridad, notas, proyecto o marcarlas como hechas. fecha u hora a null las quita.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cambios: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              titulo: { type: 'string' },
+              fecha: { type: ['string', 'null'], description: 'YYYY-MM-DD, o null para quitarla' },
+              hora: { type: ['string', 'null'], description: 'HH:MM, o null para quitarla' },
+              prioridad: PRIORITY,
+              notas: { type: 'string' },
+              proyecto: { type: ['string', 'null'], description: 'Nombre del proyecto, o null para sacarla' },
+              hecha: { type: 'boolean' },
+            },
+            required: ['id'],
+          },
+        },
+      },
+      required: ['cambios'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'crear_nota',
+    title: 'Crear nota',
+    description: 'Guarda una nota en NTab (ideas, resúmenes, apuntes de una reunión…).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        titulo: { type: 'string' },
+        contenido: { type: 'string', description: 'Texto; las líneas "- [ ] algo" se pueden convertir luego en tareas' },
+        proyecto: { type: 'string' },
+      },
+      required: ['titulo'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'marcar_habito',
+    title: 'Marcar hábito',
+    description: 'Marca (o desmarca) un hábito como hecho en un día; por defecto, hoy.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        habito: { type: 'string', description: 'Nombre del hábito' },
+        fecha: DATE,
+        hecho: { type: 'boolean', description: 'false para desmarcarlo; por defecto true' },
+      },
+      required: ['habito'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+]
+
+interface RpcRequest {
+  jsonrpc: '2.0'
+  id?: string | number | null
+  method: string
+  params?: Record<string, unknown>
+}
+
+const ok = (id: RpcRequest['id'], result: unknown) => ({ jsonrpc: '2.0', id, result })
+const fail = (id: RpcRequest['id'], code: number, message: string) => ({ jsonrpc: '2.0', id: id ?? null, error: { code, message } })
+const text = (s: string, isError = false) => ({ content: [{ type: 'text', text: s }], ...(isError ? { isError: true } : {}) })
+
+async function callTool(name: string, args: Record<string, unknown>, store: Store, env: Env) {
+  const rows = await store.load()
+  switch (name) {
+    case 'ver_resumen':
+      return text(buildSummary(rows, env))
+    case 'buscar_tareas':
+      return text(searchTasks(rows, args as SearchArgs, env))
+    case 'crear_tareas': {
+      if (!Array.isArray(args.tareas)) return text('Falta la lista "tareas".', true)
+      const r = createTasks(rows, args.tareas as NewTask[], env)
+      if (r.writes.length) await store.save(r.writes)
+      return text(r.report.join('\n'), !r.writes.length)
+    }
+    case 'actualizar_tareas': {
+      if (!Array.isArray(args.cambios)) return text('Falta la lista "cambios".', true)
+      const r = updateTasks(rows, args.cambios as Change[], env)
+      if (r.writes.length) await store.save(r.writes)
+      return text(r.report.join('\n'), !r.writes.length)
+    }
+    case 'crear_nota': {
+      const r = createNote(rows, args, env)
+      await store.save(r.writes)
+      return text(r.report.join('\n'))
+    }
+    case 'marcar_habito': {
+      const r = markHabit(rows, args, env)
+      if (r.writes.length || r.deletes.length) await store.save(r.writes, r.deletes)
+      return text(r.report.join('\n'))
+    }
+    default:
+      return null
+  }
+}
+
+/** Responde a un mensaje JSON-RPC. Devuelve null para las notificaciones (sin respuesta). */
+export async function handleMessage(msg: RpcRequest, store: Store, env: Env): Promise<unknown | null> {
+  if (!msg || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return fail(msg?.id, -32600, 'Invalid Request')
+  const isNotification = msg.id === undefined || msg.id === null
+  if (isNotification) return null
+  const params = msg.params ?? {}
+  try {
+    switch (msg.method) {
+      case 'initialize': {
+        const asked = String(params.protocolVersion ?? '')
+        return ok(msg.id, {
+          protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
+          capabilities: { tools: { listChanged: false } },
+          serverInfo: SERVER_INFO,
+          instructions: INSTRUCTIONS,
+        })
+      }
+      case 'ping':
+        return ok(msg.id, {})
+      case 'tools/list':
+        return ok(msg.id, { tools: TOOLS })
+      case 'tools/call': {
+        const name = String(params.name ?? '')
+        const result = await callTool(name, (params.arguments as Record<string, unknown>) ?? {}, store, env)
+        return result ? ok(msg.id, result) : fail(msg.id, -32602, `Herramienta desconocida: ${name}`)
+      }
+      case 'resources/list':
+        return ok(msg.id, { resources: [] })
+      case 'prompts/list':
+        return ok(msg.id, { prompts: [] })
+      default:
+        return fail(msg.id, -32601, `Método no disponible: ${msg.method}`)
+    }
+  } catch (e) {
+    // Un fallo al leer o guardar se devuelve como error de la herramienta para que Claude lo cuente
+    if (msg.method === 'tools/call') return ok(msg.id, text(`No se pudo completar: ${e instanceof Error ? e.message : String(e)}`, true))
+    return fail(msg.id, -32603, e instanceof Error ? e.message : 'Error interno')
+  }
+}

@@ -38,7 +38,7 @@
 | 16 | **Pagos** (finanzas ligeras) | Suscripciones y recibos, total al mes y al año, aviso antes de cada cargo | 4 |
 | 17 | **Recordatorios** | Aviso por tarea y notificaciones push con la app cerrada (Web Push) | 4 |
 | 18 | **Sincronización** | Mismos datos en móvil y ordenador (Supabase o similar) | 5 |
-| 19 | **Asistente IA** | "¿Qué tengo esta semana?", planificar el día, convertir un email en tareas (Claude, con propuestas que se revisan antes de aplicarlas) | 5 |
+| 19 | **Claude** | Conector MCP: desde Claude (con la suscripción) se consulta y organiza NTab: "¿qué tengo esta semana?", planificar el día, convertir un email en tareas | 5 |
 | 20 | **Integraciones** | Calendario suscribible (Apple, Google, Outlook); resumen de la mañana por push | 5 |
 
 ---
@@ -149,13 +149,13 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
-- ✅ **Fase 5 — Conectado** · Sincronización multi-dispositivo, asistente IA, calendario suscribible, resumen de la mañana, Posponer/Hecho desde el aviso, objetivos en la revisión semanal.
+- ✅ **Fase 5 — Conectado** · Sincronización multi-dispositivo, conector para Claude, calendario suscribible, resumen de la mañana, Posponer/Hecho desde el aviso, objetivos en la revisión semanal.
 
 ### Ideas para siguientes iteraciones
 
 - Reordenar tareas arrastrando.
-- Respuestas del asistente en streaming (van apareciendo mientras escribe).
-- Capturar tareas por voz con el asistente.
+- Conector de Claude con inicio de sesión OAuth (en vez de URL privada).
+- Más herramientas en el conector: pagos, objetivos, personas.
 - Leer Gmail o Google Calendar directamente (requiere OAuth de Google).
 
 ## 8. Atajos de teclado
@@ -164,6 +164,6 @@ src/
 |-------|--------|
 | `N` | Nueva tarea (captura rápida) |
 | `⌘K` / `Ctrl K` | Paleta de comandos / búsqueda |
-| `G` luego `H` / `I` / `U` / `C` / `B` / `O` / `P` / `A` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Notas / Personas / Asistente / Proyectos / Objetivos / Pagos |
+| `G` luego `H` / `I` / `U` / `C` / `B` / `O` / `P` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Notas / Personas / Proyectos / Objetivos / Pagos |
 | `Esc` | Cerrar panel o modal |
 | `?` | Ver todos los atajos |

@@ -428,7 +428,7 @@ enabled = true
 # Los calendarios (Apple, Google, Outlook) no envían sesión: el token del enlace es la llave.
 verify_jwt = false
 
-[functions.assistant]
+[functions.mcp]
 enabled = true
-# La función comprueba la sesión ella misma (auth.getUser).
+# Claude se conecta con la URL privada (token en la ruta), sin sesión de Supabase.
 verify_jwt = false

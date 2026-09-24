@@ -3,6 +3,9 @@
  * Calendario de Apple, Google Calendar u Outlook. Sin dependencias de Deno para
  * poder probarlo con los tests de la app (src/lib/ics.test.ts).
  */
+import { zonedToUtc } from '../_shared/time.ts'
+
+export { zonedToUtc }
 
 export interface IcsTask {
   id: string
@@ -77,33 +80,6 @@ const dateValue = (ymd: string) => ymd.replace(/-/g, '')
 function nextDay(ymd: string) {
   const [y, m, d] = ymd.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
-}
-
-/** Desfase (ms) de una zona horaria en un instante */
-function tzOffset(ms: number, tz: string) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(new Date(ms))
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value)
-  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
-  return asUtc - Math.floor(ms / 1000) * 1000
-}
-
-/** Fecha y hora locales de una zona horaria → instante UTC (ms) */
-export function zonedToUtc(ymd: string, hhmm: string, tz: string) {
-  const [y, m, d] = ymd.split('-').map(Number)
-  const [h, min] = hhmm.split(':').map(Number)
-  const guess = Date.UTC(y, m - 1, d, h, min)
-  const first = guess - tzOffset(guess, tz)
-  // Segunda pasada por si el cambio de hora cae justo en medio
-  return guess - tzOffset(first, tz)
 }
 
 function event(lines: (string | false | null | undefined)[]) {

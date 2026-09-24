@@ -11,7 +11,7 @@ import { ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
 
 const TILES = ['today', 'upcoming', 'inbox', 'calendar', 'habits', 'notes'].map(section)
-const MORE = ['assistant', 'people', 'projects', 'goals', 'finance', 'review'].map(section)
+const MORE = ['people', 'projects', 'goals', 'finance', 'review'].map(section)
 const FOOT = ['logbook', 'settings'].map(section)
 
 /** Lista inteligente en cuadrícula, como en Recordatorios */

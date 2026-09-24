@@ -43,6 +43,7 @@ import { disablePush, enablePush, getPushState, testNotification, type PushState
 import { testHere } from '@/reminders/local'
 import { AreaForm } from '../areas/AreaForm'
 import { CalendarBlock } from './CalendarBlock'
+import { ClaudeBlock } from './ClaudeBlock'
 import { Page } from '../Page'
 
 /** Icono cuadrado de color, como en la app Ajustes */
@@ -352,6 +353,7 @@ export function SettingsView() {
       <AccountCard />
 
       <NotificationsBlock />
+      <ClaudeBlock />
       <CalendarBlock />
 
       <Block title="Apariencia">
