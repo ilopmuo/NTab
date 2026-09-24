@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Task } from '@/db/types'
 import { useLookup, useTask } from '@/db/hooks'
-import { deleteTask, duplicateTask, mutateTask, updateTask } from '@/db/actions'
+import { deleteTask, duplicateTask, mutateTask, skipOccurrence, updateTask } from '@/db/actions'
 import { addDaysYmd, dateLabel, fromYmd, longDateLabel, today, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor } from '@/lib/tasks'
@@ -13,7 +13,7 @@ import { uid } from '@/lib/id'
 import { REMINDER_OPTIONS, reminderLabel, reminderValue } from '@/lib/reminders'
 import { toast, ui, useUI } from '@/app/store'
 import { Checkbox, completeWithFeedback } from './TaskItem'
-import { Button, Group, IconButton, Modal, Segmented, Textarea, cx, spring, useMediaQuery } from './ui'
+import { Button, Group, IconButton, Modal, Segmented, Switch, Textarea, cx, spring, useMediaQuery } from './ui'
 import { focus } from '@/features/focus/focus'
 import { toastTrashed } from '@/features/trash/undo'
 
@@ -296,6 +296,27 @@ function TaskDetail({ task }: { task: Task }) {
             </select>
           </Row>
           {kind === 'custom' && task.recurrence && <RecurrenceEditor value={task.recurrence} onChange={(r) => set({ recurrence: r })} />}
+          {task.recurrence && !task.done && (
+            <div className="flex flex-wrap items-center gap-3 px-3.5 pt-1 pb-3 pl-[58px]">
+              <label className="flex flex-1 items-center gap-2 text-[14px] text-muted">
+                <Switch
+                  label="Contar desde que la completo"
+                  checked={!!task.recurrence.afterDone}
+                  onChange={(v) => set({ recurrence: { ...task.recurrence!, afterDone: v || undefined } })}
+                />
+                Desde que la completo
+              </label>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  const next = await skipOccurrence(task)
+                  if (next) toast(`Saltada: la siguiente es ${dateLabel(next).toLowerCase()}`)
+                }}
+              >
+                <SkipForward size={13} strokeWidth={2.4} /> Saltar esta vez
+              </Button>
+            </div>
+          )}
           <ReminderRow task={task} onChange={(reminder) => set({ reminder })} />
         </Group>
 
@@ -518,7 +539,7 @@ function RecurrenceEditor({ value, onChange }: { value: Recurrence; onChange: (r
           value={value.freq}
           onChange={(e) => {
             const freq = e.target.value as Recurrence['freq']
-            onChange({ freq, interval: value.interval, weekdays: freq === 'week' ? value.weekdays : undefined })
+            onChange({ freq, interval: value.interval, weekdays: freq === 'week' ? value.weekdays : undefined, afterDone: value.afterDone })
           }}
           className={cx(fieldCls, 'appearance-none')}
         >

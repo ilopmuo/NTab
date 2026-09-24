@@ -414,7 +414,7 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
       t.done = 1
       t.completedAt = env.now
       if (t.recurrence) {
-        let next = nextOccurrence(t.dueDate ?? today, t.recurrence)
+        let next = nextOccurrence(t.recurrence.afterDone ? today : (t.dueDate ?? today), t.recurrence)
         while (next < today) next = nextOccurrence(next, t.recurrence)
         let copy: Task = {
           ...t,

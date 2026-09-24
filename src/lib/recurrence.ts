@@ -46,6 +46,11 @@ function joinEs(items: string[]): string {
 }
 
 export function recurrenceLabel(r: Recurrence): string {
+  const base = baseLabel(r)
+  return r.afterDone ? `${base}, desde que la completas` : base
+}
+
+function baseLabel(r: Recurrence): string {
   const n = Math.max(1, r.interval || 1)
   if (r.freq === 'week' && r.weekdays?.length) {
     const days = [...r.weekdays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))

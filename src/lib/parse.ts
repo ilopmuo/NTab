@@ -263,6 +263,13 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
   for (const [re, build] of recurrenceRules) {
     if (take(re, (m) => void (out.recurrence = build(m)))) break
   }
+  // "cada 3 días desde que la haga": la siguiente cuenta desde que se completa
+  if (out.recurrence) {
+    take(
+      new RegExp(`${B}(?:desde\\s+que\\s+la\\s+(?:haga|complete|termine|hago|completo|termino)|despu[eé]s\\s+de\\s+(?:hacerla|completarla)|tras\\s+(?:hacerla|completarla))${E}`, 'i'),
+      () => void (out.recurrence = { ...out.recurrence!, afterDone: true }),
+    )
+  }
 
   // ── Aviso ─────────────────────────────────────────────────
   // "recuérdame", "avísame", "avísame 15 minutos antes", "con aviso 1 día antes"

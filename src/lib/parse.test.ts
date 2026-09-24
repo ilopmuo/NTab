@@ -195,3 +195,15 @@ describe('personas con @', () => {
     expect(r.people).toBeUndefined()
   })
 })
+
+describe('repetir desde que se completa', () => {
+  it('lo entiende y lo explica', () => {
+    const r = parseQuickAdd('regar las plantas cada 3 días desde que la haga', ctx)
+    expect(r.title).toBe('Regar las plantas')
+    expect(r.recurrence).toEqual({ freq: 'day', interval: 3, afterDone: true })
+    expect(recurrenceLabel(r.recurrence!)).toBe('Cada 3 días, desde que la completas')
+  })
+  it('sin repetición, la frase no se toca', () => {
+    expect(parseQuickAdd('llamar desde que la haga', ctx).recurrence).toBeUndefined()
+  })
+})
