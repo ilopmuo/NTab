@@ -139,6 +139,11 @@ function Workspace() {
   // Enlace de una notificación: #/task/<id> abre la tarea sobre Hoy;
   // #/task/<id>/done o /snooze viene de los botones con la app cerrada
   useEffect(() => {
+    if (parts[0] === 'habit' && parts[1] && parts[2] === 'habit-done') {
+      navigate('/habits')
+      void applyReminderAction('habit-done', parts[1])
+      return
+    }
     if (parts[0] !== 'task' || !parts[1]) return
     const action = parts[2]
     if (action === 'done' || action === 'snooze') {

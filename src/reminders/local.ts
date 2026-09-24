@@ -1,5 +1,7 @@
 import { db } from '@/db/db'
-import { rollSubscriptions, toggleTask, updateTask } from '@/db/actions'
+import { rollSubscriptions, toggleHabit, toggleTask, updateTask } from '@/db/actions'
+import { today } from '@/lib/dates'
+import { isScheduled } from '@/lib/habits'
 import { chargeWhen, money } from '@/lib/finance'
 import { toast, ui } from '@/app/store'
 import { navigate } from '@/app/router'
@@ -38,12 +40,28 @@ export function openTaskFromNotification(id: string) {
 }
 
 export const SNOOZE_MINUTES = 15
-export type ReminderAction = 'snooze' | 'done'
+export type ReminderAction = 'snooze' | 'done' | 'habit-done'
+
+/** minutos de a a b (HH:MM del mismo día) */
+function minutesBetween(a: string, b: string) {
+  const [ah, am] = a.split(':').map(Number)
+  const [bh, bm] = b.split(':').map(Number)
+  return bh * 60 + bm - (ah * 60 + am)
+}
 
 const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 
 /** Posponer o completar desde un aviso (dentro de la app o desde la notificación) */
 export async function applyReminderAction(action: ReminderAction, id: string) {
+  if (action === 'habit-done') {
+    const habit = await db.habits.get(id)
+    if (!habit) return
+    const t = today()
+    const done = await db.habitLogs.where('[habitId+date]').equals([id, t]).count()
+    if (!done) await toggleHabit(id, t)
+    toast(`Hábito hecho: ${habit.name} 🔥`)
+    return
+  }
   const task = await db.tasks.get(id)
   if (!task) return
   if (action === 'done') {
@@ -60,7 +78,7 @@ export async function applyReminderAction(action: ReminderAction, id: string) {
 function listenToWorker() {
   navigator.serviceWorker?.addEventListener('message', (e: MessageEvent) => {
     const d = e.data as { type?: string; action?: ReminderAction; id?: string } | null
-    if (d?.type === 'reminder-action' && d.id && (d.action === 'snooze' || d.action === 'done')) void applyReminderAction(d.action, d.id)
+    if (d?.type === 'reminder-action' && d.id && (d.action === 'snooze' || d.action === 'done' || d.action === 'habit-done')) void applyReminderAction(d.action, d.id)
   })
 }
 
@@ -82,7 +100,7 @@ export const TASK_ACTIONS = [
   { action: 'snooze', title: `Posponer ${SNOOZE_MINUTES} min` },
 ]
 
-export async function showSystemNotification(tag: string, title: string, body: string, url: string, key?: string) {
+export async function showSystemNotification(tag: string, title: string, body: string, url: string, key?: string, habitId?: string) {
   if (key) await markAlerted(key)
   if (!('Notification' in window) || Notification.permission !== 'granted') return
   const options: NotificationOptions & { actions?: typeof TASK_ACTIONS } = {
@@ -90,9 +108,9 @@ export async function showSystemNotification(tag: string, title: string, body: s
     tag,
     icon: './icon-192.png',
     badge: './icon-192.png',
-    data: { url },
+    data: { url, habitId },
     requireInteraction: true,
-    ...(tag.startsWith('tasks-') ? { actions: TASK_ACTIONS } : {}),
+    ...(tag.startsWith('tasks-') ? { actions: TASK_ACTIONS } : habitId ? { actions: [{ action: 'habit-done', title: 'Hecho' }] } : {}),
   }
   try {
     const reg = await navigator.serviceWorker?.getRegistration()
@@ -139,7 +157,25 @@ export function startLocalReminders() {
       toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate('/finance') }, 15_000, { icon: 'bell' })
       void showSystemNotification(`subscriptions-${x.id}`, x.name, `Cargo de ${body}`, './#/finance', `subscriptions-${x.id}-${x.remindAt}`)
     }
-    if (due.length || subs.length) {
+    // Hábitos con hora de aviso que aún no están hechos hoy
+    const day = today()
+    const nowHm = new Date(now).toTimeString().slice(0, 5)
+    const habits = (await db.habits.where('archived').equals(0).toArray()).filter(
+      (h) => h.remindTime && isScheduled(h, day) && nowHm >= h.remindTime && minutesBetween(h.remindTime, nowHm) < 15 && !seen.has(`habit:${h.id}:${day}`),
+    )
+    const pending: typeof habits = []
+    for (const h of habits) {
+      seen.add(`habit:${h.id}:${day}`)
+      if (await db.habitLogs.where('[habitId+date]').equals([h.id, day]).count()) continue
+      pending.push(h)
+      toast(`${h.name}: aún no lo has marcado hoy`, { label: 'Hecho', run: () => void applyReminderAction('habit-done', h.id) }, 20_000, {
+        icon: 'bell',
+        onClick: () => navigate('/habits'),
+      })
+      void showSystemNotification(`habits-${h.id}`, h.name, 'Aún no lo has marcado hoy. ¿Lo haces ahora?', './#/habits', `habits-${h.id}-${day}`, h.id)
+    }
+    if (habits.length) saveSeen(seen)
+    if (due.length || subs.length || pending.length) {
       saveSeen(seen)
       if (prefs.reminderSound) chime()
     }

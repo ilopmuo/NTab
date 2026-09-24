@@ -5,6 +5,7 @@ const TASK_ACTIONS = [
   { action: 'done', title: 'Hecho' },
   { action: 'snooze', title: 'Posponer ' + SNOOZE_MINUTES + ' min' },
 ]
+const HABIT_ACTIONS = [{ action: 'habit-done', title: 'Hecho' }]
 
 /** ¿La app abierta ya dio este aviso en este dispositivo? (ver src/reminders/local.ts) */
 async function alertedHere(key) {
@@ -49,20 +50,20 @@ self.addEventListener('push', (event) => {
     requireInteraction: true,
     icon: 'icon-192.png',
     badge: 'icon-192.png',
-    data: { url: data.url || './#/today', taskId },
-    actions: taskId ? TASK_ACTIONS : [],
+    data: { url: data.url || './#/today', taskId, habitId: data.habitId },
+    actions: taskId ? TASK_ACTIONS : data.habitId ? HABIT_ACTIONS : [],
   }
   event.waitUntil(showPush(title, options, data.key || data.tag))
 })
 
 /** Botón "Hecho" / "Posponer": si la app está abierta lo hace ella; si no, se abre para hacerlo */
-async function runAction(action, taskId) {
+async function runAction(action, id, kind) {
   const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
   if (windows.length) {
-    windows[0].postMessage({ type: 'reminder-action', action, id: taskId })
+    windows[0].postMessage({ type: 'reminder-action', action, id })
     return
   }
-  const url = new URL('./#/task/' + encodeURIComponent(taskId) + '/' + action, self.registration.scope).href
+  const url = new URL('./#/' + kind + '/' + encodeURIComponent(id) + '/' + action, self.registration.scope).href
   return self.clients.openWindow(url)
 }
 
@@ -70,7 +71,11 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const data = event.notification.data || {}
   if ((event.action === 'done' || event.action === 'snooze') && data.taskId) {
-    event.waitUntil(runAction(event.action, data.taskId))
+    event.waitUntil(runAction(event.action, data.taskId, 'task'))
+    return
+  }
+  if (event.action === 'habit-done' && data.habitId) {
+    event.waitUntil(runAction('habit-done', data.habitId, 'habit'))
     return
   }
   const url = new URL(data.url || './#/today', self.registration.scope).href

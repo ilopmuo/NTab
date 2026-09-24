@@ -5,7 +5,8 @@ import { createHabit, deleteHabit } from '@/db/actions'
 import { WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { ICONS, Icon } from '@/components/icons'
 import { toastTrashed } from '../trash/undo'
-import { Button, Field, Input, Modal, ModalHeader, cx } from '@/components/ui'
+import { Button, Field, Input, Modal, ModalHeader, Switch, cx } from '@/components/ui'
+import { Bell } from 'lucide-react'
 
 
 export function HabitForm({ habit, open, onClose }: { habit?: Habit; open: boolean; onClose: () => void }) {
@@ -20,10 +21,12 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
   const [name, setName] = useState(habit?.name ?? '')
   const [icon, setIcon] = useState(habit?.icon ?? 'droplet')
   const [days, setDays] = useState<number[]>(habit?.days ?? [0, 1, 2, 3, 4, 5, 6])
+  const [remind, setRemind] = useState(!!habit?.remindTime)
+  const [time, setTime] = useState(habit?.remindTime ?? '21:00')
 
   const save = async () => {
     if (!name.trim() || !days.length) return
-    const data = { name: name.trim(), icon, days }
+    const data = { name: name.trim(), icon, days, remindTime: remind && time ? time : undefined }
     if (habit) await db.habits.update(habit.id, data)
     else await createHabit(data)
     onClose()
@@ -65,6 +68,22 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
             <button type="button" className="text-[13px] font-semibold text-blue" onClick={() => setDays([1, 2, 3, 4, 5])}>
               L–V
             </button>
+          </div>
+        </Field>
+        <Field label="Recordatorio">
+          <div className="flex h-11 items-center gap-3 rounded-xl bg-fill-2 px-3.5">
+            <Bell size={16} className="text-muted" />
+            <span className="flex-1 text-[15px]">{remind ? 'Avisarme si no lo he hecho a las' : 'Sin recordatorio'}</span>
+            {remind && (
+              <input
+                type="time"
+                aria-label="Hora del recordatorio"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="font-num h-8 rounded-lg bg-fill px-2 text-[14px] font-semibold"
+              />
+            )}
+            <Switch label="Recordatorio" checked={remind} onChange={setRemind} />
           </div>
         </Field>
         <Field label="Icono">
