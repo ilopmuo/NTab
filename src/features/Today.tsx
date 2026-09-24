@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, ChevronRight, PartyPopper, RefreshCcw, Sun } from 'lucide-react'
+import { ArrowRight, CalendarCheck, ChevronRight, PartyPopper, RefreshCcw, Sun } from 'lucide-react'
 import { db } from '@/db/db'
 import { updateTask } from '@/db/actions'
 import { useOpenTasks } from '@/db/hooks'
@@ -36,6 +36,8 @@ export function TodayView() {
   const doneWeek = useLiveQuery(() => db.tasks.where('completedAt').aboveOrEqual(new Date(`${monday}T00:00:00`).getTime()).count(), [monday]) ?? 0
   const people = useLiveQuery(() => db.people.toArray(), []) ?? []
   const lastReview = useLiveQuery(() => db.settings.get('lastReview'), [])
+  // null = nunca se ha planificado; undefined = aún cargando
+  const lastPlan = useLiveQuery(() => db.settings.get('lastPlan').then((r) => r ?? null), [])
   const { habits, byHabit } = useHabits(7)
   const [showDone, setShowDone] = useState(false)
 
@@ -57,6 +59,9 @@ export function TodayView() {
   const habitsDone = scheduledHabits.filter((h) => byHabit.get(h.id)?.has(t)).length
   const reviewDays = lastReview ? Math.floor((Date.now() - (lastReview.value as number)) / 864e5) : null
   const needsReview = reviewDays === null ? [0, 5, 6].includes(new Date().getDay()) : reviewDays >= 7
+  const inboxCount = (open ?? []).filter((x) => !x.areaId && !x.projectId && !x.dueDate).length
+  // Planificar el día: si aún no se ha hecho hoy y hay algo que decidir
+  const needsPlan = lastPlan !== undefined && lastPlan?.value !== t && (overdue.length > 0 || inboxCount > 0)
 
   const summary =
     total === 0
@@ -96,6 +101,32 @@ export function TodayView() {
         </div>
 
         <div className="min-w-0 [grid-area:tasks]">
+          <AnimatePresence>
+            {needsPlan && (
+              <motion.a
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={softSpring}
+                href={href('/plan')}
+                className="glass mb-4 flex items-center gap-3 rounded-[18px] px-4 py-3 text-[14px] transition-transform active:scale-[0.99]"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white">
+                  <CalendarCheck size={16} strokeWidth={2.4} />
+                </span>
+                <span className="flex-1">
+                  <b className="font-semibold">Planifica tu día</b>
+                  <span className="block text-[13px] text-muted">
+                    {[overdue.length ? `${overdue.length} ${overdue.length === 1 ? 'atrasada' : 'atrasadas'}` : '', inboxCount ? `${inboxCount} en la bandeja` : '']
+                      .filter(Boolean)
+                      .join(' · ')}{' '}
+                    · 1 minuto
+                  </span>
+                </span>
+                <ArrowRight size={17} className="text-muted" />
+              </motion.a>
+            )}
+          </AnimatePresence>
           <AnimatePresence>
             {needsReview && (
               <motion.a

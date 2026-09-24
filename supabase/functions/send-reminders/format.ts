@@ -105,7 +105,8 @@ export function buildDigest(d: DueDigest, now = new Date()): PushPayload {
   return {
     title: `${hello} ☀️`,
     body: parts.length ? `${parts.join(' · ')}${list}` : 'Hoy no tienes nada planificado. Buen día para adelantar algo.',
-    url: './#/today',
+    // Con cosas atrasadas, directo a planificar el día
+    url: d.overdue_count ? './#/plan' : './#/today',
     tag: `digest-${d.local_date}`,
   }
 }

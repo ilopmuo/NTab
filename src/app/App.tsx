@@ -8,6 +8,7 @@ import { HabitsView } from '@/features/habits/HabitsView'
 import { InboxView } from '@/features/Inbox'
 import { LogbookView } from '@/features/Logbook'
 import { NotesView } from '@/features/notes/NotesView'
+import { PlanView } from '@/features/plan/PlanView'
 import { PeopleView } from '@/features/people/PeopleView'
 import { PersonView } from '@/features/people/PersonView'
 import { ProjectView } from '@/features/projects/ProjectView'
@@ -65,6 +66,8 @@ function Screen() {
       return <FinanceView />
     case 'review':
       return <ReviewView />
+    case 'plan':
+      return <PlanView />
     case 'logbook':
       return <LogbookView />
     case 'settings':
@@ -86,6 +89,7 @@ const TITLES: Record<string, string> = {
   goals: 'Objetivos',
   finance: 'Pagos',
   review: 'Revisión',
+  plan: 'Planificar el día',
   logbook: 'Completadas',
   settings: 'Ajustes',
 }

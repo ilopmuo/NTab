@@ -51,6 +51,9 @@ describe('resumen de la mañana', () => {
     expect(p.title).toBe('Buenos días ☀️')
     expect(p.body).toBe('4 tareas para hoy · 1 atrasada · 1 pago\nLlamar al banco · Comprar pan · Informe …')
     expect(p.tag).toBe('digest-2026-09-24')
+    // Con atrasadas abre "Planificar el día"; si no, Hoy
+    expect(p.url).toBe('./#/plan')
+    expect(buildDigest({ ...d, overdue_count: 0 }, now).url).toBe('./#/today')
   })
   it('día despejado', () => {
     const p = buildDigest({ ...d, today_count: 0, overdue_count: 0, titles: [], payments: 0 }, now)

@@ -44,6 +44,7 @@ import { testHere } from '@/reminders/local'
 import { AreaForm } from '../areas/AreaForm'
 import { CalendarBlock } from './CalendarBlock'
 import { ClaudeBlock } from './ClaudeBlock'
+import { SiriBlock } from './SiriBlock'
 import { Page } from '../Page'
 
 /** Icono cuadrado de color, como en la app Ajustes */
@@ -353,6 +354,7 @@ export function SettingsView() {
       <AccountCard />
 
       <NotificationsBlock />
+      <SiriBlock />
       <ClaudeBlock />
       <CalendarBlock />
 

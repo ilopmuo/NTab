@@ -432,3 +432,8 @@ verify_jwt = false
 enabled = true
 # Claude se conecta con la URL privada (token en la ruta), sin sesión de Supabase.
 verify_jwt = false
+
+[functions.capture]
+enabled = true
+# Siri y los Atajos llaman con la URL privada (token en la ruta); solo permite añadir tareas.
+verify_jwt = false
