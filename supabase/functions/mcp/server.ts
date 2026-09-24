@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -215,6 +215,24 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
+    name: 'ultima_vez',
+    title: 'Última vez',
+    description: '¿Cuándo fue la última vez que hizo algo que hace de vez en cuando (cambiar las sábanas, ir al dentista, regar las plantas)? Sin «cosa», lista todo.',
+    inputSchema: { type: 'object', properties: { cosa: { type: 'string' } } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'lo_he_hecho',
+    title: 'Apuntar que lo ha hecho',
+    description: 'Apunta en «Última vez» que ha hecho algo hoy (o en «fecha»). Si no existe, lo crea. Con cada_dias, NTab le avisa cuando vuelva a tocar.',
+    inputSchema: {
+      type: 'object',
+      properties: { cosa: { type: 'string' }, fecha: DATE, cada_dias: { type: 'integer', minimum: 1, description: 'Cada cuántos días debería hacerlo' } },
+      required: ['cosa'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'crear_rutina',
     title: 'Crear rutina',
     description:
@@ -371,14 +389,17 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     }
     case 'donde_esta':
       return text(whereIs(await store.load(), args, env))
+    case 'ultima_vez':
+      return text(lastTime(await store.load(), args, env))
     case 'crear_proyecto':
+    case 'lo_he_hecho':
     case 'guardar_cosa':
     case 'marcar_devuelto':
     case 'crear_rutina':
     case 'actualizar_objetivo':
     case 'registrar_contacto':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { crear_proyecto: createProject, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

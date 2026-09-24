@@ -1,10 +1,11 @@
 import { db } from './db'
-import type { Area, Goal, Habit, Interaction, Note, Person, Project, Routine, Subscription, Task, Thing } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, Routine, Subscription, Task, Thing, Tracker } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
 import { advanceCharge, rollForward } from '@/lib/finance'
 import { putInTrash } from './trash'
+import { withDate } from '@/lib/trackers'
 
 // ── Tareas ────────────────────────────────────────────────────
 
@@ -460,5 +461,42 @@ export async function setTaskTimes(times: { id: string; time: string }[]): Promi
     const before = (await db.tasks.bulkGet(times.map((t) => t.id))).filter((t): t is Task => !!t)
     for (const { id, time } of times) await db.tasks.where('id').equals(id).modify((t) => void (t.dueTime = time))
     return structuredClone(before)
+  })
+}
+
+// ── Última vez ────────────────────────────────────────────────
+
+export async function createTracker(data: Partial<Tracker> & { name: string }): Promise<Tracker> {
+  const tracker: Tracker = {
+    id: uid(),
+    icon: 'circle',
+    log: [],
+    archived: 0,
+    order: Date.now(),
+    createdAt: Date.now(),
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.trackers.add(tracker)
+  return tracker
+}
+
+/** Apunta que se ha hecho ese día. Devuelve el historial anterior (para deshacer). */
+export async function logTracker(id: string, date = today()): Promise<string[] | undefined> {
+  const t = await db.trackers.get(id)
+  if (!t) return
+  await db.trackers.update(id, { log: withDate(t.log, date) })
+  return t.log
+}
+
+export async function setTrackerLog(id: string, log: string[]) {
+  await db.trackers.update(id, { log })
+}
+
+export async function deleteTracker(id: string) {
+  await db.transaction('rw', db.trackers, db.trash, async () => {
+    const t = await db.trackers.get(id)
+    if (!t) return
+    await putInTrash('trackers', t)
+    await db.trackers.delete(id)
   })
 }

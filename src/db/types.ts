@@ -229,6 +229,57 @@ export interface Thing {
   updatedAt: number
 }
 
+/** «Última vez»: algo que se hace de vez en cuando («cambiar las sábanas») */
+export interface Tracker {
+  id: ID
+  name: string
+  icon: string
+  /** fechas en que se hizo (YYYY-MM-DD), de la más reciente a la más antigua */
+  log: string[]
+  /** cada cuántos días toca (opcional): avisa cuando se pasa */
+  every?: number
+  /** momento del aviso ya calculado (ms) */
+  remindAt?: number
+  archived: 0 | 1
+  order: number
+  createdAt: number
+}
+
+/** Lista de la compra */
+export interface ShoppingItem {
+  id: ID
+  name: string
+  /** cantidad tal cual («2», «1 kg», «una docena») */
+  qty?: string
+  /** pasillo: fruta, lacteos, limpieza… (ver src/lib/shopping.ts) */
+  aisle: string
+  /** 1 = ya en el carro */
+  checked: 0 | 1
+  order: number
+  createdAt: number
+}
+
+/** Lo que se suele comprar (para «lo de siempre»). id = nombre normalizado */
+export interface PantryItem {
+  id: ID
+  name: string
+  aisle: string
+  count: number
+  lastAt: number
+}
+
+/** Diario: una entrada por día (id = fecha) */
+export interface JournalEntry {
+  /** YYYY-MM-DD */
+  id: string
+  /** 1 (muy mal) … 5 (muy bien) */
+  mood?: number
+  text: string
+  /** hasta 3 cosas buenas del día */
+  good: string[]
+  updatedAt: number
+}
+
 export interface HabitLog {
   id: ID
   habitId: ID
@@ -272,7 +323,7 @@ export interface Setting {
 export interface TrashItem {
   /** `${tbl}:${itemId}` */
   id: string
-  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals' | 'routines' | 'things'
+  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals' | 'routines' | 'things' | 'trackers'
   itemId: ID
   title: string
   data: Record<string, unknown>

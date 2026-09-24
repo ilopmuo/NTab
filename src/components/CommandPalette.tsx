@@ -1,6 +1,8 @@
 import { Command, defaultFilter } from 'cmdk'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { runner } from '@/features/routines/useRoutines'
+import { markDone } from '@/features/trackers/markDone'
+import { sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
 import {
   CheckCircle2,
@@ -20,12 +22,13 @@ import {
   Wallet,
   ListChecks,
   Box,
+  History,
 } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import { createNote } from '@/db/actions'
 import { downloadBackup } from '@/db/backup'
-import { dateLabel } from '@/lib/dates'
+import { dateLabel, today } from '@/lib/dates'
 import { navigate } from '@/app/router'
 import { ui, useUI } from '@/app/store'
 import { toggleTheme } from '@/app/theme'
@@ -112,6 +115,7 @@ function Palette() {
   const people = useLiveQuery(() => db.people.toArray(), []) ?? []
   const routines = useLiveQuery(() => db.routines.where('archived').equals(0).toArray(), []) ?? []
   const things = useLiveQuery(() => db.things.toArray(), []) ?? []
+  const trackers = useLiveQuery(() => db.trackers.where('archived').equals(0).toArray(), []) ?? []
   const go = (path: string) => {
     ui.palette(false)
     navigate(path)
@@ -132,6 +136,7 @@ function Palette() {
       ...people.map((p) => `${p.name} ${p.company}`),
       ...routines.map((r) => `rutina empezar ${r.name}`),
       ...things.map((t) => `${t.name} ${t.location ?? ''} ${t.personName ?? ''}`),
+      ...trackers.map((t) => `ultima vez hecho ${t.name}`),
       'plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
@@ -271,6 +276,20 @@ function Palette() {
                   icon={<Box size={17} />}
                   onSelect={() => go(`/things/${t.id}`)}
                   hint={t.location ?? t.personName}
+                >
+                  {t.name}
+                </Item>
+              ))}
+            </Command.Group>
+            <Command.Group heading="Última vez" className={groupCls}>
+              {trackers.map((t) => (
+                <Item
+                  key={t.id}
+                  value={`v:${t.id}`}
+                  keywords={['ultima vez', 'hecho', t.name]}
+                  icon={<History size={17} />}
+                  onSelect={run(() => void markDone(t))}
+                  hint={t.log[0] ? `${sinceLabel(Math.round((Date.parse(today()) - Date.parse(t.log[0])) / 864e5))} · apuntar hoy` : 'Apuntar hoy'}
                 >
                   {t.name}
                 </Item>

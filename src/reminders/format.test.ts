@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDigest, buildHabitPayload, buildPayload, buildRoutinePayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
+import { buildDigest, buildHabitPayload, buildJournalPayload, buildPayload, buildRoutinePayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
 
 // Jueves 24 de septiembre de 2026, 10:00 en Madrid
 const now = new Date('2026-09-24T08:00:00Z')
@@ -93,5 +93,16 @@ describe('rutinas y cosas', () => {
     const d = buildPayload({ ...t, due_time: 'document', due_date: '2026-10-24', title: 'Pasaporte' }, 'Europe/Madrid', now)
     expect(d.body).toBe('Caduca el sábado 24. Toca renovarlo.')
     expect(d.url).toBe('./#/things')
+  })
+})
+
+describe('última vez y diario', () => {
+  it('aviso de «última vez»', () => {
+    const p = buildPayload({ ...base, tbl: 'trackers', item_id: 'k1', title: 'Cambiar las sábanas', due_date: '2026-09-08', due_time: 'tracker', currency: '14' }, 'Europe/Madrid', now)
+    expect(p.body).toBe('La última vez fue hace 16 días (sueles cada 14). ¿Toca ya?')
+    expect(p.url).toBe('./#/trackers')
+  })
+  it('aviso del diario', () => {
+    expect(buildJournalPayload({ user_id: 'u', local_date: '2026-09-24', done_today: 3 })).toMatchObject({ title: '¿Qué tal el día?', url: './#/journal', key: 'journal-2026-09-24' })
   })
 })

@@ -326,6 +326,16 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   }
   if (people.length) s.push(`\nPERSONAS:`, ...people)
 
+  const trackers = rows.filter((r) => r.tbl === 'trackers' && !r.data.archived)
+  const dueTrackers = trackers.filter((r) => {
+    const last = (r.data.log as string[] | undefined)?.[0]
+    return num(r.data.every) > 0 && (!last || diffDays(today, last) >= num(r.data.every))
+  })
+  if (dueTrackers.length) {
+    s.push(`\nTOCA HACER (según «Última vez»):`)
+    for (const r of dueTrackers) s.push(`- ${trackerLine(r.data, today)}`)
+  }
+
   const things = rows.filter((r) => r.tbl === 'things' && !r.data.returned)
   const lent = things.filter((t) => t.data.kind === 'lent')
   const borrowed = things.filter((t) => t.data.kind === 'borrowed')
@@ -857,4 +867,59 @@ export function markReturned(rows: Row[], args: { cosa?: string }, env: Env): Wr
   const d: Data = { ...hit.data, returned: 1, updatedAt: env.now }
   delete d.remindAt
   return { writes: [{ tbl: 'things', id: hit.id, data: d }], report: [`«${str(d.name)}» marcado como devuelto.`] }
+}
+
+// ── Última vez ────────────────────────────────────────────────
+
+function trackerLine(d: Data, today: string) {
+  const log = (d.log as string[] | undefined) ?? []
+  const last = log[0]
+  const every = num(d.every)
+  const parts = [str(d.name)]
+  parts.push(last ? `última vez ${relDay(last, today)} (${last}, hace ${diffDays(today, last)} días)` : 'nunca apuntado')
+  if (every) parts.push(`cada ${every} días`)
+  if (log.length > 1) parts.push(`${log.length} veces apuntado`)
+  return parts.join(' · ')
+}
+
+/** Igual que computeTrackerRemindAt de la app, en la zona horaria del usuario */
+function trackerRemindAt(d: Data, env: Env): number | undefined {
+  const last = (d.log as string[] | undefined)?.[0]
+  const every = num(d.every)
+  if (!every || !last || d.archived) return undefined
+  const at = zonedToUtc(addDays(last, every), '10:00', env.tz)
+  if (at > env.now) return at
+  const today = ymdIn(env.now, env.tz)
+  const ten = zonedToUtc(today, '10:00', env.tz)
+  return ten > env.now ? ten : zonedToUtc(addDays(today, 1), '10:00', env.tz)
+}
+
+export function lastTime(rows: Row[], args: { cosa?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const all = rows.filter((r) => r.tbl === 'trackers' && !r.data.archived)
+  if (!all.length) return 'Aún no apunta nada en «Última vez». Puedes empezar con lo_he_hecho.'
+  const q = fold(str(args.cosa))
+  const hits = q ? all.filter((r) => fold(str(r.data.name)).includes(q) || q.split(/\s+/).every((w) => fold(str(r.data.name)).includes(w))) : all
+  if (!hits.length) return `No hay nada que se parezca a «${str(args.cosa)}». Tiene: ${all.map((r) => str(r.data.name)).join(', ')}.`
+  return hits.map((r) => `- ${trackerLine(r.data, today)}`).join('\n')
+}
+
+export function logLastTime(rows: Row[], args: { cosa?: string; fecha?: string; cada_dias?: number }, env: Env): WriteResult {
+  const name = str(args.cosa).trim()
+  if (!name) return { writes: [], report: ['Falta qué ha hecho.'] }
+  const today = ymdIn(env.now, env.tz)
+  const date = isYmd(args.fecha) && args.fecha <= today ? args.fecha : today
+  const existing = rows.find((r) => r.tbl === 'trackers' && !r.data.archived && fold(str(r.data.name)) === fold(name)) ??
+    rows.find((r) => r.tbl === 'trackers' && !r.data.archived && fold(str(r.data.name)).includes(fold(name)))
+  const d: Data = existing ? { ...existing.data } : { id: env.newId(), name: name.charAt(0).toUpperCase() + name.slice(1), icon: 'circle', log: [], archived: 0, order: env.now, createdAt: env.now }
+  const log = [...new Set([date, ...((d.log as string[]) ?? [])])].sort((a, b) => b.localeCompare(a)).slice(0, 200)
+  d.log = log
+  if (typeof args.cada_dias === 'number' && args.cada_dias > 0) d.every = Math.round(args.cada_dias)
+  const at = trackerRemindAt(d, env)
+  if (at === undefined) delete d.remindAt
+  else d.remindAt = at
+  return {
+    writes: [{ tbl: 'trackers', id: String(existing?.id ?? d.id), data: d }],
+    report: [`${existing ? 'Apuntado' : 'Creado y apuntado'}: ${trackerLine(d, today)}${at ? `. Le avisaré el ${ymdIn(at, env.tz)}` : ''}.`],
+  }
 }

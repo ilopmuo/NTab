@@ -66,6 +66,14 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 export function buildPayload(r: DueReminder, tz = 'Europe/Madrid', now = new Date()): PushPayload {
   const key = `${r.tbl}-${r.item_id}-${Date.parse(r.remind_at)}`
   const when = r.due_date ? dayLabel(r.due_date, now, tz) : null
+  if (r.tbl === 'trackers') {
+    // due_date: última vez; currency: cada cuántos días
+    const last = r.due_date
+    const days = last ? Math.round((Date.parse(ymdIn(now, tz)) - Date.parse(last)) / 864e5) : null
+    const every = Number(r.currency) || null
+    const body = days === null ? 'Toca hacerlo.' : `La última vez fue hace ${days} ${days === 1 ? 'día' : 'días'}${every ? ` (sueles cada ${every})` : ''}. ¿Toca ya?`
+    return { title: r.title, body, url: './#/trackers', tag: `trackers-${r.item_id}`, key }
+  }
   if (r.tbl === 'things') {
     // due_date: fecha (caducidad o devolución); due_time: tipo; currency: persona
     const who = r.currency || 'alguien'
@@ -164,5 +172,21 @@ export function buildRoutinePayload(x: DueRoutine): PushPayload {
     url: `./#/routine/${x.routine_id}`,
     tag: `routines-${x.routine_id}`,
     key: `routines-${x.routine_id}-${x.local_date}`,
+  }
+}
+
+export interface DueJournal {
+  user_id: string
+  local_date: string
+  done_today: number
+}
+
+export function buildJournalPayload(j: DueJournal): PushPayload {
+  return {
+    title: '¿Qué tal el día?',
+    body: j.done_today ? `Has completado ${j.done_today} ${j.done_today === 1 ? 'tarea' : 'tareas'}. Apunta cómo te ha ido en un minuto.` : 'Apunta cómo te ha ido en un minuto.',
+    url: './#/journal',
+    tag: 'journal',
+    key: `journal-${j.local_date}`,
   }
 }

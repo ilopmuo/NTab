@@ -186,6 +186,15 @@ export function startLocalReminders() {
       toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate(`/things/${x.id}`) }, 15_000, { icon: 'bell' })
       void showSystemNotification(`things-${x.id}`, x.name, body, './#/things', `things-${x.id}-${x.remindAt}`)
     }
+    // «Última vez»: toca volver a hacerlo
+    const trackers = (await db.trackers.where('archived').equals(0).toArray()).filter((x) => x.remindAt !== undefined && x.remindAt > last0 && x.remindAt <= now && !seen.has(`${x.id}:${x.remindAt}`))
+    for (const x of trackers) {
+      seen.add(`${x.id}:${x.remindAt}`)
+      const days = x.log[0] ? Math.round((Date.parse(today()) - Date.parse(x.log[0])) / 864e5) : 0
+      const body = `La última vez fue hace ${days} ${days === 1 ? 'día' : 'días'}. ¿Toca ya?`
+      toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate('/trackers') }, 15_000, { icon: 'bell' })
+      void showSystemNotification(`trackers-${x.id}`, x.name, body, './#/trackers', `trackers-${x.id}-${x.remindAt}`)
+    }
     // Hábitos con hora de aviso que aún no están hechos hoy
     const day = today()
     const nowHm = new Date(now).toTimeString().slice(0, 5)
@@ -217,7 +226,7 @@ export function startLocalReminders() {
       void showSystemNotification(`routines-${r.id}`, r.name, `Es la hora: ${r.steps.length} pasos. Toca para hacerla paso a paso.`, `./#/routine/${r.id}`, `routines-${r.id}-${day}`)
     }
     if (habits.length || routines.length) saveSeen(seen)
-    if (due.length || nags.length || subs.length || things.length || pending.length || startNow.length) {
+    if (due.length || nags.length || subs.length || things.length || trackers.length || pending.length || startNow.length) {
       saveSeen(seen)
       if (prefs.reminderSound) chime()
     }
