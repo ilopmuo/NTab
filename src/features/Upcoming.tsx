@@ -4,6 +4,8 @@ import { addDaysYmd, capitalize, fmt, fromYmd, today } from '@/lib/dates'
 import { SectionIcon, section } from '@/app/sections'
 import { TaskList } from '@/components/TaskList'
 import { PageHeader, Section, cx } from '@/components/ui'
+import { useDropOver } from '@/components/dayDrag'
+import type { Task } from '@/db/types'
 import { Page } from './Page'
 
 export function UpcomingView() {
@@ -24,31 +26,38 @@ export function UpcomingView() {
       />
       {overdue.length > 0 && (
         <Section title="Atrasadas" count={overdue.length} tone="red">
-          <TaskList tasks={overdue} />
+          <TaskList tasks={overdue} draggable />
         </Section>
       )}
-      {days.map((d, i) => {
-        const list = tasks.filter((x) => x.dueDate === d)
-        const weekend = [0, 6].includes(fromYmd(d).getDay())
-        const label = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : capitalize(fmt(d, 'EEEE'))
-        return (
-          <section key={d} className="mb-6">
-            <div className="mb-2 flex items-baseline gap-2 px-1">
-              <span className={cx('font-num text-[28px] leading-none font-bold', i === 0 ? 'text-blue' : weekend ? 'text-muted' : 'text-fg')}>
-                {fromYmd(d).getDate()}
-              </span>
-              <span className="text-[17px] font-bold">{label}</span>
-              <span className="text-[14px] text-muted">{capitalize(fmt(d, 'MMMM'))}</span>
-            </div>
-            <TaskList tasks={list} hideDate add={list.length > 0 || i < 7 ? { defaults: { dueDate: d }, placeholder: 'Nueva tarea', color: 'var(--c-blue)' } : undefined} />
-          </section>
-        )
-      })}
+      {days.map((d, i) => (
+        <DaySection key={d} day={d} index={i} tasks={tasks.filter((x) => x.dueDate === d)} />
+      ))}
       {later.length > 0 && (
         <Section title="Más adelante" count={later.length} tone="orange">
-          <TaskList tasks={later} />
+          <TaskList tasks={later} draggable />
         </Section>
       )}
     </Page>
+  )
+}
+
+function DaySection({ day, index, tasks }: { day: string; index: number; tasks: Task[] }) {
+  const over = useDropOver(day)
+  const weekend = [0, 6].includes(fromYmd(day).getDay())
+  const label = index === 0 ? 'Hoy' : index === 1 ? 'Mañana' : capitalize(fmt(day, 'EEEE'))
+  return (
+    <section data-drop-day={day} className={cx('-mx-2 mb-4 rounded-[20px] px-2 pt-1 pb-2 transition-colors', over && 'bg-accent-soft ring-2 ring-blue')}>
+      <div className="mb-2 flex items-baseline gap-2 px-1">
+        <span className={cx('font-num text-[28px] leading-none font-bold', index === 0 ? 'text-blue' : weekend ? 'text-muted' : 'text-fg')}>{fromYmd(day).getDate()}</span>
+        <span className="text-[17px] font-bold">{label}</span>
+        <span className="text-[14px] text-muted">{capitalize(fmt(day, 'MMMM'))}</span>
+      </div>
+      <TaskList
+        tasks={tasks}
+        hideDate
+        draggable
+        add={tasks.length > 0 || index < 7 ? { defaults: { dueDate: day }, placeholder: 'Nueva tarea', color: 'var(--c-blue)' } : undefined}
+      />
+    </section>
   )
 }

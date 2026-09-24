@@ -22,6 +22,7 @@ import { TodayView } from '@/features/Today'
 import { UpcomingView } from '@/features/Upcoming'
 import { CommandPalette } from '@/components/CommandPalette'
 import { FocusMode } from '@/features/focus/FocusMode'
+import { DragGhost } from '@/components/dayDrag'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 import { TaskDetailPanel } from '@/components/TaskDetail'
@@ -183,6 +184,7 @@ function Workspace() {
       <ShortcutsHelp />
       <RecoveryModal />
       <FocusMode />
+      <DragGhost />
       <Toast />
     </div>
   )
