@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, Sparkles, Sun } from 'lucide-react'
+import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
 import { whatNow } from './whatnow/WhatNow'
 import { DayComplete } from '@/components/Celebrate'
 import { db } from '@/db/db'
@@ -17,6 +17,8 @@ import { HabitStrip } from './habits/HabitStrip'
 import { RoutinesCard } from './routines/RoutinesCard'
 import { JournalPrompt } from './journal/JournalPrompt'
 import { TodayMeals } from './menu/TodayMeals'
+import { CountdownsCard } from './countdowns/CountdownsCard'
+import { TodayCardsEditor, useTodayCards } from './today/cards'
 import { ThingsAttention } from './things/ThingsAttention'
 import { TrackersDue } from './trackers/TrackersDue'
 import { useHabits } from './habits/useHabits'
@@ -51,6 +53,8 @@ export function TodayView() {
   const cal = useEvents(t, t)
   const todayEvents = cal.events.filter((e) => (e.allDay ? e.start <= t && e.end > t : new Date(e.start).toDateString() === new Date().toDateString()))
   const [showDone, setShowDone] = useState(false)
+  const cards = useTodayCards()
+  const [customizing, setCustomizing] = useState(false)
   // Confeti solo si el día se completa ahora (no al volver a la pantalla)
   const lastPending = useRef<number | null>(null)
   const [justFinished, setJustFinished] = useState(false)
@@ -125,19 +129,23 @@ export function TodayView() {
       <div
         className={cx(
           'grid gap-x-8 gap-y-6',
-          '[grid-template-areas:"rings"_"tasks"_"side"]',
-          '@[1000px]:grid-cols-[minmax(0,1fr)_340px] @[1000px]:grid-rows-[auto_1fr] @[1000px]:[grid-template-areas:"tasks_rings"_"tasks_side"]',
+          // Sin anillos, la columna lateral empieza arriba del todo
+          cards.visible.includes('rings')
+            ? '[grid-template-areas:"rings"_"tasks"_"side"] @[1000px]:grid-cols-[minmax(0,1fr)_340px] @[1000px]:grid-rows-[auto_1fr] @[1000px]:[grid-template-areas:"tasks_rings"_"tasks_side"]'
+            : '[grid-template-areas:"tasks"_"side"] @[1000px]:grid-cols-[minmax(0,1fr)_340px] @[1000px]:[grid-template-areas:"tasks_side"] @[1000px]:items-start',
         )}
       >
-        <div className="[grid-area:rings]">
-          <DayRings
-            rings={[
-              { label: 'Tareas de hoy', done: done.length, total, color: 'var(--c-blue)' },
-              { label: 'Hábitos', done: habitsDone, total: scheduledHabits.length, color: 'var(--c-green)' },
-              { label: 'Esta semana', done: doneWeek, total: doneWeek + weekOpen, color: 'var(--c-text)' },
-            ]}
-          />
-        </div>
+        {cards.visible.includes('rings') && (
+          <div className="[grid-area:rings]">
+            <DayRings
+              rings={[
+                { label: 'Tareas de hoy', done: done.length, total, color: 'var(--c-blue)' },
+                { label: 'Hábitos', done: habitsDone, total: scheduledHabits.length, color: 'var(--c-green)' },
+                { label: 'Esta semana', done: doneWeek, total: doneWeek + weekOpen, color: 'var(--c-text)' },
+              ]}
+            />
+          </div>
+        )}
 
         <div className="min-w-0 [grid-area:tasks]">
           <AnimatePresence>
@@ -252,18 +260,40 @@ export function TodayView() {
         </div>
 
         <aside className="min-w-0 space-y-4 [grid-area:side]">
-          <Agenda tasks={todays} events={todayEvents} names={cal.names} />
-          <JournalPrompt />
-          <TodayMeals />
-          <RoutinesCard />
-          <TrackersDue />
-          <ThingsAttention />
-          <HabitStrip />
-          <WeekStrip tasks={open} />
-          <PaymentsCard />
-          <PeopleCard people={people} />
+          {cards.visible.map((id) => {
+            switch (id) {
+              case 'agenda':
+                return <Agenda key={id} tasks={todays} events={todayEvents} names={cal.names} />
+              case 'journal':
+                return <JournalPrompt key={id} />
+              case 'meals':
+                return <TodayMeals key={id} />
+              case 'countdowns':
+                return <CountdownsCard key={id} />
+              case 'routines':
+                return <RoutinesCard key={id} />
+              case 'trackers':
+                return <TrackersDue key={id} />
+              case 'things':
+                return <ThingsAttention key={id} />
+              case 'habits':
+                return <HabitStrip key={id} />
+              case 'week':
+                return <WeekStrip key={id} tasks={open} />
+              case 'payments':
+                return <PaymentsCard key={id} />
+              case 'people':
+                return <PeopleCard key={id} people={people} />
+              default:
+                return null
+            }
+          })}
+          <button type="button" onClick={() => setCustomizing(true)} className="flex w-full items-center justify-center gap-1.5 rounded-full py-2 text-[13px] font-semibold text-muted transition-colors hover:text-fg">
+            <SlidersHorizontal size={13} /> Personalizar Hoy
+          </button>
         </aside>
       </div>
+      <TodayCardsEditor open={customizing} onClose={() => setCustomizing(false)} />
     </Page>
   )
 }

@@ -338,6 +338,9 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
   if (month.count || budget) s.push(`\nGASTOS DE ESTE MES: ${money(month.total)}${budget ? ` de un presupuesto de ${money(budget)}` : ''}${month.projection > month.total ? ` (a este ritmo, ${money(month.projection)} a fin de mes)` : ''}.`)
 
+  const countdowns = rows.filter((r) => r.tbl === 'countdowns' && isYmd(r.data.date) && (r.data.date as string) >= today).sort((a, b) => str(a.data.date).localeCompare(str(b.data.date)))
+  if (countdowns.length) s.push(`\nCUENTAS ATRÁS: ${countdowns.slice(0, 6).map((r) => `${str(r.data.name)} (${r.data.date}, faltan ${diffDays(r.data.date as string, today)} días)`).join('; ')}`)
+
   const meals = rows.filter((r) => r.tbl === 'menu' && r.data.date === today)
   if (meals.length) s.push(`\nMENÚ DE HOY: ${meals.map((r) => `${str(r.data.meal)}: ${menuName(rows, r.data)}`).join('; ')}`)
 
@@ -1146,4 +1149,19 @@ export function createRecipe(rows: Row[], args: { nombre?: string; ingredientes?
   const data: Data = { ...(existing?.data ?? { createdAt: env.now }), id, name, ingredients }
   if (args.notas) data.notes = str(args.notas)
   return { writes: [{ tbl: 'recipes', id, data }], report: [`Receta ${existing ? 'actualizada' : 'guardada'}: ${name} (${ingredients.length} ingredientes).`] }
+}
+
+// ── Cuentas atrás ─────────────────────────────────────────────
+
+export function addCountdown(rows: Row[], args: { nombre?: string; fecha?: string }, env: Env): WriteResult {
+  const name = str(args.nombre).trim()
+  const today = ymdIn(env.now, env.tz)
+  if (!name || !isYmd(args.fecha)) return { writes: [], report: ['Falta el nombre o la fecha (YYYY-MM-DD).'] }
+  if (args.fecha < today) return { writes: [], report: ['Esa fecha ya ha pasado.'] }
+  const existing = rows.find((r) => r.tbl === 'countdowns' && fold(str(r.data.name)) === fold(name))
+  const id = existing?.id ?? env.newId()
+  return {
+    writes: [{ tbl: 'countdowns', id, data: { id, name, date: args.fecha, icon: str(existing?.data.icon) || 'sparkles', createdAt: num(existing?.data.createdAt) || env.now } }],
+    report: [`Cuenta atrás ${existing ? 'cambiada' : 'creada'}: ${name}, ${relDay(args.fecha, today)} (faltan ${diffDays(args.fecha, today)} días). La verá en Hoy.`],
+  }
 }

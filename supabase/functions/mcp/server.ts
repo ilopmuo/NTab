@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -274,6 +274,13 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
+    name: 'cuenta_atras',
+    title: 'Crear una cuenta atrás',
+    description: 'Crea (o cambia por nombre) una cuenta atrás para algo que espera: vacaciones, una boda, un examen. Se ve en Hoy.',
+    inputSchema: { type: 'object', properties: { nombre: { type: 'string' }, fecha: DATE }, required: ['nombre', 'fecha'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'que_hago',
     title: '¿Qué hago ahora?',
     description: 'Propone qué tareas hacer ahora según el tiempo que tiene y su energía (atrasadas, para hoy, prioridad, lo que cabe). Úsalo ante «tengo media hora, ¿qué hago?».',
@@ -514,6 +521,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'ver_diario':
       return text(readJournal(await store.load(), args, env))
     case 'crear_proyecto':
+    case 'cuenta_atras':
     case 'planificar_menu':
     case 'crear_receta':
     case 'apuntar_gasto':
@@ -526,7 +534,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'actualizar_objetivo':
     case 'registrar_contacto':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)
