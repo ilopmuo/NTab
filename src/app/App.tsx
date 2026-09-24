@@ -47,11 +47,12 @@ const loaders = {
   TagView: () => import('@/features/TagView').then((m) => ({ default: m.TagView })),
   UpcomingView: () => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView })),
   ThingsView: () => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView })),
+  JournalView: () => import('@/features/journal/JournalView').then((m) => ({ default: m.JournalView })),
   ShoppingView: () => import('@/features/shopping/ShoppingView').then((m) => ({ default: m.ShoppingView })),
   TrackersView: () => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView })),
   RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView)
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView)
 
 /** Precarga el resto de vistas cuando el navegador está libre */
 function preloadViews() {
@@ -81,6 +82,8 @@ function Screen() {
       return <TrackersView />
     case 'shopping':
       return <ShoppingView />
+    case 'journal':
+      return <JournalView date={id} />
     case 'notes':
       return <NotesView id={id} />
     case 'people':
@@ -124,6 +127,7 @@ const TITLES: Record<string, string> = {
   things: 'Cosas',
   trackers: 'Última vez',
   shopping: 'Compra',
+  journal: 'Diario',
   notes: 'Notas',
   people: 'Personas',
   projects: 'Proyectos',
@@ -204,7 +208,7 @@ function Workspace() {
   }, [path, parts])
 
   // Abrir una nota o una cosa no cambia de pantalla (no se anima la entrada)
-  const screenKey = parts[0] === 'notes' || parts[0] === 'things' ? parts[0] : path
+  const screenKey = parts[0] === 'notes' || parts[0] === 'things' || parts[0] === 'journal' ? parts[0] : path
   return (
     <div className="relative z-10 h-full">
       <Sidebar />

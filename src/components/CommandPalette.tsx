@@ -23,6 +23,8 @@ import {
   ListChecks,
   Box,
   History,
+  BookOpen,
+  ShoppingCart,
 } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
@@ -137,7 +139,7 @@ function Palette() {
       ...routines.map((r) => `rutina empezar ${r.name}`),
       ...things.map((t) => `${t.name} ${t.location ?? ''} ${t.personName ?? ''}`),
       ...trackers.map((t) => `ultima vez hecho ${t.name}`),
-      'plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
+      'diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
   }, [q, areas, projects, tasks, notes, people])
@@ -193,6 +195,12 @@ function Palette() {
           </Item>
           <Item value="apuntar cosa donde esta guardado prestar prestamo caduca documento" icon={<G c="blue"><Box size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/things'), ui.create('thing')))}>
             Apuntar una cosa (dónde está, préstamo, caducidad)
+          </Item>
+          <Item value="diario escribir como ha ido el dia animo" icon={<G c="blue"><BookOpen size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/journal'))}>
+            Escribir en el diario
+          </Item>
+          <Item value="compra añadir lista de la compra supermercado" icon={<G c="blue"><ShoppingCart size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/shopping'))}>
+            Lista de la compra
           </Item>
           <Item value="nueva rutina crear checklist lista de pasos" icon={<G c="blue"><ListChecks size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/routines'), ui.create('routine')))}>
             Nueva rutina

@@ -1,6 +1,7 @@
 import {
   Archive,
   Box,
+  BookOpen,
   CalendarClock,
   CalendarDays,
   ClipboardList,
@@ -46,6 +47,7 @@ export const SECTIONS: SectionDef[] = [
   { id: 'habits', path: '/habits', label: 'Hábitos', short: 'Hábitos', icon: Flame, tint: 'blue', key: 'B' },
   { id: 'routines', path: '/routines', label: 'Rutinas', short: 'Rutinas', icon: ListChecks, tint: 'blue', key: 'E' },
   { id: 'notes', path: '/notes', label: 'Notas', short: 'Notas', icon: StickyNote, tint: 'blue', key: 'O' },
+  { id: 'journal', path: '/journal', label: 'Diario', short: 'Diario', icon: BookOpen, tint: 'blue', key: 'D' },
   { id: 'shopping', path: '/shopping', label: 'Compra', short: 'Compra', icon: ShoppingCart, tint: 'blue', key: 'A' },
   { id: 'trackers', path: '/trackers', label: 'Última vez', short: 'Última vez', icon: History, tint: 'blue', key: 'V' },
   { id: 'things', path: '/things', label: 'Cosas', short: 'Cosas', icon: Box, tint: 'blue', key: 'K' },

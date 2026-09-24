@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Area, Goal, Habit, Interaction, Note, Person, Project, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
+import type { Area, Goal, Habit, Interaction, Note, Person, Project, JournalEntry, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
 import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
@@ -557,5 +557,15 @@ export async function finishShopping(): Promise<ShoppingItem[]> {
     }
     await db.shopping.bulkDelete(bought.map((b) => b.id))
     return bought
+  })
+}
+
+// ── Diario ────────────────────────────────────────────────────
+
+/** Guarda (o completa) la entrada de un día */
+export async function saveJournal(date: string, patch: Partial<Omit<JournalEntry, 'id'>>) {
+  await db.transaction('rw', db.journal, async () => {
+    const cur = await db.journal.get(date)
+    await db.journal.put({ id: date, text: '', good: [], ...cur, ...patch, updatedAt: Date.now() })
   })
 }

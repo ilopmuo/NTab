@@ -166,7 +166,8 @@ export function Textarea({
     <textarea
       ref={ref}
       {...rest}
-      className={cx('w-full resize-none bg-transparent text-[15px] leading-relaxed text-fg placeholder:text-faint', className)}
+      // Sin fondo salvo que se pida uno (sin tailwind-merge, bg-transparent ganaría siempre)
+      className={cx('w-full resize-none text-[15px] leading-relaxed text-fg placeholder:text-faint', !/(^|\s)bg-/.test(className ?? '') && 'bg-transparent', className)}
     />
   )
 }

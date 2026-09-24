@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -215,6 +215,28 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
+    name: 'ver_diario',
+    title: 'Leer el diario',
+    description: 'Lee su diario (ánimo, texto y cosas buenas de cada día). Por defecto, la última semana. Úsalo para hablar de cómo le va o hacer una revisión.',
+    inputSchema: { type: 'object', properties: { desde: DATE, hasta: DATE } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'escribir_diario',
+    title: 'Escribir en el diario',
+    description: 'Apunta en su diario cómo le ha ido el día: texto (se añade a lo que ya hubiera), ánimo de 1 (muy mal) a 5 (muy bien) y hasta tres cosas buenas. Úsalo si te cuenta su día y quiere guardarlo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string' },
+        animo: { type: 'integer', minimum: 1, maximum: 5 },
+        cosas_buenas: { type: 'array', items: { type: 'string' }, maxItems: 3 },
+        fecha: DATE,
+      },
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
     name: 'ver_compra',
     title: 'Ver la lista de la compra',
     description: 'La lista de la compra pendiente, ordenada por pasillos.',
@@ -411,7 +433,10 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(lastTime(await store.load(), args, env))
     case 'ver_compra':
       return text(listShopping(await store.load()))
+    case 'ver_diario':
+      return text(readJournal(await store.load(), args, env))
     case 'crear_proyecto':
+    case 'escribir_diario':
     case 'anadir_compra':
     case 'lo_he_hecho':
     case 'guardar_cosa':
@@ -420,7 +445,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'actualizar_objetivo':
     case 'registrar_contacto':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { crear_proyecto: createProject, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

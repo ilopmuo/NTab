@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -286,5 +286,18 @@ describe('conector MCP', () => {
     expect(r.text).toBe('Añadido a la compra: Plátanos.\nYa estaba: Leche.')
     expect((await call(store, 'ver_compra')).text).toBe('Fruta y verdura: Plátanos\nPanadería: Pan (2 barras)\nLácteos y huevos: Leche\nLimpieza y hogar: Detergente')
     expect((await call(store, 'ver_resumen')).text).toContain('LISTA DE LA COMPRA (4)')
+  })
+
+  it('diario: escribir, añadir y leer; ánimo en el resumen', async () => {
+    const store = memoryStore(base())
+    let r = await call(store, 'escribir_diario', { texto: 'Buen día de trabajo.', animo: 4, cosas_buenas: ['Terminé el informe'] })
+    expect(r.text).toBe('Apuntado en el diario de hoy (ánimo: bien).')
+    r = await call(store, 'escribir_diario', { texto: 'Por la tarde, cine.' })
+    const entry = [...store.rows.values()].find((x) => x.tbl === 'journal')!
+    expect(entry.id).toBe('2026-09-24')
+    expect(entry.data.text).toBe('Buen día de trabajo.\n\nPor la tarde, cine.')
+    expect(entry.data.mood).toBe(4)
+    expect((await call(store, 'ver_diario', {})).text).toContain('ánimo bien: Buen día de trabajo.')
+    expect((await call(store, 'ver_resumen')).text).toContain('ÁNIMO ÚLTIMOS DÍAS (diario, 1 muy mal – 5 muy bien): hoy 4')
   })
 })

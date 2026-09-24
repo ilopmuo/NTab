@@ -225,8 +225,20 @@ export function startLocalReminders() {
       toast(`Es la hora: ${r.name}`, { label: 'Empezar', run: () => runner.open(r.id) }, 20_000, { icon: 'bell', onClick: () => runner.open(r.id) })
       void showSystemNotification(`routines-${r.id}`, r.name, `Es la hora: ${r.steps.length} pasos. Toca para hacerla paso a paso.`, `./#/routine/${r.id}`, `routines-${r.id}-${day}`)
     }
-    if (habits.length || routines.length) saveSeen(seen)
-    if (due.length || nags.length || subs.length || things.length || trackers.length || pending.length || startNow.length) {
+    // Diario: por la noche, si hoy aún no se ha escrito
+    const jr = (await db.settings.get('journalReminder'))?.value as { enabled?: boolean; time?: string } | undefined
+    let journalDue = false
+    if (jr?.enabled && jr.time && nowHm >= jr.time && minutesBetween(jr.time, nowHm) < 15 && !seen.has(`journal:${day}`)) {
+      seen.add(`journal:${day}`)
+      const entry = await db.journal.get(day)
+      if (!(entry && (entry.mood || entry.text.trim()))) {
+        journalDue = true
+        toast('¿Qué tal el día? Apúntalo en un minuto', { label: 'Escribir', run: () => navigate('/journal') }, 20_000, { icon: 'bell' })
+        void showSystemNotification('journal', '¿Qué tal el día?', 'Apunta cómo te ha ido en un minuto.', './#/journal', `journal-${day}`)
+      }
+    }
+    if (habits.length || routines.length || journalDue) saveSeen(seen)
+    if (due.length || nags.length || subs.length || things.length || trackers.length || pending.length || startNow.length || journalDue) {
       saveSeen(seen)
       if (prefs.reminderSound) chime()
     }

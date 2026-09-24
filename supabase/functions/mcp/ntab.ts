@@ -327,6 +327,11 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   }
   if (people.length) s.push(`\nPERSONAS:`, ...people)
 
+  const moods = rows
+    .filter((r) => r.tbl === 'journal' && typeof r.data.mood === 'number' && r.id >= addDays(today, -6))
+    .sort((a, b) => a.id.localeCompare(b.id))
+  if (moods.length) s.push(`\nÁNIMO ÚLTIMOS DÍAS (diario, 1 muy mal – 5 muy bien): ${moods.map((r) => `${relDay(r.id, today)} ${num(r.data.mood)}`).join('; ')}. Tenlo en cuenta al proponer planes.`)
+
   const shopping = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
   if (shopping.length) s.push(`\nLISTA DE LA COMPRA (${shopping.length}): ${shopping.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
 
@@ -968,4 +973,42 @@ export function addShopping(rows: Row[], args: { cosas?: unknown }, env: Env): W
   const report = [added.length ? `Añadido a la compra: ${added.join(', ')}.` : 'No había nada nuevo que añadir.']
   if (already.length) report.push(`Ya estaba: ${already.join(', ')}.`)
   return { writes, report }
+}
+
+// ── Diario ────────────────────────────────────────────────────
+
+const MOOD_WORDS = ['', 'muy mal', 'mal', 'normal', 'bien', 'muy bien']
+
+export function readJournal(rows: Row[], args: { desde?: string; hasta?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const from = isYmd(args.desde) ? args.desde : addDays(today, -6)
+  const to = isYmd(args.hasta) ? args.hasta : today
+  const list = rows.filter((r) => r.tbl === 'journal' && r.id >= from && r.id <= to).sort((a, b) => a.id.localeCompare(b.id))
+  if (!list.length) return `No hay nada en el diario entre ${from} y ${to}.`
+  return list
+    .map((r) => {
+      const d = r.data
+      const good = Array.isArray(d.good) && d.good.length ? ` · cosas buenas: ${(d.good as string[]).join('; ')}` : ''
+      return `- ${relDay(r.id, today)} (${r.id})${typeof d.mood === 'number' ? `, ánimo ${MOOD_WORDS[d.mood as number] ?? d.mood}` : ''}: ${str(d.text).trim() || '(sin texto)'}${good}`
+    })
+    .join('\n')
+}
+
+export function writeJournal(rows: Row[], args: { texto?: string; animo?: number; cosas_buenas?: unknown; fecha?: string }, env: Env): WriteResult {
+  const today = ymdIn(env.now, env.tz)
+  const date = isYmd(args.fecha) && args.fecha <= today ? args.fecha : today
+  const cur = rows.find((r) => r.tbl === 'journal' && r.id === date)?.data ?? { id: date, text: '', good: [] }
+  const d: Data = { ...cur, id: date, updatedAt: env.now }
+  const text = str(args.texto).trim()
+  // Se añade a lo que ya hubiera escrito ese día
+  if (text) d.text = [str(cur.text).trim(), text].filter(Boolean).join('\n\n')
+  if (typeof args.animo === 'number' && args.animo >= 1 && args.animo <= 5) d.mood = Math.round(args.animo)
+  if (Array.isArray(args.cosas_buenas)) d.good = [...((cur.good as string[]) ?? []), ...args.cosas_buenas.map(String).filter(Boolean)].slice(0, 3)
+  if (!Array.isArray(d.good)) d.good = []
+  if (typeof d.text !== 'string') d.text = ''
+  if (!text && d.mood === cur.mood && !Array.isArray(args.cosas_buenas)) return { writes: [], report: ['No había nada que apuntar.'] }
+  return {
+    writes: [{ tbl: 'journal', id: date, data: d }],
+    report: [`Apuntado en el diario de ${relDay(date, today)}${typeof d.mood === 'number' ? ` (ánimo: ${MOOD_WORDS[d.mood as number]})` : ''}.`],
+  }
 }
