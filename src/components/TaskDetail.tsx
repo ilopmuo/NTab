@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Task } from '@/db/types'
@@ -150,7 +150,7 @@ function repeatKind(r?: Recurrence): RepeatKind {
 }
 
 function TaskDetail({ task }: { task: Task }) {
-  const { areas, projects, area, project } = useLookup()
+  const { areas, projects, people, area, project, person } = useLookup()
   const [title, setTitle] = useState(task.title)
   const [notes, setNotes] = useState(task.notes)
   const [tagDraft, setTagDraft] = useState('')
@@ -355,6 +355,48 @@ function TaskDetail({ task }: { task: Task }) {
                 </optgroup>
               )}
             </select>
+          </Row>
+          <Row icon={<AtSign size={15} strokeWidth={2.6} />} color="var(--c-text)" label="Personas">
+            {(task.people ?? []).map((id) => {
+              const p = person(id)
+              if (!p) return null
+              return (
+                <span key={id} className="inline-flex h-8 items-center gap-1 rounded-full bg-fill pr-1.5 pl-3 text-[13px] font-semibold">
+                  <a href={`#/people/${id}`} className="hover:underline">
+                    {p.name}
+                  </a>
+                  <button
+                    type="button"
+                    aria-label={`Quitar a ${p.name}`}
+                    className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-hover"
+                    onClick={() => mutateTask(task.id, (x) => void (x.people = (x.people ?? []).filter((y) => y !== id)))}
+                  >
+                    <X size={12} strokeWidth={2.6} />
+                  </button>
+                </span>
+              )
+            })}
+            {people.length > 0 ? (
+              <select
+                value=""
+                onChange={(e) => e.target.value && void mutateTask(task.id, (x) => void (x.people = [...new Set([...(x.people ?? []), e.target.value])]))}
+                className="h-8 rounded-full bg-transparent px-2 text-[13px] text-muted"
+                aria-label="Añadir persona"
+              >
+                <option value="">Añadir…</option>
+                {people
+                  .filter((p) => !(task.people ?? []).includes(p.id))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            ) : (
+              <a href="#/people" className="px-1 text-[13px] text-faint">
+                Crea personas en Personas
+              </a>
+            )}
           </Row>
           <Row icon={<Hash size={15} strokeWidth={2.6} />} color="var(--c-blue)" label="Etiquetas">
             {task.tags.map((tag) => (

@@ -16,6 +16,7 @@ export interface Recurrence {
   freq: 'day' | 'week' | 'month' | 'year'
   interval: number
   weekdays?: number[]
+  afterDone?: boolean
 }
 export interface Task {
   id: string
@@ -28,6 +29,7 @@ export interface Task {
   projectId?: string
   areaId?: string
   tags: string[]
+  people?: string[]
   subtasks: { id: string; title: string; done: boolean }[]
   recurrence?: Recurrence
   reminder?: Reminder | null
@@ -139,7 +141,9 @@ class Index {
   tasks: Task[]
   projects: Data[]
   areas: Data[]
+  people: Data[]
   constructor(rows: Row[]) {
+    this.people = rows.filter((r) => r.tbl === 'people').map((r) => ({ ...r.data, id: r.id }))
     this.tasks = rows.filter((r) => r.tbl === 'tasks').map((r) => ({ tags: [], subtasks: [], notes: '', ...r.data, id: r.id }) as unknown as Task)
     this.projects = rows.filter((r) => r.tbl === 'projects').map((r) => ({ ...r.data, id: r.id }))
     this.areas = rows.filter((r) => r.tbl === 'areas').map((r) => ({ ...r.data, id: r.id }))
@@ -149,6 +153,20 @@ class Index {
   }
   areaName(id?: string) {
     return id ? str(this.areas.find((a) => a.id === id)?.name) : ''
+  }
+  personNames(ids?: string[]) {
+    return (ids ?? []).map((id) => str(this.people.find((p) => p.id === id)?.name)).filter(Boolean)
+  }
+  /** nombres → ids de personas (los que no existen se devuelven aparte) */
+  resolvePeople(names: unknown): { ids: string[]; missing: string[] } {
+    const ids: string[] = []
+    const missing: string[] = []
+    for (const n of Array.isArray(names) ? names : []) {
+      const p = findByName(this.people, String(n).replace(/^@/, ''))
+      if (p) ids.push(String(p.id))
+      else missing.push(String(n))
+    }
+    return { ids: [...new Set(ids)], missing }
   }
 }
 
@@ -160,6 +178,7 @@ function taskLine(t: Task, ix: Index, today: string) {
     PRIO[t.priority] ?? '',
     where ? ` · ${where}` : '',
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
+    t.people?.length ? ` · con ${ix.personNames(t.people).join(', ')}` : '',
     t.recurrence ? ' · se repite' : '',
     t.subtasks?.length ? ` · subtareas ${t.subtasks.filter((s) => s.done).length}/${t.subtasks.length}` : '',
     t.done ? ' · HECHA' : '',
@@ -257,6 +276,7 @@ export interface SearchArgs {
   hasta?: string
   proyecto?: string
   etiqueta?: string
+  persona?: string
   limite?: number
 }
 
@@ -268,6 +288,8 @@ export function searchTasks(rows: Row[], args: SearchArgs, env: Env): string {
   const project = args.proyecto ? findByName(ix.projects, args.proyecto) : undefined
   if (args.proyecto && !project) return `No hay ningún proyecto que se llame «${args.proyecto}».`
   const tag = fold(args.etiqueta ?? '').replace(/^#/, '')
+  const person = args.persona ? findByName(ix.people, args.persona.replace(/^@/, '')) : undefined
+  if (args.persona && !person) return `No hay ninguna persona que se llame «${args.persona}».`
   const list = ix.tasks
     .filter((t) => (estado === 'todas' ? true : estado === 'hechas' ? t.done : !t.done))
     .filter((t) => !q || fold(`${t.title} ${t.notes} ${t.tags.join(' ')}`).includes(q))
@@ -275,6 +297,7 @@ export function searchTasks(rows: Row[], args: SearchArgs, env: Env): string {
     .filter((t) => !isYmd(args.hasta) || (!!t.dueDate && t.dueDate <= args.hasta!))
     .filter((t) => !project || t.projectId === project.id)
     .filter((t) => !tag || t.tags.some((g) => fold(g) === tag))
+    .filter((t) => !person || (t.people ?? []).includes(String(person.id)))
     .sort(byDate)
   const max = Math.max(1, Math.min(200, args.limite ?? 50))
   if (!list.length) return 'No hay tareas que coincidan.'
@@ -292,6 +315,7 @@ export interface NewTask {
   proyecto?: string
   etiquetas?: string[]
   subtareas?: string[]
+  personas?: string[]
 }
 
 export interface Change {
@@ -342,10 +366,12 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
       task.projectId = String(project.id)
       if (project.areaId) task.areaId = String(project.areaId)
     }
+    const who = ix.resolvePeople(n.personas)
+    if (who.ids.length) task.people = who.ids
     task = withReminder(task, env)
     out.writes.push({ tbl: 'tasks', id: task.id, data: task as unknown as Data })
     out.report.push(
-      `Creada: ${taskLine(task, ix, today).slice(2)}${n.proyecto && !project ? ` (no encontré el proyecto «${n.proyecto}», queda sin proyecto)` : ''}`,
+      `Creada: ${taskLine(task, ix, today).slice(2)}${n.proyecto && !project ? ` (no encontré el proyecto «${n.proyecto}», queda sin proyecto)` : ''}${who.missing.length ? ` (no encontré a: ${who.missing.join(', ')})` : ''}`,
     )
   })
   if (!out.report.length) out.report.push('No se creó ninguna tarea (faltaban los títulos).')

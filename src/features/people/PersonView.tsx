@@ -12,6 +12,7 @@ import { href, navigate } from '@/app/router'
 import { toast, ui } from '@/app/store'
 import { Button, Card, Empty, Field, Group, IconButton, Input, Section, Select, Textarea, bouncy, cx } from '@/components/ui'
 import { Page } from '../Page'
+import { TaskList } from '@/components/TaskList'
 import { Avatar } from './Avatar'
 import { CONTACT_OPTIONS } from './PeopleView'
 
@@ -79,7 +80,7 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
   }
 
   const followUp = async () => {
-    const task = await createTask({ title: `Hablar con ${person.name}`, dueDate: addDaysYmd(t, 1), tags: ['personas'] })
+    const task = await createTask({ title: `Hablar con ${person.name}`, dueDate: addDaysYmd(t, 1), tags: ['personas'], people: [person.id] })
     ui.openTask(task.id)
   }
   const actions = [
@@ -150,6 +151,7 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
 
       <div className="grid gap-6 @[760px]:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
+          <PendingWith personId={person.id} name={person.name} />
           <Section title="Registrar contacto de hoy" tone="purple">
             <Card className="p-4">
               <div className="mb-3 flex flex-wrap gap-1.5">
@@ -279,5 +281,21 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
         </aside>
       </div>
     </Page>
+  )
+}
+
+/** Tareas abiertas que mencionan a la persona (@Ana): para tenerlas a mano al hablar con ella */
+function PendingWith({ personId, name }: { personId: string; name: string }) {
+  const tasks = useLiveQuery(() => db.tasks.where('people').equals(personId).filter((t) => !t.done).toArray(), [personId])
+  if (!tasks) return null
+  const first = name.trim().split(/\s+/)[0] || name
+  return (
+    <Section title={`Pendiente con ${first}`} count={tasks.length}>
+      <TaskList
+        tasks={tasks}
+        add={{ defaults: { people: [personId] }, placeholder: `Algo que hablar con ${first}…` }}
+        empty={<p className="px-4 pt-3 text-[14px] text-muted">Nada pendiente. Escribe @{first} al crear una tarea para verla aquí.</p>}
+      />
+    </Section>
   )
 }

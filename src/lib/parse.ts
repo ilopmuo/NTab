@@ -11,6 +11,8 @@ export interface ParseTarget {
 export interface ParseContext {
   projects: (ParseTarget & { areaId?: string })[]
   areas: ParseTarget[]
+  /** para "@Ana" */
+  people?: ParseTarget[]
   /** fecha de referencia (por defecto, ahora) */
   now?: Date
 }
@@ -21,6 +23,8 @@ export interface ParsedTask {
   dueTime?: string
   priority: Priority
   tags: string[]
+  /** personas mencionadas con @ que existen */
+  people?: string[]
   projectId?: string
   areaId?: string
   recurrence?: Recurrence
@@ -169,6 +173,17 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
     const t = tag.toLowerCase()
     if (!out.tags.includes(t)) out.tags.push(t)
     return ' '
+  })
+
+  // ── Personas ──────────────────────────────────────────────
+  // "@Ana": se enlaza a la persona y el nombre se queda en el título
+  // ("Llamar a @ana" → "Llamar a Ana"); si no existe, solo se quita la @.
+  text = text.replace(new RegExp(`${B}@([\\p{L}\\p{N}_-]+)`, 'gu'), (_, name: string) => {
+    const p = ctx.people?.length ? matchTarget(name, ctx.people) : undefined
+    if (!p) return name
+    out.people = [...new Set([...(out.people ?? []), p.id])]
+    const first = p.name.trim().split(/\s+/)[0]
+    return normalize(first).startsWith(normalize(name)) ? first : name
   })
 
   // ── Prioridad ─────────────────────────────────────────────

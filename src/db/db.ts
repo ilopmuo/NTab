@@ -52,6 +52,9 @@ export class NTabDB extends Dexie {
       goals: 'id, status, areaId, order',
       subscriptions: 'id, nextDate, active',
     })
+    this.version(5).stores({
+      tasks: 'id, done, dueDate, projectId, areaId, *tags, order, completedAt, *people',
+    })
     this.version(4).stores({
       trash: 'id, deletedAt',
       templates: 'id, order',

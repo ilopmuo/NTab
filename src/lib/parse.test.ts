@@ -175,3 +175,23 @@ describe('habits', () => {
     expect(completionRate(recent, new Set(['2026-09-21', '2026-09-23']), '2026-09-23', 30)).toBeCloseTo(2 / 3)
   })
 })
+
+describe('personas con @', () => {
+  const withPeople = { ...ctx, people: [{ id: 'ana', name: 'Ana García' }, { id: 'luis', name: 'Luis' }] }
+  it('enlaza a la persona y deja su nombre en el título', () => {
+    const r = parseQuickAdd('llamar a @ana mañana a las 10', withPeople)
+    expect(r.title).toBe('Llamar a Ana')
+    expect(r.people).toEqual(['ana'])
+    expect(r.dueTime).toBe('10:00')
+  })
+  it('varias personas y nombres desconocidos', () => {
+    const r = parseQuickAdd('Cena con @Luis y @ana y @pepe', withPeople)
+    expect(r.people).toEqual(['luis', 'ana'])
+    expect(r.title).toBe('Cena con Luis y Ana y pepe')
+  })
+  it('sin personas en el contexto, solo quita la @', () => {
+    const r = parseQuickAdd('Escribir a @marta', ctx)
+    expect(r.title).toBe('Escribir a marta')
+    expect(r.people).toBeUndefined()
+  })
+})

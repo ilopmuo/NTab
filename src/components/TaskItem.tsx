@@ -166,6 +166,10 @@ export const TaskItem = memo(function TaskItem({
       </span>,
     )
   }
+  for (const id of task.people ?? []) {
+    const p = lookup.person(id)
+    if (p) meta.push(<span key={`@${id}`} className="font-medium text-fg/80">@{p.name.trim().split(/\s+/)[0]}</span>)
+  }
   for (const tag of task.tags) {
     meta.push(
       <a key={`#${tag}`} href={`#/tag/${encodeURIComponent(tag)}`} onClick={(e) => e.stopPropagation()} className="text-blue hover:underline">
