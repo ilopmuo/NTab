@@ -16,6 +16,7 @@ import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/com
 import { HabitStrip } from './habits/HabitStrip'
 import { RoutinesCard } from './routines/RoutinesCard'
 import { JournalPrompt } from './journal/JournalPrompt'
+import { TodayMeals } from './menu/TodayMeals'
 import { ThingsAttention } from './things/ThingsAttention'
 import { TrackersDue } from './trackers/TrackersDue'
 import { useHabits } from './habits/useHabits'
@@ -253,6 +254,7 @@ export function TodayView() {
         <aside className="min-w-0 space-y-4 [grid-area:side]">
           <Agenda tasks={todays} events={todayEvents} names={cal.names} />
           <JournalPrompt />
+          <TodayMeals />
           <RoutinesCard />
           <TrackersDue />
           <ThingsAttention />

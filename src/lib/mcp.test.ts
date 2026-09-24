@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'ver_menu', 'planificar_menu', 'crear_receta', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -324,5 +324,15 @@ describe('conector MCP', () => {
     expect(list).toContain('Gastos de 2026-09: 108,50 € en 2 gastos, presupuesto 100 €')
     expect(list).toContain('- Supermercado: 63 € (58 %)')
     expect(nb(await call(store, 'ver_resumen')).text).toContain('GASTOS DE ESTE MES: 108,50 € de un presupuesto de 100 €')
+  })
+
+  it('menú: recetas, planificar y ver', async () => {
+    const store = memoryStore(base())
+    expect((await call(store, 'crear_receta', { nombre: 'Tortilla de patatas', ingredientes: ['6 huevos', '1 kg de patatas'] })).text).toBe('Receta guardada: Tortilla de patatas (2 ingredientes).')
+    const r = await call(store, 'planificar_menu', { comidas: [{ fecha: '2026-09-24', comida: 'tortilla de patatas', cena: 'Sobras' }] })
+    expect(r.text).toContain('2026-09-24 comida: Tortilla de patatas (receta)')
+    expect(r.text).toContain('2026-09-24 cena: Sobras')
+    expect((await call(store, 'ver_menu', {})).text).toContain('- hoy (2026-09-24): comida Tortilla de patatas · cena Sobras')
+    expect((await call(store, 'ver_resumen')).text).toContain('MENÚ DE HOY: comida: Tortilla de patatas; cena: Sobras')
   })
 })

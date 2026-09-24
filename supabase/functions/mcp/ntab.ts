@@ -338,6 +338,9 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
   if (month.count || budget) s.push(`\nGASTOS DE ESTE MES: ${money(month.total)}${budget ? ` de un presupuesto de ${money(budget)}` : ''}${month.projection > month.total ? ` (a este ritmo, ${money(month.projection)} a fin de mes)` : ''}.`)
 
+  const meals = rows.filter((r) => r.tbl === 'menu' && r.data.date === today)
+  if (meals.length) s.push(`\nMENÚ DE HOY: ${meals.map((r) => `${str(r.data.meal)}: ${menuName(rows, r.data)}`).join('; ')}`)
+
   const shopping = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
   if (shopping.length) s.push(`\nLISTA DE LA COMPRA (${shopping.length}): ${shopping.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
 
@@ -1089,4 +1092,58 @@ export function listExpenses(rows: Row[], args: { mes?: string }, env: Env): str
       .map((e) => `- ${e.date} ${money(e.amount)} ${e.note}`),
   ]
   return lines.join('\n')
+}
+
+// ── Menú ──────────────────────────────────────────────────────
+
+function menuName(rows: Row[], d: Data) {
+  if (d.recipeId) return str(rows.find((r) => r.tbl === 'recipes' && r.id === d.recipeId)?.data.name) || str(d.text) || '?'
+  return str(d.text)
+}
+
+export function readMenu(rows: Row[], args: { desde?: string }, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const from = isYmd(args.desde) ? args.desde : weekStart(today)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(from, i))
+  const lines = days.map((d) => {
+    const get = (m: string) => {
+      const r = rows.find((x) => x.tbl === 'menu' && x.id === `${d}:${m}`)
+      return r ? menuName(rows, r.data) : '—'
+    }
+    return `- ${relDay(d, today)} (${d}): comida ${get('comida')} · cena ${get('cena')}`
+  })
+  const recipes = rows.filter((r) => r.tbl === 'recipes').map((r) => str(r.data.name))
+  return [...lines, `Recetas guardadas: ${recipes.join(', ') || 'ninguna'}.`].join('\n')
+}
+
+export function planMenu(rows: Row[], args: { comidas?: unknown }, _env: Env): WriteResult {
+  const list = Array.isArray(args.comidas) ? (args.comidas as { fecha?: string; comida?: string; cena?: string }[]) : []
+  const recipes: Data[] = rows.filter((r) => r.tbl === 'recipes').map((r) => ({ ...r.data, id: r.id }))
+  const writes: Row[] = []
+  const report: string[] = []
+  for (const day of list) {
+    if (!isYmd(day?.fecha)) continue
+    for (const meal of ['comida', 'cena'] as const) {
+      const v = str(day[meal]).trim()
+      if (!v) continue
+      const r = findByName(recipes, v)
+      const exact = r && fold(str(r.name)) === fold(v)
+      const id = `${day.fecha}:${meal}`
+      writes.push({ tbl: 'menu', id, data: exact ? { id, date: day.fecha, meal, recipeId: String(r!.id) } : { id, date: day.fecha, meal, text: v } })
+      report.push(`${day.fecha} ${meal}: ${exact ? str(r!.name) + ' (receta)' : v}`)
+    }
+  }
+  if (!writes.length) return { writes: [], report: ['No había comidas que poner (cada día: fecha y comida y/o cena).'] }
+  return { writes, report: ['Menú actualizado:', ...report, 'Con recetas guardadas, en NTab → Menú puede añadir sus ingredientes a la compra en un toque.'] }
+}
+
+export function createRecipe(rows: Row[], args: { nombre?: string; ingredientes?: unknown; notas?: string }, env: Env): WriteResult {
+  const name = str(args.nombre).trim()
+  const ingredients = Array.isArray(args.ingredientes) ? args.ingredientes.map((x) => String(x).trim()).filter(Boolean) : []
+  if (!name) return { writes: [], report: ['Falta el nombre de la receta.'] }
+  const existing = rows.find((r) => r.tbl === 'recipes' && fold(str(r.data.name)) === fold(name))
+  const id = existing?.id ?? env.newId()
+  const data: Data = { ...(existing?.data ?? { createdAt: env.now }), id, name, ingredients }
+  if (args.notas) data.notes = str(args.notas)
+  return { writes: [{ tbl: 'recipes', id, data }], report: [`Receta ${existing ? 'actualizada' : 'guardada'}: ${name} (${ingredients.length} ingredientes).`] }
 }

@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -240,6 +240,40 @@ export const TOOLS = [
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
+    name: 'ver_menu',
+    title: 'Ver el menú',
+    description: 'El menú de la semana (comida y cena de cada día) y las recetas guardadas.',
+    inputSchema: { type: 'object', properties: { desde: { ...DATE, description: 'Primer día (por defecto, el lunes de esta semana)' } } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'planificar_menu',
+    title: 'Planificar el menú',
+    description: 'Pone qué se come en varios días. Si el plato coincide con una receta guardada, se enlaza (y sus ingredientes pueden ir a la compra). Propón el menú antes de guardarlo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        comidas: {
+          type: 'array',
+          items: { type: 'object', properties: { fecha: DATE, comida: { type: 'string' }, cena: { type: 'string' } }, required: ['fecha'] },
+        },
+      },
+      required: ['comidas'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'crear_receta',
+    title: 'Guardar una receta',
+    description: 'Guarda (o actualiza por nombre) una receta con sus ingredientes, uno por elemento, con cantidad («6 huevos», «200 g de harina»).',
+    inputSchema: {
+      type: 'object',
+      properties: { nombre: { type: 'string' }, ingredientes: { type: 'array', items: { type: 'string' } }, notas: { type: 'string' } },
+      required: ['nombre', 'ingredientes'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'que_hago',
     title: '¿Qué hago ahora?',
     description: 'Propone qué tareas hacer ahora según el tiempo que tiene y su energía (atrasadas, para hoy, prioridad, lo que cabe). Úsalo ante «tengo media hora, ¿qué hago?».',
@@ -471,6 +505,8 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(lastTime(await store.load(), args, env))
     case 'ver_compra':
       return text(listShopping(await store.load()))
+    case 'ver_menu':
+      return text(readMenu(await store.load(), args, env))
     case 'ver_gastos':
       return text(listExpenses(await store.load(), args, env))
     case 'que_hago':
@@ -478,6 +514,8 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'ver_diario':
       return text(readJournal(await store.load(), args, env))
     case 'crear_proyecto':
+    case 'planificar_menu':
+    case 'crear_receta':
     case 'apuntar_gasto':
     case 'escribir_diario':
     case 'anadir_compra':
@@ -488,7 +526,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'actualizar_objetivo':
     case 'registrar_contacto':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { crear_proyecto: createProject, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)
