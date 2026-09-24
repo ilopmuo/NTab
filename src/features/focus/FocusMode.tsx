@@ -9,7 +9,7 @@ import { chime } from '@/reminders/sound'
 import { showSystemNotification } from '@/reminders/local'
 import { Checkbox } from '@/components/TaskItem'
 import { Button, Segmented, cx, softSpring, spring } from '@/components/ui'
-import { DURATIONS, clock, focus, remaining, useFocus } from './focus'
+import { DURATIONS, clock, focus, logFocus, remaining, useFocus } from './focus'
 
 /** Se redibuja cada segundo mientras el temporizador corre */
 function useTick(active: boolean) {
@@ -76,6 +76,7 @@ export function FocusMode() {
     if (!s?.endAt) return
     const fire = () => {
       focus.finish()
+      void logFocus(task?.title ?? '')
       chime()
       void showSystemNotification('ntab-focus', '⏱ Tiempo de foco terminado', task?.title ?? 'NTab', './#/today')
     }
@@ -95,6 +96,8 @@ export function FocusMode() {
   const progress = s.finished ? 1 : 1 - left / Math.max(total, left)
 
   const complete = async () => {
+    focus.pause()
+    await logFocus(task.title)
     const fresh = await db.tasks.get(task.id)
     if (fresh && !fresh.done) await toggleTask(fresh)
     focus.close()
@@ -142,7 +145,8 @@ export function FocusMode() {
               size="sm"
               onClick={() => {
                 if (running && !window.confirm('¿Terminar la sesión de foco?')) return
-                focus.close()
+                focus.pause()
+                void logFocus(task.title).then(focus.close)
               }}
             >
               <X size={15} /> Salir

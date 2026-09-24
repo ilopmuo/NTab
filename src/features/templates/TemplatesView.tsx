@@ -269,7 +269,7 @@ function UseForm({ template, onClose }: { template: Template; onClose: () => voi
           ]}
         />
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Empieza">
+          <Field label="Día 0 (referencia)">
             <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           </Field>
           {mode === 'project' && (
