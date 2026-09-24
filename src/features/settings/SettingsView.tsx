@@ -1,5 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import {
+  BellRing,
+  Clock,
+  Send,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -22,7 +26,7 @@ import { openAuth, signOut, syncNow, useSync } from '@/sync/service'
 import { syncLabel } from '@/sync/SyncBadge'
 import type { Area } from '@/db/types'
 import { db } from '@/db/db'
-import { deleteArea } from '@/db/actions'
+import { deleteArea, setSetting } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
 import { downloadBackup, importData, isBackup, wipeData } from '@/db/backup'
 import { seedIfEmpty } from '@/db/seed'
@@ -30,7 +34,8 @@ import { SectionIcon, section, type Tint } from '@/app/sections'
 import { setUI, toast, ui, useUI } from '@/app/store'
 import { setTheme, useTheme } from '@/app/theme'
 import { AreaBadge } from '@/components/icons'
-import { Group, IconButton, PageHeader, Segmented, cx } from '@/components/ui'
+import { Group, IconButton, PageHeader, Segmented, Switch, cx } from '@/components/ui'
+import { disablePush, enablePush, getPushState, testNotification, type PushState } from '@/reminders/push'
 import { AreaForm } from '../areas/AreaForm'
 import { Page } from '../Page'
 
@@ -158,6 +163,79 @@ function AccountCard() {
   )
 }
 
+const PUSH_HELP: Record<PushState, string> = {
+  on: 'Te llegarán los avisos aunque NTab esté cerrada.',
+  off: 'Actívalo para recibir los avisos aunque NTab esté cerrada.',
+  'needs-install':
+    'En iPhone y iPad los avisos solo funcionan con NTab en la pantalla de inicio: en Safari, Compartir → Añadir a pantalla de inicio, y ábrela desde el icono.',
+  denied: 'Has bloqueado las notificaciones. Actívalas en Ajustes del iPhone → Notificaciones → NTab (o en los ajustes del navegador).',
+  unsupported: 'Este navegador no permite notificaciones. Mientras NTab esté abierta te avisará dentro de la app.',
+}
+
+/** Avisos: notificaciones push en este dispositivo y aviso automático */
+function NotificationsBlock() {
+  const sync = useSync()
+  const [state, setState] = useState<PushState | null>(null)
+  const [busy, setBusy] = useState(false)
+  const autoRemind = useLiveQuery(() => db.settings.get('autoRemind'), [])
+  useEffect(() => {
+    void getPushState().then(setState)
+  }, [])
+  const toggle = async (on: boolean) => {
+    if (!sync.user) return openAuth()
+    setBusy(true)
+    try {
+      setState(on ? await enablePush() : await disablePush())
+      toast(on ? 'Avisos activados en este dispositivo' : 'Avisos desactivados en este dispositivo')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'No se pudieron activar los avisos')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const canToggle = state === 'on' || state === 'off'
+  return (
+    <Block title="Avisos" footer={state ? (sync.user || state !== 'off' ? PUSH_HELP[state] : 'Inicia sesión para recibir los avisos con la app cerrada.') : undefined}>
+      <Row
+        glyph={
+          <Glyph c="blue">
+            <BellRing size={15} strokeWidth={2.4} />
+          </Glyph>
+        }
+        label="Notificaciones en este dispositivo"
+        right={<Switch label="Notificaciones en este dispositivo" checked={state === 'on'} disabled={!canToggle || busy} onChange={toggle} />}
+      />
+      <Row
+        glyph={
+          <Glyph c="gray">
+            <Clock size={15} strokeWidth={2.4} />
+          </Glyph>
+        }
+        label="Avisar a la hora de las tareas"
+        detail="Las tareas con hora avisan solas; puedes cambiarlo en cada tarea"
+        right={
+          <Switch
+            label="Avisar a la hora de las tareas"
+            checked={autoRemind?.value !== false}
+            onChange={(v) => void setSetting('autoRemind', v)}
+          />
+        }
+      />
+      {state === 'on' && (
+        <Row
+          glyph={
+            <Glyph c="gray">
+              <Send size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Enviar un aviso de prueba"
+          onClick={() => void testNotification()}
+        />
+      )}
+    </Block>
+  )
+}
+
 export function SettingsView() {
   const theme = useTheme()
   const areas = useAreas()
@@ -180,6 +258,8 @@ export function SettingsView() {
       <PageHeader icon={<SectionIcon def={section('settings')} size={40} />} title="Ajustes" />
 
       <AccountCard />
+
+      <NotificationsBlock />
 
       <Block title="Apariencia">
         <Row

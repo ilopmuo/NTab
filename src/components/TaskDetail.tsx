@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, StickyNote, Trash2, X } from 'lucide-react'
+import { Bell, Calendar, Clock, Copy, Flag, Folder, Hash, ListChecks, Plus, Repeat, StickyNote, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { Recurrence, Task } from '@/db/types'
+import type { Recurrence, Reminder, Task } from '@/db/types'
 import { db } from '@/db/db'
 import { useLookup, useTask } from '@/db/hooks'
 import { deleteTask, duplicateTask, mutateTask, updateTask } from '@/db/actions'
@@ -11,6 +11,7 @@ import { addDaysYmd, dateLabel, fromYmd, longDateLabel, today, WEEK_ORDER, WEEKD
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor } from '@/lib/tasks'
 import { uid } from '@/lib/id'
+import { REMINDER_OPTIONS, reminderLabel, reminderValue } from '@/lib/reminders'
 import { toast, ui, useUI } from '@/app/store'
 import { Checkbox, completeWithFeedback } from './TaskItem'
 import { Group, IconButton, Modal, Segmented, Textarea, cx, spring, useMediaQuery } from './ui'
@@ -283,6 +284,7 @@ function TaskDetail({ task }: { task: Task }) {
             </select>
           </Row>
           {kind === 'custom' && task.recurrence && <RecurrenceEditor value={task.recurrence} onChange={(r) => set({ recurrence: r })} />}
+          <ReminderRow task={task} onChange={(reminder) => set({ reminder })} />
         </Group>
 
         <Group>
@@ -494,5 +496,59 @@ function RecurrenceEditor({ value, onChange }: { value: Recurrence; onChange: (r
         </div>
       )}
     </div>
+  )
+}
+
+/** Fila "Aviso": cuándo te avisa NTab (notificación en el móvil u ordenador) */
+function ReminderRow({ task, onChange }: { task: Task; onChange: (r: Reminder | null) => void }) {
+  const value = reminderValue(task.reminder)
+  const toLocalInput = (ms: number) => {
+    const d = new Date(ms)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  const past = task.remindAt !== undefined && task.remindAt < Date.now() && !task.done
+  return (
+    <Row
+      icon={<Bell size={16} strokeWidth={2.4} />}
+      color={task.remindAt ? 'var(--c-blue)' : 'var(--c-muted)'}
+      label="Aviso"
+      value={
+        task.remindAt
+          ? `${reminderLabel(task.reminder)}${task.reminder && 'before' in task.reminder ? ` · ${new Date(task.remindAt).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}${past ? ' · ya pasó' : ''}`
+          : task.reminder && !task.dueDate
+            ? 'Pon una fecha para que avise'
+            : undefined
+      }
+    >
+      <select
+        value={value}
+        onChange={(e) => {
+          const v = e.target.value
+          if (v === 'custom') {
+            const start = task.remindAt ?? Date.now() + 60 * 60_000
+            return onChange({ at: start })
+          }
+          onChange(REMINDER_OPTIONS.find((o) => o.value === v)?.reminder ?? null)
+        }}
+        className={cx(fieldCls, 'appearance-none pr-3')}
+      >
+        {REMINDER_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+        {value !== 'none' && !REMINDER_OPTIONS.some((o) => o.value === value) && value !== 'custom' && <option value={value}>{reminderLabel(task.reminder)}</option>}
+        <option value="custom">Fecha y hora concretas…</option>
+      </select>
+      {task.reminder && 'at' in task.reminder && (
+        <input
+          type="datetime-local"
+          value={toLocalInput(task.reminder.at)}
+          onChange={(e) => e.target.value && onChange({ at: new Date(e.target.value).getTime() })}
+          className={fieldCls}
+        />
+      )}
+    </Row>
   )
 }

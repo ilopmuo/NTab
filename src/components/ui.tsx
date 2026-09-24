@@ -604,3 +604,24 @@ export function ColorPicker({ value, onChange, colors }: { value: string; onChan
     </div>
   )
 }
+
+/** Interruptor de iOS: pista lima cuando está activo, bola con muelle */
+export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cx('relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-40', checked ? 'bg-green' : 'bg-fill')}
+    >
+      <motion.span
+        className="absolute top-[2px] left-[2px] h-[27px] w-[27px] rounded-full bg-white shadow-[0_3px_8px_rgb(0_0_0/0.15),0_1px_1px_rgb(0_0_0/0.16)]"
+        animate={{ x: checked ? 20 : 0 }}
+        transition={spring}
+      />
+    </button>
+  )
+}

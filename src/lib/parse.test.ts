@@ -117,6 +117,14 @@ describe('parseQuickAdd', () => {
     })
   })
 
+  it('entiende avisos', () => {
+    expect(p('Recuérdame llamar al banco mañana a las 10')).toMatchObject({ title: 'Llamar al banco', dueTime: '10:00', reminder: { before: 0 } })
+    expect(p('Dentista el viernes a las 17 avísame 30 minutos antes').reminder).toEqual({ before: 30 })
+    expect(p('Pagar seguro el 5 con aviso 1 día antes').reminder).toEqual({ before: 1440 })
+    expect(p('Llamar a Juan avísame 2 horas antes').reminder).toEqual({ before: 120 })
+    expect(p('Comprar pan').reminder).toBeUndefined()
+  })
+
   it('combina todo', () => {
     expect(p('Llamar al dentista mañana a las 10 !alta #salud +Salud')).toEqual({
       title: 'Llamar al dentista',

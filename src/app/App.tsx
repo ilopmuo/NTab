@@ -28,6 +28,7 @@ import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
 import { useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
+import { openTaskFromNotification } from '@/reminders/local'
 import { ReauthBanner } from '@/sync/ReauthBanner'
 import { AuthScreen } from '@/features/auth/AuthScreen'
 import { RecoveryModal } from '@/features/auth/RecoveryModal'
@@ -112,6 +113,11 @@ function Workspace() {
   useGlobalShortcuts()
   const { path, parts } = useRoute()
   const panelOpen = useUI((s) => !!s.selectedTaskId)
+
+  // Enlace de una notificación: #/task/<id> abre la tarea sobre Hoy
+  useEffect(() => {
+    if (parts[0] === 'task' && parts[1]) openTaskFromNotification(parts[1])
+  }, [parts])
 
   useEffect(() => {
     document.title = `${TITLES[parts[0]] ?? 'NTab'} · NTab`

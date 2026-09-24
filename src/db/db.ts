@@ -1,6 +1,8 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { Area, Habit, HabitLog, Interaction, Note, Person, Project, Setting, Task } from './types'
 import { createTracking, type OutboxEntry } from '@/sync/tracking'
+import { computeRemindAt, withDefaultReminder } from '@/lib/reminders'
+import { prefs } from '@/lib/prefs'
 
 /** Estado interno de la sincronización (solo de este dispositivo, nunca se sube) */
 export interface LocalMeta {
@@ -86,3 +88,35 @@ export const rawDb = opened.raw
 db.areas.hook('reading', modernColor)
 db.projects.hook('reading', modernColor)
 db.habits.hook('reading', modernColor)
+
+/**
+ * Avisos de tareas: al crear o modificar una tarea se aplica el aviso automático
+ * (si tiene hora y no se ha elegido otro) y se recalcula `remindAt`, que es lo
+ * que mira el servidor para enviar la notificación.
+ */
+export function installReminderHooks(target: NTabDB) {
+  target.tasks.hook('creating', (_pk, obj) => {
+    const t = withDefaultReminder(obj, prefs.autoRemind)
+    if (t.reminder !== obj.reminder) obj.reminder = t.reminder
+    const at = computeRemindAt(obj)
+    if (at === undefined) delete obj.remindAt
+    else obj.remindAt = at
+  })
+  target.tasks.hook('updating', (mods, _pk, obj) => {
+    const m = mods as Record<string, unknown>
+    const relevant = ['reminder', 'dueDate', 'dueTime'].some((k) => k in m)
+    if (!relevant) return
+    const next = { ...obj } as Record<string, unknown>
+    for (const [k, v] of Object.entries(m)) {
+      if (v === undefined) delete next[k]
+      else next[k] = v
+    }
+    const merged = withDefaultReminder(next as unknown as Task, prefs.autoRemind)
+    const changes: Partial<Task> = {}
+    if (merged.reminder !== next.reminder) changes.reminder = merged.reminder
+    const at = computeRemindAt(merged)
+    if (at !== obj.remindAt) changes.remindAt = at
+    return Object.keys(changes).length ? changes : undefined
+  })
+}
+installReminderHooks(db)

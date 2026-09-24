@@ -1,6 +1,6 @@
 import { memo, useState } from 'react'
 import { motion } from 'motion/react'
-import { ChevronRight, Clock, ListChecks, Repeat, StickyNote } from 'lucide-react'
+import { Bell, ChevronRight, Clock, ListChecks, Repeat, StickyNote } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
 import type { Lookup } from '@/db/hooks'
@@ -133,6 +133,9 @@ export const TaskItem = memo(function TaskItem({
         {task.dueTime}
       </span>,
     )
+  }
+  if (task.remindAt && !task.done && task.remindAt > Date.now()) {
+    meta.push(<Bell key="b" size={11} strokeWidth={2.4} aria-label="Con aviso" />)
   }
   if (task.recurrence) {
     meta.push(

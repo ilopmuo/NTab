@@ -39,6 +39,15 @@ export interface Project {
   createdAt: number
 }
 
+/**
+ * Aviso de una tarea:
+ * - `before`: minutos antes de la fecha/hora de la tarea (0 = a la hora).
+ *   Sin hora, se toma como referencia la hora por defecto (09:00).
+ * - `at`: momento concreto (ms desde epoch).
+ * `null` = "sin aviso" elegido a propósito (no aplicar el aviso automático).
+ */
+export type Reminder = { before: number } | { at: number }
+
 export interface Task {
   id: ID
   title: string
@@ -55,6 +64,9 @@ export interface Task {
   tags: string[]
   subtasks: Subtask[]
   recurrence?: Recurrence
+  reminder?: Reminder | null
+  /** momento del aviso ya calculado (ms); lo usa el servidor para enviar la notificación */
+  remindAt?: number
   order: number
   createdAt: number
   completedAt?: number
