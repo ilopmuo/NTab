@@ -23,7 +23,8 @@ const since = (ms: number) => {
  * con una decisión (hoy, mañana, otro día, a una lista, hecha, borrar o luego).
  * Arrastrar la carta → la deja para hoy; ← la deja para luego.
  */
-export function InboxProcess({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) {
+/** `order`: ids en el orden en que se ven en la bandeja (si no, de la más antigua a la más nueva) */
+export function InboxProcess({ tasks, order, onClose }: { tasks: Task[]; order?: string[]; onClose: () => void }) {
   const { areas, projects, area } = useLookup()
   const [skipped, setSkipped] = useState<string[]>([])
   const [done, setDone] = useState(0)
@@ -31,7 +32,8 @@ export function InboxProcess({ tasks, onClose }: { tasks: Task[]; onClose: () =>
   const total = useRef(tasks.length)
   const dateRef = useRef<HTMLInputElement>(null)
   // Lo más antiguo primero: es lo que más tiempo lleva esperando
-  const queue = tasks.filter((t) => !skipped.includes(t.id)).sort((a, b) => a.createdAt - b.createdAt)
+  const pos = (t: Task) => order?.indexOf(t.id) ?? -1
+  const queue = tasks.filter((t) => !skipped.includes(t.id)).sort((a, b) => pos(a) - pos(b) || a.createdAt - b.createdAt)
   const current = queue[0]
   const t = today()
 

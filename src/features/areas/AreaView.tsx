@@ -7,12 +7,13 @@ import { useProjects } from '@/db/hooks'
 import { href, navigate } from '@/app/router'
 import { AreaBadge } from '@/components/icons'
 import { TaskList } from '@/components/TaskList'
+import { OrderToggle } from '@/components/ManualOrder'
 import { Button, Empty, Group, IconButton, PageHeader, Section } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectCard } from '../projects/ProjectCard'
 import { ProjectForm } from '../projects/ProjectForm'
 import { AreaForm } from './AreaForm'
-import { SelectButton } from '@/features/select/SelectionBar'
+import { SelectButton } from '@/features/select/SelectButton'
 
 export function AreaView({ id }: { id: string }) {
   const area = useLiveQuery(() => db.areas.get(id), [id])
@@ -71,8 +72,8 @@ export function AreaView({ id }: { id: string }) {
       </Section>
 
       <div className="max-w-3xl">
-        <Section title="Tareas sueltas" count={loose.length} tone={area.color}>
-          <TaskList tasks={loose} hideProject add={{ defaults: { areaId: id } }} />
+        <Section title="Tareas sueltas" count={loose.length} tone={area.color} action={loose.length > 1 ? <OrderToggle listKey={`area:${id}`} tasks={loose} /> : undefined}>
+          <TaskList tasks={loose} hideProject orderKey={`area:${id}`} add={{ defaults: { areaId: id } }} />
         </Section>
 
         <Section

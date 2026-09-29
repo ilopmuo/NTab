@@ -39,6 +39,14 @@ const GROUPS: [string, [string[], string][]][] = [
     ],
   ],
   [
+    'Ordenar',
+    [
+      [['↑', '↓'], 'Sobre el asa (orden a mano): subir o bajar la tarea'],
+      [['↑', '↓'], 'En «Hora a hora»: mover la tarea 15 min'],
+      [['⇧', '↑', '↓'], 'En «Hora a hora»: cambiar la duración'],
+    ],
+  ],
+  [
     'En la captura rápida',
     [
       [['mañana', 'a las 10'], 'Fecha y hora'],

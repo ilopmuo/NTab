@@ -131,6 +131,8 @@ export interface Task {
   /** momento del aviso ya calculado (ms); lo usa el servidor para enviar la notificación */
   remindAt?: number
   order: number
+  /** orden a mano en cada lista (`inbox`, `today`, `project:<id>`…); si falta, vale `order` */
+  orders?: Record<string, number>
   createdAt: number
   completedAt?: number
 }
@@ -155,6 +157,12 @@ export interface Habit {
   days: number[]
   /** HH:MM: avisar a esta hora si aún no está hecho */
   remindTime?: string
+  /** cantidad diaria para darlo por hecho («8 vasos»); sin ella, hecho o no hecho */
+  target?: number
+  /** unidad de la cantidad («vasos», «páginas») */
+  unit?: string
+  /** «N veces por semana», cualquier día (entonces `days` no se usa) */
+  perWeek?: number
   archived: 0 | 1
   order: number
   createdAt: number
@@ -328,6 +336,8 @@ export interface HabitLog {
   habitId: ID
   /** YYYY-MM-DD */
   date: string
+  /** cuánto se hizo ese día (hábitos con cantidad); sin ella, 1 */
+  count?: number
 }
 
 export interface Person {

@@ -3,19 +3,22 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence } from 'motion/react'
 import { Inbox as InboxIcon, Layers } from 'lucide-react'
 import { useOpenTasks } from '@/db/hooks'
-import { isInbox } from '@/lib/tasks'
+import { isInbox, sortManual, sortTasks } from '@/lib/tasks'
 import { SectionIcon, section } from '@/app/sections'
 import { TaskList } from '@/components/TaskList'
+import { OrderToggle, useListOrder } from '@/components/ManualOrder'
 import { Button, Empty, PageHeader } from '@/components/ui'
 import { Page } from './Page'
-import { SelectButton } from '@/features/select/SelectionBar'
+import { SelectButton } from '@/features/select/SelectButton'
 import { InboxProcess } from './InboxProcess'
 
 export function InboxView() {
   const tasks = useOpenTasks()
   const [processing, setProcessing] = useState<string[] | null>(null)
+  const manual = useListOrder('inbox')
   if (!tasks) return null
-  const inbox = tasks.filter(isInbox)
+  // En el mismo orden en que se ve la lista (también al procesarla)
+  const inbox = tasks.filter(isInbox).sort(manual ? sortManual('inbox') : sortTasks)
   return (
     <Page>
       <PageHeader
@@ -29,12 +32,14 @@ export function InboxView() {
                 <Layers size={16} strokeWidth={2.4} /> Procesar
               </Button>
             )}
+            {inbox.length > 1 && <OrderToggle listKey="inbox" tasks={inbox} iconOnly />}
             <SelectButton />
           </>
         }
       />
       <TaskList
         tasks={inbox}
+        orderKey="inbox"
         add={{ color: 'var(--c-gray)' }}
         empty={<Empty icon={<InboxIcon size={28} strokeWidth={2.2} />} title="Bandeja vacía" hint="Tu cabeza está despejada. Pulsa N para capturar cualquier cosa." />}
       />
@@ -43,7 +48,7 @@ export function InboxView() {
         <AnimatePresence>
           {processing && (
             // Las tareas del mazo se fijan al empezar: las que se procesan salen de la bandeja
-            <InboxProcess tasks={tasks.filter((t) => processing.includes(t.id) && isInbox(t))} onClose={() => setProcessing(null)} />
+            <InboxProcess tasks={tasks.filter((t) => processing.includes(t.id) && isInbox(t))} order={processing} onClose={() => setProcessing(null)} />
           )}
         </AnimatePresence>,
         document.body,

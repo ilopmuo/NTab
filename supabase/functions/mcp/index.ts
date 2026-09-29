@@ -3,9 +3,13 @@
 //
 // Se añade en Claude → Ajustes → Conectores → Añadir conector personalizado.
 // Así se usa NTab desde Claude con la suscripción de Claude, sin claves de API.
+//
+// Con la misma URL privada + /capturar (POST con el texto) se apunta desde un
+// atajo de Siri: «llamar al dentista mañana a las 10», «compra: leche y pan».
+// Responde una frase en texto plano, para que Siri la lea.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { handleMessage, type Store } from './server.ts'
-import type { Env, Row } from './ntab.ts'
+import { capture, type Env, type Row } from './ntab.ts'
 import { loadEvents } from '../_shared/loadEvents.ts'
 
 const CORS = {
@@ -20,8 +24,32 @@ const TOKEN = /^[a-f0-9]{32,128}$/
 function tokenFrom(url: URL) {
   const fromQuery = url.searchParams.get('token')
   if (fromQuery) return fromQuery
-  const last = url.pathname.split('/').filter(Boolean).pop() ?? ''
-  return last
+  const parts = url.pathname.split('/').filter(Boolean)
+  if (parts[parts.length - 1] === 'capturar') parts.pop()
+  return parts.pop() ?? ''
+}
+
+const isCapture = (url: URL) => url.pathname.replace(/\/+$/, '').endsWith('/capturar')
+const text = (body: string, status = 200) => new Response(body, { status, headers: { ...CORS, 'Content-Type': 'text/plain; charset=utf-8' } })
+
+/** El texto dictado: JSON {texto}, formulario, texto plano o ?texto= */
+async function captureText(req: Request, url: URL): Promise<string> {
+  const q = url.searchParams.get('texto') ?? url.searchParams.get('text')
+  if (q) return q
+  const type = req.headers.get('content-type') ?? ''
+  try {
+    if (type.includes('application/json')) {
+      const b = (await req.json()) as Record<string, unknown>
+      return String(b?.texto ?? b?.text ?? b?.input ?? '')
+    }
+    if (type.includes('form')) {
+      const f = await req.formData()
+      return String(f.get('texto') ?? f.get('text') ?? '')
+    }
+    return await req.text()
+  } catch {
+    return ''
+  }
 }
 
 Deno.serve(async (req) => {
@@ -29,21 +57,23 @@ Deno.serve(async (req) => {
   // Sin flujo de eventos (SSE): solo peticiones POST con respuesta JSON
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405, headers: { ...CORS, Allow: 'POST' } })
 
-  const token = tokenFrom(new URL(req.url))
-  if (!TOKEN.test(token)) return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Enlace del conector no válido' } }, 404)
+  const url = new URL(req.url)
+  const capturing = isCapture(url)
+  const token = tokenFrom(url)
+  if (!TOKEN.test(token)) {
+    if (capturing) return text('Enlace no válido: cópialo de nuevo en NTab → Ajustes → Siri.', 404)
+    return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Enlace del conector no válido' } }, 404)
+  }
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
   const { data: connector, error } = await admin.from('mcp_connectors').select('user_id,tz').eq('token', token).maybeSingle()
-  if (error) return json({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'Error interno' } }, 500)
-  if (!connector) return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Este enlace ya no es válido: crea uno nuevo en NTab → Ajustes → Claude' } }, 404)
+  if (error) return capturing ? text('No he podido apuntarlo: error del servidor.', 500) : json({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'Error interno' } }, 500)
+  if (!connector) {
+    if (capturing) return text('Este enlace ya no es válido: cópialo de nuevo en NTab → Ajustes → Siri.', 404)
+    return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Este enlace ya no es válido: crea uno nuevo en NTab → Ajustes → Claude' } }, 404)
+  }
   const userId = connector.user_id as string
 
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400)
-  }
 
   const env: Env = { tz: connector.tz || 'Europe/Madrid', now: Date.now(), autoRemind: true, newId: () => crypto.randomUUID() }
 
@@ -87,6 +117,24 @@ Deno.serve(async (req) => {
   }
 
   void admin.from('mcp_connectors').update({ last_used_at: new Date().toISOString() }).eq('user_id', userId).then(() => {})
+
+  // Atajo de Siri: apuntar sin abrir la app
+  if (capturing) {
+    try {
+      const r = capture(await store.load(), await captureText(req, url), env)
+      if (r.writes.length) await store.save(r.writes)
+      return text(r.report.join(' '))
+    } catch {
+      return text('No he podido apuntarlo. Vuelve a probar en un momento.', 500)
+    }
+  }
+
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400)
+  }
 
   const messages = Array.isArray(body) ? body : [body]
   const replies: unknown[] = []

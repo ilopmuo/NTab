@@ -1,7 +1,7 @@
 import { Command, defaultFilter } from 'cmdk'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { runner } from '@/features/routines/useRoutines'
-import { whatNow } from '@/features/whatnow/WhatNow'
+import { whatNow } from '@/features/whatnow/store'
 import { markDone } from '@/features/trackers/markDone'
 import { sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
@@ -17,6 +17,7 @@ import {
   Sparkles,
   Sun,
   SunMoon,
+  PanelLeft,
   Target,
   User,
   UserPlus,
@@ -141,7 +142,7 @@ function Palette() {
       ...routines.map((r) => `rutina empezar ${r.name}`),
       ...things.map((t) => `${t.name} ${t.location ?? ''} ${t.personName ?? ''}`),
       ...trackers.map((t) => `ultima vez hecho ${t.name}`),
-      'gasto gastos presupuesto que hago ahora diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
+      'gasto gastos presupuesto que hago ahora diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector personalizar barra lateral pestañas cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
   }, [q, areas, projects, tasks, notes, people])
@@ -230,6 +231,9 @@ function Palette() {
           </Item>
           <Item value="conectar claude conector ia asistente" icon={<G c="gray"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/settings'))}>
             Conectar NTab con Claude
+          </Item>
+          <Item value="personalizar barra lateral secciones ocultar pestañas movil navegacion menu" icon={<G c="gray"><PanelLeft size={14} strokeWidth={2.4} /></G>} onSelect={() => ui.navEditor('sidebar')}>
+            Personalizar la barra lateral
           </Item>
           <Item value="cambiar tema oscuro claro" icon={<G c="gray"><SunMoon size={14} strokeWidth={2.4} /></G>} onSelect={run(toggleTheme)}>
             Cambiar tema claro / oscuro

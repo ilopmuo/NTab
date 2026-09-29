@@ -1,18 +1,19 @@
 import { motion } from 'motion/react'
 import { Check, Flame, Plus } from 'lucide-react'
 import { toggleHabit } from '@/db/actions'
-import { isScheduled, streak } from '@/lib/habits'
+import { isCounted, isDue, progressLabel, streak, targetOf } from '@/lib/habits'
 import { href } from '@/app/router'
 import { Icon } from '@/components/icons'
 import { Card, bouncy, cx } from '@/components/ui'
 import { useHabits } from './useHabits'
+import { bumpHabit } from './bump'
 import { haptic } from '@/lib/haptics'
 
 /** Hábitos de hoy como interruptores de la app Casa: se encienden al tocarlos */
 export function HabitStrip() {
-  const { habits, byHabit, today } = useHabits(60)
+  const { habits, byHabit, counts, today } = useHabits(60)
   if (!habits) return null
-  const todays = habits.filter((h) => isScheduled(h, today))
+  const todays = habits.filter((h) => isDue(h, byHabit.get(h.id) ?? new Set(), today))
   const doneCount = todays.filter((h) => byHabit.get(h.id)?.has(today)).length
 
   return (
@@ -40,12 +41,17 @@ export function HabitStrip() {
             const set = byHabit.get(h.id) ?? new Set<string>()
             const done = set.has(today)
             const s = streak(h, set, today)
+            const counted = isCounted(h)
+            const progress = progressLabel(h, counts.get(h.id), set, today)
+            const pct = counted ? Math.min(1, (counts.get(h.id)?.get(today) ?? 0) / targetOf(h)) : 0
             return (
               <motion.button
                 key={h.id}
                 type="button"
                 whileTap={{ scale: 0.94 }}
+                aria-label={counted ? `Sumar uno a ${h.name}` : undefined}
                 onClick={() => {
+                  if (counted) return void bumpHabit(h, today)
                   haptic()
                   void toggleHabit(h.id, today)
                 }}
@@ -72,6 +78,12 @@ export function HabitStrip() {
                   )}
                 </div>
                 <span className={cx('line-clamp-2 text-[13px] leading-tight font-semibold', done ? 'text-black/85' : 'text-fg')}>{h.name}</span>
+                {progress && <span className={cx('font-num -mt-1 text-[12px] font-semibold', done ? 'text-black/60' : 'text-muted')}>{progress}</span>}
+                {counted && !done && (
+                  <span className="absolute inset-x-0 bottom-0 h-[3px] bg-fill">
+                    <motion.span className="block h-full bg-green" initial={false} animate={{ width: `${pct * 100}%` }} transition={bouncy} />
+                  </span>
+                )}
               </motion.button>
             )
           })}

@@ -3,11 +3,10 @@ import { motion } from 'motion/react'
 import { Menu, Plus } from 'lucide-react'
 import { RollingNumber, cx, spring } from '@/components/ui'
 import { useNavCounts } from './counts'
+import { useNav } from './nav'
 import { href, useRoute } from './router'
 import { section, tint } from './sections'
 import { ui } from './store'
-
-const TABS = ['today', 'upcoming', 'calendar', 'habits'].map(section)
 
 /** Al bajar por una pantalla la barra se encoge (sin textos); al subir, vuelve */
 function useMinimized(path: string) {
@@ -38,11 +37,12 @@ export function MobileBar() {
   const { path } = useRoute()
   const mini = useMinimized(path)
   const c = useNavCounts()
-  const badge: Record<string, number> = { today: c.today, habits: c.habitsLeft }
+  const tabs = useNav().tabs.map(section)
+  const badge: Record<string, number> = { today: c.today, habits: c.habitsLeft, inbox: c.inbox, shopping: c.shopping, people: c.peopleDue }
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),10px)] lg:hidden">
       <motion.nav initial={false} animate={{ height: mini ? 50 : 62 }} transition={barSpring} className="glass-thick pointer-events-auto flex flex-1 items-center rounded-full px-1.5">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const on = path === t.path || path.startsWith(t.path + '/')
           return (
             <a

@@ -154,13 +154,14 @@ export const TOOLS = [
   {
     name: 'marcar_habito',
     title: 'Marcar hábito',
-    description: 'Marca (o desmarca) un hábito como hecho en un día; por defecto, hoy.',
+    description: 'Marca (o desmarca) un hábito como hecho en un día; por defecto, hoy. En hábitos con cantidad («beber agua: 8 vasos») suma `cantidad` o, sin ella, lo da por cumplido.',
     inputSchema: {
       type: 'object',
       properties: {
         habito: { type: 'string', description: 'Nombre del hábito' },
         fecha: DATE,
         hecho: { type: 'boolean', description: 'false para desmarcarlo; por defecto true' },
+        cantidad: { type: 'number', description: 'Cuánto sumar en hábitos con cantidad (p. ej. 2 vasos)' },
       },
       required: ['habito'],
     },

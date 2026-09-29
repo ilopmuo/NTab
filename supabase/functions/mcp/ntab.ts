@@ -11,6 +11,8 @@ import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { CATEGORIES, categoryFor, money, monthSummary, parseExpense } from '../_shared/expenses.ts'
+import { parseQuickAdd } from '../_shared/parse.ts'
+import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -286,10 +288,15 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     }
   }
 
-  const habits = rows.filter((r) => r.tbl === 'habits' && !r.data.archived && Array.isArray(r.data.days) && (r.data.days as number[]).includes(weekday(today)))
-  if (habits.length) {
-    const doneIds = new Set(rows.filter((r) => r.tbl === 'habitLogs' && r.data.date === today).map((r) => str(r.data.habitId)))
-    s.push(`\nHÁBITOS DE HOY: ${habits.map((h) => `${str(h.data.name)} (${doneIds.has(h.id) ? 'hecho' : 'pendiente'})`).join('; ')}`)
+  const { habits, counts, done } = habitState(rows)
+  const todays = habits.filter((h) => isDue(h.rule, done.get(h.id)!, today))
+  if (todays.length) {
+    const state = (h: (typeof habits)[number]) => {
+      const d = done.get(h.id)!
+      const extra = progressLabel(h.rule, counts.get(h.id), d, today)
+      return `${d.has(today) ? 'hecho' : 'pendiente'}${extra ? `, ${extra}` : ''}`
+    }
+    s.push(`\nHÁBITOS DE HOY: ${todays.map((h) => `${h.name} (${state(h)})`).join('; ')}`)
   }
 
   const routines = rows.filter((r) => r.tbl === 'routines' && !r.data.archived && Array.isArray(r.data.days) && (r.data.days as number[]).includes(weekday(today)))
@@ -583,13 +590,44 @@ export function createNote(rows: Row[], args: { titulo?: string; contenido?: str
   return { writes: [{ tbl: 'notes', id: String(note.id), data: note }], report: [`Nota creada: «${note.title || 'Sin título'}»${project ? ` en ${str(project.name)}` : ''}.`] }
 }
 
-export function markHabit(rows: Row[], args: { habito?: string; fecha?: string; hecho?: boolean }, env: Env): WriteResult & { deletes: Row[] } {
+/** Hábitos activos con sus registros: cantidad por día y días cumplidos */
+function habitState(rows: Row[]) {
+  const habits = rows
+    .filter((r) => r.tbl === 'habits' && !r.data.archived)
+    .map((r) => {
+      const d = r.data
+      const rule: HabitLike = { days: Array.isArray(d.days) ? (d.days as number[]) : [], target: num(d.target) || undefined, unit: str(d.unit) || undefined, perWeek: num(d.perWeek) || undefined }
+      return { id: r.id, name: str(d.name), rule }
+    })
+  const counts = groupLogs(rows.filter((r) => r.tbl === 'habitLogs').map((r) => ({ habitId: str(r.data.habitId), date: str(r.data.date), count: num(r.data.count) || undefined })))
+  const done = new Map(habits.map((h) => [h.id, doneDays(h.rule, counts.get(h.id))]))
+  return { habits, counts, done }
+}
+
+export function markHabit(rows: Row[], args: { habito?: string; fecha?: string; hecho?: boolean; cantidad?: number }, env: Env): WriteResult & { deletes: Row[] } {
   const habits: Data[] = rows.filter((r) => r.tbl === 'habits' && !r.data.archived).map((r) => ({ ...r.data, id: r.id }))
   const habit = findByName(habits, str(args.habito))
   const date = isYmd(args.fecha) ? args.fecha : ymdIn(env.now, env.tz)
   if (!habit) return { writes: [], deletes: [], report: [`No hay ningún hábito que se llame «${str(args.habito)}». Hábitos: ${habits.map((h) => str(h.name)).join(', ') || 'ninguno'}.`] }
   const logs = rows.filter((r) => r.tbl === 'habitLogs' && r.data.habitId === habit.id && r.data.date === date)
   const want = args.hecho !== false
+  const rule = { target: num(habit.target) || undefined }
+  // Hábito con cantidad («8 vasos»): se suma lo que diga o, si solo dice «hecho», se completa
+  if (isCounted(rule) && want) {
+    const target = targetOf(rule)
+    const had = logs.reduce((n, l) => n + (num(l.data.count) || 1), 0)
+    const add = typeof args.cantidad === 'number' && args.cantidad > 0 ? Math.round(args.cantidad) : Math.max(0, target - had)
+    const total = had + add
+    const unit = str(habit.unit)
+    const status = `${total}/${target}${unit ? ` ${unit}` : ''}${total >= target ? ' (objetivo cumplido)' : ''}`
+    if (!add) return { writes: [], deletes: [], report: [`«${str(habit.name)}» ya estaba cumplido el ${date}: ${status}.`] }
+    const id = str(logs[0]?.id) || env.newId()
+    return {
+      writes: [{ tbl: 'habitLogs', id, data: { id, habitId: habit.id, date, count: total } }],
+      deletes: logs.slice(1),
+      report: [`«${str(habit.name)}» el ${date}: ${status}.`],
+    }
+  }
   if (want && logs.length) return { writes: [], deletes: [], report: [`«${str(habit.name)}» ya estaba hecho el ${date}.`] }
   if (!want) return { writes: [], deletes: logs, report: [logs.length ? `«${str(habit.name)}» desmarcado el ${date}.` : `«${str(habit.name)}» no estaba marcado el ${date}.`] }
   const id = env.newId()
@@ -1163,5 +1201,67 @@ export function addCountdown(rows: Row[], args: { nombre?: string; fecha?: strin
   return {
     writes: [{ tbl: 'countdowns', id, data: { id, name, date: args.fecha, icon: str(existing?.data.icon) || 'sparkles', createdAt: num(existing?.data.createdAt) || env.now } }],
     report: [`Cuenta atrás ${existing ? 'cambiada' : 'creada'}: ${name}, ${relDay(args.fecha, today)} (faltan ${diffDays(args.fecha, today)} días). La verá en Hoy.`],
+  }
+}
+
+// ── Captura rápida (Siri y atajos) ───────────────────────────
+
+// «compra: leche», «a la compra leche», «lista de la compra: …» (pero «comprar un regalo» es una tarea)
+const SHOPPING_PREFIX = /^\s*(?:(?:(?:a[nñ]ade|apunta|pon)\s+)?(?:(?:a|en)\s+)?(?:(?:la\s+)?lista\s+de\s+)?la\s+compra\s*[:,.-]?|compra\s*[:,.-])\s*/i
+const EXPENSE_PREFIX = /^\s*(?:gasto|gast[eé]|he\s+gastado|me\s+he\s+gastado)\s*[:,.-]?\s+/i
+
+/**
+ * Lo que se dicta a Siri, escrito como en la captura rápida de la app:
+ * «llamar al dentista mañana a las 10 !alta» → tarea con fecha, hora y aviso;
+ * «compra: leche y pan» → lista de la compra; «gasto 12,50 café» → gastos.
+ * El texto de `report` es corto: Siri lo lee en voz alta.
+ */
+export function capture(rows: Row[], raw: string, env: Env): WriteResult {
+  const text = raw.replace(/\s+/g, ' ').trim().slice(0, 500)
+  if (!text) return { writes: [], report: ['No he oído nada que apuntar.'] }
+  if (SHOPPING_PREFIX.test(text)) return addShopping(rows, { cosas: text.replace(SHOPPING_PREFIX, '') }, env)
+  if (EXPENSE_PREFIX.test(text)) {
+    const r = addExpenseTool(rows, { texto: text.replace(EXPENSE_PREFIX, '') }, env)
+    // Para Siri, sin el resumen del mes
+    return { ...r, report: r.writes.length ? [r.report[0].split('. Este mes')[0] + '.'] : r.report }
+  }
+
+  const ix = new Index(rows)
+  const today = ymdIn(env.now, env.tz)
+  const target = (d: Data) => ({ id: String(d.id), name: str(d.name), areaId: d.areaId ? String(d.areaId) : undefined })
+  const parsed = parseQuickAdd(text, {
+    today,
+    projects: ix.projects.filter((p) => p.status !== 'done' && p.status !== 'archived').map(target),
+    areas: ix.areas.map(target),
+    people: ix.people.map(target),
+  })
+  if (!parsed.title) return { writes: [], report: ['No he entendido qué apuntar.'] }
+  let task: Task = {
+    id: env.newId(),
+    title: parsed.title,
+    notes: '',
+    done: 0,
+    priority: parsed.priority,
+    tags: parsed.tags,
+    subtasks: [],
+    order: env.now,
+    createdAt: env.now,
+  }
+  if (parsed.dueDate) task.dueDate = parsed.dueDate
+  if (parsed.dueTime) task.dueTime = parsed.dueTime
+  if (parsed.projectId) task.projectId = parsed.projectId
+  if (parsed.areaId) task.areaId = parsed.areaId
+  if (parsed.people?.length) task.people = parsed.people
+  if (parsed.recurrence) task.recurrence = parsed.recurrence
+  if (parsed.reminder) task.reminder = parsed.reminder
+  if (parsed.estimate) task.estimate = parsed.estimate
+  if (parsed.nag) task.nag = parsed.nag
+  task = withReminder(task, env)
+
+  const when = task.dueDate ? `, ${relDay(task.dueDate, today)}${task.dueTime ? ` a las ${task.dueTime}` : ''}` : ''
+  const where = task.projectId ? ix.projectName(task.projectId) : task.areaId ? ix.areaName(task.areaId) : task.dueDate ? '' : 'la bandeja'
+  return {
+    writes: [{ tbl: 'tasks', id: task.id, data: task as unknown as Data }],
+    report: [`Apuntado: ${task.title}${when}${where ? ` (en ${where})` : ''}${task.remindAt ? '. Te avisaré' : ''}.`],
   }
 }

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AnimatePresence, Reorder, motion, useDragControls } from 'motion/react'
+import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { Recurrence, Reminder, Task } from '@/db/types'
+import type { Recurrence, Reminder, Subtask, Task } from '@/db/types'
 import { useLookup, useTask } from '@/db/hooks'
 import { deleteTask, duplicateTask, mutateTask, skipOccurrence, updateTask } from '@/db/actions'
 import { addDaysYmd, dateLabel, fromYmd, longDateLabel, today, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
-import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor } from '@/lib/tasks'
+import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor, moveItem } from '@/lib/tasks'
 import { uid } from '@/lib/id'
 import { durationLabel, parseDuration } from '@/lib/duration'
 import { NAG_OPTIONS, REMINDER_OPTIONS, nagLabel, reminderLabel, reminderValue } from '@/lib/reminders'
@@ -475,38 +475,7 @@ function TaskDetail({ task }: { task: Task }) {
               </span>
             )}
           </div>
-          <AnimatePresence initial={false}>
-            {task.subtasks.map((s) => (
-              <motion.div
-                key={s.id}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={spring}
-                className="group flex items-center gap-3 overflow-hidden py-1.5 pr-3 pl-[58px]"
-              >
-                <Checkbox
-                  size={20}
-                  checked={s.done}
-                  onChange={() => mutateTask(task.id, (x) => void x.subtasks.forEach((y) => y.id === s.id && (y.done = !y.done)))}
-                />
-                <input
-                  defaultValue={s.title}
-                  onBlur={(e) => e.target.value !== s.title && mutateTask(task.id, (x) => void x.subtasks.forEach((y) => y.id === s.id && (y.title = e.target.value)))}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).blur()}
-                  className={cx('min-w-0 flex-1 bg-transparent text-[15px]', s.done && 'text-faint line-through')}
-                />
-                <button
-                  type="button"
-                  aria-label="Eliminar subtarea"
-                  onClick={() => mutateTask(task.id, (x) => void (x.subtasks = x.subtasks.filter((y) => y.id !== s.id)))}
-                  className="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-red"
-                >
-                  <X size={15} />
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          <SubtaskRows task={task} />
           <div className="flex items-center gap-3 py-2 pr-3 pl-[58px]">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
               <Plus size={13} strokeWidth={3} />
@@ -678,5 +647,131 @@ function ReminderRow({ task, onChange }: { task: Task; onChange: (r: Reminder | 
         />
       )}
     </Row>
+  )
+}
+
+/** Guarda el nuevo orden de las subtareas (por id, sobre el estado actual de la tarea) */
+function saveSubtaskOrder(taskId: string, ids: string[]) {
+  return mutateTask(taskId, (x) => {
+    const pos = (s: Subtask) => {
+      const i = ids.indexOf(s.id)
+      return i < 0 ? Infinity : i
+    }
+    x.subtasks = [...x.subtasks].sort((a, b) => pos(a) - pos(b))
+  })
+}
+
+/** Subtareas: se reordenan arrastrando el asa (o con ↑/↓ sobre ella) */
+function SubtaskRows({ task }: { task: Task }) {
+  // Mientras se arrastra, el orden es local; al soltar se guarda
+  const [items, setItems] = useState(task.subtasks)
+  const dragging = useRef(false)
+  useEffect(() => {
+    if (!dragging.current) setItems(task.subtasks)
+  }, [task.subtasks])
+  const latest = useRef(items)
+  latest.current = items
+  const movable = items.length > 1
+  return (
+    <Reorder.Group as="div" axis="y" values={items} onReorder={setItems}>
+      <AnimatePresence initial={false}>
+        {items.map((s) => (
+          <SubtaskRow
+            key={s.id}
+            task={task}
+            sub={s}
+            movable={movable}
+            onStart={() => (dragging.current = true)}
+            onEnd={() => {
+              dragging.current = false
+              void saveSubtaskOrder(task.id, latest.current.map((x) => x.id))
+            }}
+            onKey={(dir) => {
+              // El orden más reciente: dos pulsaciones seguidas pueden llegar antes de volver a pintar
+              const cur = latest.current
+              const from = cur.findIndex((x) => x.id === s.id)
+              const to = from + dir
+              if (from < 0 || to < 0 || to >= cur.length) return
+              const next = moveItem(cur, from, to)
+              latest.current = next
+              setItems(next)
+              void saveSubtaskOrder(task.id, next.map((x) => x.id))
+            }}
+          />
+        ))}
+      </AnimatePresence>
+    </Reorder.Group>
+  )
+}
+
+function SubtaskRow({
+  task,
+  sub: s,
+  movable,
+  onStart,
+  onEnd,
+  onKey,
+}: {
+  task: Task
+  sub: Subtask
+  movable: boolean
+  onStart: () => void
+  onEnd: () => void
+  onKey: (dir: -1 | 1) => void
+}) {
+  const controls = useDragControls()
+  const [lifted, setLifted] = useState(false)
+  return (
+    <Reorder.Item
+      as="div"
+      value={s}
+      dragListener={false}
+      dragControls={controls}
+      onDragStart={() => (setLifted(true), onStart())}
+      onDragEnd={() => (setLifted(false), onEnd())}
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={spring}
+      whileDrag={{ scale: 1.02, zIndex: 10 }}
+      className={cx('group relative flex items-center gap-3 overflow-hidden py-1.5 pr-3 pl-[58px]', lifted && 'rounded-xl bg-surface shadow-[var(--c-shadow-lg)]')}
+    >
+      {movable && (
+        <button
+          type="button"
+          aria-label={`Mover «${s.title}» (flechas arriba y abajo)`}
+          title="Arrastra para ordenar"
+          onPointerDown={(e) => controls.start(e)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+              e.preventDefault()
+              onKey(e.key === 'ArrowUp' ? -1 : 1)
+            }
+          }}
+          className="absolute top-0 bottom-0 left-[26px] flex w-7 cursor-grab touch-none items-center justify-center text-faint opacity-60 outline-none group-hover:opacity-100 focus-visible:text-accent focus-visible:opacity-100 active:cursor-grabbing"
+        >
+          <GripVertical size={15} />
+        </button>
+      )}
+      <Checkbox
+        size={20}
+        checked={s.done}
+        onChange={() => mutateTask(task.id, (x) => void x.subtasks.forEach((y) => y.id === s.id && (y.done = !y.done)))}
+      />
+      <input
+        defaultValue={s.title}
+        onBlur={(e) => e.target.value !== s.title && mutateTask(task.id, (x) => void x.subtasks.forEach((y) => y.id === s.id && (y.title = e.target.value)))}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).blur()}
+        className={cx('min-w-0 flex-1 bg-transparent text-[15px]', s.done && 'text-faint line-through')}
+      />
+      <button
+        type="button"
+        aria-label="Eliminar subtarea"
+        onClick={() => mutateTask(task.id, (x) => void (x.subtasks = x.subtasks.filter((y) => y.id !== s.id)))}
+        className="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-red"
+      >
+        <X size={15} />
+      </button>
+    </Reorder.Item>
   )
 }

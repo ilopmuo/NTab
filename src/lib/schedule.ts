@@ -85,3 +85,24 @@ export function autoSchedule(tasks: Placeable[], busy: Block[], opts: ScheduleOp
   placed.sort((a, b) => a.start - b.start)
   return { placed, unplaced }
 }
+
+// ── Mover y estirar bloques a mano ────────────────────────────
+
+const DAY = 24 * 60
+
+/** Nueva hora de inicio al arrastrar `delta` minutos, en pasos de `step` y sin salirse del día */
+export function snapMove(start: number, duration: number, delta: number, step = 15) {
+  const s = Math.round((start + delta) / step) * step
+  return Math.max(0, Math.min(s, DAY - duration))
+}
+
+/** Nueva duración al estirar el borde inferior `delta` minutos (mínimo un paso, sin pasar de medianoche) */
+export function snapResize(start: number, duration: number, delta: number, step = 15) {
+  const end = Math.round((start + duration + delta) / step) * step
+  return Math.max(step, Math.min(end, DAY) - start)
+}
+
+/** Primer bloque que se solapa con `b` (para avisar de que choca con una reunión) */
+export function firstOverlap<T extends Block>(b: Block, others: T[]): T | undefined {
+  return others.find((o) => o.start < b.end && b.start < o.end)
+}

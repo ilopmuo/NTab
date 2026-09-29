@@ -1,16 +1,12 @@
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { TodayView } from '@/features/Today'
-import { CommandPalette } from '@/components/CommandPalette'
-import { FocusMode } from '@/features/focus/FocusMode'
 import { DragGhost } from '@/components/dayDrag'
-import { SelectionBar } from '@/features/select/SelectionBar'
-import { RoutineRunner } from '@/features/routines/RoutineRunner'
-import { WhatNow } from '@/features/whatnow/WhatNow'
-import { runner } from '@/features/routines/useRoutines'
+import { useFocus } from '@/features/focus/focus'
+import { selection, useSelecting } from '@/features/select/selection'
+import { useWhatNowOpen } from '@/features/whatnow/store'
+import { runner, useRunner } from '@/features/routines/useRoutines'
 import { QuickAdd } from '@/components/QuickAdd'
-import { ShortcutsHelp } from '@/components/ShortcutsHelp'
-import { TaskDetailPanel } from '@/components/TaskDetail'
 import { Toast } from '@/components/Toast'
 import { cx } from '@/components/ui'
 import { navigate, useRoute } from './router'
@@ -22,8 +18,6 @@ import { ui, useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
 import { applyReminderAction, openTaskFromNotification } from '@/reminders/local'
 import { ReauthBanner } from '@/sync/ReauthBanner'
-import { AuthScreen } from '@/features/auth/AuthScreen'
-import { RecoveryModal } from '@/features/auth/RecoveryModal'
 
 // Hoy se carga con la app; el resto de vistas, al abrirlas (y en segundo plano
 // en cuanto la app está lista, para que navegar siga siendo instantáneo)
@@ -57,9 +51,34 @@ const loaders = {
 }
 const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
 
-/** Precarga el resto de vistas cuando el navegador está libre */
+/**
+ * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
+ * pintado: se cargan aparte y se montan la primera vez que se abren.
+ */
+const panels = {
+  TaskDetailPanel: () => import('@/components/TaskDetail').then((m) => ({ default: m.TaskDetailPanel })),
+  CommandPalette: () => import('@/components/CommandPalette').then((m) => ({ default: m.CommandPalette })),
+  ShortcutsHelp: () => import('@/components/ShortcutsHelp').then((m) => ({ default: m.ShortcutsHelp })),
+  RecoveryModal: () => import('@/features/auth/RecoveryModal').then((m) => ({ default: m.RecoveryModal })),
+  FocusMode: () => import('@/features/focus/FocusMode').then((m) => ({ default: m.FocusMode })),
+  RoutineRunner: () => import('@/features/routines/RoutineRunner').then((m) => ({ default: m.RoutineRunner })),
+  WhatNow: () => import('@/features/whatnow/WhatNow').then((m) => ({ default: m.WhatNow })),
+  SelectionBar: () => import('@/features/select/SelectionBar').then((m) => ({ default: m.SelectionBar })),
+  AuthScreen: () => import('@/features/auth/AuthScreen').then((m) => ({ default: m.AuthScreen })),
+  NavEditor: () => import('./NavEditor').then((m) => ({ default: m.NavEditor })),
+}
+const TaskDetailPanel = lazy(panels.TaskDetailPanel), CommandPalette = lazy(panels.CommandPalette), ShortcutsHelp = lazy(panels.ShortcutsHelp), RecoveryModal = lazy(panels.RecoveryModal), FocusMode = lazy(panels.FocusMode), RoutineRunner = lazy(panels.RoutineRunner), WhatNow = lazy(panels.WhatNow), SelectionBar = lazy(panels.SelectionBar), AuthScreen = lazy(panels.AuthScreen), NavEditor = lazy(panels.NavEditor)
+
+/** Monta su contenido la primera vez que `when` es cierto y lo deja montado (para que se anime al cerrar) */
+function Deferred({ when, children }: { when: boolean; children: ReactNode }) {
+  const [on, setOn] = useState(when)
+  if (when && !on) setOn(true)
+  return on ? <Suspense fallback={null}>{children}</Suspense> : null
+}
+
+/** Precarga el resto de vistas y paneles cuando el navegador está libre */
 function preloadViews() {
-  const run = () => Object.values(loaders).forEach((load) => void load())
+  const run = () => [...Object.values(panels), ...Object.values(loaders)].forEach((load) => void load())
   const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback
   if (idle) idle(run)
   else setTimeout(run, 1500)
@@ -150,15 +169,28 @@ const TITLES: Record<string, string> = {
   settings: 'Ajustes',
 }
 
+/** El enlace de un email de la cuenta (confirmar, recuperar contraseña) lo lee Supabase al cargar */
+const AUTH_IN_URL = /access_token=|error_description=|type=recovery|type=signup/.test(window.location.hash)
+
 export function App() {
   const sync = useSync()
   // Sin sesión y sin cuenta previa en este dispositivo → pantalla de inicio de sesión.
   // Si el dispositivo ya estuvo conectado, la app sigue funcionando con los datos
   // locales y un aviso pide volver a entrar (ver knownEmail en sync/service).
   const needsLogin = sync.state === 'signed-out' && !sync.localOnly && !sync.knownEmail
+  // Un dispositivo que ya se usaba (con cuenta o sin ella) no espera a Supabase:
+  // la app trabaja con IndexedDB y la sesión llega un momento después
+  const early = sync.state === 'loading' && !AUTH_IN_URL && (sync.localOnly || !!sync.knownEmail)
+  const waiting = sync.state === 'loading' && !early
   return (
     <MotionConfig reducedMotion="user">
-      {sync.state === 'loading' ? null : needsLogin ? <AuthScreen /> : <Workspace />}
+      {waiting ? null : needsLogin ? (
+        <Suspense fallback={null}>
+          <AuthScreen />
+        </Suspense>
+      ) : (
+        <Workspace />
+      )}
       <AnimatePresence>
         {sync.authOpen && !needsLogin && (
           <motion.div
@@ -168,11 +200,13 @@ export function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[70] overflow-y-auto bg-[color-mix(in_srgb,var(--c-bg)_70%,transparent)] backdrop-blur-2xl"
           >
-            <AuthScreen onCancel={closeAuth} initialEmail={sync.knownEmail ?? ''} />
+            <Suspense fallback={null}>
+              <AuthScreen onCancel={closeAuth} initialEmail={sync.knownEmail ?? ''} />
+            </Suspense>
           </motion.div>
         )}
       </AnimatePresence>
-      <Splash ready={sync.state !== 'loading'} />
+      <Splash ready={!waiting} />
     </MotionConfig>
   )
 }
@@ -245,17 +279,56 @@ function Workspace() {
         </motion.div>
       </main>
       <MobileBar />
-      <TaskDetailPanel />
+      <Panels />
       <QuickAdd />
-      <CommandPalette />
-      <ShortcutsHelp />
-      <RecoveryModal />
-      <FocusMode />
-      <RoutineRunner />
-      <WhatNow />
       <DragGhost />
-      <SelectionBar />
       <Toast />
     </div>
+  )
+}
+
+function Panels() {
+  const task = useUI((s) => !!s.selectedTaskId)
+  const palette = useUI((s) => s.paletteOpen)
+  const help = useUI((s) => s.helpOpen)
+  const navEditor = useUI((s) => !!s.navEditor)
+  const { recovery } = useSync()
+  const focusing = !!useFocus()
+  const routine = !!useRunner()
+  const whatNow = useWhatNowOpen()
+  const selecting = useSelecting()
+  // Al cambiar de pantalla se sale de la selección
+  const { path } = useRoute()
+  useEffect(() => void selection.clear(), [path])
+  return (
+    <>
+      <Deferred when={task}>
+        <TaskDetailPanel />
+      </Deferred>
+      <Deferred when={palette}>
+        <CommandPalette />
+      </Deferred>
+      <Deferred when={help}>
+        <ShortcutsHelp />
+      </Deferred>
+      <Deferred when={recovery}>
+        <RecoveryModal />
+      </Deferred>
+      <Deferred when={focusing}>
+        <FocusMode />
+      </Deferred>
+      <Deferred when={routine}>
+        <RoutineRunner />
+      </Deferred>
+      <Deferred when={whatNow}>
+        <WhatNow />
+      </Deferred>
+      <Deferred when={selecting}>
+        <SelectionBar />
+      </Deferred>
+      <Deferred when={navEditor}>
+        <NavEditor />
+      </Deferred>
+    </>
   )
 }

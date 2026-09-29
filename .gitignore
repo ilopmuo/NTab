@@ -4,3 +4,6 @@ dev-dist
 *.tsbuildinfo
 .DS_Store
 shots/
+test-results/
+playwright-report/
+deno.lock

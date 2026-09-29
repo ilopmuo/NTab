@@ -243,6 +243,32 @@ export async function toggleHabit(habitId: string, date: string) {
   else await db.habitLogs.add({ id: uid(), habitId, date })
 }
 
+/** Suma (o resta) a la cantidad del día de un hábito con cantidad. Devuelve la cantidad nueva. */
+export async function addHabitCount(habitId: string, date: string, delta: number): Promise<number> {
+  return db.transaction('rw', db.habitLogs, async () => {
+    const logs = await db.habitLogs.where('[habitId+date]').equals([habitId, date]).toArray()
+    const now = logs.reduce((n, l) => n + (l.count ?? 1), 0)
+    const next = Math.max(0, now + delta)
+    // Un registro por día (si había varios, p. ej. de dos dispositivos, se juntan)
+    await db.habitLogs.bulkDelete(logs.slice(1).map((l) => l.id))
+    if (!next) {
+      if (logs[0]) await db.habitLogs.delete(logs[0].id)
+    } else if (logs[0]) await db.habitLogs.update(logs[0].id, { count: next })
+    else await db.habitLogs.add({ id: uid(), habitId, date, count: next })
+    return next
+  })
+}
+
+/** Marca un hábito como hecho hoy (con cantidad, lo lleva al objetivo) */
+export async function completeHabit(habit: Pick<Habit, 'id' | 'target'>, date: string) {
+  const logs = await db.habitLogs.where('[habitId+date]').equals([habit.id, date]).toArray()
+  const now = logs.reduce((n, l) => n + (l.count ?? 1), 0)
+  const target = Math.max(1, habit.target ?? 1)
+  if (now >= target) return
+  if (target === 1) await db.habitLogs.add({ id: uid(), habitId: habit.id, date })
+  else await addHabitCount(habit.id, date, target - now)
+}
+
 export async function deleteHabit(id: string) {
   await db.transaction('rw', db.habits, db.habitLogs, db.trash, async () => {
     const habit = await db.habits.get(id)

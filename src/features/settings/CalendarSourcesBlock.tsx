@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CalendarRange, Plus, Trash2 } from 'lucide-react'
-import { supabase } from '@/sync/supabase'
+import { getSupabase } from '@/sync/client'
 import { useSync } from '@/sync/service'
 import { refreshEvents, useEvents } from '@/lib/calendarEvents'
 import { addDaysYmd, today } from '@/lib/dates'
@@ -38,7 +38,7 @@ export function CalendarSourcesBlock() {
   const { errors } = useEvents(t, addDaysYmd(t, 6))
 
   const load = async () => {
-    const { data } = await supabase.from('calendar_sources').select('id,name,url').order('created_at')
+    const { data } = await (await getSupabase()).from('calendar_sources').select('id,name,url').order('created_at')
     setSources((data as Source[] | null) ?? [])
   }
   useEffect(() => {
@@ -49,7 +49,7 @@ export function CalendarSourcesBlock() {
 
   const remove = async (s: Source) => {
     if (!window.confirm(`¿Dejar de ver «${s.name}» en NTab? El calendario original no se toca.`)) return
-    await supabase.from('calendar_sources').delete().eq('id', s.id)
+    await (await getSupabase()).from('calendar_sources').delete().eq('id', s.id)
     await load()
     refreshEvents()
   }
@@ -114,7 +114,7 @@ function AddSource({ open, onClose, onAdded }: { open: boolean; onClose: () => v
   const save = async () => {
     if (!valid) return
     setBusy(true)
-    const { error } = await supabase.from('calendar_sources').insert({ name: name.trim(), url: url.trim() })
+    const { error } = await (await getSupabase()).from('calendar_sources').insert({ name: name.trim(), url: url.trim() })
     setBusy(false)
     if (error) return void toast(`No se pudo guardar: ${error.message}`)
     await onAdded()

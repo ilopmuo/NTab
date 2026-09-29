@@ -2,16 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
 import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
-import { whatNow } from './whatnow/WhatNow'
+import { whatNow } from './whatnow/store'
 import { DayComplete } from '@/components/Celebrate'
 import { db } from '@/db/db'
 import { updateTask } from '@/db/actions'
 import { useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, greeting, longDateLabel, today, weekStart } from '@/lib/dates'
-import { isScheduled } from '@/lib/habits'
+import { isDue } from '@/lib/habits'
 import { href } from '@/app/router'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
+import { OrderToggle } from '@/components/ManualOrder'
 import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/components/ui'
 import { HabitStrip } from './habits/HabitStrip'
 import { RoutinesCard } from './routines/RoutinesCard'
@@ -29,7 +30,7 @@ import { PaymentsCard } from './today/PaymentsCard'
 import { PeopleCard } from './today/PeopleCard'
 import { WeekStrip } from './today/WeekStrip'
 import { Page } from './Page'
-import { SelectButton } from '@/features/select/SelectionBar'
+import { SelectButton } from '@/features/select/SelectButton'
 
 const PARTS = [
   { id: 'morning', title: 'Por la mañana', test: (t?: string) => !!t && t < '12:00' },
@@ -80,7 +81,7 @@ export function TodayView() {
 
   if (!open) return null
   const total = pending + done.length
-  const scheduledHabits = (habits ?? []).filter((h) => isScheduled(h, t))
+  const scheduledHabits = (habits ?? []).filter((h) => isDue(h, byHabit.get(h.id) ?? new Set(), t))
   const habitsDone = scheduledHabits.filter((h) => byHabit.get(h.id)?.has(t)).length
   const reviewDays = lastReview ? Math.floor((Date.now() - (lastReview.value as number)) / 864e5) : null
   const needsReview = reviewDays === null ? [0, 5, 6].includes(new Date().getDay()) : reviewDays >= 7
@@ -231,8 +232,12 @@ export function TodayView() {
                   <TaskList tasks={g.tasks} hideDate />
                 </Section>
               ))}
-              <Section title={timedGroups.length ? 'Sin hora' : 'Hoy'} count={untimed.length}>
-                <TaskList tasks={untimed} hideDate add={{ defaults: { dueDate: t } }} />
+              <Section
+                title={timedGroups.length ? 'Sin hora' : 'Hoy'}
+                count={untimed.length}
+                action={untimed.length > 1 ? <OrderToggle listKey="today" tasks={untimed} /> : undefined}
+              >
+                <TaskList tasks={untimed} hideDate orderKey="today" add={{ defaults: { dueDate: t } }} />
               </Section>
             </>
           )}

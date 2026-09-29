@@ -1,21 +1,21 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Moon, Plus, Search, Sun } from 'lucide-react'
+import { Moon, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'
 import { Kbd, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
 import { SyncBadge } from '@/sync/SyncBadge'
 import { useNavCounts } from './counts'
+import { useNav } from './nav'
 import { href, useRoute } from './router'
 import { SectionIcon, section, tint, type SectionDef } from './sections'
+import { FIXED } from '@/lib/nav'
 import { ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
 
-const TILES = ['today', 'upcoming', 'inbox', 'calendar', 'habits', 'notes'].map(section)
-const MORE = ['shopping', 'menu', 'routines', 'trackers', 'things', 'journal', 'people', 'projects', 'templates', 'goals', 'expenses', 'finance', 'review'].map(section)
-const FOOT = ['logbook', 'trash', 'settings'].map(section)
+const FOOT = FIXED.map(section)
 
 /** Lista inteligente en cuadrícula, como en Recordatorios */
-function Tile({ def, count, active }: { def: SectionDef; count: number | string; active: boolean }) {
+function Tile({ def, count, active }: { def: SectionDef; count?: number | string; active: boolean }) {
   return (
     <a
       href={href(def.path)}
@@ -38,7 +38,7 @@ function Tile({ def, count, active }: { def: SectionDef; count: number | string;
         ) : (
           <SectionIcon def={def} size={28} />
         )}
-        <RollingNumber value={count} className={cx('text-[22px] leading-none font-bold', !active && 'text-fg')} />
+        {count !== undefined && <RollingNumber value={count} className={cx('text-[22px] leading-none font-bold', !active && 'text-fg')} />}
       </div>
       <span className={cx('truncate text-[13px] font-semibold', active ? 'text-white/90' : 'text-muted')}>{def.short}</span>
     </a>
@@ -85,6 +85,7 @@ function Row({
 function SidebarContent() {
   const { path } = useRoute()
   const c = useNavCounts()
+  const nav = useNav()
   const { areas, projects } = useLookup()
   useTheme()
   const dark = document.documentElement.dataset.theme === 'dark'
@@ -98,6 +99,8 @@ function SidebarContent() {
     calendar: c.calendar,
     habits: c.habitsTotal ? `${c.habitsDone}/${c.habitsTotal}` : 0,
     notes: c.notes,
+    shopping: c.shopping,
+    people: c.peopleDue,
   }
 
   return (
@@ -131,13 +134,13 @@ function SidebarContent() {
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-3 pb-4">
         <div className="grid grid-cols-2 gap-2">
-          {TILES.map((d) => (
+          {nav.tiles.map(section).map((d) => (
             <Tile key={d.id} def={d} count={tileCount[d.id]} active={is(d.path)} />
           ))}
         </div>
 
-        <div className="mt-4 space-y-px">
-          {MORE.map((d) => (
+        <div className={cx('space-y-px', nav.tiles.length > 0 && 'mt-4')}>
+          {nav.list.map(section).map((d) => (
             <Row
               key={d.id}
               to={d.path}
@@ -213,6 +216,15 @@ function SidebarContent() {
           <div className="min-w-0 flex-1">
             <SyncBadge />
           </div>
+          <button
+            type="button"
+            onClick={() => ui.navEditor('sidebar')}
+            aria-label="Personalizar la barra lateral"
+            title="Personalizar la barra lateral"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg"
+          >
+            <SlidersHorizontal size={15} />
+          </button>
           <button
             type="button"
             onClick={toggleTheme}

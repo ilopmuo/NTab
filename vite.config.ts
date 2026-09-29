@@ -8,7 +8,23 @@ import pkg from './package.json' with { type: 'json' }
 export default defineConfig({
   base: './',
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
-  build: { chunkSizeWarningLimit: 800 },
+  build: {
+    chunkSizeWarningLimit: 400,
+    rolldownOptions: {
+      output: {
+        // Librerías en trozos propios: cambian poco, así que al publicar una
+        // versión nueva el iPhone solo vuelve a descargar el código de la app
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'motion', test: /node_modules[\\/](motion|framer-motion|motion-dom|motion-utils)[\\/]/ },
+            { name: 'dexie', test: /node_modules[\\/]dexie(-react-hooks)?[\\/]/ },
+            { name: 'date-fns', test: /node_modules[\\/]date-fns[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
