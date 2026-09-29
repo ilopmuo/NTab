@@ -6,7 +6,7 @@ import { db } from '@/db/db'
 import { setSetting } from '@/db/actions'
 import type { Task } from '@/db/types'
 import type { Lookup } from '@/db/hooks'
-import { moveItem, renumber, reorderUpdates, sortTasks } from '@/lib/tasks'
+import { moveItem, orderIn, renumber, reorderUpdates, sortTasks } from '@/lib/tasks'
 import { haptic } from '@/lib/haptics'
 import { useSelecting } from '@/features/select/selection'
 import { TaskItem } from './TaskItem'
@@ -14,8 +14,9 @@ import { cx } from './ui'
 
 /**
  * Orden manual por lista (Bandeja, un proyecto, un área, Hoy). Se guarda qué
- * listas van a mano en el ajuste `listOrder`; el orden en sí es el campo
- * `order` de cada tarea, que viaja con la sincronización.
+ * listas van a mano en el ajuste `listOrder`; el orden en sí va en cada tarea
+ * (`orders[lista]`, que viaja con la sincronización), así que mover una tarea
+ * en Hoy no la mueve en su proyecto.
  */
 type Modes = Record<string, 'manual'>
 
@@ -30,8 +31,8 @@ async function setListOrder(key: string, manual: boolean, tasks: Task[]) {
   if (manual) {
     next[key] = 'manual'
     // Se parte del orden que se ve ahora, para que nada salte
-    const ups = renumber([...tasks].filter((t) => !t.done).sort(sortTasks))
-    await db.transaction('rw', db.tasks, () => Promise.all(ups.map((u) => db.tasks.update(u.id, { order: u.order }))))
+    const open = [...tasks].filter((t) => !t.done).sort(sortTasks)
+    await saveOrders(key, renumber(open.map((t) => ({ id: t.id, order: orderIn(t, key) }))))
   } else delete next[key]
   await setSetting('listOrder', next)
 }
@@ -59,14 +60,21 @@ export function OrderToggle({ listKey, tasks, iconOnly }: { listKey: string; tas
   )
 }
 
-async function persist(list: Task[], movedId: string) {
-  const ups = reorderUpdates(list, movedId)
+/** Guarda la posición de cada tarea en la lista `key` */
+async function saveOrders(key: string, ups: { id: string; order: number }[]) {
   if (!ups.length) return
-  await db.transaction('rw', db.tasks, () => Promise.all(ups.map((u) => db.tasks.update(u.id, { order: u.order }))))
+  await db.transaction('rw', db.tasks, () =>
+    Promise.all(ups.map((u) => db.tasks.where('id').equals(u.id).modify((t) => void (t.orders = { ...t.orders, [key]: u.order })))),
+  )
+}
+
+async function persist(key: string, list: Task[], movedId: string) {
+  await saveOrders(key, reorderUpdates(list.map((t) => ({ id: t.id, order: orderIn(t, key) })), movedId))
 }
 
 /** Filas que se ordenan arrastrando el asa (o con ↑/↓ sobre ella) */
 export function ManualRows({
+  listKey,
   tasks,
   lookup,
   rowClass,
@@ -74,6 +82,7 @@ export function ManualRows({
   hideProject,
   compact,
 }: {
+  listKey: string
   tasks: Task[]
   lookup: Lookup
   rowClass: string
@@ -97,7 +106,7 @@ export function ManualRows({
     if (from < 0 || to < 0 || to >= items.length || items[to].done) return
     const next = moveItem(items, from, to)
     setItems(next)
-    void persist(next, id)
+    void persist(listKey, next, id)
   }
 
   return (
@@ -115,7 +124,7 @@ export function ManualRows({
             }}
             onEnd={() => {
               dragging.current = false
-              void persist(latest.current, t.id)
+              void persist(listKey, latest.current, t.id)
             }}
             onKey={(dir) => byKeyboard(t.id, dir)}
           >

@@ -43,10 +43,15 @@ export function dateColor(date: string | undefined, ref = today()) {
 /** Separación entre tareas al numerar una lista de nuevo */
 export const ORDER_STEP = 1024
 
-/** Orden manual: las completadas al final y, si no, el orden en que las dejaste */
-export function sortManual(a: Task, b: Task) {
-  if (a.done !== b.done) return a.done - b.done
-  return a.order - b.order || a.createdAt - b.createdAt
+/** Posición de la tarea en una lista ordenada a mano (cada lista tiene la suya) */
+export const orderIn = (t: Pick<Task, 'order' | 'orders'>, list: string) => t.orders?.[list] ?? t.order
+
+/** Orden manual de una lista: las completadas al final y, si no, el orden en que las dejaste */
+export function sortManual(list: string) {
+  return (a: Task, b: Task) => {
+    if (a.done !== b.done) return a.done - b.done
+    return orderIn(a, list) - orderIn(b, list) || a.createdAt - b.createdAt
+  }
 }
 
 type Ordered = { id: string; order: number }

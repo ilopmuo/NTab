@@ -131,6 +131,8 @@ export interface Task {
   /** momento del aviso ya calculado (ms); lo usa el servidor para enviar la notificación */
   remindAt?: number
   order: number
+  /** orden a mano en cada lista (`inbox`, `today`, `project:<id>`…); si falta, vale `order` */
+  orders?: Record<string, number>
   createdAt: number
   completedAt?: number
 }

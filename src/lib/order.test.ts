@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ORDER_STEP, moveItem, renumber, reorderUpdates } from './tasks'
+import { ORDER_STEP, moveItem, orderIn, renumber, reorderUpdates, sortManual } from './tasks'
 
 const L = (...orders: number[]) => orders.map((order, i) => ({ id: String.fromCharCode(97 + i), order }))
 const apply = (list: { id: string; order: number }[], ups: { id: string; order: number }[]) =>
@@ -53,5 +53,19 @@ describe('orden manual', () => {
     expect(moveItem(['a', 'b', 'c'], 0, 1)).toEqual(['b', 'a', 'c'])
     expect(moveItem(['a', 'b', 'c'], 2, 0)).toEqual(['c', 'a', 'b'])
     expect(moveItem(['a', 'b', 'c'], 2, 5)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('orden a mano por lista', () => {
+  const t = (id: string, order: number, orders?: Record<string, number>) => ({ id, title: id, order, orders, done: 0 as const, createdAt: 0 }) as unknown as import('@/db/types').Task
+  it('cada lista tiene su orden; si no, vale el general', () => {
+    const a = t('a', 1, { today: 30 })
+    const b = t('b', 2, { today: 10, 'project:p': 5 })
+    const c = t('c', 3)
+    expect([a, b, c].sort(sortManual('today')).map((x) => x.id)).toEqual(['c', 'b', 'a'])
+    expect([a, b, c].sort(sortManual('project:p')).map((x) => x.id)).toEqual(['a', 'c', 'b'])
+    expect([c, b, a].sort(sortManual('inbox')).map((x) => x.id)).toEqual(['a', 'b', 'c'])
+    expect(orderIn(b, 'today')).toBe(10)
+    expect(orderIn(b, 'inbox')).toBe(2)
   })
 })

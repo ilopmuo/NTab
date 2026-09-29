@@ -50,13 +50,13 @@ export function TaskList({
 }) {
   const lookup = useLookup()
   const manual = useListOrder(orderKey)
-  const list = useMemo(() => (manual ? [...tasks].sort(sortManual) : sort ? [...tasks].sort(sortTasks) : tasks), [tasks, sort, manual])
+  const list = useMemo(() => (manual && orderKey ? [...tasks].sort(sortManual(orderKey)) : sort ? [...tasks].sort(sortTasks) : tasks), [tasks, sort, manual, orderKey])
   if (!list.length && !add && !empty) return null
 
   const rows = (
     <>
       {manual ? (
-        <ManualRows tasks={list} lookup={lookup} rowClass={rowSeparator} hideDate={hideDate} hideProject={hideProject} compact={compact} />
+        <ManualRows listKey={orderKey!} tasks={list} lookup={lookup} rowClass={rowSeparator} hideDate={hideDate} hideProject={hideProject} compact={compact} />
       ) : (
         <AnimatePresence initial={true}>
           {list.map((t, i) => (
