@@ -1209,6 +1209,11 @@ export function addCountdown(rows: Row[], args: { nombre?: string; fecha?: strin
 // «compra: leche», «a la compra leche», «lista de la compra: …» (pero «comprar un regalo» es una tarea)
 const SHOPPING_PREFIX = /^\s*(?:(?:(?:a[nñ]ade|apunta|pon)\s+)?(?:(?:a|en)\s+)?(?:(?:la\s+)?lista\s+de\s+)?la\s+compra\s*[:,.-]?|compra\s*[:,.-])\s*/i
 const EXPENSE_PREFIX = /^\s*(?:gasto|gast[eé]|he\s+gastado|me\s+he\s+gastado)\s*[:,.-]?\s+/i
+const NOTE_PREFIX = /^\s*(?:nota|apunta\s+una\s+nota)\s*[:,.-]?\s+/i
+// «hecho: cambiar las sábanas» → Última vez
+const DONE_PREFIX = /^\s*(?:lo\s+he\s+hecho|hecho|[uú]ltima\s+vez)\s*[:,.-]?\s+/i
+// «hábito: agua», «+1 agua», «+2 vasos de agua»
+const HABIT_PREFIX = /^\s*(?:h[aá]bito\s*[:,.-]?\s+|\+\s*(\d+)\s+)/i
 
 /**
  * Lo que se dicta a Siri, escrito como en la captura rápida de la app:
@@ -1216,9 +1221,33 @@ const EXPENSE_PREFIX = /^\s*(?:gasto|gast[eé]|he\s+gastado|me\s+he\s+gastado)\s
  * «compra: leche y pan» → lista de la compra; «gasto 12,50 café» → gastos.
  * El texto de `report` es corto: Siri lo lee en voz alta.
  */
-export function capture(rows: Row[], raw: string, env: Env): WriteResult {
+export function capture(rows: Row[], raw: string, env: Env): WriteResult & { deletes?: Row[] } {
   const text = raw.replace(/\s+/g, ' ').trim().slice(0, 500)
   if (!text) return { writes: [], report: ['No he oído nada que apuntar.'] }
+  const today = ymdIn(env.now, env.tz)
+  // Para Siri: «hoy» mejor que la fecha
+  const spoken = (r: string) => r.replaceAll(` el ${today}`, ' hoy')
+
+  const habit = HABIT_PREFIX.exec(text)
+  // El nombre exacto de un hábito («meditar») también lo marca
+  const habitNames = rows.filter((r) => r.tbl === 'habits' && !r.data.archived).map((r) => str(r.data.name))
+  if (habit || habitNames.some((n) => fold(n) === fold(text))) {
+    const name = habit ? text.slice(habit[0].length) : text
+    const r = markHabit(rows, { habito: name, ...(habit?.[1] ? { cantidad: Number(habit[1]) } : {}) }, env)
+    return { ...r, report: r.report.map(spoken) }
+  }
+  if (NOTE_PREFIX.test(text)) {
+    const body = text.replace(NOTE_PREFIX, '')
+    // Título: la primera frase (como mucho 60 letras); el texto entero, en la nota
+    const first = body.split(/(?<=[.!?])\s/)[0]
+    const title = first.length > 60 ? `${first.slice(0, 57).trimEnd()}…` : first.replace(/[.!?]$/, '')
+    const r = createNote(rows, { titulo: title.charAt(0).toUpperCase() + title.slice(1), contenido: body }, env)
+    return { ...r, report: [r.report[0].replace('Nota creada', 'Nota guardada')] }
+  }
+  if (DONE_PREFIX.test(text)) {
+    const r = logLastTime(rows, { cosa: text.replace(DONE_PREFIX, '').replace(/[.!]$/, '') }, env)
+    return { ...r, report: r.report.map(spoken) }
+  }
   if (SHOPPING_PREFIX.test(text)) return addShopping(rows, { cosas: text.replace(SHOPPING_PREFIX, '') }, env)
   if (EXPENSE_PREFIX.test(text)) {
     const r = addExpenseTool(rows, { texto: text.replace(EXPENSE_PREFIX, '') }, env)
@@ -1227,7 +1256,6 @@ export function capture(rows: Row[], raw: string, env: Env): WriteResult {
   }
 
   const ix = new Index(rows)
-  const today = ymdIn(env.now, env.tz)
   const target = (d: Data) => ({ id: String(d.id), name: str(d.name), areaId: d.areaId ? String(d.areaId) : undefined })
   const parsed = parseQuickAdd(text, {
     today,

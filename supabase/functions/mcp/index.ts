@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
   if (capturing) {
     try {
       const r = capture(await store.load(), await captureText(req, url), env)
-      if (r.writes.length) await store.save(r.writes)
+      if (r.writes.length || r.deletes?.length) await store.save(r.writes, r.deletes)
       return text(r.report.join(' '))
     } catch {
       return text('No he podido apuntarlo. Vuelve a probar en un momento.', 500)
