@@ -90,7 +90,8 @@ export function useEvents(from: string, to: string) {
       clearInterval(timer)
     }
   }, [key, from, to, signedIn, version])
-  const data = signedIn ? ranges.get(key) : undefined
+  // Mientras se comprueba la sesión al arrancar, se enseña la copia guardada
+  const data = signedIn || sync.state === 'loading' ? ranges.get(key) : undefined
   return { events: data?.events ?? [], names: data?.names ?? {}, errors: data?.errors ?? [], loaded: !!data }
 }
 

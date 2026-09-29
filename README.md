@@ -42,11 +42,13 @@
 | **Menú** | Comida y cena de la semana con tus recetas; los ingredientes van a la lista de la compra en un toque |
 | **Cuenta atrás** | Días que faltan para lo que esperas, en Hoy |
 | **Personalizar Hoy** | Elige qué tarjetas ves en Hoy y en qué orden |
-| **Hora a hora** | En «Planifica tu día», el día con reuniones y tareas; «Colocar en huecos» da hora a lo que no la tiene, entre reuniones y lo importante primero |
+| **Hora a hora** | En «Planifica tu día», el día con reuniones y tareas; «Colocar en huecos» da hora a lo que no la tiene, entre reuniones y lo importante primero. Arrastra un bloque para cambiarle la hora o tira de su borde para cambiar la duración (avisa si choca con una reunión) |
+| **Orden a mano** | Bandeja, proyectos, áreas y Hoy pueden pasar de orden automático a manual: arrastra el asa de cada tarea (o ↑/↓) |
+| **Navegación a tu medida** | Elige qué secciones van en la cuadrícula de la barra lateral, cuáles en la lista y cuáles ocultas, y las cuatro pestañas del móvil |
 | **Procesar la bandeja** | Una tarea cada vez, como un mazo de cartas: hoy, mañana, otro día, a una lista, hecha, borrar o luego |
 | **Dictado** | Botón de micrófono en la captura rápida: dices la tarea y se entiende igual que escrita |
 | **Deslizar** (móvil) | Desliza una tarea → para completarla o ← para pasarla a mañana, con vibración en el iPhone |
-| **Arrastrar** | En Calendario y Próximo, arrastra una tarea a otro día (en el móvil, pulsación larga) |
+| **Arrastrar** | En Calendario y Próximo, arrastra una tarea a otro día; en «Hora a hora», a otra hora (en el móvil, pulsación larga) |
 | **Claude** | Conector para usar NTab desde Claude con tu suscripción: «¿qué tengo esta semana?», «planifícame el día», «apunta lo de este email» |
 | **Calendario** | Suscríbete desde Calendario del iPhone, Google u Outlook y verás tus tareas, pagos y cumpleaños |
 | **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo |
@@ -100,7 +102,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 ## Atajos
 
-`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`T`/`F`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias
+`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`T`/`F`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
 
 ## En el iPhone o el iPad
 
@@ -151,7 +153,12 @@ npm run preview    # sirve el build
 
 **Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Motion · Dexie (IndexedDB) · Supabase · date-fns · lucide · cmdk · vite-plugin-pwa · Vitest.
 
-Se publica en Vercel (`vercel.json`). La URL y la clave pública de Supabase están en `src/sync/supabase.ts` y se pueden sobrescribir con `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+Se publica en Vercel (`vercel.json`). La URL y la clave pública de Supabase están en `src/sync/config.ts` y se pueden sobrescribir con `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+
+**Carga.** Al arrancar solo se descarga lo necesario para pintar Hoy:
+- El cliente de Supabase (`src/sync/client.ts`) se carga aparte, en paralelo.
+- Las vistas y los paneles globales (detalle de tarea, `⌘K`, foco, rutinas, «¿Qué hago?», selección, inicio de sesión) se cargan la primera vez que se abren, y se precargan cuando el navegador está libre (`src/app/App.tsx`).
+- React, Motion, Dexie y date-fns van en trozos propios (`vite.config.ts`): al publicar una versión nueva, el iPhone solo vuelve a bajar el código de la app.
 
 ## Plan
 

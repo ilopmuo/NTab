@@ -169,15 +169,22 @@ const TITLES: Record<string, string> = {
   settings: 'Ajustes',
 }
 
+/** El enlace de un email de la cuenta (confirmar, recuperar contraseña) lo lee Supabase al cargar */
+const AUTH_IN_URL = /access_token=|error_description=|type=recovery|type=signup/.test(window.location.hash)
+
 export function App() {
   const sync = useSync()
   // Sin sesión y sin cuenta previa en este dispositivo → pantalla de inicio de sesión.
   // Si el dispositivo ya estuvo conectado, la app sigue funcionando con los datos
   // locales y un aviso pide volver a entrar (ver knownEmail en sync/service).
   const needsLogin = sync.state === 'signed-out' && !sync.localOnly && !sync.knownEmail
+  // Un dispositivo que ya se usaba (con cuenta o sin ella) no espera a Supabase:
+  // la app trabaja con IndexedDB y la sesión llega un momento después
+  const early = sync.state === 'loading' && !AUTH_IN_URL && (sync.localOnly || !!sync.knownEmail)
+  const waiting = sync.state === 'loading' && !early
   return (
     <MotionConfig reducedMotion="user">
-      {sync.state === 'loading' ? null : needsLogin ? (
+      {waiting ? null : needsLogin ? (
         <Suspense fallback={null}>
           <AuthScreen />
         </Suspense>
@@ -199,7 +206,7 @@ export function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      <Splash ready={sync.state !== 'loading'} />
+      <Splash ready={!waiting} />
     </MotionConfig>
   )
 }

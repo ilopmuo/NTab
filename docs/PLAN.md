@@ -149,6 +149,7 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 14 — A tu manera** · Arranque más ligero (Supabase y paneles bajo demanda, librerías en trozos propios), barra lateral y pestañas del móvil personalizables, orden manual arrastrando en Bandeja, proyectos, áreas y Hoy, y mover o estirar tareas en «Hora a hora».
 - ✅ **Fase 13 — Todo bajo control** · «¿Qué hago ahora?» según el tiempo y la energía, gastos con presupuesto mensual, menú semanal con recetas que llenan la compra, cuentas atrás y Hoy personalizable; todo también desde Claude.
 - ✅ **Fase 12 — Tu día a día** · Lista de la compra por pasillos (escrita o dictada, «lo de siempre»), «Última vez» con aviso cuando toca y diario con ánimo, tres cosas buenas y lo hecho del día; todo también desde Claude.
 - ✅ **Fase 11 — Tu memoria externa** · Avisos insistentes, rutinas paso a paso, Cosas (dónde está, préstamos y caducidades), el día hora a hora con «Colocar en huecos», procesar la bandeja carta a carta y dictado por voz; todo también desde Claude.
@@ -161,12 +162,9 @@ src/
 
 ### Ideas para siguientes iteraciones
 
-- Reordenar tareas arrastrando.
 - Conector de Claude con inicio de sesión OAuth (en vez de URL privada).
-- Reordenar tareas arrastrando dentro de una lista (hoy el orden es automático: fecha, hora y prioridad).
 - Buscar en la papelera y recuperar varias cosas a la vez.
 - Leer Gmail directamente (requiere OAuth de Google).
-- Mover bloques en «Hora a hora» arrastrándolos.
 - Rutinas ligadas a un lugar (al salir o llegar a casa) cuando la web lo permita.
 
 ## 8. Atajos de teclado
@@ -178,4 +176,6 @@ src/
 | `G` luego `H` / `I` / `U` / `C` / `B` / `E` / `K` / `V` / `A` / `Z` / `D` / `W` / `O` / `P` / `J` / `T` / `F` | Ir a Hoy / Bandeja / Próximo / Calendario / Hábitos / Rutinas / Cosas / Última vez / Compra / Menú / Diario / Gastos / Notas / Personas / Proyectos / Objetivos / Pagos |
 | `Esc` | Cerrar panel o modal, o salir de la selección |
 | `⌘`/`Ctrl` + clic | Seleccionar varias tareas |
+| `↑` / `↓` sobre el asa | Subir o bajar una tarea en una lista con orden a mano |
+| `↑` / `↓` en «Hora a hora» | Mover la tarea 15 min (con `⇧`, cambiar su duración) |
 | `?` | Ver todos los atajos |
