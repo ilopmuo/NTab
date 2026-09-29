@@ -12,6 +12,7 @@ import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { CATEGORIES, categoryFor, money, monthSummary, parseExpense } from '../_shared/expenses.ts'
 import { parseQuickAdd } from '../_shared/parse.ts'
+import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -287,10 +288,15 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     }
   }
 
-  const habits = rows.filter((r) => r.tbl === 'habits' && !r.data.archived && Array.isArray(r.data.days) && (r.data.days as number[]).includes(weekday(today)))
-  if (habits.length) {
-    const doneIds = new Set(rows.filter((r) => r.tbl === 'habitLogs' && r.data.date === today).map((r) => str(r.data.habitId)))
-    s.push(`\nHÁBITOS DE HOY: ${habits.map((h) => `${str(h.data.name)} (${doneIds.has(h.id) ? 'hecho' : 'pendiente'})`).join('; ')}`)
+  const { habits, counts, done } = habitState(rows)
+  const todays = habits.filter((h) => isDue(h.rule, done.get(h.id)!, today))
+  if (todays.length) {
+    const state = (h: (typeof habits)[number]) => {
+      const d = done.get(h.id)!
+      const extra = progressLabel(h.rule, counts.get(h.id), d, today)
+      return `${d.has(today) ? 'hecho' : 'pendiente'}${extra ? `, ${extra}` : ''}`
+    }
+    s.push(`\nHÁBITOS DE HOY: ${todays.map((h) => `${h.name} (${state(h)})`).join('; ')}`)
   }
 
   const routines = rows.filter((r) => r.tbl === 'routines' && !r.data.archived && Array.isArray(r.data.days) && (r.data.days as number[]).includes(weekday(today)))
@@ -584,13 +590,44 @@ export function createNote(rows: Row[], args: { titulo?: string; contenido?: str
   return { writes: [{ tbl: 'notes', id: String(note.id), data: note }], report: [`Nota creada: «${note.title || 'Sin título'}»${project ? ` en ${str(project.name)}` : ''}.`] }
 }
 
-export function markHabit(rows: Row[], args: { habito?: string; fecha?: string; hecho?: boolean }, env: Env): WriteResult & { deletes: Row[] } {
+/** Hábitos activos con sus registros: cantidad por día y días cumplidos */
+function habitState(rows: Row[]) {
+  const habits = rows
+    .filter((r) => r.tbl === 'habits' && !r.data.archived)
+    .map((r) => {
+      const d = r.data
+      const rule: HabitLike = { days: Array.isArray(d.days) ? (d.days as number[]) : [], target: num(d.target) || undefined, unit: str(d.unit) || undefined, perWeek: num(d.perWeek) || undefined }
+      return { id: r.id, name: str(d.name), rule }
+    })
+  const counts = groupLogs(rows.filter((r) => r.tbl === 'habitLogs').map((r) => ({ habitId: str(r.data.habitId), date: str(r.data.date), count: num(r.data.count) || undefined })))
+  const done = new Map(habits.map((h) => [h.id, doneDays(h.rule, counts.get(h.id))]))
+  return { habits, counts, done }
+}
+
+export function markHabit(rows: Row[], args: { habito?: string; fecha?: string; hecho?: boolean; cantidad?: number }, env: Env): WriteResult & { deletes: Row[] } {
   const habits: Data[] = rows.filter((r) => r.tbl === 'habits' && !r.data.archived).map((r) => ({ ...r.data, id: r.id }))
   const habit = findByName(habits, str(args.habito))
   const date = isYmd(args.fecha) ? args.fecha : ymdIn(env.now, env.tz)
   if (!habit) return { writes: [], deletes: [], report: [`No hay ningún hábito que se llame «${str(args.habito)}». Hábitos: ${habits.map((h) => str(h.name)).join(', ') || 'ninguno'}.`] }
   const logs = rows.filter((r) => r.tbl === 'habitLogs' && r.data.habitId === habit.id && r.data.date === date)
   const want = args.hecho !== false
+  const rule = { target: num(habit.target) || undefined }
+  // Hábito con cantidad («8 vasos»): se suma lo que diga o, si solo dice «hecho», se completa
+  if (isCounted(rule) && want) {
+    const target = targetOf(rule)
+    const had = logs.reduce((n, l) => n + (num(l.data.count) || 1), 0)
+    const add = typeof args.cantidad === 'number' && args.cantidad > 0 ? Math.round(args.cantidad) : Math.max(0, target - had)
+    const total = had + add
+    const unit = str(habit.unit)
+    const status = `${total}/${target}${unit ? ` ${unit}` : ''}${total >= target ? ' (objetivo cumplido)' : ''}`
+    if (!add) return { writes: [], deletes: [], report: [`«${str(habit.name)}» ya estaba cumplido el ${date}: ${status}.`] }
+    const id = str(logs[0]?.id) || env.newId()
+    return {
+      writes: [{ tbl: 'habitLogs', id, data: { id, habitId: habit.id, date, count: total } }],
+      deletes: logs.slice(1),
+      report: [`«${str(habit.name)}» el ${date}: ${status}.`],
+    }
+  }
   if (want && logs.length) return { writes: [], deletes: [], report: [`«${str(habit.name)}» ya estaba hecho el ${date}.`] }
   if (!want) return { writes: [], deletes: logs, report: [logs.length ? `«${str(habit.name)}» desmarcado el ${date}.` : `«${str(habit.name)}» no estaba marcado el ${date}.`] }
   const id = env.newId()

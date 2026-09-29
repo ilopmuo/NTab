@@ -8,7 +8,7 @@ import { db } from '@/db/db'
 import { updateTask } from '@/db/actions'
 import { useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, greeting, longDateLabel, today, weekStart } from '@/lib/dates'
-import { isScheduled } from '@/lib/habits'
+import { isDue } from '@/lib/habits'
 import { href } from '@/app/router'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
@@ -81,7 +81,7 @@ export function TodayView() {
 
   if (!open) return null
   const total = pending + done.length
-  const scheduledHabits = (habits ?? []).filter((h) => isScheduled(h, t))
+  const scheduledHabits = (habits ?? []).filter((h) => isDue(h, byHabit.get(h.id) ?? new Set(), t))
   const habitsDone = scheduledHabits.filter((h) => byHabit.get(h.id)?.has(t)).length
   const reviewDays = lastReview ? Math.floor((Date.now() - (lastReview.value as number)) / 864e5) : null
   const needsReview = reviewDays === null ? [0, 5, 6].includes(new Date().getDay()) : reviewDays >= 7

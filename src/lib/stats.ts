@@ -1,6 +1,6 @@
 import type { FocusLog, Habit, HabitLog, Task } from '@/db/types'
 import { addDaysYmd, ymd } from './dates'
-import { isScheduled } from './habits'
+import { doneDays, groupLogs, isScheduled, perWeekOf } from './habits'
 
 export interface DayStat {
   date: string
@@ -22,7 +22,7 @@ export interface WeekStats {
   best?: DayStat
 }
 
-export function weekStats(input: { tasks: Pick<Task, 'done' | 'completedAt'>[]; focus: Pick<FocusLog, 'date' | 'minutes'>[]; habits: Habit[]; logs: Pick<HabitLog, 'habitId' | 'date'>[]; today: string }): WeekStats {
+export function weekStats(input: { tasks: Pick<Task, 'done' | 'completedAt'>[]; focus: Pick<FocusLog, 'date' | 'minutes'>[]; habits: Habit[]; logs: Pick<HabitLog, 'habitId' | 'date' | 'count'>[]; today: string }): WeekStats {
   const { today } = input
   const doneBy = new Map<string, number>()
   for (const t of input.tasks) {
@@ -42,13 +42,24 @@ export function weekStats(input: { tasks: Pick<Task, 'done' | 'completedAt'>[]; 
 
   let scheduled = 0
   let hit = 0
-  const logged = new Set(input.logs.map((l) => `${l.habitId}:${l.date}`))
-  for (const d of days) {
-    for (const h of input.habits) {
-      // Un hábito cuenta desde el día en que se creó
-      if (h.archived || !isScheduled(h, d.date) || ymd(new Date(h.createdAt)) > d.date) continue
+  const counts = groupLogs(input.logs)
+  for (const h of input.habits) {
+    if (h.archived) continue
+    const done = doneDays(h, counts.get(h.id))
+    // Un hábito cuenta desde el día en que se creó
+    const live = days.filter((d) => ymd(new Date(h.createdAt)) <= d.date)
+    const perWeek = perWeekOf(h)
+    if (perWeek) {
+      // «N veces por semana»: en estos 7 días se esperaban N
+      if (!live.length) continue
+      scheduled += perWeek
+      hit += Math.min(perWeek, live.filter((d) => done.has(d.date)).length)
+      continue
+    }
+    for (const d of live) {
+      if (!isScheduled(h, d.date)) continue
       scheduled++
-      if (logged.has(`${h.id}:${d.date}`)) hit++
+      if (done.has(d.date)) hit++
     }
   }
 

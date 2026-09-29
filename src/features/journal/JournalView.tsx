@@ -12,6 +12,7 @@ import { SectionIcon, section } from '@/app/sections'
 import { Card, Group, PageHeader, Section, Switch, Textarea, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { MoodIcon, MoodPicker, moodColor } from './MoodPicker'
+import { groupLogs, targetOf } from '@/lib/habits'
 
 const WEEKS = 20
 
@@ -170,9 +171,10 @@ function DayDone({ date }: { date: string }) {
   const to = from + 864e5
   const tasks = useLiveQuery(() => db.tasks.where('completedAt').between(from, to).filter((x) => !!x.done).toArray(), [from]) ?? []
   const habits = useLiveQuery(async () => {
-    const logs = await db.habitLogs.where('date').equals(date).toArray()
-    const all = await db.habits.bulkGet(logs.map((l) => l.habitId))
-    return all.filter((h) => !!h).map((h) => h!.name)
+    const counts = groupLogs(await db.habitLogs.where('date').equals(date).toArray())
+    const all = await db.habits.bulkGet([...counts.keys()])
+    // Solo los que llegaron a su objetivo ese día
+    return all.filter((h) => !!h && (counts.get(h.id)?.get(date) ?? 0) >= targetOf(h)).map((h) => h!.name)
   }, [date]) ?? []
   const focus = useLiveQuery(() => db.focusLogs.where('date').equals(date).toArray(), [date]) ?? []
   const routines = useLiveQuery(async () => {

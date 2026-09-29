@@ -1,7 +1,7 @@
 import { db } from '@/db/db'
-import { rollSubscriptions, toggleHabit, toggleTask, updateTask } from '@/db/actions'
-import { today } from '@/lib/dates'
-import { isScheduled } from '@/lib/habits'
+import { completeHabit, rollSubscriptions, toggleTask, updateTask } from '@/db/actions'
+import { today, weekStart } from '@/lib/dates'
+import { doneDays, groupLogs, isDue } from '@/lib/habits'
 import { chargeWhen, money } from '@/lib/finance'
 import { toast, ui } from '@/app/store'
 import { navigate } from '@/app/router'
@@ -60,8 +60,8 @@ export async function applyReminderAction(action: ReminderAction, id: string) {
     const habit = await db.habits.get(id)
     if (!habit) return
     const t = today()
-    const done = await db.habitLogs.where('[habitId+date]').equals([id, t]).count()
-    if (!done) await toggleHabit(id, t)
+    // Con cantidad, «Hecho» lo lleva al objetivo del día
+    await completeHabit(habit, t)
     toast(`Hábito hecho: ${habit.name} 🔥`)
     return
   }
@@ -199,12 +199,15 @@ export function startLocalReminders() {
     const day = today()
     const nowHm = new Date(now).toTimeString().slice(0, 5)
     const habits = (await db.habits.where('archived').equals(0).toArray()).filter(
-      (h) => h.remindTime && isScheduled(h, day) && nowHm >= h.remindTime && minutesBetween(h.remindTime, nowHm) < 15 && !seen.has(`habit:${h.id}:${day}`),
+      (h) => h.remindTime && nowHm >= h.remindTime && minutesBetween(h.remindTime, nowHm) < 15 && !seen.has(`habit:${h.id}:${day}`),
     )
     const pending: typeof habits = []
     for (const h of habits) {
       seen.add(`habit:${h.id}:${day}`)
-      if (await db.habitLogs.where('[habitId+date]').equals([h.id, day]).count()) continue
+      // Hecho hoy, o «N veces por semana» ya cumplido: no se avisa
+      const logs = await db.habitLogs.where('habitId').equals(h.id).and((l) => l.date >= weekStart(day)).toArray()
+      const done = doneDays(h, groupLogs(logs).get(h.id))
+      if (done.has(day) || !isDue(h, done, day)) continue
       pending.push(h)
       toast(`${h.name}: aún no lo has marcado hoy`, { label: 'Hecho', run: () => void applyReminderAction('habit-done', h.id) }, 20_000, {
         icon: 'bell',
