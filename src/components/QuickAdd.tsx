@@ -173,25 +173,27 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
             className="mt-1 w-full bg-transparent text-[15px] text-muted placeholder:text-faint"
           />
           {sug && (
-            <div id={listId} role="listbox" aria-label="Sugerencias" className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              {sug.items.map((s, i) => (
-                <div
-                  key={`${s.kind}:${s.label}`}
-                  id={`${listId}-${i}`}
-                  role="option"
-                  aria-selected={i === current}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => complete(s)}
-                  className={cx(
-                    'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold transition-colors',
-                    i === current ? 'border-transparent bg-accent-fill text-white' : 'border-line text-fg hover:bg-hover',
-                  )}
-                >
-                  <SuggestIcon s={s} />
-                  {s.label}
-                </div>
-              ))}
-              <span className="ml-1 hidden items-center gap-1 text-[12px] text-muted sm:inline-flex">
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              <div id={listId} role="listbox" aria-label="Sugerencias" className="flex flex-wrap items-center gap-1.5">
+                {sug.items.map((s, i) => (
+                  <div
+                    key={`${s.kind}:${s.label}`}
+                    id={`${listId}-${i}`}
+                    role="option"
+                    aria-selected={i === current}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => complete(s)}
+                    className={cx(
+                      'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold transition-colors',
+                      i === current ? 'border-transparent bg-accent-fill text-white' : 'border-line text-fg hover:bg-hover',
+                    )}
+                  >
+                    <SuggestIcon s={s} />
+                    {s.label}
+                  </div>
+                ))}
+              </div>
+              <span className="ml-1 hidden items-center gap-1 text-[12px] text-muted sm:inline-flex" aria-hidden>
                 <Kbd>Tab</Kbd> completar
               </span>
             </div>

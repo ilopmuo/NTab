@@ -43,9 +43,29 @@ test('orden a mano en la bandeja: teclado y se conserva al recargar', async ({ p
   expected.splice(expected.indexOf('Tres'), 1)
   expected.splice(expected.indexOf('Uno'), 0, 'Tres')
   await expect.poll(() => titles(page)).toEqual(expected)
+  // Lo que se ve cambia al momento; antes de recargar, que esté guardado
+  await expect.poll(() => savedOrder(page, 'inbox', ['Uno', 'Dos', 'Tres'])).toEqual(['Tres', 'Uno', 'Dos'])
   await page.reload()
   await expect.poll(() => titles(page)).toEqual(expected)
 })
+
+/** Orden guardado en IndexedDB de las tareas `names` en la lista `key` */
+function savedOrder(page: import('@playwright/test').Page, key: string, names: string[]) {
+  return page.evaluate(
+    async ([key, names]) => {
+      const req = indexedDB.open('ntab')
+      const db = await new Promise<IDBDatabase>((r) => (req.onsuccess = () => r(req.result)))
+      const all = await new Promise<{ title: string; order: number; orders?: Record<string, number> }[]>((r) => {
+        const q = db.transaction('tasks').objectStore('tasks').getAll()
+        q.onsuccess = () => r(q.result)
+      })
+      db.close()
+      const at = (t: (typeof all)[number]) => t.orders?.[key as string] ?? t.order
+      return all.filter((t) => (names as string[]).includes(t.title)).sort((a, b) => at(a) - at(b)).map((t) => t.title)
+    },
+    [key, names] as const,
+  )
+}
 
 test('subtareas: se añaden y se reordenan', async ({ page }) => {
   await openApp(page, '/inbox')
