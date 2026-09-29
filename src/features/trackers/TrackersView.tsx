@@ -58,7 +58,7 @@ export function TrackerCard({ tracker, onEdit, index = 0 }: { tracker: Tracker; 
         onClick={() => void markDone(tracker)}
         className={cx(
           'mt-4 flex h-11 items-center justify-center gap-2 rounded-[14px] text-[15px] font-semibold transition-colors',
-          doneToday ? 'bg-green text-on-green' : due ? 'bg-accent text-white' : 'bg-fill text-fg hover:bg-press',
+          doneToday ? 'bg-green text-on-green' : due ? 'bg-accent-fill text-white' : 'bg-fill text-fg hover:bg-press',
         )}
       >
         <Check size={17} strokeWidth={2.8} /> {doneToday ? 'Hecho hoy' : 'Lo he hecho hoy'}

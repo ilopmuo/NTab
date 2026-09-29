@@ -23,7 +23,7 @@
   --c-border-strong: rgb(255 255 255 / 0.16);
   --c-highlight: rgb(255 255 255 / 0.07);
   --c-text: #f5f5f7;
-  --c-muted: rgb(235 235 245 / 0.6);
+  --c-muted: rgb(235 235 245 / 0.65);
   --c-faint: rgb(235 235 245 / 0.3);
   --c-shadow: 0 0 0 1px rgb(255 255 255 / 0.05), 0 12px 40px -8px rgb(0 0 0 / 0.6);
   --c-shadow-lg: 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 80px -12px rgb(0 0 0 / 0.75);
@@ -31,7 +31,11 @@
 
   /* Paleta monocroma: solo azul eléctrico (acción, hoy, selección) y verde lima
      (hecho). El resto de "colores" son tonos de gris para no romper nada. */
-  --c-blue: #2f7dff;
+  --c-blue: #3a85ff;
+  /* fondo de los botones y marcas azules con texto blanco (contraste AA) */
+  --c-accent-fill: #1766e8;
+  /* texto azul sobre fondo azul suave (botones «tintados») */
+  --c-accent-on-soft: #7fb0ff;
   --c-green: #c5f82a;
   --c-on-green: #0b0b0c;
   --c-red: #f5f5f7;
@@ -64,22 +68,24 @@
   --c-border-strong: rgb(60 60 67 / 0.2);
   --c-highlight: rgb(255 255 255 / 0.8);
   --c-text: #1d1d1f;
-  --c-muted: rgb(60 60 67 / 0.62);
+  --c-muted: rgb(60 60 67 / 0.8);
   --c-faint: rgb(60 60 67 / 0.32);
   --c-shadow: 0 0 0 1px rgb(0 0 0 / 0.035), 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 30px -10px rgb(0 0 0 / 0.12);
   --c-shadow-lg: 0 0 0 1px rgb(0 0 0 / 0.05), 0 30px 70px -16px rgb(0 0 0 / 0.25);
   --c-scrim: rgb(0 0 0 / 0.2);
 
-  --c-blue: #1668ff;
+  --c-blue: #1766e8;
+  --c-accent-fill: #1766e8;
+  --c-accent-on-soft: #0f55c7;
   --c-green: #b4ec1c;
   --c-on-green: #0b0b0c;
   --c-red: #1d1d1f;
-  --c-orange: rgb(60 60 67 / 0.72);
-  --c-teal: rgb(60 60 67 / 0.62);
-  --c-indigo: rgb(60 60 67 / 0.62);
-  --c-purple: rgb(60 60 67 / 0.62);
-  --c-yellow: rgb(60 60 67 / 0.62);
-  --c-pink: rgb(60 60 67 / 0.62);
+  --c-orange: rgb(60 60 67 / 0.8);
+  --c-teal: rgb(60 60 67 / 0.75);
+  --c-indigo: rgb(60 60 67 / 0.75);
+  --c-purple: rgb(60 60 67 / 0.75);
+  --c-yellow: rgb(60 60 67 / 0.75);
+  --c-pink: rgb(60 60 67 / 0.75);
   --c-gray: #8e8e93;
   --soft: 14%;
 
@@ -120,6 +126,8 @@
 
   /* alias semánticos */
   --color-accent: var(--c-blue);
+  --color-accent-fill: var(--c-accent-fill);
+  --color-accent-on-soft: var(--c-accent-on-soft);
   --color-accent-soft: color-mix(in srgb, var(--c-blue) var(--soft), transparent);
   --color-danger: var(--c-red);
   --color-danger-soft: color-mix(in srgb, var(--c-red) var(--soft), transparent);

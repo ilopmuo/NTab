@@ -97,9 +97,9 @@ export function RollingNumber({ value, className, style }: { value: number | str
 
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'tinted'
 const BTN: Record<BtnVariant, string> = {
-  primary: 'bg-accent text-white shadow-[0_1px_2px_rgb(0_0_0/0.2)] hover:brightness-110',
+  primary: 'bg-accent-fill text-white shadow-[0_1px_2px_rgb(0_0_0/0.2)] hover:brightness-110',
   secondary: 'bg-fill text-fg hover:bg-press',
-  tinted: 'bg-accent-soft text-accent hover:brightness-110',
+  tinted: 'bg-accent-soft text-accent-on-soft hover:brightness-110',
   ghost: 'text-accent hover:bg-hover',
   danger: 'text-danger hover:bg-danger-soft',
 }

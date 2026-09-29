@@ -37,7 +37,7 @@ export function NotesView({ id }: { id?: string }) {
           <div className="mb-4 flex items-center gap-3">
             <SectionIcon def={section('notes')} size={36} />
             <h1 className="flex-1 text-[30px] font-bold tracking-[-0.025em]">Notas</h1>
-            <IconButton label="Nueva nota" onClick={newNote} className="!bg-accent !text-white">
+            <IconButton label="Nueva nota" onClick={newNote} className="!bg-accent-fill !text-white">
               <Plus size={17} />
             </IconButton>
           </div>
@@ -52,7 +52,7 @@ export function NotesView({ id }: { id?: string }) {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-3 pb-36 lg:pb-4">
-          {list.length === 0 && <p className="px-3 py-6 text-center text-[13px] text-faint">{q ? 'Sin resultados' : 'Ninguna nota todavía'}</p>}
+          {list.length === 0 && <p className="px-3 py-6 text-center text-[13px] text-muted">{q ? 'Sin resultados' : 'Ninguna nota todavía'}</p>}
           {list.map((n) => (
             <a
               key={n.id}
@@ -77,7 +77,7 @@ export function NotesView({ id }: { id?: string }) {
           <NoteEditor key={current.id} note={current} />
         ) : (
           <Empty icon={<StickyNote size={28} strokeWidth={2.2} />} color="var(--c-yellow)" title={id ? 'Nota no encontrada' : 'Selecciona una nota'} hint="Ideas, apuntes de reuniones, listas, contraseñas del wifi…">
-            <button type="button" onClick={newNote} className="h-10 rounded-full bg-accent px-5 text-[14px] font-semibold text-white transition-transform active:scale-95">
+            <button type="button" onClick={newNote} className="h-10 rounded-full bg-accent-fill px-5 text-[14px] font-semibold text-white transition-transform active:scale-95">
               Crear nota
             </button>
           </Empty>
@@ -173,7 +173,7 @@ function NoteEditor({ note }: { note: Note }) {
               </option>
             ))}
         </Select>
-        <span className="ml-2 hidden text-[12px] text-faint sm:inline">
+        <span className="ml-2 hidden text-[12px] text-muted sm:inline">
           Editada {formatDistanceToNow(note.updatedAt, { locale: es, addSuffix: true })}
         </span>
         <div className="ml-auto flex">

@@ -166,7 +166,7 @@ export function DragGhost() {
           className="glass-thick pointer-events-none fixed z-[90] flex max-w-[260px] items-center gap-2 rounded-full py-1.5 pr-3.5 pl-2 text-[14px] font-medium"
           style={{ left: s.x + 12, top: s.y + 12 }}
         >
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-white">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white">
             <CalendarDays size={13} strokeWidth={2.6} />
           </span>
           <span className="min-w-0 truncate">{s.task.title}</span>

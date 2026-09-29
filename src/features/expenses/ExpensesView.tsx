@@ -73,7 +73,7 @@ export function ExpensesView() {
       >
         <Receipt size={18} className="shrink-0 text-muted" />
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="12,50 café" aria-label="Apuntar gasto" inputMode="text" className="h-10 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-faint" />
-        <button type="submit" aria-label="Apuntar" disabled={!parsed} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-white disabled:opacity-30">
+        <button type="submit" aria-label="Apuntar" disabled={!parsed} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white disabled:opacity-30">
           <ArrowUp size={18} strokeWidth={2.8} />
         </button>
       </form>

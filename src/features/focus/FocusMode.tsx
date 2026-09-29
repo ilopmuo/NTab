@@ -117,7 +117,7 @@ export function FocusMode() {
           onClick={() => focus.minimize(false)}
           className="glass-thick fixed right-4 bottom-[calc(max(env(safe-area-inset-bottom),10px)+80px)] z-[55] flex max-w-[70vw] items-center gap-2.5 rounded-full py-2 pr-4 pl-2 text-left lg:right-6 lg:bottom-6"
         >
-          <span className={cx('flex h-8 w-8 items-center justify-center rounded-full', s.finished ? 'bg-green text-on-green' : 'bg-accent text-white')}>
+          <span className={cx('flex h-8 w-8 items-center justify-center rounded-full', s.finished ? 'bg-green text-on-green' : 'bg-accent-fill text-white')}>
             {s.finished ? <Check size={16} strokeWidth={3} /> : <Timer size={16} strokeWidth={2.4} />}
           </span>
           <span className="min-w-0">

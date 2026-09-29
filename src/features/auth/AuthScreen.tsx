@@ -115,7 +115,7 @@ export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => v
           <button
             type="submit"
             disabled={!valid || busy}
-            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-white shadow-[0_8px_24px_-8px_var(--c-blue)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
+            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent-fill text-[16px] font-semibold text-white shadow-[0_8px_24px_-8px_var(--c-blue)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
           >
             {busy ? (
               <Loader2 size={17} className="animate-spin" />

@@ -121,7 +121,7 @@ export function HabitsView() {
                   whileTap={{ scale: 0.9 }}
                   onClick={() => void bumpHabit(h, today)}
                   aria-label={`Sumar uno a ${h.name}`}
-                  className={cx('flex h-10 shrink-0 items-center gap-1.5 self-start rounded-full px-4 text-[15px] font-bold @[900px]:self-center', done.has(today) ? 'bg-green text-on-green' : 'bg-accent text-white')}
+                  className={cx('flex h-10 shrink-0 items-center gap-1.5 self-start rounded-full px-4 text-[15px] font-bold @[900px]:self-center', done.has(today) ? 'bg-green text-on-green' : 'bg-accent-fill text-white')}
                 >
                   <Plus size={16} strokeWidth={3} /> 1
                 </motion.button>

@@ -164,7 +164,7 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
                     onClick={() => setKind(k.value)}
                     className={cx(
                       'flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all active:scale-95',
-                      kind === k.value ? 'bg-accent text-white' : 'bg-fill text-fg hover:bg-press',
+                      kind === k.value ? 'bg-accent-fill text-white' : 'bg-fill text-fg hover:bg-press',
                     )}
                   >
                     <k.icon size={14} strokeWidth={2.3} /> {k.label}

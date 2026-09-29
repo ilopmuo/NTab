@@ -232,7 +232,7 @@ function Card({ task, dir, onToday, onSkip }: { task: Task; dir: number; onToday
       style={{ x, rotate }}
       className="glass-thick absolute inset-x-6 top-1/2 flex h-[300px] -translate-y-1/2 cursor-grab touch-none flex-col rounded-[28px] p-6 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.5)] active:cursor-grabbing"
     >
-      <motion.span style={{ opacity: today }} className="absolute top-5 right-5 rounded-full bg-accent px-3 py-1 text-[13px] font-bold text-white">
+      <motion.span style={{ opacity: today }} className="absolute top-5 right-5 rounded-full bg-accent-fill px-3 py-1 text-[13px] font-bold text-white">
         HOY
       </motion.span>
       <motion.span style={{ opacity: later }} className="absolute top-5 left-5 rounded-full bg-fill px-3 py-1 text-[13px] font-bold text-fg">
@@ -258,7 +258,7 @@ function Big({ icon, label, hint, onClick, primary, lime, children }: { icon: Re
         title={hint ? `${label} (${hint})` : label}
         className={cx(
           'flex h-[64px] w-full flex-col items-center justify-center gap-1 rounded-[18px] text-[12.5px] font-semibold',
-          primary ? 'bg-accent text-white' : lime ? 'bg-green text-on-green' : 'bg-fill text-fg',
+          primary ? 'bg-accent-fill text-white' : lime ? 'bg-green text-on-green' : 'bg-fill text-fg',
         )}
       >
         {icon}

@@ -38,7 +38,7 @@ export function Toast() {
               />
             )}
             {t.icon === 'bell' ? (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-fill text-white">
                 <Bell size={12} strokeWidth={2.8} />
               </span>
             ) : (

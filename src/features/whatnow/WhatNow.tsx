@@ -55,7 +55,7 @@ function Picker() {
                 key={m}
                 type="button"
                 onClick={() => change(() => setMinutes(m))}
-                className={cx('h-10 rounded-full text-[14px] font-semibold transition-colors active:scale-95', minutes === m ? 'bg-accent text-white' : 'bg-fill text-fg hover:bg-press')}
+                className={cx('h-10 rounded-full text-[14px] font-semibold transition-colors active:scale-95', minutes === m ? 'bg-accent-fill text-white' : 'bg-fill text-fg hover:bg-press')}
               >
                 {durationLabel(m)}
               </button>

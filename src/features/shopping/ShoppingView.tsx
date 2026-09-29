@@ -87,7 +87,7 @@ export function ShoppingView() {
             <Mic size={17} className="relative" />
           </button>
         )}
-        <button type="submit" aria-label="Añadir" disabled={!preview.length} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-opacity disabled:opacity-30">
+        <button type="submit" aria-label="Añadir" disabled={!preview.length} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white transition-opacity disabled:opacity-30">
           <ArrowUp size={18} strokeWidth={2.8} />
         </button>
       </form>

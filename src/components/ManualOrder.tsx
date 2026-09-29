@@ -51,7 +51,7 @@ export function OrderToggle({ listKey, tasks, iconOnly }: { listKey: string; tas
       className={cx(
         'flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold transition-all active:scale-95',
         iconOnly ? 'h-9 w-9' : 'h-8 px-3 text-[13px]',
-        manual ? 'bg-accent-soft text-accent' : iconOnly ? 'bg-fill text-fg hover:bg-press' : 'text-muted hover:bg-hover hover:text-fg',
+        manual ? 'bg-accent-soft text-accent-on-soft' : iconOnly ? 'bg-fill text-fg hover:bg-press' : 'text-muted hover:bg-hover hover:text-fg',
       )}
     >
       <ArrowDownUp size={iconOnly ? 16 : 14} strokeWidth={2.4} />

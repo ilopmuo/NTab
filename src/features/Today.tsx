@@ -116,7 +116,7 @@ export function TodayView() {
                 type="button"
                 onClick={whatNow.open}
                 aria-label="¿Qué hago ahora?"
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-accent px-3.5 text-[14px] font-semibold text-white transition-transform active:scale-95 max-sm:w-9 max-sm:justify-center max-sm:px-0"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-accent-fill px-3.5 text-[14px] font-semibold text-white transition-transform active:scale-95 max-sm:w-9 max-sm:justify-center max-sm:px-0"
               >
                 <Sparkles size={16} strokeWidth={2.4} />
                 <span className="max-sm:hidden">¿Qué hago?</span>
@@ -159,7 +159,7 @@ export function TodayView() {
                 href={href('/plan')}
                 className="glass mb-4 flex items-center gap-3 rounded-[18px] px-4 py-3 text-[14px] transition-transform active:scale-[0.99]"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-fill text-white">
                   <CalendarCheck size={16} strokeWidth={2.4} />
                 </span>
                 <span className="flex-1">

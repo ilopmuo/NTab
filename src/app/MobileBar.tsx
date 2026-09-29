@@ -66,7 +66,7 @@ export function MobileBar() {
                 {!!badge[t.id] && (
                   <span
                     className="font-num absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                    style={{ background: tint('blue') }}
+                    style={{ background: 'var(--c-accent-fill)' }}
                   >
                     <RollingNumber value={badge[t.id]} />
                   </span>
@@ -93,7 +93,7 @@ export function MobileBar() {
         animate={{ width: mini ? 50 : 62, height: mini ? 50 : 62 }}
         transition={barSpring}
         onClick={() => ui.quickAdd()}
-        className="pointer-events-auto flex shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-[0_10px_30px_-8px_var(--c-blue)]"
+        className="pointer-events-auto flex shrink-0 items-center justify-center rounded-full bg-accent-fill text-white shadow-[0_10px_30px_-8px_var(--c-blue)]"
       >
         <Plus size={28} strokeWidth={2.5} />
       </motion.button>

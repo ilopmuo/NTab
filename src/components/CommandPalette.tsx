@@ -63,7 +63,7 @@ function Item({
       value={value}
       keywords={keywords}
       onSelect={onSelect}
-      className="group flex h-11 cursor-default items-center gap-3 rounded-[12px] px-2.5 text-[15px] text-fg transition-colors data-[selected=true]:bg-accent data-[selected=true]:text-white"
+      className="group flex h-11 cursor-default items-center gap-3 rounded-[12px] px-2.5 text-[15px] text-fg transition-colors data-[selected=true]:bg-accent-fill data-[selected=true]:text-white"
     >
       <span className="flex w-7 shrink-0 justify-center text-muted group-data-[selected=true]:text-white">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{children}</span>

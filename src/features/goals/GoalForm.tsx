@@ -109,7 +109,7 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
                       <span
                         className={cx(
                           'flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.6px] transition-colors',
-                          on ? 'border-accent bg-accent text-white' : 'border-faint',
+                          on ? 'border-accent bg-accent-fill text-white' : 'border-faint',
                         )}
                       >
                         {on && <Check size={13} strokeWidth={3.2} />}

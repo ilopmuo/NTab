@@ -108,7 +108,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
                   type="button"
                   aria-pressed={perWeek === k}
                   onClick={() => setPerWeek(k)}
-                  className={cx('font-num h-9 w-9 rounded-full text-[14px] font-semibold transition-colors', perWeek === k ? 'bg-accent text-white' : 'bg-fill text-muted hover:text-fg')}
+                  className={cx('font-num h-9 w-9 rounded-full text-[14px] font-semibold transition-colors', perWeek === k ? 'bg-accent-fill text-white' : 'bg-fill text-muted hover:text-fg')}
                 >
                   {k}
                 </button>
@@ -124,7 +124,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
                     key={d}
                     type="button"
                     onClick={() => setDays(on ? days.filter((x) => x !== d) : [...days, d])}
-                    className={cx('h-9 w-9 rounded-full text-[13px] font-medium transition-colors', on ? 'bg-accent text-white' : 'bg-fill text-muted hover:text-fg')}
+                    className={cx('h-9 w-9 rounded-full text-[13px] font-medium transition-colors', on ? 'bg-accent-fill text-white' : 'bg-fill text-muted hover:text-fg')}
                   >
                     {WEEKDAYS_SHORT[d]}
                   </button>
@@ -162,7 +162,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
                 key={k}
                 type="button"
                 onClick={() => setIcon(k)}
-                className={cx('flex h-9 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent text-white' : 'text-muted hover:bg-hover hover:text-fg')}
+                className={cx('flex h-9 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent-fill text-white' : 'text-muted hover:bg-hover hover:text-fg')}
               >
                 <Icon name={k} size={16} />
               </button>

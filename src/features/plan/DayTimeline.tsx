@@ -236,7 +236,7 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
       <div className="glass relative overflow-hidden rounded-[18px] py-2 pr-2" style={{ height: (endHour - startHour) * HOUR + 16 }}>
         {Array.from({ length: endHour - startHour + 1 }, (_, i) => (
           <div key={i} className="absolute right-2 left-0 flex items-center gap-2" style={{ top: 8 + i * HOUR - 7 }}>
-            <span className="font-num w-12 shrink-0 text-right text-[11px] font-semibold text-faint">{String(startHour + i).padStart(2, '0')}:00</span>
+            <span className="font-num w-12 shrink-0 text-right text-[11px] font-semibold text-muted">{String(startHour + i).padStart(2, '0')}:00</span>
             <span className="h-px flex-1 bg-line" />
           </div>
         ))}

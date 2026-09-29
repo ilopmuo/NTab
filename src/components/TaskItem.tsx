@@ -151,7 +151,7 @@ function SwipeBackdrop({ x, armed, done, later }: { x: MotionValue<number>; arme
       <motion.div
         aria-hidden
         style={{ width: leftW }}
-        className={cx('absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden transition-colors duration-150', armed === 'left' ? 'bg-blue text-white' : 'bg-fill text-muted')}
+        className={cx('absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden transition-colors duration-150', armed === 'left' ? 'bg-accent-fill text-white' : 'bg-fill text-muted')}
       >
         <motion.span animate={{ scale: armed === 'left' ? 1.15 : 0.85 }} transition={bouncy} className="mr-5 flex shrink-0 items-center gap-1.5 text-[13px] font-bold">
           {later}
@@ -174,7 +174,7 @@ function PickMark({ on, onClick }: { on: boolean; onClick: () => void }) {
         e.stopPropagation()
         onClick()
       }}
-      className={cx('flex h-[22px] w-[22px] items-center justify-center rounded-full border-[1.6px] transition-colors', on ? 'border-blue bg-blue text-white' : 'border-faint')}
+      className={cx('flex h-[22px] w-[22px] items-center justify-center rounded-full border-[1.6px] transition-colors', on ? 'border-accent-fill bg-accent-fill text-white' : 'border-faint')}
     >
       {on && (
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
@@ -318,8 +318,6 @@ export const TaskItem = memo(function TaskItem({
     <div className="relative touch-pan-y">
       <SwipeBackdrop x={swipe.x} armed={swipe.armed} done={!!task.done} later={laterLabel} />
       <motion.div
-        role="button"
-        tabIndex={0}
         {...drag}
         onPointerDown={(e) => {
           drag.onPointerDown?.(e)
@@ -327,26 +325,17 @@ export const TaskItem = memo(function TaskItem({
         }}
         style={{ ...drag.style, x: swipe.x }}
         data-task-id={task.id}
-        aria-pressed={picking ? picked : undefined}
         onClick={(e) => {
           if (swipe.swiped.current) return
           // Ctrl/⌘ + clic, o con la selección activa: marcar en vez de abrir
           if (picking || e.metaKey || e.ctrlKey) return selection.toggle(task.id)
           ui.openTask(task.id)
         }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') return picking ? selection.toggle(task.id) : ui.openTask(task.id)
-          if (e.key === ' ') {
-            e.preventDefault()
-            if (picking) selection.toggle(task.id)
-            else onToggle()
-          }
-        }}
         className={cx(
-          'group relative flex cursor-default items-start gap-3 px-4 outline-none transition-colors duration-150',
+          'group relative flex cursor-default items-start gap-3 px-4 transition-colors duration-150',
           draggable && 'select-none',
           compact ? 'py-2' : 'py-[11px]',
-          picked || (selected && !picking) ? 'bg-accent-soft' : 'hover:bg-hover focus-visible:bg-hover active:bg-press',
+          picked || (selected && !picking) ? 'bg-accent-soft' : 'hover:bg-hover has-[.task-title:focus-visible]:bg-hover active:bg-press',
         )}
       >
         <div className="pt-px">
@@ -356,15 +345,29 @@ export const TaskItem = memo(function TaskItem({
           <p
             className={cx(
               'text-[15px] leading-[21px] transition-colors duration-300',
-              checked ? 'text-faint line-through decoration-[1.5px]' : 'text-fg',
+              checked ? 'text-muted line-through decoration-[1.5px]' : 'text-fg',
             )}
           >
-            {task.priority > 0 && !checked && (
-              <span className="mr-1 font-bold" style={{ color: PRIORITY_COLOR[task.priority] }}>
-                {BANGS[task.priority]}
-              </span>
-            )}
-            {task.title || <span className="text-faint">Sin título</span>}
+            {/* El título es el botón (teclado y lectores de pantalla): Intro abre la tarea
+                —el clic sube a la fila— y Espacio la completa (o la marca al seleccionar) */}
+            <button
+              type="button"
+              className="task-title text-left outline-none"
+              aria-pressed={picking ? picked : undefined}
+              onKeyDown={(e) => {
+                if (e.key !== ' ') return
+                e.preventDefault()
+                if (picking) selection.toggle(task.id)
+                else onToggle()
+              }}
+            >
+              {task.priority > 0 && !checked && (
+                <span className="mr-1 font-bold" style={{ color: PRIORITY_COLOR[task.priority] }}>
+                  {BANGS[task.priority]}
+                </span>
+              )}
+              {task.title || <span className="text-muted">Sin título</span>}
+            </button>
           </p>
           {meta.length > 0 && (
             <div className={cx('mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[13px] text-muted', checked && 'opacity-50')}>

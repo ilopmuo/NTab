@@ -6,7 +6,11 @@
 ## 1. Principios
 
 1. **Monocromo.** Blanco, negro y grises. El color solo aparece donde aporta algo, y solo hay dos:
-   - **Azul eléctrico** (`#2F7DFF` en oscuro, `#1668FF` en claro): hoy, selección, botones principales, enlaces y la prioridad máxima.
+   - **Azul eléctrico**: hoy, selección, botones principales, enlaces y la prioridad máxima. Tres tonos para que todo el texto cumpla el contraste AA (4,5:1):
+     - `--c-blue` para texto y marcas azules (`#3A85FF` en oscuro, `#1766E8` en claro);
+     - `--c-accent-fill` para los fondos con texto blanco, como botones o la sección activa (`#1766E8`);
+     - `--c-accent-on-soft` para el texto de los botones tintados sobre `accent-soft` (`#7FB0FF` / `#0F55C7`).
+   - **Grises**: `--c-muted` para cualquier texto secundario; `--c-faint` solo para lo decorativo (iconos, separadores, textos de ejemplo), nunca para texto que haya que leer.
    - **Verde lima** (`#C5F82A`): lo hecho (casillas completadas, hábitos cumplidos, anillos de progreso). Siempre con el glifo en negro encima.
    Nada más: ni rojo, ni naranja, ni morado. Tampoco colores por área, proyecto o hábito.
 2. **La importancia se marca con contraste, no con color.** Lo atrasado va en texto fuerte, lo que viene en gris y la prioridad sube de gris claro a blanco o negro, y a azul en la máxima.

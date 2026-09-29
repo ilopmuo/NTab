@@ -219,14 +219,14 @@ function MonthCell({
       className={cx(
         'relative flex min-h-[62px] flex-col items-stretch gap-1 rounded-[12px] p-1.5 text-left transition-colors sm:min-h-[104px]',
         over ? 'bg-accent-soft ring-2 ring-blue' : selected ? 'bg-fill' : 'hover:bg-hover',
-        !inMonth && !over && 'opacity-35',
+        !inMonth && !over && 'opacity-65',
       )}
     >
       <span className="flex items-center justify-between">
         <span
           className={cx(
             'font-num flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-[14px] font-semibold',
-            isToday ? 'bg-blue text-white' : selected ? 'text-fg' : '',
+            isToday ? 'bg-accent-fill text-white' : selected ? 'text-fg' : '',
           )}
         >
           {fromYmd(day).getDate()}
@@ -236,7 +236,7 @@ function MonthCell({
       <span className="hidden flex-col gap-[3px] sm:flex">
         {events.slice(0, 2).map((e) => (
           <span key={e.id} className="flex items-center gap-1 truncate rounded-[5px] border border-line-strong px-1.5 text-[11.5px] leading-[17px] font-medium text-muted">
-            {!e.allDay && <span className="font-num opacity-80">{eventTime(e)}</span>}
+            {!e.allDay && <span className="font-num">{eventTime(e)}</span>}
             <span className="truncate">{e.title}</span>
           </span>
         ))}
@@ -248,7 +248,7 @@ function MonthCell({
             className={cx('flex cursor-grab items-center gap-1 truncate rounded-[5px] px-1.5 text-[11.5px] leading-[19px] font-medium select-none active:cursor-grabbing', x.done && 'line-through opacity-45')}
             style={{ background: `color-mix(in srgb, ${chipColor} 20%, transparent)`, color: `color-mix(in srgb, ${chipColor} 70%, var(--c-text))`, WebkitTouchCallout: 'none' }}
           >
-            {x.dueTime && <span className="font-num opacity-80">{x.dueTime}</span>}
+            {x.dueTime && <span className="font-num">{x.dueTime}</span>}
             <span className="truncate">{x.title}</span>
           </span>
         ))}

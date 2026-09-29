@@ -7,7 +7,7 @@ import { SyncBadge } from '@/sync/SyncBadge'
 import { useNavCounts } from './counts'
 import { useNav } from './nav'
 import { href, useRoute } from './router'
-import { SectionIcon, section, tint, type SectionDef } from './sections'
+import { SectionIcon, section, type SectionDef } from './sections'
 import { FIXED } from '@/lib/nav'
 import { ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
@@ -24,11 +24,11 @@ function Tile({ def, count, active }: { def: SectionDef; count?: number | string
         'relative flex flex-col gap-2 overflow-hidden rounded-[14px] p-2.5 transition-[transform,box-shadow] duration-200 active:scale-[0.97]',
         active ? 'text-white shadow-lg' : 'bg-[var(--c-material)] shadow-[var(--c-shadow)] hover:brightness-[1.03]',
       )}
-      style={active ? { background: tint(def.tint), boxShadow: `0 8px 24px -8px ${tint(def.tint)}` } : undefined}
+      style={active ? { background: 'var(--c-accent-fill)', boxShadow: '0 8px 24px -8px var(--c-accent-fill)' } : undefined}
     >
       <div className="flex items-start justify-between">
         {active ? (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white" style={{ color: tint(def.tint) }}>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white" style={{ color: 'var(--c-accent-fill)' }}>
             {def.icon === 'today' ? (
               <span className="font-num text-[13px] font-bold">{new Date().getDate()}</span>
             ) : (
@@ -40,7 +40,7 @@ function Tile({ def, count, active }: { def: SectionDef; count?: number | string
         )}
         {count !== undefined && <RollingNumber value={count} className={cx('text-[22px] leading-none font-bold', !active && 'text-fg')} />}
       </div>
-      <span className={cx('truncate text-[13px] font-semibold', active ? 'text-white/90' : 'text-muted')}>{def.short}</span>
+      <span className={cx('truncate text-[13px] font-semibold', active ? 'text-white' : 'text-muted')}>{def.short}</span>
     </a>
   )
 }
@@ -126,7 +126,7 @@ function SidebarContent() {
             ui.sidebar(false)
             ui.quickAdd()
           }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-[0_4px_14px_-4px_var(--c-blue)] transition-transform active:scale-90"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white shadow-[0_4px_14px_-4px_var(--c-blue)] transition-transform active:scale-90"
         >
           <Plus size={19} strokeWidth={2.6} />
         </button>

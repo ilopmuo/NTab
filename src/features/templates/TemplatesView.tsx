@@ -136,7 +136,7 @@ function Editor({ template, onClose }: { template?: Template; onClose: () => voi
               type="button"
               aria-label={k}
               onClick={() => setIcon(k)}
-              className={cx('flex h-8 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent text-white' : 'text-muted hover:bg-hover hover:text-fg')}
+              className={cx('flex h-8 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent-fill text-white' : 'text-muted hover:bg-hover hover:text-fg')}
             >
               <Icon name={k} size={15} />
             </button>

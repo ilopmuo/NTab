@@ -49,7 +49,7 @@ function Row({ task, meta, actions }: { task: Task; meta?: string; actions: Acti
               onClick={() => a.run(task)}
               className={cx(
                 'flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-semibold transition-transform active:scale-95',
-                a.primary ? 'bg-accent text-white' : 'bg-fill text-fg',
+                a.primary ? 'bg-accent-fill text-white' : 'bg-fill text-fg',
                 !!a.icon && !a.primary && 'w-8 justify-center px-0',
               )}
             >

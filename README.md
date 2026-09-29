@@ -158,7 +158,7 @@ npm run e2e        # tests end-to-end con Playwright (compila y sirve el build)
 npm run preview    # sirve el build
 ```
 
-**Tests end-to-end** (`e2e/*.e2e.ts`, Playwright): recorren la app de verdad en Chromium, sin red (Supabase cortado, modo sin cuenta). Si el navegador no está instalado: `npx playwright install chromium`.
+**Tests end-to-end** (`e2e/*.e2e.ts`, Playwright): recorren la app de verdad en Chromium, sin red (Supabase cortado, modo sin cuenta). Incluyen una revisión de accesibilidad con axe (WCAG 2.1 AA) de las pantallas principales en los dos temas, que falla con cualquier problema serio: contraste, controles sin nombre o anidados. Si el navegador no está instalado: `npx playwright install chromium`.
 
 **CI** (`.github/workflows/ci.yml`), en cada PR y en `main`: tipos, tests, build, límite de tamaño del arranque (`scripts/check-size.mjs`, 240 KB gzip), los e2e y `deno check` de las Edge Functions.
 

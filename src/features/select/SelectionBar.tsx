@@ -192,7 +192,7 @@ function Action({ icon, label, onClick, accent, children }: { icon: React.ReactN
         aria-hidden={children ? true : undefined}
         className={cx(
           'flex h-[52px] w-full flex-col items-center justify-center gap-1 rounded-[14px] text-[11px] font-semibold transition-all active:scale-95',
-          accent ? 'bg-accent text-white' : 'text-fg hover:bg-hover',
+          accent ? 'bg-accent-fill text-white' : 'text-fg hover:bg-hover',
         )}
       >
         {icon}

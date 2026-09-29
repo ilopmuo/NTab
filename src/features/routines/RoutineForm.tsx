@@ -98,7 +98,7 @@ function Form({ routine, onClose }: { routine?: Routine; onClose: () => void }) 
                   key={d}
                   type="button"
                   onClick={() => setDays(on ? days.filter((x) => x !== d) : [...days, d])}
-                  className={cx('h-9 w-9 rounded-full text-[13px] font-medium transition-colors', on ? 'bg-accent text-white' : 'bg-fill text-muted hover:text-fg')}
+                  className={cx('h-9 w-9 rounded-full text-[13px] font-medium transition-colors', on ? 'bg-accent-fill text-white' : 'bg-fill text-muted hover:text-fg')}
                 >
                   {WEEKDAYS_SHORT[d]}
                 </button>
@@ -138,7 +138,7 @@ function Form({ routine, onClose }: { routine?: Routine; onClose: () => void }) 
                 type="button"
                 aria-label={k}
                 onClick={() => setIcon(k)}
-                className={cx('flex h-9 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent text-white' : 'text-muted hover:bg-hover hover:text-fg')}
+                className={cx('flex h-9 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent-fill text-white' : 'text-muted hover:bg-hover hover:text-fg')}
               >
                 <Icon name={k} size={16} />
               </button>

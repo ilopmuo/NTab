@@ -40,7 +40,7 @@ export function InboxView() {
       <TaskList
         tasks={inbox}
         orderKey="inbox"
-        add={{ color: 'var(--c-gray)' }}
+        add={{ color: 'var(--c-muted)' }}
         empty={<Empty icon={<InboxIcon size={28} strokeWidth={2.2} />} title="Bandeja vacía" hint="Tu cabeza está despejada. Pulsa N para capturar cualquier cosa." />}
       />
       {/* En un portal: la pantalla se anima con transform y eso rompería el position: fixed */}

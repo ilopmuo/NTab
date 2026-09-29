@@ -24,7 +24,7 @@ export function syncLabel(s: SyncStatus): { icon: React.ReactNode; text: string;
     default:
       return s.knownEmail
         ? { icon: <LogIn size={14} />, text: 'Sesión caducada · entrar', tone: 'text-warn' }
-        : { icon: <LogIn size={14} />, text: 'Solo en este dispositivo', tone: 'text-faint' }
+        : { icon: <LogIn size={14} />, text: 'Solo en este dispositivo', tone: 'text-muted' }
   }
 }
 

@@ -122,13 +122,17 @@ function Row({
   )
 }
 
-function Pill({ active, onClick, children, color = 'var(--c-blue)' }: { active?: boolean; onClick: () => void; children: React.ReactNode; color?: string }) {
+/** Píldora de elección rápida; activa, en azul (acción) o en el color del texto (neutra) */
+function Pill({ active, onClick, children, tone = 'accent' }: { active?: boolean; onClick: () => void; children: React.ReactNode; tone?: 'accent' | 'strong' }) {
   return (
     <button
       type="button"
+      aria-pressed={!!active}
       onClick={onClick}
-      className={cx('h-8 rounded-full px-3 text-[13px] font-semibold transition-all active:scale-95', active ? 'text-white' : 'bg-fill text-fg hover:bg-press')}
-      style={active ? { background: color } : undefined}
+      className={cx(
+        'h-8 rounded-full px-3 text-[13px] font-semibold transition-all active:scale-95',
+        !active ? 'bg-fill text-fg hover:bg-press' : tone === 'accent' ? 'bg-accent-fill text-white' : 'bg-fg text-bg',
+      )}
     >
       {children}
     </button>
@@ -263,13 +267,13 @@ function TaskDetail({ task }: { task: Task }) {
             value={task.dueDate ? (overdue ? `${longDateLabel(task.dueDate)} · atrasada` : `${dateLabel(task.dueDate)} · ${longDateLabel(task.dueDate)}`) : undefined}
             onClear={task.dueDate ? () => set({ dueDate: undefined, dueTime: undefined, recurrence: undefined }) : undefined}
           >
-            <Pill active={task.dueDate === t} onClick={() => set({ dueDate: t })} color="var(--c-blue)">
+            <Pill active={task.dueDate === t} onClick={() => set({ dueDate: t })}>
               Hoy
             </Pill>
-            <Pill active={task.dueDate === addDaysYmd(t, 1)} onClick={() => set({ dueDate: addDaysYmd(t, 1) })} color="var(--c-orange)">
+            <Pill active={task.dueDate === addDaysYmd(t, 1)} onClick={() => set({ dueDate: addDaysYmd(t, 1) })}>
               Mañana
             </Pill>
-            <input type="date" value={task.dueDate ?? ''} onChange={(e) => set({ dueDate: e.target.value || undefined })} className={fieldCls} />
+            <input type="date" aria-label="Fecha" value={task.dueDate ?? ''} onChange={(e) => set({ dueDate: e.target.value || undefined })} className={fieldCls} />
           </Row>
           <Row
             icon={<Clock size={16} strokeWidth={2.4} />}
@@ -278,7 +282,7 @@ function TaskDetail({ task }: { task: Task }) {
             value={task.dueTime}
             onClear={task.dueTime ? () => set({ dueTime: undefined }) : undefined}
           >
-            <input
+            <input aria-label="Hora"
               type="time"
               value={task.dueTime ?? ''}
               onChange={(e) => set({ dueTime: e.target.value || undefined, dueDate: task.dueDate ?? t })}
@@ -287,7 +291,7 @@ function TaskDetail({ task }: { task: Task }) {
           </Row>
           <EstimateRow value={task.estimate} onChange={(estimate) => set({ estimate })} />
           <Row icon={<Repeat size={16} strokeWidth={2.4} />} color="var(--c-gray)" label="Repetir" value={task.recurrence ? recurrenceLabel(task.recurrence) : undefined}>
-            <select value={kind} onChange={(e) => setRepeat(e.target.value as RepeatKind)} className={cx(fieldCls, 'appearance-none pr-3')}>
+            <select aria-label="Repetir" value={kind} onChange={(e) => setRepeat(e.target.value as RepeatKind)} className={cx(fieldCls, 'appearance-none pr-3')}>
               <option value="none">No se repite</option>
               <option value="day">Cada día</option>
               <option value="weekdays">Días laborables</option>
@@ -327,7 +331,7 @@ function TaskDetail({ task }: { task: Task }) {
               label="Insistir hasta que lo haga"
               value={task.nag ? `Repite el aviso ${nagLabel(task.nag)} (hasta 12 veces)` : undefined}
             >
-              <select value={task.nag ?? 0} onChange={(e) => set({ nag: Number(e.target.value) || undefined })} className={cx(fieldCls, 'appearance-none pr-3')}>
+              <select aria-label="Insistir" value={task.nag ?? 0} onChange={(e) => set({ nag: Number(e.target.value) || undefined })} className={cx(fieldCls, 'appearance-none pr-3')}>
                 <option value={0}>No insistir</option>
                 {NAG_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -358,7 +362,7 @@ function TaskDetail({ task }: { task: Task }) {
             />
           </Row>
           <Row icon={<Folder size={15} strokeWidth={2.4} />} color="var(--c-indigo)" label="Lista" value={where ?? 'Bandeja de entrada'}>
-            <select
+            <select aria-label="Lista"
               value={assignValue}
               onChange={(e) => {
                 const v = e.target.value
@@ -477,7 +481,7 @@ function TaskDetail({ task }: { task: Task }) {
           </div>
           <SubtaskRows task={task} />
           <div className="flex items-center gap-3 py-2 pr-3 pl-[58px]">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-fill text-white">
               <Plus size={13} strokeWidth={3} />
             </span>
             <input
@@ -520,10 +524,11 @@ function RecurrenceEditor({ value, onChange }: { value: Recurrence; onChange: (r
           min={1}
           max={99}
           value={value.interval}
+          aria-label="Cada cuántas"
           onChange={(e) => onChange({ ...value, interval: Math.max(1, Number(e.target.value) || 1) })}
           className="font-num h-8 w-14 rounded-full bg-fill text-center text-fg"
         />
-        <select
+        <select aria-label="Unidad de la repetición"
           value={value.freq}
           onChange={(e) => {
             const freq = e.target.value as Recurrence['freq']
@@ -550,7 +555,7 @@ function RecurrenceEditor({ value, onChange }: { value: Recurrence; onChange: (r
                   const next = on ? cur.filter((x) => x !== d) : [...cur, d]
                   onChange({ ...value, weekdays: next.length ? next : undefined })
                 }}
-                className={cx('h-8 w-8 rounded-full text-[13px] font-semibold transition-all active:scale-90', on ? 'bg-accent text-white' : 'bg-fill text-muted hover:text-fg')}
+                className={cx('h-8 w-8 rounded-full text-[13px] font-semibold transition-all active:scale-90', on ? 'bg-accent-fill text-white' : 'bg-fill text-muted hover:text-fg')}
               >
                 {WEEKDAYS_SHORT[d]}
               </button>
@@ -580,7 +585,7 @@ function EstimateRow({ value, onChange }: { value?: number; onChange: (v: number
       onClear={value ? () => onChange(undefined) : undefined}
     >
       {quick.map((m) => (
-        <Pill key={m} active={value === m} onClick={() => onChange(m)} color="var(--c-text)">
+        <Pill key={m} active={value === m} onClick={() => onChange(m)} tone="strong">
           {durationLabel(m)}
         </Pill>
       ))}
@@ -618,7 +623,7 @@ function ReminderRow({ task, onChange }: { task: Task; onChange: (r: Reminder | 
             : undefined
       }
     >
-      <select
+      <select aria-label="Aviso"
         value={value}
         onChange={(e) => {
           const v = e.target.value
