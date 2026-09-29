@@ -7,7 +7,7 @@ import { PageHeader, Section, cx } from '@/components/ui'
 import { useDropOver } from '@/components/dayDrag'
 import type { Task } from '@/db/types'
 import { Page } from './Page'
-import { SelectButton } from '@/features/select/SelectionBar'
+import { SelectButton } from '@/features/select/SelectButton'
 
 export function UpcomingView() {
   const tasks = useOpenTasks()

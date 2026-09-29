@@ -16,7 +16,7 @@ import { Page } from '../Page'
 import { ProjectForm } from './ProjectForm'
 import { toastTrashed } from '../trash/undo'
 import { templateFromProject } from '@/lib/templates'
-import { SelectButton } from '@/features/select/SelectionBar'
+import { SelectButton } from '@/features/select/SelectButton'
 
 export function ProjectView({ id }: { id: string }) {
   const project = useLiveQuery(() => db.projects.get(id), [id])

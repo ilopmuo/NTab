@@ -12,7 +12,7 @@ import { Page } from '../Page'
 import { ProjectCard } from '../projects/ProjectCard'
 import { ProjectForm } from '../projects/ProjectForm'
 import { AreaForm } from './AreaForm'
-import { SelectButton } from '@/features/select/SelectionBar'
+import { SelectButton } from '@/features/select/SelectButton'
 
 export function AreaView({ id }: { id: string }) {
   const area = useLiveQuery(() => db.areas.get(id), [id])

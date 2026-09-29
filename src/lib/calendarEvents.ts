@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { supabase } from '@/sync/supabase'
+import { getSupabase } from '@/sync/client'
 import { useSync } from '@/sync/service'
 import type { CalEvent } from '../../supabase/functions/events/expand.ts'
 import { addDaysYmd, ymd } from './dates'
@@ -48,7 +48,7 @@ async function fetchRange(from: string, to: string) {
   const key = `${from}|${to}`
   if (inflight.has(key)) return inflight.get(key)
   const p = (async () => {
-    const { data, error } = await supabase.functions.invoke<Omit<RangeData, 'at'>>('events', { body: { from, to } })
+    const { data, error } = await (await getSupabase()).functions.invoke<Omit<RangeData, 'at'>>('events', { body: { from, to } })
     if (error || !data) return
     ranges.set(key, { ...data, at: Date.now() })
     emit()

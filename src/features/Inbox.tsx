@@ -8,7 +8,7 @@ import { SectionIcon, section } from '@/app/sections'
 import { TaskList } from '@/components/TaskList'
 import { Button, Empty, PageHeader } from '@/components/ui'
 import { Page } from './Page'
-import { SelectButton } from '@/features/select/SelectionBar'
+import { SelectButton } from '@/features/select/SelectButton'
 import { InboxProcess } from './InboxProcess'
 
 export function InboxView() {

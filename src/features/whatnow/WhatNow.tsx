@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Check, Play, Shuffle, Sparkles } from 'lucide-react'
 import { useOpenTasks } from '@/db/hooks'
@@ -11,21 +11,7 @@ import { focus } from '@/features/focus/focus'
 import { completeWithFeedback } from '@/components/TaskItem'
 import { Button, Modal, ModalHeader, Segmented, cx, softSpring } from '@/components/ui'
 
-// ── Abrir/cerrar ──────────────────────────────────────────────
-let open = false
-const listeners = new Set<() => void>()
-export const whatNow = {
-  open: () => ((open = true), listeners.forEach((l) => l())),
-  close: () => ((open = false), listeners.forEach((l) => l())),
-}
-const useOpen = () =>
-  useSyncExternalStore(
-    (l) => {
-      listeners.add(l)
-      return () => listeners.delete(l)
-    },
-    () => open,
-  )
+import { whatNow, useWhatNowOpen as useOpen } from './store'
 
 const TIMES = [15, 30, 60, 120]
 

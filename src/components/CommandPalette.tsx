@@ -1,7 +1,7 @@
 import { Command, defaultFilter } from 'cmdk'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { runner } from '@/features/routines/useRoutines'
-import { whatNow } from '@/features/whatnow/WhatNow'
+import { whatNow } from '@/features/whatnow/store'
 import { markDone } from '@/features/trackers/markDone'
 import { sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'

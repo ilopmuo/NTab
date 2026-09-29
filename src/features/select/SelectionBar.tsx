@@ -1,36 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { CalendarDays, Check, CheckSquare, Flag, Folder, ListChecks, Sun, Sunrise, Trash2, X } from 'lucide-react'
+import { CalendarDays, Check, CheckSquare, Flag, Folder, Sun, Sunrise, Trash2, X } from 'lucide-react'
 import { completeTasks, deleteTask, mutateTasks, restoreTasks } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import type { Priority, Task } from '@/db/types'
 import { restoreFromTrash, trashKey } from '@/db/trash'
 import { addDaysYmd, dateLabel, today } from '@/lib/dates'
-import { useRoute } from '@/app/router'
 import { toast } from '@/app/store'
 import { cx, softSpring } from '@/components/ui'
-import { selection, useSelecting, useSelection, visibleTaskIds } from './selection'
-
-/** Botón «Seleccionar» para las cabeceras de las listas */
-export function SelectButton({ small }: { small?: boolean }) {
-  const active = useSelecting()
-  return (
-    <button
-      type="button"
-      aria-label={active ? 'Terminar de seleccionar' : 'Seleccionar tareas'}
-      onClick={() => (active ? selection.clear() : selection.start())}
-      className={cx(
-        'flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold transition-all active:scale-95',
-        // En el móvil, solo el icono para no apretar el título
-        small ? 'h-8 px-3 text-[13px]' : 'h-9 px-3.5 text-[14px] max-sm:w-9 max-sm:px-0',
-        active ? 'bg-accent text-white' : 'bg-fill text-fg hover:bg-press',
-      )}
-    >
-      {!small && (active ? <Check size={17} strokeWidth={2.6} className="sm:hidden" /> : <ListChecks size={17} strokeWidth={2.3} className="sm:hidden" />)}
-      <span className={cx(!small && 'max-sm:hidden')}>{active ? 'Listo' : 'Seleccionar'}</span>
-    </button>
-  )
-}
+import { selection, useSelection, visibleTaskIds } from './selection'
 
 const plural = (n: number) => `${n} ${n === 1 ? 'tarea' : 'tareas'}`
 
@@ -38,14 +16,11 @@ const plural = (n: number) => `${n} ${n === 1 ? 'tarea' : 'tareas'}`
 export function SelectionBar() {
   const { active, ids } = useSelection()
   const { areas, projects, area } = useLookup()
-  const { path } = useRoute()
   const dateRef = useRef<HTMLInputElement>(null)
   const list = [...ids]
   const n = list.length
   const t = today()
 
-  // Al cambiar de pantalla se sale de la selección
-  useEffect(() => void selection.clear(), [path])
 
   const change = async (fn: (x: Task) => void, message: string) => {
     if (!n) return

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CalendarPlus, CalendarSync, Copy, RefreshCw } from 'lucide-react'
-import { SUPABASE_URL } from '@/sync/supabase'
+import { SUPABASE_URL } from '@/sync/config'
 import { LinkRow, LinkSection } from './LinkSection'
 import { copyText, deviceTz, useSecretLink } from './secretLink'
 import { GoogleCalendarSheet } from './GoogleCalendarSheet'

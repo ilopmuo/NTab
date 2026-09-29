@@ -4,7 +4,7 @@ import { rawDb } from '@/db/db'
 import { seedIfEmpty } from '@/db/seed'
 import { toast } from '@/app/store'
 import { SyncEngine } from './engine'
-import { SupabaseRemote, supabase } from './supabase'
+import { getSupabase, loadSupabase } from './client'
 import { onLocalChange } from './tracking'
 import { disablePush, isPushEnabledHere } from '@/reminders/push'
 
@@ -129,6 +129,9 @@ export async function syncNow() {
 }
 
 async function start(session: Session) {
+  // Ya está cargado (la sesión viene de él): se espera antes de comprobar nada
+  // para que dos llamadas seguidas no creen dos motores
+  const { supabase, SupabaseRemote } = await loadSupabase()
   const user = { id: session.user.id, email: session.user.email ?? '' }
   if (engine && status.user?.id === user.id) return
   stop()
@@ -191,7 +194,7 @@ export function initSync() {
     .then((r) => (r?.value as string | undefined) ?? null)
     .catch(() => null)
   void known.then((knownEmail) => set({ knownEmail }))
-  supabase.auth.onAuthStateChange((event, session) => {
+  void getSupabase().then((supabase) => supabase.auth.onAuthStateChange((event, session) => {
     // No se puede llamar a Supabase dentro de este callback: se difiere
     setTimeout(async () => {
       if (event === 'PASSWORD_RECOVERY') set({ recovery: true })
@@ -204,7 +207,7 @@ export function initSync() {
       }
       if (event === 'SIGNED_IN') cleanAuthHash()
     }, 0)
-  })
+  }))
 }
 
 const MESSAGES: [RegExp, string][] = [
@@ -224,24 +227,24 @@ export function authErrorMessage(e: unknown) {
 const redirectTo = () => `${window.location.origin}${window.location.pathname}`
 
 export async function signIn(email: string, password: string) {
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { error } = await (await getSupabase()).auth.signInWithPassword({ email, password })
   if (error) throw error
 }
 
 /** Devuelve true si hay que confirmar el email antes de poder entrar */
 export async function signUp(email: string, password: string): Promise<boolean> {
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo() } })
+  const { data, error } = await (await getSupabase()).auth.signUp({ email, password, options: { emailRedirectTo: redirectTo() } })
   if (error) throw error
   return !data.session
 }
 
 export async function sendPasswordReset(email: string) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectTo() })
+  const { error } = await (await getSupabase()).auth.resetPasswordForEmail(email, { redirectTo: redirectTo() })
   if (error) throw error
 }
 
 export async function updatePassword(password: string) {
-  const { error } = await supabase.auth.updateUser({ password })
+  const { error } = await (await getSupabase()).auth.updateUser({ password })
   if (error) throw error
   set({ recovery: false })
 }
@@ -254,6 +257,7 @@ export async function signOut() {
   const pending = engine ? await engine.pendingCount() : 0
   if (pending && !window.confirm(`Hay ${pending} cambios sin subir que se perderán. ¿Cerrar sesión igualmente?`)) return
   if (!pending && !window.confirm('¿Cerrar sesión? Tus datos seguirán en tu cuenta, pero se borrarán de este dispositivo.')) return
+  const { supabase, SupabaseRemote } = await loadSupabase()
   const local = new SyncEngine(rawDb, new SupabaseRemote(''))
   // Dejar de recibir avisos en este dispositivo
   try {

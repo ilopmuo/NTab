@@ -1,5 +1,5 @@
 import { Copy, ExternalLink, RefreshCw, Sparkles } from 'lucide-react'
-import { SUPABASE_URL } from '@/sync/supabase'
+import { SUPABASE_URL } from '@/sync/config'
 import { LinkRow, LinkSection } from './LinkSection'
 import { copyText, deviceTz, useSecretLink } from './secretLink'
 

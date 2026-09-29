@@ -1,4 +1,4 @@
-import { supabase } from '@/sync/supabase'
+import { getSupabase } from '@/sync/client'
 
 /**
  * Notificaciones push (con la app cerrada). El dispositivo se suscribe con la
@@ -125,6 +125,7 @@ export async function enablePush(userId: string): Promise<PushState> {
       throw new PushError(`No se pudo suscribir este dispositivo: ${e instanceof Error ? e.message : String(e)}`)
     })
   }
+  const supabase = await getSupabase()
   const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
   const { error } = await withTimeout(
     Promise.resolve(
@@ -154,6 +155,7 @@ export async function disablePush(): Promise<PushState> {
   const reg = await withTimeout(navigator.serviceWorker.getRegistration(), 5000, 'No se pudo desactivar (sin respuesta).')
   const sub = await withTimeout(reg?.pushManager.getSubscription() ?? Promise.resolve(null), 5000, 'No se pudo desactivar (sin respuesta).')
   if (sub) {
+    const supabase = await getSupabase()
     await withTimeout(Promise.resolve(supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)), 10_000, 'Sin respuesta del servidor.').catch(() => {})
     await sub.unsubscribe().catch(() => false)
   }
@@ -166,6 +168,7 @@ export async function disablePush(): Promise<PushState> {
  * Devuelve a cuántos dispositivos se envió.
  */
 export async function testNotification(delaySeconds = 5): Promise<number> {
+  const supabase = await getSupabase()
   const { data, error } = await withTimeout(
     supabase.functions.invoke<{ sent?: number; error?: string }>('send-reminders', { body: { test: true, delay: delaySeconds } }),
     30_000,

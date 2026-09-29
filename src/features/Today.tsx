@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
 import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
-import { whatNow } from './whatnow/WhatNow'
+import { whatNow } from './whatnow/store'
 import { DayComplete } from '@/components/Celebrate'
 import { db } from '@/db/db'
 import { updateTask } from '@/db/actions'
@@ -29,7 +29,7 @@ import { PaymentsCard } from './today/PaymentsCard'
 import { PeopleCard } from './today/PeopleCard'
 import { WeekStrip } from './today/WeekStrip'
 import { Page } from './Page'
-import { SelectButton } from '@/features/select/SelectionBar'
+import { SelectButton } from '@/features/select/SelectButton'
 
 const PARTS = [
   { id: 'morning', title: 'Por la mañana', test: (t?: string) => !!t && t < '12:00' },
