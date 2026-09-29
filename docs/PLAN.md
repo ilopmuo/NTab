@@ -149,6 +149,7 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 15 — Sin fricción** · Apuntar con Siri sin abrir la app (tareas, compra y gastos, con el mismo lenguaje natural en el servidor), hábitos con cantidad y «N veces por semana», orden a mano propio de cada lista, subtareas arrastrables, tests end-to-end con Playwright y CI con límite de tamaño.
 - ✅ **Fase 14 — A tu manera** · Arranque más ligero (Supabase y paneles bajo demanda, librerías en trozos propios), barra lateral y pestañas del móvil personalizables, orden manual arrastrando en Bandeja, proyectos, áreas y Hoy, y mover o estirar tareas en «Hora a hora».
 - ✅ **Fase 13 — Todo bajo control** · «¿Qué hago ahora?» según el tiempo y la energía, gastos con presupuesto mensual, menú semanal con recetas que llenan la compra, cuentas atrás y Hoy personalizable; todo también desde Claude.
 - ✅ **Fase 12 — Tu día a día** · Lista de la compra por pasillos (escrita o dictada, «lo de siempre»), «Última vez» con aviso cuando toca y diario con ánimo, tres cosas buenas y lo hecho del día; todo también desde Claude.

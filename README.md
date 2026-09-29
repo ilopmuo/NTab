@@ -14,7 +14,7 @@
 | **Próximo** y **Calendario** | Vista de dos semanas, mes y semana; doble clic en un día para añadir |
 | **Áreas y proyectos** | Trabajo, Salud, Finanzas… con proyectos, progreso y fecha límite |
 | **Tareas completas** | Prioridad, fecha, hora, repetición, subtareas, etiquetas y notas |
-| **Hábitos** | Seguimiento diario, rachas 🔥 y mapa de calor de 18 semanas |
+| **Hábitos** | Seguimiento diario, rachas 🔥 y mapa de calor de 18 semanas. Con cantidad («8 vasos de agua», con botón +1) o «3 veces por semana», el día que quieras |
 | **Notas** | Autoguardado; las líneas `- [ ] algo` se convierten en tareas con un clic |
 | **Personas** (mini-CRM) | Cumpleaños, historial de contactos y aviso de "hace mucho que no hablas con…" |
 | **Revisión semanal** | Asistente de 6 pasos para vaciar la cabeza y planificar la semana |
@@ -43,7 +43,8 @@
 | **Cuenta atrás** | Días que faltan para lo que esperas, en Hoy |
 | **Personalizar Hoy** | Elige qué tarjetas ves en Hoy y en qué orden |
 | **Hora a hora** | En «Planifica tu día», el día con reuniones y tareas; «Colocar en huecos» da hora a lo que no la tiene, entre reuniones y lo importante primero. Arrastra un bloque para cambiarle la hora o tira de su borde para cambiar la duración (avisa si choca con una reunión) |
-| **Orden a mano** | Bandeja, proyectos, áreas y Hoy pueden pasar de orden automático a manual: arrastra el asa de cada tarea (o ↑/↓) |
+| **Orden a mano** | Bandeja, proyectos, áreas y Hoy pueden pasar de orden automático a manual: arrastra el asa de cada tarea (o ↑/↓). Cada lista tiene su orden, y las subtareas también se arrastran |
+| **Siri** | «Oye Siri, apunta en NTab»: dictas «llamar al dentista mañana a las 10», «compra: leche y pan» o «gasto 12 café» y se apunta sin abrir la app (un atajo del iPhone, en Ajustes → Siri) |
 | **Navegación a tu medida** | Elige qué secciones van en la cuadrícula de la barra lateral, cuáles en la lista y cuáles ocultas, y las cuatro pestañas del móvil |
 | **Procesar la bandeja** | Una tarea cada vez, como un mazo de cartas: hoy, mañana, otro día, a una lista, hecha, borrar o luego |
 | **Dictado** | Botón de micrófono en la captura rápida: dices la tarea y se entiende igual que escrita |
@@ -127,7 +128,8 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
   - rutinas a su hora si no están hechas (`due_routine_reminders`);
   - cosas: reclamar o devolver un préstamo y lo que caduca (`due_reminders` incluye la tabla `things`);
   - «Última vez» cuando vuelve a tocar (`due_reminders` incluye `trackers`);
-  - el diario por la noche si aún no se ha escrito (`due_journal_reminders`, hora en `settings/journalReminder`).
+  - el diario por la noche si aún no se ha escrito (`due_journal_reminders`, hora en `settings/journalReminder`);
+  - hábitos a su hora si hoy no se ha llegado al objetivo y, en los de «N veces por semana», si la semana aún no está cumplida (`due_habit_reminders`).
 - En el iPhone hacen falta iOS 16.4 o posterior y la app añadida a la pantalla de inicio. Se activan en **Ajustes → Avisos**.
 - Configuración única en Supabase: el secreto `VAPID_PRIVATE_KEY` de la Edge Function (la clave pública está en `src/reminders/push.ts`).
 
@@ -136,6 +138,8 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 - **Conector para Claude** (`supabase/functions/mcp`): servidor MCP por HTTP. Cada usuario tiene una URL privada (`mcp_connectors.token`) que se crea en Ajustes → Claude y se añade en Claude → Ajustes → Conectores → Añadir conector personalizado. Se usa con la suscripción de Claude, sin claves de API.
   - Herramientas: `ver_resumen`, `ver_eventos`, `buscar_tareas`, `crear_tareas`, `actualizar_tareas`, `crear_nota`, `marcar_habito`, `crear_proyecto`, `donde_esta`, `guardar_cosa`, `marcar_devuelto`, `ver_compra`, `anadir_compra`, `ultima_vez`, `lo_he_hecho`, `ver_diario`, `escribir_diario`, `apuntar_gasto`, `ver_gastos`, `ver_menu`, `planificar_menu`, `crear_receta`, `cuenta_atras`, `que_hago`, `crear_rutina`, `actualizar_objetivo`, `registrar_contacto`, `marcar_pago`, `ver_plantillas` y `usar_plantilla`.
   - Escribe en `records` con el mismo formato que la app (avisos automáticos y tareas que se repiten incluidos), así que los cambios llegan a los dispositivos por la sincronización en tiempo real.
+  - **Captura con Siri**: la misma URL + `/capturar` (POST con el texto: JSON `{ "texto": … }`, formulario, texto plano o `?texto=`) lo entiende como la captura rápida y responde una frase en texto plano, que Siri lee. `compra: …` va a la lista de la compra y `gasto …` a gastos. El atajo se explica en Ajustes → Siri.
+  - El lenguaje natural (`supabase/functions/_shared/parse.ts`) y los hábitos (`_shared/habits.ts`) son el mismo código en la app y en el servidor, sin dependencias.
 - **Calendario** (`supabase/functions/calendar`): enlace privado por usuario (`calendar_feeds.token`) que sirve un `.ics` con tareas con fecha, pagos y cumpleaños. Se crea y se cambia en Ajustes → Calendario.
   - Google Calendar tarda horas en refrescar los calendarios suscritos. Para tenerlo al día (también lo que se borra), Ajustes → Calendario → Google Calendar da un script de Google Apps Script (`src/features/settings/googleScript.ts`). Se pega en script.google.com y cada 5 minutos lee `?format=json` y crea, cambia o borra los eventos del calendario «NTab».
 - **Tus calendarios** (`supabase/functions/events`): la tabla `calendar_sources` guarda las direcciones .ics privadas de cada usuario (RLS). La Edge Function las lee en el servidor (el navegador no puede por CORS), expande repeticiones, excepciones y zonas horarias con `ical.js` y devuelve los eventos del rango pedido. La app los guarda 10 minutos y conserva una copia para verlos sin conexión. El conector de Claude los usa en `ver_resumen` (próximos 7 días y carga de hoy) y `ver_eventos`.
@@ -148,8 +152,14 @@ npm install
 npm run dev        # servidor de desarrollo
 npm test           # tests (lenguaje natural, repeticiones, rachas, sincronización, avisos, pagos, calendario, conector de Claude)
 npm run build      # typecheck + build de producción en dist/
+npm run size       # JS de arranque (gzip) frente a su límite, tras el build
+npm run e2e        # tests end-to-end con Playwright (compila y sirve el build)
 npm run preview    # sirve el build
 ```
+
+**Tests end-to-end** (`e2e/*.e2e.ts`, Playwright): recorren la app de verdad en Chromium, sin red (Supabase cortado, modo sin cuenta). Si el navegador no está instalado: `npx playwright install chromium`.
+
+**CI** (`.github/workflows/ci.yml`), en cada PR y en `main`: tipos, tests, build, límite de tamaño del arranque (`scripts/check-size.mjs`, 240 KB gzip), los e2e y `deno check` de las Edge Functions.
 
 **Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Motion · Dexie (IndexedDB) · Supabase · date-fns · lucide · cmdk · vite-plugin-pwa · Vitest.
 
