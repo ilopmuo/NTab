@@ -12,6 +12,8 @@ export interface UIState {
   paletteOpen: boolean
   helpOpen: boolean
   sidebarOpen: boolean
+  /** editor de la barra lateral o de las pestañas del móvil */
+  navEditor: 'sidebar' | 'tabs' | null
   /** abre el formulario de creación de la vista correspondiente */
   creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | 'template' | 'routine' | 'thing' | 'tracker' | 'shopping' | null
   toast: { id: number; message: string; actions: ToastAction[]; icon: 'check' | 'bell'; onClick?: () => void; duration: number } | null
@@ -23,6 +25,7 @@ let state: UIState = {
   paletteOpen: false,
   helpOpen: false,
   sidebarOpen: false,
+  navEditor: null,
   creating: null,
   toast: null,
 }
@@ -56,6 +59,7 @@ export const ui = {
   palette: (open = true) => setUI({ paletteOpen: open }),
   help: (open = true) => setUI({ helpOpen: open }),
   sidebar: (open: boolean) => setUI({ sidebarOpen: open }),
+  navEditor: (mode: UIState['navEditor']) => setUI({ navEditor: mode, sidebarOpen: false, paletteOpen: false }),
   create: (what: UIState['creating']) => setUI({ creating: what, paletteOpen: false }),
 }
 

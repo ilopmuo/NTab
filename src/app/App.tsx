@@ -65,8 +65,9 @@ const panels = {
   WhatNow: () => import('@/features/whatnow/WhatNow').then((m) => ({ default: m.WhatNow })),
   SelectionBar: () => import('@/features/select/SelectionBar').then((m) => ({ default: m.SelectionBar })),
   AuthScreen: () => import('@/features/auth/AuthScreen').then((m) => ({ default: m.AuthScreen })),
+  NavEditor: () => import('./NavEditor').then((m) => ({ default: m.NavEditor })),
 }
-const TaskDetailPanel = lazy(panels.TaskDetailPanel), CommandPalette = lazy(panels.CommandPalette), ShortcutsHelp = lazy(panels.ShortcutsHelp), RecoveryModal = lazy(panels.RecoveryModal), FocusMode = lazy(panels.FocusMode), RoutineRunner = lazy(panels.RoutineRunner), WhatNow = lazy(panels.WhatNow), SelectionBar = lazy(panels.SelectionBar), AuthScreen = lazy(panels.AuthScreen)
+const TaskDetailPanel = lazy(panels.TaskDetailPanel), CommandPalette = lazy(panels.CommandPalette), ShortcutsHelp = lazy(panels.ShortcutsHelp), RecoveryModal = lazy(panels.RecoveryModal), FocusMode = lazy(panels.FocusMode), RoutineRunner = lazy(panels.RoutineRunner), WhatNow = lazy(panels.WhatNow), SelectionBar = lazy(panels.SelectionBar), AuthScreen = lazy(panels.AuthScreen), NavEditor = lazy(panels.NavEditor)
 
 /** Monta su contenido la primera vez que `when` es cierto y lo deja montado (para que se anime al cerrar) */
 function Deferred({ when, children }: { when: boolean; children: ReactNode }) {
@@ -283,6 +284,7 @@ function Panels() {
   const task = useUI((s) => !!s.selectedTaskId)
   const palette = useUI((s) => s.paletteOpen)
   const help = useUI((s) => s.helpOpen)
+  const navEditor = useUI((s) => !!s.navEditor)
   const { recovery } = useSync()
   const focusing = !!useFocus()
   const routine = !!useRunner()
@@ -316,6 +318,9 @@ function Panels() {
       </Deferred>
       <Deferred when={selecting}>
         <SelectionBar />
+      </Deferred>
+      <Deferred when={navEditor}>
+        <NavEditor />
       </Deferred>
     </>
   )

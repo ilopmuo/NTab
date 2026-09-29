@@ -25,7 +25,10 @@ import {
   Sunrise,
   MonitorSmartphone,
   Volume2,
- SlidersHorizontal} from 'lucide-react'
+  SlidersHorizontal,
+  PanelLeft,
+  Smartphone,
+} from 'lucide-react'
 import { openAuth, signOut, syncNow, useSync } from '@/sync/service'
 import { syncLabel } from '@/sync/SyncBadge'
 import type { Area } from '@/db/types'
@@ -389,6 +392,26 @@ export function SettingsView() {
           label="Personalizar Hoy"
           detail="Qué tarjetas ves y en qué orden"
           onClick={() => setTodayCards(true)}
+        />
+        <Row
+          glyph={
+            <Glyph c="blue">
+              <PanelLeft size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Barra lateral"
+          detail="Qué secciones ves, dónde y en qué orden"
+          onClick={() => ui.navEditor('sidebar')}
+        />
+        <Row
+          glyph={
+            <Glyph c="blue">
+              <Smartphone size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Pestañas del móvil"
+          detail="Las cuatro de la barra inferior"
+          onClick={() => ui.navEditor('tabs')}
         />
       </Block>
       <TodayCardsEditor open={todayCards} onClose={() => setTodayCards(false)} />
