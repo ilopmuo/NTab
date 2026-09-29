@@ -266,3 +266,78 @@ describe('parseQuickAdd compartido con el servidor', () => {
     expect(p('Correr cada lunes y jueves').dueDate).toBe('2026-09-24')
   })
 })
+
+describe('horas como se dicen', () => {
+  it('y media, y cuarto, menos cuarto y minutos', () => {
+    expect(p('Llamar a Ana a las 5 y media')).toMatchObject({ title: 'Llamar a Ana', dueTime: '17:30' })
+    expect(p('Reunión a las 9 y cuarto')).toMatchObject({ title: 'Reunión', dueTime: '09:15' })
+    expect(p('Salir a las 8 menos cuarto')).toMatchObject({ title: 'Salir', dueTime: '07:45' })
+    expect(p('Llamar a las 10 y 20')).toMatchObject({ title: 'Llamar', dueTime: '10:20' })
+    expect(p('Cena a las 9 y media de la noche').dueTime).toBe('21:30')
+  })
+  it('de 1 a 6 sin más es por la tarde', () => {
+    expect(p('Recoger a los niños a las 5').dueTime).toBe('17:00')
+    expect(p('Vuelo a las 5 de la mañana').dueTime).toBe('05:00')
+    expect(p('Despertador 6am').dueTime).toBe('06:00')
+    expect(p('Llamar a las 7').dueTime).toBe('07:00')
+    expect(p('Comer a las 12').dueTime).toBe('12:00')
+  })
+  it('una duración no es una hora', () => {
+    expect(p('Estudiar 2 horas').title).toBe('Estudiar 2 horas')
+    expect(p('Estudiar 2 horas').dueTime).toBeUndefined()
+    expect(p('Correr 3h').dueTime).toBeUndefined()
+    expect(p('Reunión 17h').dueTime).toBe('17:00')
+  })
+})
+
+describe('tiempo relativo', () => {
+  // now = 23/09/2026 09:00
+  it('dentro de un rato', () => {
+    expect(p('Tomar pastilla dentro de 2 horas')).toMatchObject({ title: 'Tomar pastilla', dueDate: '2026-09-23', dueTime: '11:00' })
+    expect(p('Recoger paquete en 30 minutos')).toMatchObject({ title: 'Recoger paquete', dueTime: '09:30' })
+    expect(p('Apagar el horno en media hora').dueTime).toBe('09:30')
+    expect(p('Llamar en una hora').dueTime).toBe('10:00')
+  })
+  it('pasa al día siguiente si hace falta', () => {
+    const late = parseQuickAdd('Sacar la ropa en 3 horas', { ...ctx, now: new Date(2026, 8, 23, 22, 50) })
+    expect(late).toMatchObject({ dueDate: '2026-09-24', dueTime: '01:50' })
+  })
+  it('en el servidor usa la hora del usuario', () => {
+    const r = parseQuickAdd('Llamar en 15 min', { ...ctx, now: new Date(Date.UTC(2026, 8, 23, 7, 0)), today: '2026-09-23', time: '09:00' })
+    expect(r).toMatchObject({ dueDate: '2026-09-23', dueTime: '09:15' })
+  })
+  it('«recuérdame en 20 minutos» avisa a esa hora', () => {
+    expect(p('Recuérdame mirar el horno en 20 minutos')).toMatchObject({ title: 'Mirar el horno', dueTime: '09:20', reminder: { before: 0 } })
+  })
+})
+
+describe('franjas del día y fechas', () => {
+  it('esta tarde, mañana por la mañana, a primera hora', () => {
+    expect(p('Llamar esta tarde')).toMatchObject({ title: 'Llamar', dueDate: '2026-09-23', dueTime: '17:00' })
+    expect(p('Cena esta noche')).toMatchObject({ dueDate: '2026-09-23', dueTime: '21:00' })
+    expect(p('Correr mañana por la mañana')).toMatchObject({ title: 'Correr', dueDate: '2026-09-24', dueTime: '09:00' })
+    expect(p('Llamar al médico mañana a primera hora')).toMatchObject({ title: 'Llamar al médico', dueDate: '2026-09-24', dueTime: '09:00' })
+    expect(p('Revisar el viernes por la tarde')).toMatchObject({ dueDate: '2026-09-25', dueTime: '17:00' })
+  })
+  it('sin fecha, la franja se queda en el título', () => {
+    const r = p('Llamar por la mañana')
+    expect(r.title).toBe('Llamar por la mañana')
+    expect(r.dueDate).toBeUndefined()
+    expect(r.dueTime).toBeUndefined()
+  })
+  it('una lista de días es una repetición semanal', () => {
+    expect(p('Gimnasio lunes, miércoles y viernes')).toMatchObject({ title: 'Gimnasio', dueDate: '2026-09-23', recurrence: { freq: 'week', weekdays: [1, 3, 5] } })
+    expect(p('Inglés martes y jueves a las 19')).toMatchObject({ title: 'Inglés', dueDate: '2026-09-24', dueTime: '19:00', recurrence: { weekdays: [2, 4] } })
+    // Un solo día sigue siendo una fecha
+    expect(p('Dentista el viernes').recurrence).toBeUndefined()
+  })
+  it('a finales de mes y el último día del mes', () => {
+    expect(p('Pagar alquiler a finales de mes')).toMatchObject({ title: 'Pagar alquiler', dueDate: '2026-09-30' })
+    expect(p('Revisar cuentas el último día del mes').dueDate).toBe('2026-09-30')
+  })
+  it('«antes del viernes» no queda en el título', () => {
+    expect(p('Enviar informe antes del viernes')).toMatchObject({ title: 'Enviar informe', dueDate: '2026-09-25' })
+    expect(p('Entregar trabajo para el lunes')).toMatchObject({ title: 'Entregar trabajo', dueDate: '2026-09-28' })
+    expect(p('Hacerlo como antes').title).toBe('Hacerlo como antes')
+  })
+})

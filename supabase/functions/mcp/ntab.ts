@@ -1231,6 +1231,7 @@ export function capture(rows: Row[], raw: string, env: Env): WriteResult {
   const target = (d: Data) => ({ id: String(d.id), name: str(d.name), areaId: d.areaId ? String(d.areaId) : undefined })
   const parsed = parseQuickAdd(text, {
     today,
+    time: hhmmIn(env.now, env.tz),
     projects: ix.projects.filter((p) => p.status !== 'done' && p.status !== 'archived').map(target),
     areas: ix.areas.map(target),
     people: ix.people.map(target),

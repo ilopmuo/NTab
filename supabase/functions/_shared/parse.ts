@@ -30,6 +30,8 @@ export interface ParseContext {
   now?: Date
   /** «hoy» ya calculado en la zona horaria del usuario (el servidor va en UTC) */
   today?: string
+  /** hora local actual 'HH:MM' en la zona del usuario (para «dentro de 2 horas»); por defecto, la de `now` */
+  time?: string
 }
 
 export interface ParsedTask {
@@ -187,7 +189,10 @@ export function matchTarget<T extends ParseTarget>(query: string, list: T[]): T 
  * "Llamar al dentista mañana a las 10 !alta #salud +Personal"
  */
 export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
-  const base = ctx.today ?? localYmd(ctx.now ?? new Date())
+  const nowDate = ctx.now ?? new Date()
+  const base = ctx.today ?? localYmd(nowDate)
+  const [nowH, nowM] = (ctx.time ?? `${pad(nowDate.getHours())}:${pad(nowDate.getMinutes())}`).split(':').map(Number)
+  const nowMin = nowH * 60 + nowM
   let text = ` ${input} `
   const out: ParsedTask = { title: '', priority: 0, tags: [] }
 
@@ -272,6 +277,14 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
       },
     ],
     [
+      // «lunes, miércoles y viernes» (dos o más días, sin «cada»): cada semana esos días
+      new RegExp(`${B}(?:los\\s+)?${WEEKDAY_RE}((?:\\s*(?:,|y)\\s*${WEEKDAY_RE})+)${E}`, 'i'),
+      (m) => {
+        const words = [m[1], ...(m[2].match(new RegExp(WEEKDAY_RE, 'gi')) ?? [])]
+        return { freq: 'week', interval: 1, weekdays: [...new Set(words.map(weekdayIndex))] }
+      },
+    ],
+    [
       new RegExp(`${pre}cada\\s+(\\d+|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|quince)\\s+(d[ií]as|semanas|meses|a[nñ]os)${E}`, 'i'),
       (m) => ({ freq: unitFreq(m[2]), interval: toNumber(m[1]) }),
     ],
@@ -342,26 +355,73 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
   )
 
   // ── Hora ──────────────────────────────────────────────────
-  if (!take(new RegExp(`${B}(?:a\\s+)?(?:al\\s+)?mediod[ií]a${E}`, 'i'), () => void (out.dueTime = '12:00'))) {
+  // «dentro de 2 horas», «en 30 minutos», «en media hora»: fecha y hora desde ahora
+  let relative = false
+  take(
+    new RegExp(`${B}(?:dentro\\s+de|en)\\s+(\\d+|un|una|dos|tres|cuatro|cinco|diez|quince|veinte|treinta|media)\\s*(horas?|h|minutos?|min)${E}`, 'i'),
+    (m) => {
+      const word = normalize(m[1])
+      const unit = normalize(m[2])
+      const n = word === 'media' ? 0.5 : toNumber(m[1])
+      const minutes = Math.round(unit.startsWith('h') ? n * 60 : n)
+      if (!minutes || minutes > 7 * 1440) return false
+      // Redondeado a los 5 minutos siguientes
+      const at = Math.ceil((nowMin + minutes) / 5) * 5
+      out.dueDate = addDays(base, Math.floor(at / 1440))
+      out.dueTime = `${pad(Math.floor((at % 1440) / 60))}:${pad(at % 60)}`
+      relative = true
+    },
+  )
+  // Franja del día sin hora concreta: «a primera hora», «por la tarde» (se aplica si hay fecha)
+  let slot: string | undefined
+  let slotText = ''
+  if (!relative) {
+    take(new RegExp(`${B}(?:a\\s+)?primera\\s+hora(?:\\s+de\\s+la\\s+ma[nñ]ana)?${E}`, 'i'), (m) => {
+      slot = '09:00'
+      slotText = m[0]
+    })
+  }
+  if (!relative && !take(new RegExp(`${B}(?:a\\s+)?(?:al\\s+)?mediod[ií]a${E}`, 'i'), () => void (out.dueTime = '12:00'))) {
     take(
       new RegExp(
-        `${B}(a\\s+las?\\s+)?(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm|a\\.m\\.|p\\.m\\.|h|hrs?|horas)?(?:\\s+(?:de|por)\\s+la\\s+(mañana|manana|tarde|noche|madrugada))?${E}`,
+        `${B}(a\\s+las?\\s+)?(\\d{1,2})(?:[:.](\\d{2}))?(?:\\s+(y\\s+(?:media|cuarto|\\d{1,2})|menos\\s+(?:cuarto|\\d{1,2})))?\\s*(am|pm|a\\.m\\.|p\\.m\\.|h|hrs?|horas)?(?:\\s+(?:de|por)\\s+la\\s+(mañana|manana|tarde|noche|madrugada))?${E}`,
         'i',
       ),
       (m) => {
-        const [, prefix, hh, mm, suffix, period] = m
+        const [, prefix, hh, mm, words, suffix, period] = m
         // Un número suelto no es una hora ("comprar 3 manzanas")
-        if (!prefix && !mm && !suffix && !period) return false
-        let h = Number(hh)
-        const min = mm ? Number(mm) : 0
-        if (h > 23 || min > 59) return false
+        if (!prefix && !mm && !words && !suffix && !period) return false
         const suf = suffix ? normalize(suffix).replace(/\./g, '') : ''
+        let h = Number(hh)
+        // «2 horas», «3h» sin «a las»: es una duración, no una hora (salvo «17h»)
+        if (!prefix && !mm && !words && !period && (suf.startsWith('hora') || (suf.startsWith('h') && h < 7))) return false
+        let min = mm ? Number(mm) : 0
+        if (words) {
+          const w = normalize(words).replace(/\s+/g, ' ')
+          const n = (x: string) => (x === 'media' ? 30 : x === 'cuarto' ? 15 : Number(x))
+          if (w.startsWith('y ')) min = n(w.slice(2))
+          else {
+            min = 60 - n(w.slice(6))
+            h -= 1
+          }
+          if (!(min >= 0 && min <= 59)) return false
+        }
+        if (h > 23 || h < 0 || min > 59) return false
         const per = period ? normalize(period) : ''
         if ((suf === 'pm' || per === 'tarde' || per === 'noche') && h < 12) h += 12
         if ((suf === 'am' || per === 'manana' || per === 'madrugada') && h === 12) h = 0
-        out.dueTime = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+        // «a las 5» sin más: por la tarde (nadie apunta tareas a las 5 de la madrugada)
+        if (!suf && !per && h >= 1 && h <= 6) h += 12
+        out.dueTime = `${pad(h)}:${pad(min)}`
       },
     )
+  }
+  if (!relative && !out.dueTime && !slot) {
+    take(new RegExp(`${B}por\\s+la\\s+(ma[nñ]ana|tarde|noche)${E}`, 'i'), (m) => {
+      const w = normalize(m[1])
+      slot = w === 'manana' ? '09:00' : w === 'tarde' ? '17:00' : '21:00'
+      slotText = m[0]
+    })
   }
 
   // ── Fecha ─────────────────────────────────────────────────
@@ -371,7 +431,20 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
   }
   const dateRules: [RegExp, (m: RegExpMatchArray) => boolean | void][] = [
     [new RegExp(`${B}pasado\\s+ma[nñ]ana${E}`, 'i'), () => setDate(addDays(base, 2))],
-    [new RegExp(`${B}(?:hoy|esta\\s+(?:tarde|noche|ma[nñ]ana))${E}`, 'i'), () => setDate(base)],
+    [
+      new RegExp(`${B}esta\\s+(tarde|noche|ma[nñ]ana)${E}`, 'i'),
+      (m) => {
+        const w = normalize(m[1])
+        if (!out.dueTime && !slot) slot = w === 'manana' ? '09:00' : w === 'tarde' ? '17:00' : '21:00'
+        return setDate(base)
+      },
+    ],
+    [new RegExp(`${B}hoy${E}`, 'i'), () => setDate(base)],
+    [
+      // «a finales de mes», «a fin de mes», «el último día del mes»
+      new RegExp(`${B}(?:a\\s+)?(?:finales|final|fin)\\s+de(?:l)?\\s+mes|(?:el\\s+)?[uú]ltimo\\s+d[ií]a\\s+del\\s+mes${E}`, 'i'),
+      () => setDate(addDays(addMonths(`${base.slice(0, 8)}01`, 1), -1)),
+    ],
     [new RegExp(`${B}(?<!la\\s)(?:ma[nñ]ana)${E}`, 'i'), () => setDate(addDays(base, 1))],
     [
       new RegExp(`${B}(?:(?:la\\s+)?(?:pr[oó]xima\\s+semana|semana\\s+que\\s+viene))${E}`, 'i'),
@@ -426,6 +499,11 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
   }
 
   if (out.recurrence && !out.dueDate) out.dueDate = firstOccurrence(base, out.recurrence)
+  // «mañana por la tarde» → 17:00; sin fecha, «por la tarde» no dice qué día y se deja en el título
+  if (slot && !out.dueTime) {
+    if (out.dueDate) out.dueTime = slot
+    else text = `${text.replace(/\s+$/, '')} ${slotText.trim()} `
+  }
   if (out.dueTime && !out.dueDate) out.dueDate = base
 
   out.title = text
@@ -434,6 +512,8 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
     .replace(/^[\s,;:-]+|[\s,;:-]+$/g, '')
     .replace(/\s+(a|el|la|de|para|y|en)$/i, '')
     .trim()
+  // «Enviar informe antes del viernes» → «Enviar informe»
+  if (out.dueDate) out.title = out.title.replace(/\s+(?:antes\s+del?|hasta\s+el|para\s+el|como\s+muy\s+tarde\s+el)$/i, '').trim()
   // Primera letra en mayúscula (p. ej. tras quitar "Recuérdame")
   out.title = out.title.charAt(0).toUpperCase() + out.title.slice(1)
   return out

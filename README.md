@@ -89,13 +89,14 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 | Escribes | Entiende |
 |---|---|
-| `hoy`, `mañana`, `pasado mañana`, `el viernes`, `el 15`, `15/10`, `3 de marzo`, `en 2 semanas`, `la semana que viene` | Fecha |
-| `a las 10`, `17:30`, `9am`, `a las 7 de la tarde`, `al mediodía` | Hora |
+| `hoy`, `mañana`, `pasado mañana`, `el viernes`, `el 15`, `15/10`, `3 de marzo`, `en 2 semanas`, `la semana que viene`, `a finales de mes`, `antes del viernes` | Fecha |
+| `a las 10`, `17:30`, `9am`, `a las 7 de la tarde`, `a las 5 y media`, `a las 8 menos cuarto`, `al mediodía`, `esta tarde`, `mañana a primera hora`, `el viernes por la tarde` | Hora (de 1 a 6 sin más, por la tarde) |
+| `dentro de 2 horas`, `en 30 minutos`, `en media hora` | Fecha y hora desde ahora |
 | `!alta` `!media` `!baja`, `!1` `!2` `!3`, `!!!` | Prioridad |
 | `#etiqueta` | Etiqueta |
 | `+Proyecto` o `+Área` | Dónde va (coincidencia aproximada) |
 | `@Ana` | Persona relacionada |
-| `cada día`, `cada lunes y jueves`, `cada 2 semanas`, `el 1 de cada mes`, `días laborables` | Repetición |
+| `cada día`, `cada lunes y jueves`, `lunes, miércoles y viernes`, `cada 2 semanas`, `el 1 de cada mes`, `días laborables` | Repetición |
 | `avísame`, `recuérdamelo 1 día antes`, `con aviso 30 minutos antes` | Aviso |
 | `cada 3 días desde que la haga` | Repetición contada desde que se completa |
 | `~30m`, `~45 min`, `~2h`, `~1h30`, `~1,5h` | Duración estimada |

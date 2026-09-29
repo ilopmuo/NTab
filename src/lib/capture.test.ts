@@ -52,6 +52,11 @@ describe('captura con Siri', () => {
     expect(r.report[0]).not.toContain('Este mes')
   })
 
+  it('«dentro de 2 horas» cuenta desde la hora del usuario', () => {
+    // 00:30 en Madrid
+    expect(capture(rows, 'Sacar al perro dentro de 2 horas', env()).writes[0].data).toMatchObject({ title: 'Sacar al perro', dueDate: '2026-09-24', dueTime: '02:30' })
+  })
+
   it('texto vacío', () => {
     expect(capture(rows, '   ', env())).toEqual({ writes: [], report: ['No he oído nada que apuntar.'] })
   })
