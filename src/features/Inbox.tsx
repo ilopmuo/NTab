@@ -6,6 +6,7 @@ import { useOpenTasks } from '@/db/hooks'
 import { isInbox } from '@/lib/tasks'
 import { SectionIcon, section } from '@/app/sections'
 import { TaskList } from '@/components/TaskList'
+import { OrderToggle } from '@/components/ManualOrder'
 import { Button, Empty, PageHeader } from '@/components/ui'
 import { Page } from './Page'
 import { SelectButton } from '@/features/select/SelectButton'
@@ -29,12 +30,14 @@ export function InboxView() {
                 <Layers size={16} strokeWidth={2.4} /> Procesar
               </Button>
             )}
+            {inbox.length > 1 && <OrderToggle listKey="inbox" tasks={inbox} iconOnly />}
             <SelectButton />
           </>
         }
       />
       <TaskList
         tasks={inbox}
+        orderKey="inbox"
         add={{ color: 'var(--c-gray)' }}
         empty={<Empty icon={<InboxIcon size={28} strokeWidth={2.2} />} title="Bandeja vacía" hint="Tu cabeza está despejada. Pulsa N para capturar cualquier cosa." />}
       />

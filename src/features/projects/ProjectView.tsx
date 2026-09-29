@@ -11,6 +11,7 @@ import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { AreaBadge } from '@/components/icons'
 import { TaskList } from '@/components/TaskList'
+import { OrderToggle } from '@/components/ManualOrder'
 import { Button, Empty, Group, Modal, ModalHeader, ProgressRing, Section, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectForm } from './ProjectForm'
@@ -120,9 +121,10 @@ export function ProjectView({ id }: { id: string }) {
         </div>
       </header>
 
-      <Section title="Tareas" count={open.length} tone={project.color}>
+      <Section title="Tareas" count={open.length} tone={project.color} action={open.length > 1 ? <OrderToggle listKey={`project:${id}`} tasks={open} /> : undefined}>
         <TaskList
           tasks={open}
+          orderKey={`project:${id}`}
           hideProject
           add={{ defaults: { projectId: id, areaId: project.areaId } }}
           empty={<p className="px-4 pt-3 text-[14px] text-muted">Sin tareas pendientes. ¿Cuál es el siguiente paso?</p>}

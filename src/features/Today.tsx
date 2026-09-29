@@ -12,6 +12,7 @@ import { isScheduled } from '@/lib/habits'
 import { href } from '@/app/router'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
+import { OrderToggle } from '@/components/ManualOrder'
 import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/components/ui'
 import { HabitStrip } from './habits/HabitStrip'
 import { RoutinesCard } from './routines/RoutinesCard'
@@ -231,8 +232,12 @@ export function TodayView() {
                   <TaskList tasks={g.tasks} hideDate />
                 </Section>
               ))}
-              <Section title={timedGroups.length ? 'Sin hora' : 'Hoy'} count={untimed.length}>
-                <TaskList tasks={untimed} hideDate add={{ defaults: { dueDate: t } }} />
+              <Section
+                title={timedGroups.length ? 'Sin hora' : 'Hoy'}
+                count={untimed.length}
+                action={untimed.length > 1 ? <OrderToggle listKey="today" tasks={untimed} /> : undefined}
+              >
+                <TaskList tasks={untimed} hideDate orderKey="today" add={{ defaults: { dueDate: t } }} />
               </Section>
             </>
           )}

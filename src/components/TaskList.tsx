@@ -5,8 +5,9 @@ import type { Task } from '@/db/types'
 import { useLookup } from '@/db/hooks'
 import { createTask } from '@/db/actions'
 import { parseQuickAdd } from '@/lib/parse'
-import { sortTasks } from '@/lib/tasks'
+import { sortManual, sortTasks } from '@/lib/tasks'
 import { TaskItem } from './TaskItem'
+import { ManualRows, useListOrder } from './ManualOrder'
 import { ParsedChips } from './ParsedChips'
 import { Group, cx } from './ui'
 
@@ -27,6 +28,7 @@ export function TaskList({
   empty,
   compact,
   draggable,
+  orderKey,
   className,
 }: {
   tasks: Task[]
@@ -42,29 +44,36 @@ export function TaskList({
   compact?: boolean
   /** filas arrastrables a otro día */
   draggable?: boolean
+  /** lista que se puede ordenar a mano (ver OrderToggle); p. ej. `inbox` o `project:<id>` */
+  orderKey?: string
   className?: string
 }) {
   const lookup = useLookup()
-  const list = useMemo(() => (sort ? [...tasks].sort(sortTasks) : tasks), [tasks, sort])
+  const manual = useListOrder(orderKey)
+  const list = useMemo(() => (manual ? [...tasks].sort(sortManual) : sort ? [...tasks].sort(sortTasks) : tasks), [tasks, sort, manual])
   if (!list.length && !add && !empty) return null
 
   const rows = (
     <>
-      <AnimatePresence initial={true}>
-        {list.map((t, i) => (
-          <motion.div
-            key={t.id}
-            layout="position"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 32, delay: Math.min(i, 12) * 0.03 } }}
-            // Recorta solo al plegarse; si no, las chispas de la casilla saldrían cortadas
-            exit={{ opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
-            className={rowSeparator}
-          >
-            <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} draggable={draggable} />
-          </motion.div>
-        ))}
-      </AnimatePresence>
+      {manual ? (
+        <ManualRows tasks={list} lookup={lookup} rowClass={rowSeparator} hideDate={hideDate} hideProject={hideProject} compact={compact} />
+      ) : (
+        <AnimatePresence initial={true}>
+          {list.map((t, i) => (
+            <motion.div
+              key={t.id}
+              layout="position"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 32, delay: Math.min(i, 12) * 0.03 } }}
+              // Recorta solo al plegarse; si no, las chispas de la casilla saldrían cortadas
+              exit={{ opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
+              className={rowSeparator}
+            >
+              <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} draggable={draggable} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      )}
       {!list.length && empty}
       {add && (
         <div className={cx(list.length > 0 && 'shadow-[inset_0_1px_0_var(--c-border)]')}>
