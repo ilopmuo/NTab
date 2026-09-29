@@ -39,7 +39,7 @@ const LONG_PRESS = 350
 const dayAt = (x: number, y: number) => document.elementFromPoint(x, y)?.closest('[data-drop-day]')?.getAttribute('data-drop-day') ?? null
 
 /** Tras soltar, el clic que genera el navegador no debe abrir la tarea */
-function swallowNextClick() {
+export function swallowNextClick() {
   const stop = (e: Event) => {
     e.stopPropagation()
     e.preventDefault()
