@@ -7,7 +7,7 @@
  * app: mismo formato, avisos automáticos y tareas que se repiten.
  */
 import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, weekday, ymdIn, zonedToUtc } from '../_shared/time.ts'
-import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
+import { expandTemplate, planSections, type TemplateItemLike } from '../_shared/templates.ts'
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { CATEGORIES, categoryFor, money, monthSummary, parseExpense } from '../_shared/expenses.ts'
@@ -32,6 +32,7 @@ export interface Task {
   dueDate?: string
   dueTime?: string
   projectId?: string
+  sectionId?: string
   areaId?: string
   tags: string[]
   people?: string[]
@@ -422,6 +423,7 @@ export interface NewTask {
   prioridad?: number
   notas?: string
   proyecto?: string
+  seccion?: string
   etiquetas?: string[]
   subtareas?: string[]
   personas?: string[]
@@ -458,6 +460,8 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
   const ix = new Index(rows)
   const today = ymdIn(env.now, env.tz)
   const out: WriteResult = { writes: [], report: [] }
+  // Proyectos a los que se les añade alguna sección nueva (se guardan al final)
+  const touched = new Map<string, Data>()
   input.forEach((n, i) => {
     const title = str(n?.titulo).trim()
     if (!title) return
@@ -479,6 +483,12 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
     if (project) {
       task.projectId = String(project.id)
       if (project.areaId) task.areaId = String(project.areaId)
+      if (str(n.seccion).trim()) {
+        const current = touched.get(String(project.id)) ?? project
+        const plan = planSections((current.sections as { id: string; name: string }[] | undefined) ?? [], [str(n.seccion)], env.newId)
+        if (plan.changed) touched.set(String(project.id), { ...current, sections: plan.sections })
+        task.sectionId = plan.idFor(str(n.seccion))
+      }
     }
     const who = ix.resolvePeople(n.personas)
     if (who.ids.length) task.people = who.ids
@@ -496,6 +506,10 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
       `Creada: ${taskLine(task, ix, today).slice(2)}${n.proyecto && !project ? ` (no encontré el proyecto «${n.proyecto}», queda sin proyecto)` : ''}${who.missing.length ? ` (no encontré a: ${who.missing.join(', ')})` : ''}`,
     )
   })
+  for (const p of touched.values()) {
+    const { id, ...data } = p
+    out.writes.push({ tbl: 'projects', id: String(id), data: { ...data, id } })
+  }
   if (!out.report.length) out.report.push('No se creó ninguna tarea (faltaban los títulos).')
   return out
 }
@@ -745,22 +759,30 @@ export function useTemplate(rows: Row[], args: { plantilla?: string; fecha_inici
   let projectId: string | undefined
   let areaId: string | undefined
   let where = ''
+  let project: Data | undefined
   if (args.como === 'proyecto') {
     const name = str(args.proyecto).trim() || str(tpl.name)
-    const project: Data = { id: env.newId(), name, description: '', status: 'active', color: '#0A84FF', order: env.now, createdAt: env.now }
-    writes.push({ tbl: 'projects', id: String(project.id), data: project })
+    project = { id: env.newId(), name, description: '', status: 'active', color: '#0A84FF', order: env.now, createdAt: env.now }
     projectId = String(project.id)
     where = ` en el proyecto nuevo «${name}»`
   } else if (args.proyecto) {
     const p = findByName(ix.projects, args.proyecto)
     if (!p) return { writes: [], report: [`No encontré el proyecto «${args.proyecto}».`] }
+    project = { ...(rows.find((r) => r.tbl === 'projects' && r.id === p.id)?.data ?? p) }
     projectId = String(p.id)
     areaId = p.areaId ? String(p.areaId) : undefined
     where = ` en «${str(p.name)}»`
   }
   const items = (Array.isArray(tpl.items) ? tpl.items : []) as TemplateItemLike[]
+  const expanded = expandTemplate(items, start)
+  // Secciones de la plantilla: se crean en el proyecto (o se reutilizan las que se llamen igual)
+  const plan = planSections((project?.sections as { id: string; name: string }[] | undefined) ?? [], project ? expanded.map((x) => x.section) : [], env.newId)
+  if (project && (plan.changed || args.como === 'proyecto')) {
+    if (plan.sections.length) project.sections = plan.sections
+    writes.push({ tbl: 'projects', id: String(project.id), data: project })
+  }
   const created: Task[] = []
-  expandTemplate(items, start).forEach((x, i) => {
+  expanded.forEach((x, i) => {
     let task: Task = {
       id: env.newId(),
       title: x.title,
@@ -776,6 +798,8 @@ export function useTemplate(rows: Row[], args: { plantilla?: string; fecha_inici
     if (x.dueTime) task.dueTime = x.dueTime
     if (projectId) task.projectId = projectId
     if (areaId) task.areaId = areaId
+    const sectionId = plan.idFor(x.section)
+    if (sectionId) task.sectionId = sectionId
     task = withReminder(task, env)
     created.push(task)
     writes.push({ tbl: 'tasks', id: task.id, data: task as unknown as Data })

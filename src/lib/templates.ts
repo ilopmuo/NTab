@@ -2,7 +2,7 @@ import { db } from '@/db/db'
 import { createProject, createTask } from '@/db/actions'
 import type { Project, Task, Template, TemplateItem } from '@/db/types'
 import { uid } from './id'
-import { expandTemplate, itemsFromTasks } from '../../supabase/functions/_shared/templates.ts'
+import { expandTemplate, itemsFromTasks, planSections } from '../../supabase/functions/_shared/templates.ts'
 
 export { expandTemplate, itemsFromTasks }
 
@@ -23,9 +23,14 @@ export async function applyTemplate(t: Template, opts: ApplyOptions): Promise<{ 
     let project: Project | undefined
     if (opts.asProject) project = await createProject({ name: opts.projectName?.trim() || t.name, areaId: opts.areaId })
     const projectId = project?.id ?? opts.projectId
-    const areaId = project?.areaId ?? (opts.projectId ? (await db.projects.get(opts.projectId))?.areaId : opts.areaId)
+    const target = projectId ? await db.projects.get(projectId) : undefined
+    const areaId = project?.areaId ?? (opts.projectId ? target?.areaId : opts.areaId)
+    const expanded = expandTemplate(t.items, opts.start)
+    // Las secciones de la plantilla se crean en el proyecto (o se reutilizan las que se llamen igual)
+    const plan = planSections(target?.sections ?? [], target ? expanded.map((x) => x.section) : [], uid)
+    if (target && plan.changed) await db.projects.update(target.id, { sections: plan.sections })
     const tasks: Task[] = []
-    for (const [i, x] of expandTemplate(t.items, opts.start).entries()) {
+    for (const [i, x] of expanded.entries()) {
       tasks.push(
         await createTask({
           title: x.title,
@@ -35,6 +40,7 @@ export async function applyTemplate(t: Template, opts: ApplyOptions): Promise<{ 
           subtasks: x.subtasks.map((s) => ({ id: uid(), title: s, done: false })),
           projectId,
           areaId,
+          ...(plan.idFor(x.section) ? { sectionId: plan.idFor(x.section) } : {}),
           order: Date.now() + i,
         }),
       )
@@ -52,7 +58,8 @@ export async function createTemplate(data: Partial<Template> & { name: string; i
 /** Guarda las tareas de un proyecto como plantilla */
 export async function templateFromProject(project: Project): Promise<Template> {
   const tasks = await db.tasks.where('projectId').equals(project.id).toArray()
-  return createTemplate({ name: project.name, items: itemsFromTasks(tasks) as TemplateItem[] })
+  const name = (id?: string) => project.sections?.find((s) => s.id === id)?.name
+  return createTemplate({ name: project.name, items: itemsFromTasks(tasks.map((t) => ({ ...t, section: name(t.sectionId) }))) as TemplateItem[] })
 }
 
 /** Ejemplos para empezar */

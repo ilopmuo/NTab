@@ -238,6 +238,7 @@ export const TaskItem = memo(function TaskItem({
   const checked = !!task.done || completing
   const t = today()
   const project = lookup.project(task.projectId)
+  const section = task.sectionId ? project?.sections?.find((x) => x.id === task.sectionId) : undefined
   const area = lookup.area(task.areaId ?? project?.areaId)
   const subDone = task.subtasks.filter((s) => s.done).length
 
@@ -299,6 +300,8 @@ export const TaskItem = memo(function TaskItem({
       <span key="p" className="inline-flex items-center gap-1.5">
         <span className="h-1.5 w-1.5 rounded-full bg-faint" />
         {project?.name ?? area?.name}
+        {section && <span aria-hidden>›</span>}
+        {section?.name}
       </span>,
     )
   }

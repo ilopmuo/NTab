@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { CheckCircle2, ChevronRight, ClipboardList, FileText, Pause, Pencil, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
+import { CheckCircle2, ChevronRight, ClipboardList, FileText, MoreHorizontal, Pause, Pencil, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import { createNote, deleteProject } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
@@ -11,7 +11,8 @@ import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { AreaBadge } from '@/components/icons'
 import { TaskList } from '@/components/TaskList'
-import { OrderToggle } from '@/components/ManualOrder'
+import { Menu } from '@/components/Menu'
+import { ProjectTasks } from './ProjectTasks'
 import { Button, Empty, Group, Modal, ModalHeader, ProgressRing, Section, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectForm } from './ProjectForm'
@@ -87,49 +88,42 @@ export function ProjectView({ id }: { id: string }) {
           </div>
         </div>
         {project.description && <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted">{project.description}</p>}
-        <div className="mt-4 flex flex-wrap gap-2">
-          {project.status !== 'done' && (
-            <Button size="sm" variant="tinted" onClick={() => setStatus('done')} className="">
-              <CheckCircle2 size={14} strokeWidth={2.4} /> Terminar
-            </Button>
-          )}
-          {project.status === 'active' ? (
-            <Button size="sm" onClick={() => setStatus('paused')}>
-              <Pause size={13} strokeWidth={2.4} /> Pausar
-            </Button>
-          ) : (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {project.status === 'done' || project.status === 'paused' ? (
             <Button size="sm" variant="tinted" onClick={() => setStatus('active')}>
               <Play size={13} strokeWidth={2.4} /> Reactivar
+            </Button>
+          ) : (
+            <Button size="sm" variant="tinted" onClick={() => setStatus('done')}>
+              <CheckCircle2 size={14} strokeWidth={2.4} /> Terminar
             </Button>
           )}
           <Button size="sm" onClick={() => setEditing(true)}>
             <Pencil size={13} strokeWidth={2.4} /> Editar
           </Button>
           <SelectButton small />
-          <Button
-            size="sm"
-            onClick={async () => {
-              await templateFromProject(project)
-              toast('Guardado como plantilla', { label: 'Ver', run: () => navigate('/templates') })
-            }}
-          >
-            <ClipboardList size={13} strokeWidth={2.4} /> Guardar como plantilla
-          </Button>
-          <Button size="sm" variant="danger" onClick={() => setConfirmDelete(true)}>
-            <Trash2 size={13} strokeWidth={2.4} /> Eliminar
-          </Button>
+          <Menu
+            label="Más acciones del proyecto"
+            align="start"
+            trigger={<MoreHorizontal size={16} strokeWidth={2.4} />}
+            items={[
+              project.status === 'active' && { label: 'Pausar', icon: <Pause size={14} />, onSelect: () => void setStatus('paused') },
+              project.status === 'paused' && { label: 'Terminar', icon: <CheckCircle2 size={14} />, onSelect: () => void setStatus('done') },
+              {
+                label: 'Guardar como plantilla',
+                icon: <ClipboardList size={14} />,
+                onSelect: async () => {
+                  await templateFromProject(project)
+                  toast('Guardado como plantilla', { label: 'Ver', run: () => navigate('/templates') })
+                },
+              },
+              { label: 'Eliminar el proyecto', icon: <Trash2 size={14} />, onSelect: () => setConfirmDelete(true), danger: true },
+            ]}
+          />
         </div>
       </header>
 
-      <Section title="Tareas" count={open.length} tone={project.color} action={open.length > 1 ? <OrderToggle listKey={`project:${id}`} tasks={open} /> : undefined}>
-        <TaskList
-          tasks={open}
-          orderKey={`project:${id}`}
-          hideProject
-          add={{ defaults: { projectId: id, areaId: project.areaId } }}
-          empty={<p className="px-4 pt-3 text-[14px] text-muted">Sin tareas pendientes. ¿Cuál es el siguiente paso?</p>}
-        />
-      </Section>
+      <ProjectTasks project={project} open={open} />
 
       {done.length > 0 && (
         <section className="mb-8">

@@ -29,6 +29,12 @@ export interface Area {
 
 export type ProjectStatus = 'active' | 'paused' | 'done'
 
+/** Bloque dentro de un proyecto («Diseño», «Contenido», «Lanzamiento») */
+export interface ProjectSection {
+  id: ID
+  name: string
+}
+
 export interface Project {
   id: ID
   name: string
@@ -39,6 +45,8 @@ export interface Project {
   color: string
   /** objetivo al que contribuye */
   goalId?: ID
+  /** secciones, en su orden; las tareas apuntan a una con `sectionId` */
+  sections?: ProjectSection[]
   order: number
   createdAt: number
 }
@@ -117,6 +125,8 @@ export interface Task {
   /** HH:mm */
   dueTime?: string
   projectId?: ID
+  /** sección dentro de su proyecto (si ya no existe, la tarea va sin sección) */
+  sectionId?: ID
   areaId?: ID
   tags: string[]
   /** personas relacionadas (@Ana): aparecen en su ficha como pendientes */
@@ -394,6 +404,8 @@ export interface TemplateItem {
   time?: string
   priority?: Priority
   subtasks?: string[]
+  /** sección del proyecto, por nombre */
+  section?: string
 }
 
 /** Lista reutilizable: maleta de viaje, cierre de mes… */

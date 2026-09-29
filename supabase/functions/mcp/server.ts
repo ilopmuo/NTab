@@ -90,6 +90,7 @@ export const TOOLS = [
               prioridad: PRIORITY,
               notas: { type: 'string' },
               proyecto: { type: 'string', description: 'Nombre de un proyecto existente' },
+              seccion: { type: 'string', description: 'Sección dentro del proyecto («Diseño»); si no existe, se crea' },
               etiquetas: { type: 'array', items: { type: 'string' } },
               subtareas: { type: 'array', items: { type: 'string' } },
               personas: { type: 'array', items: { type: 'string' }, description: 'Personas relacionadas (por nombre): la tarea aparece en su ficha' },

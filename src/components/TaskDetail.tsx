@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'motion/react'
-import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Subtask, Task } from '@/db/types'
@@ -366,11 +366,12 @@ function TaskDetail({ task }: { task: Task }) {
               value={assignValue}
               onChange={(e) => {
                 const v = e.target.value
-                if (!v) return set({ projectId: undefined, areaId: undefined })
+                // Al cambiar de lista, la sección (de otro proyecto) ya no vale
+                if (!v) return set({ projectId: undefined, areaId: undefined, sectionId: undefined })
                 const [kindKey, id] = [v.slice(0, 1), v.slice(2)]
-                if (kindKey === 'a') return set({ areaId: id, projectId: undefined })
+                if (kindKey === 'a') return set({ areaId: id, projectId: undefined, sectionId: undefined })
                 const p = projects.find((x) => x.id === id)
-                set({ projectId: id, areaId: p?.areaId })
+                set({ projectId: id, areaId: p?.areaId, ...(id !== task.projectId ? { sectionId: undefined } : {}) })
               }}
               className={cx(fieldCls, 'max-w-full appearance-none pr-3')}
             >
@@ -400,6 +401,28 @@ function TaskDetail({ task }: { task: Task }) {
               )}
             </select>
           </Row>
+          {(() => {
+            const sections = project(task.projectId)?.sections ?? []
+            if (!sections.length) return null
+            const current = sections.find((x) => x.id === task.sectionId)
+            return (
+              <Row icon={<Rows3 size={15} strokeWidth={2.4} />} color="var(--c-indigo)" label="Sección" value={current?.name ?? 'Sin sección'}>
+                <select
+                  aria-label="Sección"
+                  value={current?.id ?? ''}
+                  onChange={(e) => set({ sectionId: e.target.value || undefined })}
+                  className={cx(fieldCls, 'max-w-full appearance-none pr-3')}
+                >
+                  <option value="">Sin sección</option>
+                  {sections.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}
+                    </option>
+                  ))}
+                </select>
+              </Row>
+            )
+          })()}
           <Row icon={<AtSign size={15} strokeWidth={2.6} />} color="var(--c-text)" label="Personas">
             {(task.people ?? []).map((id) => {
               const p = person(id)

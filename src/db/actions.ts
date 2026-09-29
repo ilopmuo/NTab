@@ -392,6 +392,44 @@ export async function rollSubscriptions(ref = today()) {
   }
 }
 
+// ── Secciones de proyecto ─────────────────────────────────────
+
+export async function addSection(projectId: string, name: string) {
+  const section = { id: uid(), name: name.trim() }
+  if (!section.name) return undefined
+  await db.projects.where('id').equals(projectId).modify((p) => void (p.sections = [...(p.sections ?? []), section]))
+  return section
+}
+
+export async function renameSection(projectId: string, sectionId: string, name: string) {
+  if (!name.trim()) return
+  await db.projects.where('id').equals(projectId).modify((p) => {
+    p.sections = (p.sections ?? []).map((s) => (s.id === sectionId ? { ...s, name: name.trim() } : s))
+  })
+}
+
+/** Sube (-1) o baja (+1) una sección */
+export async function moveSection(projectId: string, sectionId: string, dir: -1 | 1) {
+  await db.projects.where('id').equals(projectId).modify((p) => {
+    const list = [...(p.sections ?? [])]
+    const i = list.findIndex((s) => s.id === sectionId)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= list.length) return
+    ;[list[i], list[j]] = [list[j], list[i]]
+    p.sections = list
+  })
+}
+
+/** Borra la sección; sus tareas se quedan en el proyecto, sin sección */
+export async function deleteSection(projectId: string, sectionId: string) {
+  await db.transaction('rw', db.projects, db.tasks, async () => {
+    await db.projects.where('id').equals(projectId).modify((p) => void (p.sections = (p.sections ?? []).filter((s) => s.id !== sectionId)))
+    await db.tasks.where('projectId').equals(projectId).modify((t) => {
+      if (t.sectionId === sectionId) delete t.sectionId
+    })
+  })
+}
+
 // ── Ajustes ───────────────────────────────────────────────────
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
