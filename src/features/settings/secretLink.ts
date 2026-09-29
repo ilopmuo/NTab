@@ -14,6 +14,13 @@ export function useSecretLink(table: 'calendar_feeds' | 'mcp_connectors', extra:
   const [token, setToken] = useState<string | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
 
+  // Otro bloque con el mismo enlace (Claude y Siri) lo ha creado o cambiado
+  useEffect(() => {
+    const on = (e: Event) => setToken((e as CustomEvent<string>).detail)
+    window.addEventListener(`ntab-secret:${table}`, on)
+    return () => window.removeEventListener(`ntab-secret:${table}`, on)
+  }, [table])
+
   useEffect(() => {
     if (!userId) return
     void getSupabase().then((supabase) => supabase
@@ -33,7 +40,9 @@ export function useSecretLink(table: 'calendar_feeds' | 'mcp_connectors', extra:
       .single()
     setBusy(false)
     if (error) return void toast(`No se pudo crear el enlace: ${error.message}`)
-    setToken((data as { token: string }).token)
+    const next = (data as { token: string }).token
+    setToken(next)
+    window.dispatchEvent(new CustomEvent(`ntab-secret:${table}`, { detail: next }))
   }
 
   const regenerate = async (confirmText: string) => {

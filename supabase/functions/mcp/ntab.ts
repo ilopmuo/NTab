@@ -11,6 +11,7 @@ import { expandTemplate, type TemplateItemLike } from '../_shared/templates.ts'
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { CATEGORIES, categoryFor, money, monthSummary, parseExpense } from '../_shared/expenses.ts'
+import { parseQuickAdd } from '../_shared/parse.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -1163,5 +1164,67 @@ export function addCountdown(rows: Row[], args: { nombre?: string; fecha?: strin
   return {
     writes: [{ tbl: 'countdowns', id, data: { id, name, date: args.fecha, icon: str(existing?.data.icon) || 'sparkles', createdAt: num(existing?.data.createdAt) || env.now } }],
     report: [`Cuenta atrás ${existing ? 'cambiada' : 'creada'}: ${name}, ${relDay(args.fecha, today)} (faltan ${diffDays(args.fecha, today)} días). La verá en Hoy.`],
+  }
+}
+
+// ── Captura rápida (Siri y atajos) ───────────────────────────
+
+// «compra: leche», «a la compra leche», «lista de la compra: …» (pero «comprar un regalo» es una tarea)
+const SHOPPING_PREFIX = /^\s*(?:(?:(?:a[nñ]ade|apunta|pon)\s+)?(?:(?:a|en)\s+)?(?:(?:la\s+)?lista\s+de\s+)?la\s+compra\s*[:,.-]?|compra\s*[:,.-])\s*/i
+const EXPENSE_PREFIX = /^\s*(?:gasto|gast[eé]|he\s+gastado|me\s+he\s+gastado)\s*[:,.-]?\s+/i
+
+/**
+ * Lo que se dicta a Siri, escrito como en la captura rápida de la app:
+ * «llamar al dentista mañana a las 10 !alta» → tarea con fecha, hora y aviso;
+ * «compra: leche y pan» → lista de la compra; «gasto 12,50 café» → gastos.
+ * El texto de `report` es corto: Siri lo lee en voz alta.
+ */
+export function capture(rows: Row[], raw: string, env: Env): WriteResult {
+  const text = raw.replace(/\s+/g, ' ').trim().slice(0, 500)
+  if (!text) return { writes: [], report: ['No he oído nada que apuntar.'] }
+  if (SHOPPING_PREFIX.test(text)) return addShopping(rows, { cosas: text.replace(SHOPPING_PREFIX, '') }, env)
+  if (EXPENSE_PREFIX.test(text)) {
+    const r = addExpenseTool(rows, { texto: text.replace(EXPENSE_PREFIX, '') }, env)
+    // Para Siri, sin el resumen del mes
+    return { ...r, report: r.writes.length ? [r.report[0].split('. Este mes')[0] + '.'] : r.report }
+  }
+
+  const ix = new Index(rows)
+  const today = ymdIn(env.now, env.tz)
+  const target = (d: Data) => ({ id: String(d.id), name: str(d.name), areaId: d.areaId ? String(d.areaId) : undefined })
+  const parsed = parseQuickAdd(text, {
+    today,
+    projects: ix.projects.filter((p) => p.status !== 'done' && p.status !== 'archived').map(target),
+    areas: ix.areas.map(target),
+    people: ix.people.map(target),
+  })
+  if (!parsed.title) return { writes: [], report: ['No he entendido qué apuntar.'] }
+  let task: Task = {
+    id: env.newId(),
+    title: parsed.title,
+    notes: '',
+    done: 0,
+    priority: parsed.priority,
+    tags: parsed.tags,
+    subtasks: [],
+    order: env.now,
+    createdAt: env.now,
+  }
+  if (parsed.dueDate) task.dueDate = parsed.dueDate
+  if (parsed.dueTime) task.dueTime = parsed.dueTime
+  if (parsed.projectId) task.projectId = parsed.projectId
+  if (parsed.areaId) task.areaId = parsed.areaId
+  if (parsed.people?.length) task.people = parsed.people
+  if (parsed.recurrence) task.recurrence = parsed.recurrence
+  if (parsed.reminder) task.reminder = parsed.reminder
+  if (parsed.estimate) task.estimate = parsed.estimate
+  if (parsed.nag) task.nag = parsed.nag
+  task = withReminder(task, env)
+
+  const when = task.dueDate ? `, ${relDay(task.dueDate, today)}${task.dueTime ? ` a las ${task.dueTime}` : ''}` : ''
+  const where = task.projectId ? ix.projectName(task.projectId) : task.areaId ? ix.areaName(task.areaId) : task.dueDate ? '' : 'la bandeja'
+  return {
+    writes: [{ tbl: 'tasks', id: task.id, data: task as unknown as Data }],
+    report: [`Apuntado: ${task.title}${when}${where ? ` (en ${where})` : ''}${task.remindAt ? '. Te avisaré' : ''}.`],
   }
 }

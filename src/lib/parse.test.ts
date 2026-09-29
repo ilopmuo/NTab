@@ -245,3 +245,24 @@ describe('insistir', () => {
     expect(p('llamar mañana a las 10 avísame 15 minutos antes insísteme').reminder).toEqual({ before: 15 })
   })
 })
+
+describe('parseQuickAdd compartido con el servidor', () => {
+  it('«hoy» en la zona del usuario manda sobre el reloj', () => {
+    // En el servidor (UTC) pueden ser las 22:30 del día anterior
+    const r = parseQuickAdd('Llamar mañana a las 9', { ...ctx, now: new Date(Date.UTC(2026, 8, 22, 22, 30)), today: '2026-09-23' })
+    expect(r.dueDate).toBe('2026-09-24')
+    expect(r.dueTime).toBe('09:00')
+  })
+  it('fechas que cruzan mes y año', () => {
+    expect(p('Pagar el mes que viene').dueDate).toBe('2026-10-01')
+    expect(p('Renovar 3/2').dueDate).toBe('2027-02-03') // ya pasó este año
+    expect(p('Cita el 31').dueDate).toBe('2026-10-31') // septiembre no tiene 31
+    expect(p('Revisión en 1 mes').dueDate).toBe('2026-10-23')
+    expect(p('Aniversario en 1 año').dueDate).toBe('2027-09-23')
+    expect(p('Algo 31/2').dueDate).toBeUndefined()
+  })
+  it('fin de semana y repeticiones por días', () => {
+    expect(p('Limpiar el fin de semana').dueDate).toBe('2026-09-26')
+    expect(p('Correr cada lunes y jueves').dueDate).toBe('2026-09-24')
+  })
+})

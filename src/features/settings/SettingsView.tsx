@@ -49,6 +49,7 @@ import { AreaForm } from '../areas/AreaForm'
 import { CalendarBlock } from './CalendarBlock'
 import { CalendarSourcesBlock } from './CalendarSourcesBlock'
 import { ClaudeBlock } from './ClaudeBlock'
+import { SiriBlock } from './SiriBlock'
 import { Page } from '../Page'
 
 /** Icono cuadrado de color, como en la app Ajustes */
@@ -360,6 +361,7 @@ export function SettingsView() {
 
       <NotificationsBlock />
       <ClaudeBlock />
+      <SiriBlock />
       <CalendarSourcesBlock />
       <CalendarBlock />
 
