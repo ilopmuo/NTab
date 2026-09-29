@@ -7,6 +7,7 @@ import { advanceCharge, rollForward } from '@/lib/finance'
 import { putInTrash } from './trash'
 import { withDate } from '@/lib/trackers'
 import { aisleFor, itemKey, type ParsedItem } from '@/lib/shopping'
+import { cleanTag, replaceTag } from '@/lib/tags'
 
 // ── Tareas ────────────────────────────────────────────────────
 
@@ -390,6 +391,20 @@ export async function rollSubscriptions(ref = today()) {
     if (s.kind !== 'sub' || !s.active) continue
     await db.subscriptions.update(s.id, { nextDate: rollForward(s, ref) })
   }
+}
+
+// ── Etiquetas ─────────────────────────────────────────────────
+
+/** Renombra una etiqueta en todas las tareas (si ya existía la nueva, se juntan) */
+export async function renameTag(from: string, to: string) {
+  const clean = cleanTag(to)
+  if (!clean || clean === from) return 0
+  return db.tasks.where('tags').equals(from).modify((t) => void (t.tags = replaceTag(t.tags, from, clean)))
+}
+
+/** Quita una etiqueta de todas las tareas */
+export async function deleteTag(tag: string) {
+  return db.tasks.where('tags').equals(tag).modify((t) => void (t.tags = t.tags.filter((x) => x !== tag)))
 }
 
 // ── Secciones de proyecto ─────────────────────────────────────

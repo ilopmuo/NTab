@@ -15,7 +15,7 @@ export interface NavPrefs {
 /** Siempre al pie de la barra lateral: no se mueven ni se ocultan */
 export const FIXED = ['logbook', 'trash', 'settings']
 export const DEFAULT_TILES = ['today', 'upcoming', 'inbox', 'calendar', 'habits', 'notes']
-export const DEFAULT_LIST = ['shopping', 'menu', 'routines', 'trackers', 'things', 'journal', 'people', 'projects', 'templates', 'goals', 'expenses', 'finance', 'review']
+export const DEFAULT_LIST = ['shopping', 'menu', 'routines', 'trackers', 'things', 'journal', 'people', 'projects', 'tags', 'templates', 'goals', 'expenses', 'finance', 'review']
 export const DEFAULT_TABS = ['today', 'upcoming', 'calendar', 'habits']
 export const TAB_COUNT = 4
 /** Hoy es la portada: no se puede ocultar */

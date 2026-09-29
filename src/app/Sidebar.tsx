@@ -90,7 +90,7 @@ function SidebarContent() {
   useTheme()
   const dark = document.documentElement.dataset.theme === 'dark'
   const activeProjects = projects.filter((p) => p.status === 'active')
-  const is = (p: string) => path === p || path.startsWith(p + '/')
+  const is = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
 
   const tileCount: Record<string, number | string> = {
     today: c.today,

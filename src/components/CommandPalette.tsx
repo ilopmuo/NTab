@@ -5,30 +5,7 @@ import { whatNow } from '@/features/whatnow/store'
 import { markDone } from '@/features/trackers/markDone'
 import { sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
-import {
-  CheckCircle2,
-  ClipboardList,
-  Download,
-  FileText,
-  FolderPlus,
-  Keyboard,
-  Plus,
-  Search,
-  Sparkles,
-  Sun,
-  SunMoon,
-  PanelLeft,
-  Target,
-  User,
-  UserPlus,
-  Wallet,
-  ListChecks,
-  Box,
-  History,
-  BookOpen,
-  ShoppingCart,
-  Receipt,
-} from 'lucide-react'
+import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, ListChecks, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import { createNote } from '@/db/actions'
@@ -129,6 +106,7 @@ function Palette() {
     ui.palette(false)
     fn()
   }
+  const tagNames = useMemo(() => [...new Set(tasks.flatMap((t) => (t.done ? [] : t.tags)))].sort((a, b) => a.localeCompare(b, 'es')), [tasks])
   const q = search.trim()
   const hasResults = useMemo(() => {
     if (!q) return true
@@ -136,6 +114,7 @@ function Palette() {
       ...SECTIONS.map((n) => `ir ${n.label}`),
       ...areas.map((a) => `área ${a.name}`),
       ...projects.map((p) => `proyecto ${p.name}`),
+      ...tagNames.map((t) => `etiqueta #${t}`),
       ...tasks.map((t) => [t.title, ...t.tags].join(' ')),
       ...notes.map((n) => `${n.title} ${n.content.slice(0, 200)}`),
       ...people.map((p) => `${p.name} ${p.company}`),
@@ -145,7 +124,7 @@ function Palette() {
       'gasto gastos presupuesto que hago ahora diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector personalizar barra lateral pestañas cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
-  }, [q, areas, projects, tasks, notes, people])
+  }, [q, areas, projects, tasks, notes, people, tagNames])
 
   return (
     <Command
@@ -260,6 +239,11 @@ function Palette() {
           {projects.map((p) => (
             <Item key={p.id} value={`pr:${p.id}`} keywords={['proyecto', p.name]} icon={<span className="h-2.5 w-2.5 rounded-full bg-faint" />} onSelect={() => go(`/project/${p.id}`)} hint="Proyecto">
               {p.name}
+            </Item>
+          ))}
+          {tagNames.map((t) => (
+            <Item key={t} value={`tag:${t}`} keywords={['etiqueta', `#${t}`]} icon={<Hash size={17} className="text-muted" />} onSelect={() => go(`/tag/${encodeURIComponent(t)}`)} hint="Etiqueta">
+              {t}
             </Item>
           ))}
         </Command.Group>

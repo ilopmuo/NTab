@@ -6,7 +6,7 @@ import { expect, openApp, quickAdd, test } from './fixtures'
  * temas. Falla con cualquier problema serio o crítico: contraste, controles
  * sin nombre, controles anidados…
  */
-const PATHS = ['/today', '/inbox', '/upcoming', '/calendar', '/habits', '/notes', '/shopping', '/plan', '/people', '/projects', '/expenses', '/journal', '/settings']
+const PATHS = ['/today', '/inbox', '/upcoming', '/calendar', '/habits', '/notes', '/shopping', '/plan', '/people', '/projects', '/tags', '/expenses', '/journal', '/settings']
 
 for (const theme of ['dark', 'light'] as const) {
   test(`sin problemas serios de accesibilidad (tema ${theme === 'dark' ? 'oscuro' : 'claro'})`, async ({ page }) => {

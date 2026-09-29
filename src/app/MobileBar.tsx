@@ -43,7 +43,7 @@ export function MobileBar() {
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),10px)] lg:hidden">
       <motion.nav initial={false} animate={{ height: mini ? 50 : 62 }} transition={barSpring} className="glass-thick pointer-events-auto flex flex-1 items-center rounded-full px-1.5">
         {tabs.map((t) => {
-          const on = path === t.path || path.startsWith(t.path + '/')
+          const on = path === t.path || path.startsWith(t.path + '/') || (t.path === '/tags' && path.startsWith('/tag/'))
           return (
             <a
               key={t.id}

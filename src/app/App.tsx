@@ -40,6 +40,7 @@ const loaders = {
   ReviewView: () => import('@/features/review/ReviewView').then((m) => ({ default: m.ReviewView })),
   SettingsView: () => import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
   TagView: () => import('@/features/TagView').then((m) => ({ default: m.TagView })),
+  TagsView: () => import('@/features/tags/TagsView').then((m) => ({ default: m.TagsView })),
   UpcomingView: () => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView })),
   ThingsView: () => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView })),
   MenuView: () => import('@/features/menu/MenuView').then((m) => ({ default: m.MenuView })),
@@ -49,7 +50,7 @@ const loaders = {
   TrackersView: () => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView })),
   RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
@@ -122,6 +123,8 @@ function Screen() {
       return <AreaView id={id} />
     case 'tag':
       return <TagView tag={id} />
+    case 'tags':
+      return <TagsView />
     case 'goals':
       return <GoalsView />
     case 'finance':
@@ -159,6 +162,8 @@ const TITLES: Record<string, string> = {
   notes: 'Notas',
   people: 'Personas',
   projects: 'Proyectos',
+  tags: 'Etiquetas',
+  tag: 'Etiqueta',
   goals: 'Objetivos',
   finance: 'Pagos',
   review: 'Revisión',
