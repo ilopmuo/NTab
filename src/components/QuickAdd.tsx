@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { ArrowUp, Inbox, Mic } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { ArrowUp, AtSign, Folder, Hash, Inbox, Mic } from 'lucide-react'
 import type { Task } from '@/db/types'
+import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
+import { applySuggestion, suggest, type Suggestion } from '@/lib/autocomplete'
 import { createTask } from '@/db/actions'
 import { parseQuickAdd } from '@/lib/parse'
 import { dateLabel } from '@/lib/dates'
 import { toast, ui, useUI } from '@/app/store'
 import { ParsedChips } from './ParsedChips'
+import { Icon } from './icons'
 import { Kbd, Modal, cx } from './ui'
 import { useDictation } from '@/lib/speech'
 import { haptic } from '@/lib/haptics'
@@ -37,6 +41,33 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   const parsed = useMemo(() => parseQuickAdd(value, { areas, projects, people }), [value, areas, projects, people])
   const example = useMemo(() => EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)], [])
 
+  // Autocompletar #etiqueta, +proyecto y @persona
+  const tags = useLiveQuery(() => db.tasks.orderBy('tags').uniqueKeys(), []) as string[] | undefined
+  const [caret, setCaret] = useState(value.length)
+  const [active, setActive] = useState(0)
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  const listId = useId()
+  const sug = useMemo(
+    () => (dismissed === value ? undefined : suggest(value, caret, { tags: tags ?? [], projects, areas, people })),
+    [value, caret, tags, projects, areas, people, dismissed],
+  )
+  const current = sug ? Math.min(active, sug.items.length - 1) : 0
+  // El cursor se coloca en cuanto el texto nuevo está en la página, antes de la siguiente tecla
+  const pendingCaret = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (pendingCaret.current === null) return
+    inputRef.current?.setSelectionRange(pendingCaret.current, pendingCaret.current)
+    pendingCaret.current = null
+  }, [value])
+  const complete = (s: Suggestion) => {
+    if (!sug) return
+    const out = applySuggestion(value, sug, s)
+    pendingCaret.current = out.caret
+    setValue(out.text)
+    setCaret(out.caret)
+    setActive(0)
+  }
+
   useEffect(() => inputRef.current?.focus(), [])
 
   const final: Partial<Task> = { ...defaults }
@@ -59,7 +90,11 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
 
   // Dictado: lo dicho se añade tras lo que ya hubiera escrito
   const base = useRef('')
-  const dictation = useDictation((text) => setValue(`${base.current}${base.current && text ? ' ' : ''}${text}`))
+  const dictation = useDictation((text) => {
+    const next = `${base.current}${base.current && text ? ' ' : ''}${text}`
+    setValue(next)
+    setCaret(next.length)
+  })
   const toggleMic = () => {
     if (dictation.listening) return dictation.stop()
     base.current = value.trim()
@@ -97,11 +132,35 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
           <input
             ref={inputRef}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            role="combobox"
+            aria-label="Nueva tarea"
+            aria-autocomplete="list"
+            aria-expanded={!!sug}
+            aria-controls={sug ? listId : undefined}
+            aria-activedescendant={sug ? `${listId}-${current}` : undefined}
+            onChange={(e) => {
+              setValue(e.target.value)
+              setCaret(e.target.selectionStart ?? e.target.value.length)
+              setActive(0)
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? value.length)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault()
                 void submit(true)
+                return
+              }
+              if (!sug) return
+              if (e.key === 'Tab' && !e.shiftKey) {
+                e.preventDefault()
+                complete(sug.items[current])
+              } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault()
+                const n = sug.items.length
+                setActive((current + (e.key === 'ArrowDown' ? 1 : n - 1)) % n)
+              } else if (e.key === 'Escape') {
+                e.stopPropagation()
+                setDismissed(value)
               }
             }}
             placeholder={example}
@@ -113,6 +172,30 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
             placeholder="Notas"
             className="mt-1 w-full bg-transparent text-[15px] text-muted placeholder:text-faint"
           />
+          {sug && (
+            <div id={listId} role="listbox" aria-label="Sugerencias" className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              {sug.items.map((s, i) => (
+                <div
+                  key={`${s.kind}:${s.label}`}
+                  id={`${listId}-${i}`}
+                  role="option"
+                  aria-selected={i === current}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => complete(s)}
+                  className={cx(
+                    'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold transition-colors',
+                    i === current ? 'border-transparent bg-accent-fill text-white' : 'border-line text-fg hover:bg-hover',
+                  )}
+                >
+                  <SuggestIcon s={s} />
+                  {s.label}
+                </div>
+              ))}
+              <span className="ml-1 hidden items-center gap-1 text-[12px] text-muted sm:inline-flex">
+                <Kbd>Tab</Kbd> completar
+              </span>
+            </div>
+          )}
           <ParsedChips parsed={parsed} className="mt-3" />
           {(dictation.listening || dictation.error) && (
             <p className={cx('mt-2 text-[13px] font-medium', dictation.error ? 'text-muted' : 'text-fg')}>{dictation.error ?? 'Te escucho… di la tarea como la escribirías: «llamar a Ana mañana a las 10»'}</p>
@@ -128,7 +211,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
           ) : (
             <span className="truncate">{[final.dueDate && dateLabel(final.dueDate), destination].filter(Boolean).join(' · ')}</span>
           )}
-          <span className="ml-auto hidden items-center gap-1 text-faint md:flex">
+          <span className="ml-auto hidden items-center gap-1 text-muted md:flex">
             <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>@</Kbd>persona <Kbd>!</Kbd>prioridad <Kbd>~</Kbd>duración
           </span>
         </div>
@@ -158,4 +241,11 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
       </div>
     </form>
   )
+}
+
+function SuggestIcon({ s }: { s: Suggestion }) {
+  if (s.kind === 'tag') return <Hash size={13} strokeWidth={2.6} aria-hidden />
+  if (s.kind === 'person') return <AtSign size={13} strokeWidth={2.4} aria-hidden />
+  if (s.kind === 'project') return <Folder size={13} strokeWidth={2.4} aria-hidden />
+  return s.icon ? <Icon name={s.icon} size={13} strokeWidth={2.4} aria-hidden /> : <span aria-hidden>+</span>
 }

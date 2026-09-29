@@ -57,6 +57,7 @@ const GROUPS: [string, [string[], string][]][] = [
       [['+Proyecto'], 'Proyecto o área'],
       [['~30m'], 'Duración estimada'],
       [['insísteme'], 'Repetir el aviso hasta que la hagas'],
+      [['Tab'], 'Completar la etiqueta, lista o persona sugerida'],
       [['⌘', '↵'], 'Añadir y seguir'],
     ],
   ],

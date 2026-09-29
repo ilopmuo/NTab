@@ -20,8 +20,13 @@ import { cx } from './ui'
  */
 type Modes = Record<string, 'manual'>
 
+/** Qué listas van a mano (undefined mientras carga) */
+export function useListModes() {
+  return useLiveQuery(() => db.settings.get('listOrder').then((r) => (r?.value as Modes | undefined) ?? {}), [])
+}
+
 export function useListOrder(key: string | undefined) {
-  const modes = useLiveQuery(() => db.settings.get('listOrder').then((r) => (r?.value as Modes | undefined) ?? {}), [])
+  const modes = useListModes()
   return !!key && modes?.[key] === 'manual'
 }
 

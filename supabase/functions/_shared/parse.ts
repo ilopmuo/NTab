@@ -173,6 +173,14 @@ function dayMonth(base: string, day: number, month: number, year?: number): stri
   return utcYmd(d)
 }
 
+const targetKey = (s: string) => normalize(s).replace(/[\s_-]/g, '')
+
+/** Solo si el nombre coincide entero (sin mayúsculas, tildes ni espacios) */
+function exactTarget<T extends ParseTarget>(query: string, list: T[]): T | undefined {
+  const q = targetKey(query)
+  return q ? list.find((t) => targetKey(t.name) === q) : undefined
+}
+
 export function matchTarget<T extends ParseTarget>(query: string, list: T[]): T | undefined {
   const q = normalize(query).replace(/[\s_-]/g, '')
   if (!q) return undefined
@@ -243,20 +251,34 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
   })
 
   // ── Proyecto / área ───────────────────────────────────────
-  take(new RegExp(`${B}\\+([\\p{L}\\p{N}_-]+)`, 'u'), (m) => {
-    const p = matchTarget(m[1], ctx.projects)
-    if (p) {
-      out.projectId = p.id
-      out.areaId = p.areaId
-      return
+  // «+Salud», «+web» (basta el principio) y también nombres de varias palabras
+  // escritos enteros: «+Web nueva», «+Viaje a Lisboa»
+  for (const m of text.matchAll(new RegExp(`${B}\\+([\\p{L}\\p{N}_-]+)`, 'gu'))) {
+    if (m.index === undefined) continue
+    const end = m.index + m[0].length
+    const words = text.slice(end).match(/^(?:\s+[\p{L}\p{N}_-]+){1,5}/u)?.[0].match(/\s+[\p{L}\p{N}_-]+/gu) ?? []
+    let found: { projectId?: string; areaId?: string } | undefined
+    let extra = 0
+    for (let k = words.length; k > 0 && !found; k--) {
+      const name = m[1] + words.slice(0, k).join('')
+      const p = exactTarget(name, ctx.projects)
+      const a = p ? undefined : exactTarget(name, ctx.areas)
+      if (p || a) {
+        found = p ? { projectId: p.id, areaId: p.areaId } : { areaId: a!.id }
+        extra = words.slice(0, k).join('').length
+      }
     }
-    const a = matchTarget(m[1], ctx.areas)
-    if (a) {
-      out.areaId = a.id
-      return
+    if (!found) {
+      const p = matchTarget(m[1], ctx.projects)
+      const a = p ? undefined : matchTarget(m[1], ctx.areas)
+      if (p || a) found = p ? { projectId: p.id, areaId: p.areaId } : { areaId: a!.id }
     }
-    return false
-  })
+    if (!found) continue
+    if (found.projectId) out.projectId = found.projectId
+    out.areaId = found.areaId
+    text = text.slice(0, m.index) + ' ' + text.slice(end + extra)
+    break
+  }
 
   // ── Repetición ────────────────────────────────────────────
   const pre = `${B}(?:de\\s+|y\\s+)?`

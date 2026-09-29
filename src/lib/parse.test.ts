@@ -96,6 +96,14 @@ describe('parseQuickAdd', () => {
     expect(p('Sumar 2 +desconocido').title).toBe('Sumar 2 +desconocido')
   })
 
+  it('proyectos de varias palabras escritos enteros', () => {
+    expect(p('Maquetas de la portada +Web nueva')).toMatchObject({ title: 'Maquetas de la portada', projectId: 'p-web' })
+    expect(p('Maquetas +web Nueva hoy a las 10')).toMatchObject({ title: 'Maquetas', projectId: 'p-web', dueTime: '10:00' })
+    // Si las palabras siguientes no son parte del nombre, se quedan en el título
+    expect(p('Revisar +mudanza nueva a las 10')).toMatchObject({ title: 'Revisar nueva', projectId: 'p-mudanza', dueTime: '10:00' })
+    expect(p('Llamar +salud mañana')).toMatchObject({ title: 'Llamar', areaId: 'a-salud', dueDate: '2026-09-24' })
+  })
+
   it('entiende repeticiones', () => {
     expect(p('Regar plantas cada semana')).toMatchObject({
       title: 'Regar plantas',

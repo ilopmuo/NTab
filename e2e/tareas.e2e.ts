@@ -62,3 +62,28 @@ test('subtareas: se añaden y se reordenan', async ({ page }) => {
   const values = () => page.locator('aside [aria-label^="Mover «"]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')!.match(/«(.+)»/)![1]))
   await expect.poll(values).toEqual(['Pasaporte', 'Maleta', 'Billetes'])
 })
+
+test('autocompletar en la captura: #etiqueta y +proyecto de varias palabras', async ({ page }) => {
+  await openApp(page, '/projects')
+  await page.getByRole('button', { name: 'Nuevo' }).click()
+  await page.getByPlaceholder('Nombre del proyecto').fill('Web nueva')
+  await page.getByRole('button', { name: 'Crear proyecto' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Web nueva')
+  await quickAdd(page, 'Llamar al dentista #salud')
+
+  await page.keyboard.press('n')
+  const input = page.getByRole('combobox', { name: 'Nueva tarea' })
+  await input.pressSequentially('Pedir cita #sa')
+  await expect(page.getByRole('option', { name: 'salud' })).toBeVisible()
+  await page.keyboard.press('Tab')
+  await expect(input).toHaveValue('Pedir cita #salud ')
+  await input.pressSequentially('+we')
+  await page.getByRole('option', { name: 'Web nueva' }).click()
+  await expect(input).toHaveValue('Pedir cita #salud +Web nueva ')
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+  await input.press('Enter')
+
+  const row = page.locator('#main [data-task-id]', { hasText: 'Pedir cita' })
+  await expect(row).toBeVisible()
+  await expect(row.locator('p').first()).toHaveText('Pedir cita')
+})

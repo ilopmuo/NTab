@@ -38,6 +38,12 @@ for (const theme of ['dark', 'light'] as const) {
     await page.waitForTimeout(500)
     await scan('⌘K')
     await page.keyboard.press('Escape')
+    await page.keyboard.press('n')
+    await page.getByRole('combobox', { name: 'Nueva tarea' }).pressSequentially('Pedir cita #s')
+    await expect(page.getByRole('listbox', { name: 'Sugerencias' })).toBeVisible()
+    await page.waitForTimeout(500)
+    await scan('captura con sugerencias')
+    await page.keyboard.press('Escape')
     expect(found, found.join('\n')).toEqual([])
   })
 }

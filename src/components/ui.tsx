@@ -499,9 +499,10 @@ export function ProgressRing({
         strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={c}
-        initial={{ strokeDashoffset: c }}
-        animate={{ strokeDashoffset: c * (1 - v) }}
-        transition={{ type: 'spring', stiffness: 60, damping: 16, delay }}
+        initial={{ strokeDashoffset: c, opacity: 0 }}
+        // Al 0 % el extremo redondeado dejaría un punto suelto: el arco no se pinta
+        animate={{ strokeDashoffset: c * (1 - v), opacity: v > 0 ? 1 : 0 }}
+        transition={{ type: 'spring', stiffness: 60, damping: 16, delay, opacity: { duration: 0.15, delay: v > 0 ? delay : 0 } }}
       />
     </svg>
   )

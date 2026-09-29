@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { CheckCircle2, ChevronRight, ClipboardList, FileText, MoreHorizontal, Pause, Pencil, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
+import { Check, CheckCircle2, ChevronRight, ClipboardList, FileText, MoreHorizontal, Pause, Pencil, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import { createNote, deleteProject } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
@@ -63,9 +63,9 @@ export function ProjectView({ id }: { id: string }) {
         )}
         <div className="flex items-center gap-4">
           <div className="relative shrink-0">
-            <ProgressRing value={progress} size={64} stroke={7} color="var(--c-blue)" track="var(--c-fill)" />
+            <ProgressRing value={progress} size={64} stroke={7} color={progress === 1 ? 'var(--c-green)' : 'var(--c-blue)'} track="var(--c-fill)" />
             <span className="font-num absolute inset-0 flex items-center justify-center text-[15px] font-bold">
-              {Math.round(progress * 100)}%
+              {progress === 1 ? <Check size={24} strokeWidth={3} aria-label="Completado" /> : `${Math.round(progress * 100)}%`}
             </span>
           </div>
           <div className="min-w-0 flex-1">

@@ -12,7 +12,7 @@
 | **Captura rápida** (`N`) | Escribe en español natural: `Llamar al dentista mañana a las 10 !alta #salud +Salud` |
 | **Bandeja de entrada** | Todo lo capturado sin fecha ni proyecto, para procesarlo luego |
 | **Próximo** y **Calendario** | Vista de dos semanas, mes y semana; doble clic en un día para añadir |
-| **Áreas y proyectos** | Trabajo, Salud, Finanzas… con proyectos, progreso y fecha límite |
+| **Áreas y proyectos** | Trabajo, Salud, Finanzas… con proyectos, progreso, fecha límite y su siguiente paso a la vista |
 | **Secciones** | Divide un proyecto en bloques («Diseño», «Contenido», «Lanzamiento»), cada uno con su orden; las plantillas y Claude también las usan |
 | **Tareas completas** | Prioridad, fecha, hora, repetición, subtareas, etiquetas y notas |
 | **Hábitos** | Seguimiento diario, rachas 🔥 y mapa de calor de 18 semanas. Con cantidad («8 vasos de agua», con botón +1) o «3 veces por semana», el día que quieras |
@@ -49,6 +49,7 @@
 | **Etiquetas** | Todas tus `#etiquetas` con sus tareas pendientes; cámbiales el nombre (si ya existe, se juntan) o quítalas, con «Deshacer» |
 | **Navegación a tu medida** | Elige qué secciones van en la cuadrícula de la barra lateral, cuáles en la lista y cuáles ocultas, y las cuatro pestañas del móvil |
 | **Procesar la bandeja** | Una tarea cada vez, como un mazo de cartas: hoy, mañana, otro día, a una lista, hecha, borrar o luego |
+| **Autocompletar** | Al escribir `#`, `+` o `@` en la captura, te sugiere tus etiquetas, proyectos, áreas y personas: `Tab` o un toque para completar |
 | **Dictado** | Botón de micrófono en la captura rápida: dices la tarea y se entiende igual que escrita |
 | **Deslizar** (móvil) | Desliza una tarea → para completarla o ← para pasarla a mañana, con vibración en el iPhone |
 | **Arrastrar** | En Calendario y Próximo, arrastra una tarea a otro día; en «Hora a hora», a otra hora (en el móvil, pulsación larga) |
@@ -96,7 +97,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 | `dentro de 2 horas`, `en 30 minutos`, `en media hora` | Fecha y hora desde ahora |
 | `!alta` `!media` `!baja`, `!1` `!2` `!3`, `!!!` | Prioridad |
 | `#etiqueta` | Etiqueta |
-| `+Proyecto` o `+Área` | Dónde va (coincidencia aproximada) |
+| `+Proyecto` o `+Área`, `+Web nueva` | Dónde va (basta el principio; los de varias palabras, escritos enteros) |
 | `@Ana` | Persona relacionada |
 | `cada día`, `cada lunes y jueves`, `lunes, miércoles y viernes`, `cada 2 semanas`, `el 1 de cada mes`, `días laborables` | Repetición |
 | `avísame`, `recuérdamelo 1 día antes`, `con aviso 30 minutos antes` | Aviso |
@@ -106,7 +107,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 ## Atajos
 
-`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`Y`/`T`/`F`/`R`/`S` ir a sección · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
+`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`Y`/`T`/`F`/`R`/`S` ir a sección · `Tab` en la captura completa `#`/`+`/`@` · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
 
 ## En el iPhone o el iPad
 
