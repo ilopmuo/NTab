@@ -101,10 +101,13 @@ export function ManualRows({
   latest.current = items
 
   const byKeyboard = (id: string, dir: -1 | 1) => {
-    const from = items.findIndex((t) => t.id === id)
+    // El orden más reciente: dos pulsaciones seguidas pueden llegar antes de volver a pintar
+    const cur = latest.current
+    const from = cur.findIndex((t) => t.id === id)
     const to = from + dir
-    if (from < 0 || to < 0 || to >= items.length || items[to].done) return
-    const next = moveItem(items, from, to)
+    if (from < 0 || to < 0 || to >= cur.length || cur[to].done) return
+    const next = moveItem(cur, from, to)
+    latest.current = next
     setItems(next)
     void persist(listKey, next, id)
   }

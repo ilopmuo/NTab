@@ -687,10 +687,13 @@ function SubtaskRows({ task }: { task: Task }) {
               void saveSubtaskOrder(task.id, latest.current.map((x) => x.id))
             }}
             onKey={(dir) => {
-              const from = items.findIndex((x) => x.id === s.id)
+              // El orden más reciente: dos pulsaciones seguidas pueden llegar antes de volver a pintar
+              const cur = latest.current
+              const from = cur.findIndex((x) => x.id === s.id)
               const to = from + dir
-              if (to < 0 || to >= items.length) return
-              const next = moveItem(items, from, to)
+              if (from < 0 || to < 0 || to >= cur.length) return
+              const next = moveItem(cur, from, to)
+              latest.current = next
               setItems(next)
               void saveSubtaskOrder(task.id, next.map((x) => x.id))
             }}
