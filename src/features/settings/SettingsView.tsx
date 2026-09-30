@@ -2,32 +2,33 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   BellRing,
-  Clock,
-  Send,
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Clock,
   Cloud,
   Download,
+  Droplet,
   Keyboard,
+  Loader2,
   LogIn,
   LogOut,
   Monitor,
+  MonitorSmartphone,
   Moon,
   Palette,
+  PanelLeft,
   Pencil,
   Plus,
   RefreshCw,
+  Send,
+  SlidersHorizontal,
+  Smartphone,
   Sun,
+  Sunrise,
   Trash2,
   Upload,
-  Loader2,
-  Sunrise,
-  MonitorSmartphone,
   Volume2,
-  SlidersHorizontal,
-  PanelLeft,
-  Smartphone,
 } from 'lucide-react'
 import { openAuth, signOut, syncNow, useSync } from '@/sync/service'
 import { syncLabel } from '@/sync/SyncBadge'
@@ -40,6 +41,7 @@ import { seedIfEmpty } from '@/db/seed'
 import { SectionIcon, section, type Tint } from '@/app/sections'
 import { setUI, toast, ui, useUI } from '@/app/store'
 import { setTheme, useTheme } from '@/app/theme'
+import { AccentPicker } from './AccentPicker'
 import { TodayCardsEditor } from '../today/cards'
 import { AreaBadge } from '@/components/icons'
 import { Group, IconButton, PageHeader, Segmented, Switch, cx } from '@/components/ui'
@@ -384,6 +386,15 @@ export function SettingsView() {
               ]}
             />
           }
+        />
+        <Row
+          glyph={
+            <Glyph c="blue">
+              <Droplet size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Color"
+          right={<AccentPicker />}
         />
         <Row
           glyph={

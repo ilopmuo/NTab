@@ -97,7 +97,7 @@ export function TodayView() {
         : [
             `${pending} ${pending === 1 ? 'pendiente' : 'pendientes'}`,
             overdue.length ? `${overdue.length} ${overdue.length === 1 ? 'atrasada' : 'atrasadas'}` : '',
-            scheduledHabits.length - habitsDone > 0 ? `${scheduledHabits.length - habitsDone} hábitos por hacer` : '',
+            scheduledHabits.length - habitsDone > 0 ? `${scheduledHabits.length - habitsDone} ${scheduledHabits.length - habitsDone === 1 ? 'hábito' : 'hábitos'} por hacer` : '',
           ]
             .filter(Boolean)
             .join(' · ')

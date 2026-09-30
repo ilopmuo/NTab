@@ -554,8 +554,9 @@ export function PageHeader({
   }, [])
   return (
     <>
-      <header className="mb-7 flex items-end gap-4">
-        <div className="min-w-0 flex-1">
+      {/* Si no caben título y botones, los botones bajan a otra línea (en vez de cortar el título) */}
+      <header className="mb-7 flex flex-wrap items-end gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-60">
           {eyebrow && (
             <motion.p
               initial={{ opacity: 0, y: 6 }}
@@ -663,5 +664,25 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
         transition={spring}
       />
     </button>
+  )
+}
+
+/**
+ * Quesito de progreso de un proyecto (como en Things): un aro fino y, dentro,
+ * la parte hecha rellena. Lleno del todo, en lima.
+ */
+export function ProgressPie({ value, size = 14, className }: { value: number; size?: number; className?: string }) {
+  const v = Math.max(0, Math.min(1, value))
+  const c = size / 2
+  const r = c - 2.4
+  const a = v * 2 * Math.PI
+  const x = c + r * Math.sin(a)
+  const y = c - r * Math.cos(a)
+  const wedge = v >= 1 ? '' : `M ${c} ${c} L ${c} ${c - r} A ${r} ${r} 0 ${a > Math.PI ? 1 : 0} 1 ${x} ${y} Z`
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={cx('shrink-0', className)} aria-hidden>
+      <circle cx={c} cy={c} r={c - 0.8} fill="none" stroke={v >= 1 ? 'var(--c-green)' : 'currentColor'} strokeWidth={1.5} />
+      {v >= 1 ? <circle cx={c} cy={c} r={r} fill="var(--c-green)" /> : v > 0 && <path d={wedge} fill="currentColor" />}
+    </svg>
   )
 }

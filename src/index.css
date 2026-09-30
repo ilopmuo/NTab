@@ -31,7 +31,7 @@
 
   /* Paleta monocroma: solo azul eléctrico (acción, hoy, selección) y verde lima
      (hecho). El resto de "colores" son tonos de gris para no romper nada. */
-  --c-blue: #3a85ff;
+  --c-blue: #3f89ff;
   /* fondo de los botones y marcas azules con texto blanco (contraste AA) */
   --c-accent-fill: #1766e8;
   /* texto azul sobre fondo azul suave (botones «tintados») */
@@ -91,6 +91,61 @@
 
   --ambient-opacity: 0.4;
   color-scheme: light;
+}
+
+/* ── Color de acento (Ajustes → Apariencia) ─────────────────────────
+   Sustituye al azul: texto y marcas, relleno con texto blanco y texto sobre
+   el fondo suave. Todos con contraste AA: lo comprueba src/lib/accents.test.ts */
+
+[data-theme='dark'][data-accent='violet'] {
+  --c-blue: #a78bfa;
+  --c-accent-fill: #7c3aed;
+  --c-accent-on-soft: #c4b5fd;
+}
+[data-theme='light'][data-accent='violet'] {
+  --c-blue: #6d28d9;
+  --c-accent-fill: #7c3aed;
+  --c-accent-on-soft: #5b21b6;
+}
+[data-theme='dark'][data-accent='pink'] {
+  --c-blue: #f472b6;
+  --c-accent-fill: #db2777;
+  --c-accent-on-soft: #f9a8d4;
+}
+[data-theme='light'][data-accent='pink'] {
+  --c-blue: #be185d;
+  --c-accent-fill: #db2777;
+  --c-accent-on-soft: #9d174d;
+}
+[data-theme='dark'][data-accent='orange'] {
+  --c-blue: #fb923c;
+  --c-accent-fill: #c2410c;
+  --c-accent-on-soft: #fdba74;
+}
+[data-theme='light'][data-accent='orange'] {
+  --c-blue: #c2410c;
+  --c-accent-fill: #c2410c;
+  --c-accent-on-soft: #9a3412;
+}
+[data-theme='dark'][data-accent='teal'] {
+  --c-blue: #2dd4bf;
+  --c-accent-fill: #0f766e;
+  --c-accent-on-soft: #5eead4;
+}
+[data-theme='light'][data-accent='teal'] {
+  --c-blue: #0f766e;
+  --c-accent-fill: #0f766e;
+  --c-accent-on-soft: #115e59;
+}
+[data-theme='dark'][data-accent='graphite'] {
+  --c-blue: #f5f5f7;
+  --c-accent-fill: #48484a;
+  --c-accent-on-soft: #f5f5f7;
+}
+[data-theme='light'][data-accent='graphite'] {
+  --c-blue: #1d1d1f;
+  --c-accent-fill: #1d1d1f;
+  --c-accent-on-soft: #1d1d1f;
 }
 
 @theme {

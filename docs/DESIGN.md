@@ -6,8 +6,8 @@
 ## 1. Principios
 
 1. **Monocromo.** Blanco, negro y grises. El color solo aparece donde aporta algo, y solo hay dos:
-   - **Azul eléctrico**: hoy, selección, botones principales, enlaces y la prioridad máxima. Tres tonos para que todo el texto cumpla el contraste AA (4,5:1):
-     - `--c-blue` para texto y marcas azules (`#3A85FF` en oscuro, `#1766E8` en claro);
+   - **Azul eléctrico** (o el color de acento que elijas en Ajustes → Apariencia: violeta, rosa, naranja, verde azulado o grafito): hoy, selección, botones principales, enlaces y la prioridad máxima. Tres tonos para que todo el texto cumpla el contraste AA (4,5:1):
+     - `--c-blue` para texto y marcas azules (`#3F89FF` en oscuro, `#1766E8` en claro);
      - `--c-accent-fill` para los fondos con texto blanco, como botones o la sección activa (`#1766E8`);
      - `--c-accent-on-soft` para el texto de los botones tintados sobre `accent-soft` (`#7FB0FF` / `#0F55C7`).
    - **Grises**: `--c-muted` para cualquier texto secundario; `--c-faint` solo para lo decorativo (iconos, separadores, textos de ejemplo), nunca para texto que haya que leer.
@@ -22,11 +22,17 @@
 
 ## 2. Tokens
 
+Cada color de acento redefine los tres tonos (`--c-blue`, `--c-accent-fill`, `--c-accent-on-soft`) en `index.css` con `[data-theme=…][data-accent=…]`. Un test (`src/lib/accents.test.ts`) lee esos valores y comprueba el contraste AA de todos en los dos temas; un acento nuevo que no lo cumpla no pasa la CI. Nada del código usa el azul a mano: siempre los tokens.
+
 Los nombres de color heredados (`--c-red`, `--c-orange`, `--c-purple`…) existen pero valen tonos de gris, para que nada vuelva a colarse con color. Los únicos que no son grises son `--c-blue` y `--c-green` (lima).
 
 ## 3. Iconos
 
-Glifos sobre círculos o cuadrados de relleno gris (`--c-fill`). La sección activa de la barra lateral se rellena de azul.
+Glifos sobre círculos o cuadrados de relleno gris (`--c-fill`). La sección activa de la barra lateral se rellena de azul. Los proyectos llevan un quesito con lo hecho (lima cuando está completo), como en Things.
+
+## 3 bis. Fechas
+
+Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El sábado, El lunes) y un calendario propio que se despliega debajo, con el hoy en azul, el día elegido relleno y manejo con el teclado (flechas, Inicio/Fin, Re Pág/Av Pág).
 
 ## 4. Tipografía
 

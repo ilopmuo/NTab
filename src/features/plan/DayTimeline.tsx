@@ -269,8 +269,13 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
                     : {})}
                   className={cx(
                     'absolute overflow-hidden rounded-[10px] px-2.5 py-1 text-left',
-                    it.kind === 'task' ? 'group/block cursor-grab border-l-[3px] border-blue bg-accent-soft text-fg active:cursor-grabbing' : 'bg-fill text-muted',
-                    it.end <= now && !dragging && 'opacity-50',
+                    it.kind === 'task'
+                      ? cx(
+                          'group/block cursor-grab border-l-[3px] active:cursor-grabbing',
+                          // Lo que ya pasó, en gris (sin transparencias, para que se siga leyendo)
+                          it.end <= now && !dragging ? 'border-line-strong bg-fill text-muted' : 'border-blue bg-accent-soft text-fg',
+                        )
+                      : 'bg-fill text-muted',
                     dragging && 'z-10 shadow-[var(--c-shadow-lg)] ring-2 ring-blue',
                   )}
                   style={{ top, height, left: `${(it.col / it.cols) * 100}%`, width: `calc(${100 / it.cols}% - 4px)`, WebkitTouchCallout: 'none' }}
@@ -285,7 +290,7 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
                     )}
                   </span>
                   {height > 34 && (
-                    <span className={cx('block truncate text-[11.5px]', dragging ? 'font-semibold text-accent' : 'opacity-80')}>
+                    <span className={cx('block truncate text-[11.5px]', dragging ? 'font-semibold text-accent' : 'text-muted')}>
                       {toHHMM(it.start)}–{toHHMM(it.end)}
                       {dragging ? ` · ${durationLabel(it.end - it.start)}` : it.sub ? ` · ${it.sub}` : ''}
                     </span>

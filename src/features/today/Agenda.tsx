@@ -76,19 +76,20 @@ export function Agenda({ tasks, events = [], names = {} }: { tasks: Task[]; even
                   <button
                     type="button"
                     onClick={() => ui.openTask(it.task.id)}
-                    className={cx('flex w-full items-center gap-2 rounded-lg py-1.5 text-left transition-colors hover:bg-hover', past && 'opacity-45')}
+                    className="flex w-full items-center gap-2 rounded-lg py-1.5 text-left transition-colors hover:bg-hover"
                   >
+                    {/* Lo que ya pasó, en gris (sin transparencias: el texto tiene que seguir leyéndose) */}
                     <span className="font-num w-11 shrink-0 text-right text-[13px] font-semibold text-muted">{it.time}</span>
-                    <span className="h-8 w-[3px] shrink-0 rounded-full bg-blue" />
-                    <span className="min-w-0 flex-1 truncate text-[14px]">{it.task.title}</span>
+                    <span className={cx('h-8 w-[3px] shrink-0 rounded-full', past ? 'bg-line-strong' : 'bg-blue')} />
+                    <span className={cx('min-w-0 flex-1 truncate text-[14px]', past && 'text-muted')}>{it.task.title}</span>
                   </button>
                 ) : (
-                  <div className={cx('flex w-full items-center gap-2 rounded-lg py-1.5', past && 'opacity-45')} title={names[it.event.sourceId]}>
+                  <div className="flex w-full items-center gap-2 rounded-lg py-1.5" title={names[it.event.sourceId]}>
                     <span className="font-num w-11 shrink-0 text-right text-[13px] font-semibold text-muted">{it.time}</span>
-                    <span className="h-8 w-[3px] shrink-0 rounded-full bg-line-strong" />
+                    <span className={cx('h-8 w-[3px] shrink-0 rounded-full bg-line-strong', past && 'opacity-50')} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] text-muted">{it.event.title}</span>
-                      <span className="block truncate text-[12px] text-faint">
+                      <span className={cx('block truncate text-[14px]', past ? 'text-muted' : 'text-fg')}>{it.event.title}</span>
+                      <span className="block truncate text-[12px] text-muted">
                         hasta las {it.end}
                         {it.event.location ? ` · ${it.event.location}` : ''}
                       </span>

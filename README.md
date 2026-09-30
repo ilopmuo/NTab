@@ -58,7 +58,7 @@
 | **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo |
 | **Pagos** | Suscripciones y recibos: cuánto pagas al mes y al año, y aviso antes de cada cargo |
 | **Paleta** (`⌘K`) | Busca cualquier cosa y ejecuta cualquier acción |
-| **Tema** | Oscuro (por defecto), claro o del sistema |
+| **Tema y color** | Oscuro (por defecto), claro o del sistema, y el color de acento que prefieras: azul, violeta, rosa, naranja, verde azulado o grafito (todos con contraste AA) |
 | **Sincronización** | Con tu cuenta, los datos están en el iPhone, el iPad y el ordenador, al momento |
 | **Funciona sin conexión** | Cada dispositivo guarda una copia local; los cambios se suben al volver la conexión |
 | **Instalable** | Se añade a la pantalla de inicio del iPhone/iPad sin App Store |
@@ -78,7 +78,7 @@
 
 Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de Apple. Detalles en [docs/DESIGN.md](docs/DESIGN.md).
 
-- **Blanco, negro y grises.** Solo **azul eléctrico** para actuar (hoy, selección, botones) y **verde lima** para lo hecho.
+- **Blanco, negro y grises.** Solo **azul eléctrico** (u otro color de acento a tu elección) para actuar (hoy, selección, botones) y **verde lima** para lo hecho.
 - **Listas agrupadas**, títulos grandes, anillos de progreso y SF Pro en los dispositivos de Apple.
 - **Movimiento con física:**
   - arranque animado;

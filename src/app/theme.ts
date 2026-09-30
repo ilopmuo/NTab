@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { isAccent, type Accent } from '@/lib/accents'
 
 export type ThemePref = 'dark' | 'light' | 'system'
 const KEY = 'ntab-theme'
@@ -70,5 +71,54 @@ export function useTheme(): ThemePref {
       return () => listeners.delete(l)
     },
     () => pref,
+  )
+}
+
+// ── Color de acento ───────────────────────────────────────────
+// Como el tema, se guarda en cada dispositivo y se aplica antes de pintar (index.html)
+const ACCENT_KEY = 'ntab-accent'
+const accentListeners = new Set<() => void>()
+
+function readAccent(): Accent {
+  try {
+    const v = localStorage.getItem(ACCENT_KEY)
+    return isAccent(v) ? v : 'blue'
+  } catch {
+    return 'blue'
+  }
+}
+
+function applyAccent(a: Accent) {
+  if (a === 'blue') delete document.documentElement.dataset.accent
+  else document.documentElement.dataset.accent = a
+}
+
+let accent = readAccent()
+applyAccent(accent)
+
+/** Cambia el acento con un fundido suave (donde hay View Transitions) */
+export function setAccent(a: Accent) {
+  const commit = () => {
+    accent = a
+    try {
+      localStorage.setItem(ACCENT_KEY, a)
+    } catch {
+      /* sin almacenamiento: solo en memoria */
+    }
+    applyAccent(a)
+    accentListeners.forEach((l) => l())
+  }
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown }
+  if (a === accent || !doc.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return commit()
+  doc.startViewTransition(commit)
+}
+
+export function useAccent(): Accent {
+  return useSyncExternalStore(
+    (l) => {
+      accentListeners.add(l)
+      return () => accentListeners.delete(l)
+    },
+    () => accent,
   )
 }

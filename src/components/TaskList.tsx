@@ -134,7 +134,11 @@ export function InlineAdd({
         className="group flex w-full items-center gap-3 px-4 py-[11px] text-[15px] font-medium transition-colors hover:bg-hover"
         style={{ color }}
       >
-        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-white transition-transform group-active:scale-90" style={{ background: color }}>
+        {/* El círculo lleva el tono de relleno del acento: el blanco del + siempre se lee */}
+        <span
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-white transition-transform group-active:scale-90"
+          style={{ background: color === 'var(--c-blue)' ? 'var(--c-accent-fill)' : color }}
+        >
           <Plus size={15} strokeWidth={3} />
         </span>
         {placeholder}

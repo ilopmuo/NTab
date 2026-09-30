@@ -2,9 +2,9 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Moon, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'
-import { Kbd, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
+import { Kbd, ProgressPie, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
 import { SyncBadge } from '@/sync/SyncBadge'
-import { useNavCounts } from './counts'
+import { useNavCounts, useProjectProgress } from './counts'
 import { useNav } from './nav'
 import { href, useRoute } from './router'
 import { SectionIcon, section, type SectionDef } from './sections'
@@ -90,6 +90,7 @@ function SidebarContent() {
   useTheme()
   const dark = document.documentElement.dataset.theme === 'dark'
   const activeProjects = projects.filter((p) => p.status === 'active')
+  const progress = useProjectProgress(activeProjects.map((p) => p.id))
   const is = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
 
   const tileCount: Record<string, number | string> = {
@@ -186,7 +187,7 @@ function SidebarContent() {
                     indent
                     to={`/project/${p.id}`}
                     active={path === `/project/${p.id}`}
-                    icon={<span className="h-1.5 w-1.5 rounded-full bg-faint" />}
+                    icon={<ProgressPie value={progress.get(p.id) ?? 0} className="text-muted" />}
                     label={p.name}
                     count={c.byProject.get(p.id)}
                   />
@@ -200,7 +201,7 @@ function SidebarContent() {
                 key={p.id}
                 to={`/project/${p.id}`}
                 active={path === `/project/${p.id}`}
-                icon={<span className="h-1.5 w-1.5 rounded-full bg-faint" />}
+                icon={<ProgressPie value={progress.get(p.id) ?? 0} className="text-muted" />}
                 label={p.name}
                 count={c.byProject.get(p.id)}
               />

@@ -47,3 +47,19 @@ export function useNavCounts() {
     }
   }, [tasks, habits, logs, notes, people, shopping, t])
 }
+
+/** Parte hecha (de 0 a 1) de cada proyecto de `ids` */
+export function useProjectProgress(ids: string[]) {
+  const key = ids.join(',')
+  const tasks = useLiveQuery(() => (ids.length ? db.tasks.where('projectId').anyOf(ids).toArray() : []), [key]) ?? []
+  return useMemo(() => {
+    const m = new Map<string, { done: number; total: number }>()
+    for (const x of tasks) {
+      const s = m.get(x.projectId!) ?? { done: 0, total: 0 }
+      s.total++
+      if (x.done) s.done++
+      m.set(x.projectId!, s)
+    }
+    return new Map([...m].map(([id, s]) => [id, s.total ? s.done / s.total : 0]))
+  }, [tasks])
+}

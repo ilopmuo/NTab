@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
 import { addMonths, endOfMonth, startOfMonth } from 'date-fns'
-import { Cake, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Cake, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { db } from '@/db/db'
 import type { Task } from '@/db/types'
 import { addDaysYmd, capitalize, fmt, fromYmd, longDateLabel, today, weekStart, ymd } from '@/lib/dates'
@@ -11,7 +11,7 @@ import { sortTasks } from '@/lib/tasks'
 import { SectionIcon, section } from '@/app/sections'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
-import { Button, Card, IconButton, PageHeader, Segmented, cx, spring } from '@/components/ui'
+import { Button, Card, IconButton, PageHeader, Segmented, cx, spring, useIsMobile } from '@/components/ui'
 import { dragToDay, useDropOver } from '@/components/dayDrag'
 import { eventTime, eventsByDay, useEvents, type CalEvent } from '@/lib/calendarEvents'
 import type { Person } from '@/db/types'
@@ -58,7 +58,45 @@ export function CalendarView() {
     setDir(d)
     setCursor(mode === 'week' ? addDaysYmd(cursor, d * 7) : ymd(addMonths(fromYmd(cursor), d)))
   }
-  const title = mode === 'month' ? capitalize(fmt(cursor, 'MMMM')) : `Semana del ${fmt(range.start, 'd')}`
+  const mobile = useIsMobile()
+  const weekEnd = range.days[6]
+  const title =
+    mode === 'month'
+      ? capitalize(fmt(cursor, 'MMMM'))
+      : range.start.slice(0, 7) === weekEnd.slice(0, 7)
+        ? `${fmt(range.start, 'd')} – ${fmt(weekEnd, 'd MMM')}`
+        : `${fmt(range.start, 'd MMM')} – ${fmt(weekEnd, 'd MMM')}`
+  // En el móvil el año solo si no es el de ahora (si no, el título no cabe)
+  const showYear = !mobile || cursor.slice(0, 4) !== t.slice(0, 4)
+  const controls = (
+    <>
+      <Segmented
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'month', label: 'Mes' },
+          { value: 'week', label: 'Semana' },
+        ]}
+      />
+      <Button
+        size="sm"
+        variant="tinted"
+        className="ml-auto sm:ml-1"
+        onClick={() => {
+          setCursor(t)
+          setSelected(t)
+        }}
+      >
+        Hoy
+      </Button>
+      <IconButton label="Anterior" filled onClick={() => move(-1)}>
+        <ChevronLeft size={18} strokeWidth={2.4} />
+      </IconButton>
+      <IconButton label="Siguiente" filled onClick={() => move(1)}>
+        <ChevronRight size={18} strokeWidth={2.4} />
+      </IconButton>
+    </>
+  )
   const month = cursor.slice(0, 7)
   const selectedTasks = byDay.get(selected) ?? []
   const selectedBirthdays = birthdays.filter((b) => b.date === selected)
@@ -69,39 +107,13 @@ export function CalendarView() {
         icon={<SectionIcon def={section('calendar')} size={40} />}
         title={
           <>
-            {title} <span className="font-num text-muted">{fmt(cursor, 'yyyy')}</span>
+            {title} {showYear && <span className="font-num text-muted">{fmt(cursor, 'yyyy')}</span>}
           </>
         }
-        actions={
-          <>
-            <Segmented
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: 'month', label: 'Mes' },
-                { value: 'week', label: 'Semana' },
-              ]}
-            />
-            <Button
-              size="sm"
-              variant="tinted"
-              className="ml-1"
-              onClick={() => {
-                setCursor(t)
-                setSelected(t)
-              }}
-            >
-              Hoy
-            </Button>
-            <IconButton label="Anterior" filled onClick={() => move(-1)}>
-              <ChevronLeft size={18} strokeWidth={2.4} />
-            </IconButton>
-            <IconButton label="Siguiente" filled onClick={() => move(1)}>
-              <ChevronRight size={18} strokeWidth={2.4} />
-            </IconButton>
-          </>
-        }
+        actions={mobile ? undefined : controls}
       />
+      {/* En el móvil los controles van debajo, para que el título quepa entero */}
+      {mobile && <div className="-mt-3 mb-5 flex items-center gap-1.5">{controls}</div>}
 
       {mode === 'month' ? (
         <div className="grid gap-6 @[1100px]:grid-cols-[minmax(0,1fr)_340px]">
@@ -130,6 +142,7 @@ export function CalendarView() {
                     list={byDay.get(d) ?? []}
                     events={evByDay.get(d) ?? []}
                     inMonth={d.slice(0, 7) === month}
+                    past={d < t}
                     birthday={birthdays.some((b) => b.date === d)}
                     selected={selected === d}
                     isToday={d === t}
@@ -192,6 +205,7 @@ function MonthCell({
   list,
   events,
   inMonth,
+  past,
   birthday,
   selected,
   isToday,
@@ -201,12 +215,14 @@ function MonthCell({
   list: Task[]
   events: CalEvent[]
   inMonth: boolean
+  past: boolean
   birthday: boolean
   selected: boolean
   isToday: boolean
   onSelect: () => void
 }) {
   const over = useDropOver(day)
+  const weekend = [0, 6].includes(fromYmd(day).getDay())
   // Caben 3 fichas: hasta 2 eventos y el resto tareas
   const maxTasks = events.length ? 2 : 3
   const hidden = Math.max(0, list.length - maxTasks) + Math.max(0, events.length - 2)
@@ -218,15 +234,16 @@ function MonthCell({
       onDoubleClick={() => ui.quickAdd({ dueDate: day })}
       className={cx(
         'relative flex min-h-[62px] flex-col items-stretch gap-1 rounded-[12px] p-1.5 text-left transition-colors sm:min-h-[104px]',
-        over ? 'bg-accent-soft ring-2 ring-blue' : selected ? 'bg-fill' : 'hover:bg-hover',
-        !inMonth && !over && 'opacity-65',
+        over ? 'bg-accent-soft ring-2 ring-blue' : selected ? 'bg-fill' : isToday ? 'bg-accent-soft/50 hover:bg-hover' : 'hover:bg-hover',
+
       )}
     >
       <span className="flex items-center justify-between">
         <span
           className={cx(
             'font-num flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-[14px] font-semibold',
-            isToday ? 'bg-accent-fill text-white' : selected ? 'text-fg' : '',
+            // Hoy, en relleno; lo que ya pasó, el fin de semana y los días de otro mes, más apagados
+            isToday ? 'bg-accent-fill text-white' : selected ? 'text-fg' : !inMonth || past || weekend ? 'text-muted' : '',
           )}
         >
           {fromYmd(day).getDate()}
@@ -245,8 +262,17 @@ function MonthCell({
             key={x.id}
             {...dragToDay(x)}
             title="Arrastra a otro día"
-            className={cx('flex cursor-grab items-center gap-1 truncate rounded-[5px] px-1.5 text-[11.5px] leading-[19px] font-medium select-none active:cursor-grabbing', x.done && 'line-through opacity-45')}
-            style={{ background: `color-mix(in srgb, ${chipColor} 20%, transparent)`, color: `color-mix(in srgb, ${chipColor} 70%, var(--c-text))`, WebkitTouchCallout: 'none' }}
+            className={cx(
+              'flex cursor-grab items-center gap-1 truncate rounded-[5px] px-1.5 text-[11.5px] leading-[19px] font-medium select-none active:cursor-grabbing',
+              x.done && 'line-through',
+              x.priority === 3 && !x.done && 'shadow-[inset_2px_0_0_var(--c-blue)]',
+            )}
+            // Las hechas, sin fondo y en gris (tachadas, pero legibles)
+            style={
+              x.done
+                ? { color: 'var(--c-muted)', WebkitTouchCallout: 'none' }
+                : { background: `color-mix(in srgb, ${chipColor} 20%, transparent)`, color: `color-mix(in srgb, ${chipColor} 70%, var(--c-text))`, WebkitTouchCallout: 'none' }
+            }
           >
             {x.dueTime && <span className="font-num">{x.dueTime}</span>}
             <span className="truncate">{x.title}</span>
@@ -270,17 +296,32 @@ function MonthCell({
 
 function WeekDay({ day, index, list, events, birthdays, isToday }: { day: string; index: number; list: Task[]; events: CalEvent[]; birthdays: Person[]; isToday: boolean }) {
   const over = useDropOver(day)
+  const empty = !list.length && !events.length && !birthdays.length
+  const past = day < today()
   return (
     <motion.div
       data-drop-day={day}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...spring, delay: index * 0.03 }}
-      className={cx('glass flex min-h-44 flex-col rounded-[18px] p-2 transition-shadow', over ? 'ring-2 ring-blue' : isToday && 'ring-2 ring-blue/60')}
+      className={cx(
+        'glass flex flex-col rounded-[18px] p-2 transition-shadow @[560px]:min-h-44',
+        over ? 'ring-2 ring-blue' : isToday && 'ring-2 ring-blue/60',
+      )}
     >
-      <div className="mb-1 flex items-baseline gap-1.5 px-1.5 pt-1">
-        <span className={cx('font-num text-[22px] font-bold', isToday && 'text-blue')}>{fromYmd(day).getDate()}</span>
+      <div className="flex items-center gap-1.5 px-1.5 pt-1">
+        <span className={cx('font-num text-[22px] font-bold', isToday ? 'text-blue' : past && 'text-muted')}>{fromYmd(day).getDate()}</span>
         <span className="text-[13px] font-semibold text-muted">{capitalize(fmt(day, 'EEEE'))}</span>
+        {empty && <span className="text-[13px] text-muted @[560px]:hidden">· libre</span>}
+        <button
+          type="button"
+          onClick={() => ui.quickAdd({ dueDate: day })}
+          aria-label={`Añadir el ${fmt(day, "EEEE d 'de' MMMM")}`}
+          title="Añadir"
+          className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-blue transition-colors hover:bg-hover"
+        >
+          <Plus size={17} strokeWidth={2.6} />
+        </button>
       </div>
       {birthdays.map((p) => (
         <p key={p.id} className="flex items-center gap-1.5 px-1.5 py-1 text-[12px] font-semibold text-pink">
@@ -293,12 +334,11 @@ function WeekDay({ day, index, list, events, birthdays, isToday }: { day: string
           {e.title}
         </p>
       ))}
-      <div className="flex-1">
-        <TaskList tasks={list} hideDate hideProject bare compact draggable />
-      </div>
-      <button type="button" onClick={() => ui.quickAdd({ dueDate: day })} className="mt-1 rounded-[10px] py-1.5 text-[13px] font-semibold text-blue transition-colors hover:bg-hover">
-        + Añadir
-      </button>
+      {list.length > 0 && (
+        <div className="flex-1">
+          <TaskList tasks={list} hideDate hideProject bare compact draggable />
+        </div>
+      )}
     </motion.div>
   )
 }

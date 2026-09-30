@@ -47,3 +47,23 @@ for (const theme of ['dark', 'light'] as const) {
     expect(found, found.join('\n')).toEqual([])
   })
 }
+
+// Otros colores de acento: sus tonos los comprueba accents.test.ts; aquí, cómo quedan en pantalla
+for (const [theme, accent] of [['light', 'pink'], ['dark', 'graphite']] as const) {
+  test(`acento ${accent} en tema ${theme === 'dark' ? 'oscuro' : 'claro'}: sin problemas serios`, async ({ page }) => {
+    test.setTimeout(120_000)
+    await page.addInitScript(([t, a]) => (localStorage.setItem('ntab-theme', t), localStorage.setItem('ntab-accent', a)), [theme, accent])
+    await openApp(page)
+    await quickAdd(page, 'Llamar al dentista hoy a las 10 !alta #salud')
+    const found: string[] = []
+    for (const path of ['/today', '/plan', '/calendar', '/inbox', '/settings']) {
+      await page.evaluate((p) => (location.hash = p), path)
+      await expect(page.locator('#main h1').first()).toBeVisible()
+      await page.waitForTimeout(600)
+      const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+      for (const v of r.violations.filter((x) => x.impact === 'serious' || x.impact === 'critical'))
+        for (const n of v.nodes) found.push(`${path} · ${v.id}: ${n.target.join(' ')} → ${n.failureSummary?.split('\n')[1]?.trim() ?? v.help}`)
+    }
+    expect(found, found.join('\n')).toEqual([])
+  })
+}

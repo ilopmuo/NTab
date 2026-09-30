@@ -373,7 +373,7 @@ export const TaskItem = memo(function TaskItem({
             </button>
           </p>
           {meta.length > 0 && (
-            <div className={cx('mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[13px] text-muted', checked && 'opacity-50')}>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[13px] text-muted">
               {meta}
             </div>
           )}

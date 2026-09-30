@@ -79,10 +79,10 @@ export function MenuView() {
           </div>
           <Group className="mb-4">
             {days.map((d) => (
-              <div key={d} className={cx('flex items-stretch gap-3 px-4 py-2.5 shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none', d < t && 'opacity-50')}>
+              <div key={d} className="flex items-stretch gap-3 px-4 py-2.5 shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
                 <div className="w-12 shrink-0 pt-1.5">
                   <p className={cx('text-[12px] font-bold uppercase', d === t ? 'text-blue' : 'text-muted')}>{fmt(d, 'EEE')}</p>
-                  <p className={cx('font-num text-[20px] leading-none font-bold', d === t && 'text-blue')}>{fmt(d, 'd')}</p>
+                  <p className={cx('font-num text-[20px] leading-none font-bold', d === t ? 'text-blue' : d < t && 'text-muted')}>{fmt(d, 'd')}</p>
                 </div>
                 <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
                   {MEALS.map((m) => {

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'motion/react'
-import { AtSign, Bell, Calendar, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Subtask, Task } from '@/db/types'
 import { useLookup, useTask } from '@/db/hooks'
 import { deleteTask, duplicateTask, mutateTask, skipOccurrence, updateTask } from '@/db/actions'
-import { addDaysYmd, dateLabel, fromYmd, longDateLabel, today, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
+import { addDaysYmd, capitalize, dateLabel, fmt, fromYmd, longDateLabel, today, weekStart, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor, moveItem } from '@/lib/tasks'
 import { uid } from '@/lib/id'
@@ -14,6 +14,7 @@ import { durationLabel, parseDuration } from '@/lib/duration'
 import { NAG_OPTIONS, REMINDER_OPTIONS, nagLabel, reminderLabel, reminderValue } from '@/lib/reminders'
 import { toast, ui, useUI } from '@/app/store'
 import { Checkbox, completeWithFeedback } from './TaskItem'
+import { DatePicker } from './DatePicker'
 import { Button, Group, IconButton, Modal, Segmented, Switch, Textarea, cx, spring, useMediaQuery } from './ui'
 import { focus } from '@/features/focus/focus'
 import { toastTrashed } from '@/features/trash/undo'
@@ -119,6 +120,66 @@ function Row({
       </div>
       {children && <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pl-[42px]">{children}</div>}
     </div>
+  )
+}
+
+/**
+ * Elegir el día: atajos (hoy, mañana, el sábado, el lunes que viene) y un
+ * calendario propio que se despliega debajo.
+ */
+function DateChoice({ value, onChange }: { value?: string; onChange: (day: string) => void }) {
+  const t = today()
+  const [open, setOpen] = useState(false)
+  const monday = weekStart(t)
+  const saturday = addDaysYmd(monday, 5) < t ? addDaysYmd(monday, 12) : addDaysYmd(monday, 5)
+  const presets = [
+    { day: t, label: 'Hoy' },
+    { day: addDaysYmd(t, 1), label: 'Mañana' },
+    ...(saturday > addDaysYmd(t, 1) ? [{ day: saturday, label: 'El sábado' }] : []),
+    { day: addDaysYmd(monday, 7), label: 'El lunes' },
+  ]
+  const other = value && !presets.some((p) => p.day === value)
+  return (
+    <>
+      {presets.map((p) => (
+        <Pill key={p.label} active={value === p.day} onClick={() => onChange(p.day)}>
+          {p.label}
+        </Pill>
+      ))}
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={cx(
+          'flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all active:scale-95',
+          other ? 'bg-accent-fill text-white' : 'bg-fill text-fg hover:bg-press',
+        )}
+      >
+        <CalendarDays size={14} strokeWidth={2.4} aria-hidden />
+        {other ? capitalize(fmt(value, 'EEE d MMM')) : 'Otro día'}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="picker"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+            className="basis-full overflow-hidden"
+          >
+            <DatePicker
+              className="pt-2 pb-1"
+              value={value}
+              onChange={(d) => {
+                onChange(d)
+                setOpen(false)
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }
 
@@ -267,13 +328,7 @@ function TaskDetail({ task }: { task: Task }) {
             value={task.dueDate ? (overdue ? `${longDateLabel(task.dueDate)} · atrasada` : `${dateLabel(task.dueDate)} · ${longDateLabel(task.dueDate)}`) : undefined}
             onClear={task.dueDate ? () => set({ dueDate: undefined, dueTime: undefined, recurrence: undefined }) : undefined}
           >
-            <Pill active={task.dueDate === t} onClick={() => set({ dueDate: t })}>
-              Hoy
-            </Pill>
-            <Pill active={task.dueDate === addDaysYmd(t, 1)} onClick={() => set({ dueDate: addDaysYmd(t, 1) })}>
-              Mañana
-            </Pill>
-            <input type="date" aria-label="Fecha" value={task.dueDate ?? ''} onChange={(e) => set({ dueDate: e.target.value || undefined })} className={fieldCls} />
+            <DateChoice value={task.dueDate} onChange={(dueDate) => set({ dueDate })} />
           </Row>
           <Row
             icon={<Clock size={16} strokeWidth={2.4} />}

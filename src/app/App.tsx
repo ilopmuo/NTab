@@ -117,12 +117,13 @@ function Screen() {
       return id ? <PersonView id={id} /> : <PeopleView />
     case 'projects':
       return <ProjectsView />
+    // Sin id (un enlace cortado), a la lista
     case 'project':
-      return <ProjectView id={id} />
+      return id ? <ProjectView id={id} /> : <ProjectsView />
     case 'area':
-      return <AreaView id={id} />
+      return id ? <AreaView id={id} /> : <ProjectsView />
     case 'tag':
-      return <TagView tag={id} />
+      return id ? <TagView tag={id} /> : <TagsView />
     case 'tags':
       return <TagsView />
     case 'goals':
