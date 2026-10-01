@@ -129,3 +129,46 @@ test('notas enlazadas: [[…]] crea la otra nota y sale «Mencionada en»', asyn
   await page.getByRole('button', { name: '#cocina', exact: true }).click()
   await expect(page.locator('a', { hasText: 'Lista de la compra' }).first()).toBeVisible()
 })
+
+test('barra lateral: Matriz y Plantillas, plegadas en «2 más» de Organizar', async ({ page }) => {
+  await openApp(page)
+  const nav = page.getByRole('navigation', { name: 'Barra lateral' })
+  await expect(nav.getByRole('link', { name: 'Proyectos' })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'Matriz de Eisenhower' })).toHaveCount(0)
+  await nav.getByRole('button', { name: 'Ver 2 más de Organizar' }).click()
+  await nav.getByRole('link', { name: 'Matriz de Eisenhower' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Matriz de Eisenhower')
+  // Plegado otra vez, lo que estás viendo sigue a la vista
+  await nav.getByRole('button', { name: 'Ocultar las secciones ocultas de Organizar' }).click()
+  await expect(nav.getByRole('link', { name: 'Matriz de Eisenhower' })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'Plantillas' })).toHaveCount(0)
+  await expect(nav.getByRole('button', { name: 'Ver 1 más de Organizar' })).toBeVisible()
+})
+
+test('renombrar una nota actualiza sus enlaces', async ({ page }) => {
+  await openApp(page, '/notes')
+  await page.getByRole('button', { name: 'Nueva nota' }).click()
+  await page.getByPlaceholder('Título').fill('Recetas')
+  await page.getByLabel('Texto de la nota').fill('Ver [[Lista de la compra]]')
+  await page.getByRole('button', { name: 'Crear «Lista de la compra»' }).click()
+  await expect(page.getByPlaceholder('Título')).toHaveValue('Lista de la compra')
+  await page.getByPlaceholder('Título').fill('La compra')
+  await page.getByLabel('Texto de la nota').click()
+  await expect(page.getByText('Enlaces actualizados en 1 nota', { exact: true })).toBeVisible()
+  await expect(page.getByText('Mencionada en 1')).toBeVisible()
+  await page.getByRole('link', { name: /^Recetas/ }).last().click()
+  await expect(page.getByLabel('Texto de la nota')).toHaveValue('Ver [[La compra]]')
+})
+
+test('fecha límite: aviso la víspera a la hora elegida', async ({ page }) => {
+  // Jueves 1 de octubre de 2026 a las 9:01 (el aviso es a las 9:00)
+  await page.clock.setFixedTime(new Date('2026-10-01T09:01:00+02:00'))
+  await openApp(page, '/inbox')
+  await quickAdd(page, 'Entregar la memoria antes del 2')
+  await expect(page.getByRole('button', { name: 'Entregar la memoria: mañana es la fecha límite. ¿La dejas hecha hoy?' })).toBeVisible({ timeout: 20_000 })
+
+  // Se puede apagar en Ajustes → Avisos
+  await page.evaluate(() => (location.hash = '/settings'))
+  await page.getByRole('switch', { name: 'Avisar de las fechas límite' }).click()
+  await expect(page.getByLabel('Hora del aviso de fecha límite')).toHaveCount(0)
+})

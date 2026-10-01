@@ -65,6 +65,14 @@ export function backlinks<T extends { id: string; title: string; content: string
   })
 }
 
+/** Cambia los [[enlaces]] a `from` por enlaces a `to` (al renombrar una nota) */
+export function renameLinks(content: string, from: string, to: string): string {
+  const k = key(from)
+  const name = to.trim()
+  if (!k || !name || key(name) === k) return content
+  return content.replace(LINK, (whole, title: string) => (key(title) === k ? `[[${name}]]` : whole))
+}
+
 /** Todas las etiquetas de las notas, de la más usada a la menos */
 export function allNoteTags(notes: { content: string }[]): string[] {
   const count = new Map<string, number>()

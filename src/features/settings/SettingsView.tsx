@@ -28,6 +28,7 @@ import {
   Smartphone,
   Sun,
   Sunrise,
+  CalendarClock,
   Trash2,
   Upload,
   Volume2,
@@ -58,6 +59,7 @@ import { CalendarSourcesBlock } from './CalendarSourcesBlock'
 import { ClaudeBlock } from './ClaudeBlock'
 import { SiriBlock } from './SiriBlock'
 import { Page } from '../Page'
+import { DEADLINE_ALERT_TIME, type DeadlineAlertPrefs } from '@/lib/deadlines'
 
 /** Icono cuadrado de color, como en la app Ajustes */
 function Glyph({ c, children }: { c: Tint; children: React.ReactNode }) {
@@ -209,6 +211,9 @@ function NotificationsBlock() {
   const digestRow = useLiveQuery(() => db.settings.get('dailyDigest'), [])
   const digest = { enabled: false, time: '08:00', ...(digestRow?.value as { enabled?: boolean; time?: string } | undefined) }
   const setDigest = (patch: Partial<typeof digest>) => void setSetting('dailyDigest', { ...digest, ...patch })
+  const deadlineRow = useLiveQuery(() => db.settings.get('deadlineAlerts'), [])
+  const deadlines = { enabled: true, time: DEADLINE_ALERT_TIME, ...(deadlineRow?.value as DeadlineAlertPrefs | undefined) }
+  const setDeadlines = (patch: Partial<typeof deadlines>) => void setSetting('deadlineAlerts', { ...deadlines, ...patch })
   useEffect(() => {
     void getPushState().then(setState)
   }, [])
@@ -304,6 +309,29 @@ function NotificationsBlock() {
               />
             )}
             <Switch label="Resumen de la mañana" checked={digest.enabled} onChange={(v) => setDigest({ enabled: v })} />
+          </span>
+        }
+      />
+      <Row
+        glyph={
+          <Glyph c="gray">
+            <CalendarClock size={15} strokeWidth={2.4} />
+          </Glyph>
+        }
+        label="Fechas límite"
+        detail={deadlines.enabled ? 'Aviso la víspera y el mismo día' : 'Sin aviso de las fechas límite'}
+        right={
+          <span className="flex items-center gap-2">
+            {deadlines.enabled && (
+              <input
+                type="time"
+                aria-label="Hora del aviso de fecha límite"
+                value={deadlines.time}
+                onChange={(e) => e.target.value && setDeadlines({ time: e.target.value })}
+                className="font-num h-8 rounded-lg bg-fill px-2 text-[14px] font-semibold"
+              />
+            )}
+            <Switch label="Avisar de las fechas límite" checked={deadlines.enabled} onChange={(v) => setDeadlines({ enabled: v })} />
           </span>
         }
       />

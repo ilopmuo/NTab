@@ -83,7 +83,7 @@ La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el int
 ## 6. Navegación y accesibilidad
 
 - **Funciones activables** (`src/lib/features.ts`): lo que se apaga desaparece de la barra lateral, las pestañas, ⌘K, los atajos, Hoy y los avisos del servidor. Lo esencial (Hoy, Próximo, Bandeja, Calendario, Proyectos, Etiquetas) no se apaga.
-- **Barra lateral por grupos** (Organizar, Día a día, Casa, Dinero, Mis áreas, Fijados), plegables y recordados en cada dispositivo; un grupo plegado sigue enseñando la fila de lo que estás viendo. En el móvil, «Más» es una página con los mismos grupos en cuadrícula.
+- **Barra lateral por grupos** (Organizar, Día a día, Casa, Dinero, Mis listas, Mis áreas, Fijados), plegables y recordados en cada dispositivo; un grupo plegado sigue enseñando la fila de lo que estás viendo. Lo oculto (Matriz y Plantillas, de inicio) queda al pie de su grupo tras «N más», también plegable. En el móvil, «Más» es una página con los mismos grupos en cuadrícula.
 - **Texto**: `--c-faint` nunca para texto que haya que leer (contadores, días de la semana, hechas tachadas): `--c-muted`. Nada de transparencias sobre texto.
 - **Más contraste** (`[data-contrast='more']`): grises de texto y bordes más marcados, materiales opacos y sin halo de fondo. **Menos movimiento** (`[data-motion='reduce']`): sin animaciones de CSS ni de Motion, sin confeti ni revelados. Ambos siguen al sistema o se fuerzan en Ajustes → Accesibilidad.
 - **Lector de pantalla**: los avisos y los cambios de pantalla se anuncian (`#announcer`, `aria-live`); «Saltar al contenido» es lo primero al tabular; al navegar desde la barra lateral el foco pasa al contenido. Títulos: un `h1` por pantalla y `h2` para los bloques.

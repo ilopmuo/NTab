@@ -15,13 +15,13 @@
 | **Áreas y proyectos** | Trabajo, Salud, Finanzas… con proyectos, progreso, fecha límite y su siguiente paso a la vista |
 | **Secciones** | Divide un proyecto en bloques («Diseño», «Contenido», «Lanzamiento»), cada uno con su orden; las plantillas y Claude también las usan |
 | **Tablero** | Cualquier proyecto se ve en lista o en tablero (como Trello o Asana): cada sección es una columna y las tarjetas se arrastran de una a otra (o «Mover a…» sin ratón). Se recuerda por proyecto |
-| **Fecha límite** | Además de *cuándo* hacerla, *para cuándo* tiene que estar (como en Things y Todoist): «antes del viernes», «como muy tarde el 3». Sale en Hoy cuando llega y avisa en rojo si se pasa |
+| **Fecha límite** | Además de *cuándo* hacerla, *para cuándo* tiene que estar (como en Things y Todoist): «antes del viernes», «como muy tarde el 3». Sale en Hoy cuando llega, te avisa la víspera y el mismo día (a la hora que elijas en Ajustes → Avisos) y se marca si se pasa |
 | **Algún día** | Lo que no es para ahora pero no quieres olvidar (como en Things y GTD): fuera de la Bandeja y de Hoy, con su propia lista y paso en la revisión semanal. `S` en una lista, «algún día» al escribir |
 | **Listas inteligentes** | Búsquedas guardadas que se actualizan solas (como los filtros de Todoist o TickTick): por fecha, prioridad, etiquetas, proyecto o área, persona y duración. Salen en la barra lateral, en «Mis listas» |
 | **Matriz de Eisenhower** | Lo pendiente en cuatro cuadrantes (urgente/importante, como en TickTick); arrastrar a otro cuadrante cambia la prioridad o la fecha |
 | **Tareas completas** | Prioridad, fecha, hora, repetición, subtareas, etiquetas y notas |
 | **Hábitos** | Seguimiento diario, rachas 🔥 y mapa de calor de 18 semanas. Con cantidad («8 vasos de agua», con botón +1) o «3 veces por semana», el día que quieras |
-| **Notas** | Autoguardado, agrupadas como en Notas de Apple (fijadas, hoy, ayer, 7 y 30 días, por mes); las líneas `- [ ] algo` se convierten en tareas con un clic. **Enlazadas** como en Bear u Obsidian: `[[Otra nota]]` (con sugerencias al escribir), «Mencionada en» y `#etiquetas` para filtrar |
+| **Notas** | Autoguardado, agrupadas como en Notas de Apple (fijadas, hoy, ayer, 7 y 30 días, por mes); las líneas `- [ ] algo` se convierten en tareas con un clic. **Enlazadas** como en Bear u Obsidian: `[[Otra nota]]` (con sugerencias al escribir), «Mencionada en» y `#etiquetas` para filtrar; al cambiar el título de una nota, sus enlaces cambian con ella |
 | **Personas** (mini-CRM) | Cumpleaños, historial de contactos y aviso de "hace mucho que no hablas con…" |
 | **Revisión semanal** | Asistente paso a paso para vaciar la cabeza y planificar la semana, con «Algún día» y proyectos marcados como revisados (como en OmniFocus) |
 | **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada. Botones «Hecho» y «Posponer 15 min» |
@@ -52,7 +52,7 @@
 | **Orden a mano** | Bandeja, proyectos, áreas y Hoy pueden pasar de orden automático a manual: arrastra el asa de cada tarea (o ↑/↓). Cada lista tiene su orden, y las subtareas también se arrastran |
 | **Siri** | «Oye Siri, apunta en NTab»: dictas «llamar al dentista mañana a las 10», «compra: leche y pan», «gasto 12 café», «nota: …», «hecho: cambiar las sábanas» o «+1 agua» y se apunta sin abrir la app (un atajo del iPhone, en Ajustes → Siri) |
 | **Etiquetas** | Todas tus `#etiquetas` con sus tareas pendientes; cámbiales el nombre (si ya existe, se juntan) o quítalas, con «Deshacer» |
-| **Navegación a tu medida** | Barra lateral por grupos plegables (Organizar, Día a día, Casa, Dinero), con tus proyectos, áreas y etiquetas **fijados** arriba. Elige qué va en la cuadrícula, en la lista u oculto, y las cuatro pestañas del móvil; «Más» reúne el resto por grupos. En el ordenador se pliega (`⌘\`) |
+| **Navegación a tu medida** | Barra lateral por grupos plegables (Organizar, Día a día, Casa, Dinero), con tus proyectos, áreas y etiquetas **fijados** arriba. Elige qué va en la cuadrícula, en la lista u oculto (lo oculto queda plegado en «N más» al pie de su grupo; Matriz y Plantillas empiezan así), y las cuatro pestañas del móvil; «Más» reúne el resto por grupos. En el ordenador se pliega (`⌘\`) |
 | **Procesar la bandeja** | Una tarea cada vez, como un mazo de cartas: hoy, mañana, otro día, a una lista, hecha, borrar o luego |
 | **Autocompletar** | Al escribir `#`, `+` o `@` en la captura, te sugiere tus etiquetas, proyectos, áreas y personas: `Tab` o un toque para completar |
 | **Dictado** | Botón de micrófono en la captura rápida: dices la tarea y se entiende igual que escrita |
@@ -145,6 +145,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
   - cosas: reclamar o devolver un préstamo y lo que caduca (`due_reminders` incluye la tabla `things`);
   - «Última vez» cuando vuelve a tocar (`due_reminders` incluye `trackers`);
   - el diario por la noche si aún no se ha escrito (`due_journal_reminders`, hora en `settings/journalReminder`);
+  - las fechas límite, la víspera y el mismo día (`due_deadline_reminders`, hora en `settings/deadlineAlerts`, a las 9 si no se cambia);
   - hábitos a su hora si hoy no se ha llegado al objetivo y, en los de «N veces por semana», si la semana aún no está cumplida (`due_habit_reminders`).
 - En el iPhone hacen falta iOS 16.4 o posterior y la app añadida a la pantalla de inicio. Se activan en **Ajustes → Avisos**.
 - Configuración única en Supabase: el secreto `VAPID_PRIVATE_KEY` de la Edge Function (la clave pública está en `src/reminders/push.ts`).

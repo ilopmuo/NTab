@@ -7,7 +7,7 @@ import { SectionIcon, section } from '@/app/sections'
 import { db } from '@/db/db'
 import { toastTrashed } from '../trash/undo'
 import type { Note } from '@/db/types'
-import { createNote, createTask, updateNote, deleteNote } from '@/db/actions'
+import { createNote, createTask, updateNote, deleteNote, renameNoteLinks, restoreNoteContents } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
@@ -194,9 +194,24 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
   const latest = useRef({ title, content })
   latest.current = { title, content }
 
+  // Renombrar: los [[enlaces]] de las demás notas siguen apuntando aquí
+  const linkedTitle = useRef(note.title)
+  const syncLinks = async () => {
+    const from = linkedTitle.current
+    const to = latest.current.title.trim()
+    if (!to || from.trim() === to) return
+    linkedTitle.current = to
+    const changed = await renameNoteLinks(note.id, from, to)
+    if (changed.length)
+      toast(`Enlaces actualizados en ${changed.length} ${changed.length === 1 ? 'nota' : 'notas'}`, { label: 'Deshacer', run: () => void restoreNoteContents(changed) })
+  }
+  const syncRef = useRef(syncLinks)
+  syncRef.current = syncLinks
+
   // Al salir: guardar lo pendiente y borrar la nota si quedó vacía
   useEffect(
     () => () => {
+      void syncRef.current()
       if (dirty.current) void updateNote(note.id, latest.current)
       setTimeout(() => {
         if (window.location.hash.includes(note.id)) return
@@ -292,6 +307,8 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
           dirty.current = true
           setTitle(e.target.value)
         }}
+        onBlur={() => void syncLinks()}
+        aria-label="Título de la nota"
         placeholder="Título"
         className="mb-3 w-full bg-transparent text-[30px] font-bold tracking-[-0.02em] placeholder:text-faint"
       />

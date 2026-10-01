@@ -1,6 +1,7 @@
 import { db } from '@/db/db'
 import { completeHabit, rollSubscriptions, toggleTask, updateTask } from '@/db/actions'
-import { today, weekStart } from '@/lib/dates'
+import { addDaysYmd, today, weekStart } from '@/lib/dates'
+import { DEADLINE_ALERT_TIME, deadlineAlert, deadlineMessage, type DeadlineAlertPrefs } from '@/lib/deadlines'
 import { doneDays, groupLogs, isDue } from '@/lib/habits'
 import { chargeWhen, money } from '@/lib/finance'
 import { toast, ui } from '@/app/store'
@@ -228,6 +229,32 @@ export function startLocalReminders() {
       toast(`Es la hora: ${r.name}`, { label: 'Empezar', run: () => runner.open(r.id) }, 20_000, { icon: 'bell', onClick: () => runner.open(r.id) })
       void showSystemNotification(`routines-${r.id}`, r.name, `Es la hora: ${r.steps.length} pasos. Toca para hacerla paso a paso.`, `./#/routine/${r.id}`, `routines-${r.id}-${day}`)
     }
+    // Fechas límite: la víspera y el mismo día, a la hora elegida (la misma clave que el push)
+    const dl = (await db.settings.get('deadlineAlerts'))?.value as DeadlineAlertPrefs | undefined
+    const dlTime = dl?.time || DEADLINE_ALERT_TIME
+    const deadlines: { id: string; title: string; kind: 'today' | 'tomorrow' }[] = []
+    if (dl?.enabled !== false && nowHm >= dlTime && minutesBetween(dlTime, nowHm) < 15) {
+      const tomorrow = addDaysYmd(day, 1)
+      for (const t of await db.tasks.where('done').equals(0).toArray()) {
+        const kind = deadlineAlert(t.deadline, day, tomorrow)
+        if (!kind || seen.has(`deadline:${t.id}:${day}`)) continue
+        seen.add(`deadline:${t.id}:${day}`)
+        deadlines.push({ id: t.id, title: t.title, kind })
+      }
+    }
+    for (const t of deadlines) {
+      const body = deadlineMessage(t.kind)
+      toast(
+        `${t.title}: ${body.charAt(0).toLowerCase()}${body.slice(1)}`,
+        [
+          { label: 'Hecho', run: () => void applyReminderAction('done', t.id) },
+          { label: 'Ver', run: () => openTaskFromNotification(t.id) },
+        ],
+        20_000,
+        { icon: 'bell', onClick: () => openTaskFromNotification(t.id) },
+      )
+      void showSystemNotification(`tasks-${t.id}`, t.title, body, `./#/task/${t.id}`, `deadline-${t.id}-${day}`)
+    }
     // Diario: por la noche, si hoy aún no se ha escrito
     const jr = (await db.settings.get('journalReminder'))?.value as { enabled?: boolean; time?: string } | undefined
     let journalDue = false
@@ -240,8 +267,8 @@ export function startLocalReminders() {
         void showSystemNotification('journal', '¿Qué tal el día?', 'Apunta cómo te ha ido en un minuto.', './#/journal', `journal-${day}`)
       }
     }
-    if (habits.length || routines.length || journalDue) saveSeen(seen)
-    if (due.length || nags.length || subs.length || things.length || trackers.length || pending.length || startNow.length || journalDue) {
+    if (habits.length || routines.length || journalDue || deadlines.length) saveSeen(seen)
+    if (due.length || nags.length || subs.length || things.length || trackers.length || pending.length || startNow.length || journalDue || deadlines.length) {
       saveSeen(seen)
       if (prefs.reminderSound) chime()
     }

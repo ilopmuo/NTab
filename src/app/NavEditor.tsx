@@ -41,7 +41,7 @@ function SidebarEditor() {
   return (
     <>
       <p className="px-5 pb-3 text-[13.5px] text-muted">
-        Arrastra para ordenar. Lo que ocultes sigue en la búsqueda (⌘K) y en los atajos de teclado.
+        Arrastra para ordenar. Lo que ocultes queda plegado en «N más» al pie de su grupo, en la búsqueda (⌘K) y en los atajos de teclado.
       </p>
       <Reorder.Group axis="y" values={nav.order} onReorder={(order) => save({ order })} className="max-h-[52vh] space-y-1.5 overflow-y-auto px-5">
         {nav.order.map((id) => (

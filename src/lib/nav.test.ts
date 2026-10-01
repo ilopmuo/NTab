@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_LIST, DEFAULT_TABS, DEFAULT_TILES, resolveNav, setTab } from './nav'
+import { DEFAULT_HIDDEN, DEFAULT_LIST, DEFAULT_TABS, DEFAULT_TILES, resolveNav, setTab } from './nav'
 
 const ALL = [...DEFAULT_TILES, ...DEFAULT_LIST, 'trash', 'logbook', 'settings']
 
@@ -7,8 +7,9 @@ describe('resolveNav', () => {
   it('sin ajustes: la barra de siempre', () => {
     const nav = resolveNav(null, ALL)
     expect(nav.tiles).toEqual(DEFAULT_TILES)
-    expect(nav.list).toEqual(DEFAULT_LIST)
-    expect(nav.hidden).toEqual([])
+    expect(nav.list).toEqual(DEFAULT_LIST.filter((id) => !DEFAULT_HIDDEN.includes(id)))
+    // Matriz y Plantillas empiezan ocultas, para no saturar la barra
+    expect(nav.hidden).toEqual(DEFAULT_HIDDEN)
     expect(nav.tabs).toEqual(DEFAULT_TABS)
   })
 
@@ -22,8 +23,14 @@ describe('resolveNav', () => {
   it('respeta el orden, el sitio y las ocultas', () => {
     const nav = resolveNav({ order: ['notes', 'today', 'menu'], place: { menu: 'tile', inbox: 'hidden', review: 'hidden' } }, ALL)
     expect(nav.tiles.slice(0, 3)).toEqual(['notes', 'today', 'menu'])
-    expect(nav.hidden).toEqual(['inbox', 'review'])
+    expect(nav.hidden.filter((id) => !DEFAULT_HIDDEN.includes(id))).toEqual(['inbox', 'review'])
     expect(nav.list).not.toContain('menu')
+  })
+
+  it('lo oculto por defecto se puede volver a poner en la lista', () => {
+    const nav = resolveNav({ place: { matrix: 'list' } }, ALL)
+    expect(nav.list).toContain('matrix')
+    expect(nav.hidden).toEqual(['templates'])
   })
 
   it('Hoy no se puede ocultar', () => {

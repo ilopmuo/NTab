@@ -9,6 +9,7 @@ import { withDate } from '@/lib/trackers'
 import { aisleFor, itemKey, type ParsedItem } from '@/lib/shopping'
 import { cleanTag, replaceTag } from '@/lib/tags'
 import { logGoal } from '@/lib/goals'
+import { renameLinks } from '@/lib/notes'
 
 // ── Tareas ────────────────────────────────────────────────────
 
@@ -220,6 +221,30 @@ export async function createNote(data: Partial<Note> = {}): Promise<Note> {
 
 export async function updateNote(id: string, changes: Partial<Note>) {
   await db.notes.update(id, { ...changes, updatedAt: Date.now() })
+}
+
+/**
+ * Al renombrar una nota, los [[enlaces]] de las demás pasan al nombre nuevo.
+ * No cambia cuándo se editaron. Devuelve cómo estaban, para deshacer.
+ */
+export async function renameNoteLinks(noteId: string, from: string, to: string) {
+  return db.transaction('rw', db.notes, async () => {
+    const before: { id: string; content: string }[] = []
+    for (const n of await db.notes.toArray()) {
+      if (n.id === noteId) continue
+      const next = renameLinks(n.content, from, to)
+      if (next === n.content) continue
+      before.push({ id: n.id, content: n.content })
+      await db.notes.update(n.id, { content: next })
+    }
+    return before
+  })
+}
+
+export async function restoreNoteContents(list: { id: string; content: string }[]) {
+  await db.transaction('rw', db.notes, async () => {
+    for (const n of list) await db.notes.update(n.id, { content: n.content })
+  })
 }
 
 // ── Hábitos ───────────────────────────────────────────────────

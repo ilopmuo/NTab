@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allNoteTags, backlinks, findNote, groupNotes, noteGroup, noteLinks, noteTags, suggestLink } from './notes'
+import { allNoteTags, backlinks, findNote, groupNotes, noteGroup, noteLinks, noteTags, renameLinks, suggestLink } from './notes'
 
 const at = (s: string) => new Date(`${s}T12:00:00`).getTime()
 
@@ -54,5 +54,13 @@ describe('notas enlazadas', () => {
     const w = 'Mira [[re]] luego'
     expect(suggestLink(w, 9, titles)).toEqual({ start: 5, end: 11, items: ['Recetas'] })
     expect(suggestLink('Mira [[Recetas]] ', 17, titles)).toBeUndefined()
+  })
+
+  it('al renombrar una nota, sus enlaces cambian con ella', () => {
+    const text = 'Ver [[Recetas]], [[recétas]] y [[Recetas de casa]]'
+    expect(renameLinks(text, 'Recetas', 'Cocina')).toBe('Ver [[Cocina]], [[Cocina]] y [[Recetas de casa]]')
+    expect(renameLinks(text, 'Recetas', '  ')).toBe(text)
+    expect(renameLinks(text, 'Recetas', 'RECETAS')).toBe(text)
+    expect(renameLinks(text, '', 'Cocina')).toBe(text)
   })
 })

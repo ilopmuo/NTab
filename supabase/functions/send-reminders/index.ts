@@ -8,7 +8,7 @@
 //   VAPID_SUBJECT      opcional, p. ej. "mailto:tu@email.com"
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { buildDigest, buildHabitPayload, buildPayload, buildRoutinePayload, buildJournalPayload, type DueJournal, type DueDigest, type DueHabit, type DueReminder, type DueRoutine } from './format.ts'
+import { buildDeadlinePayload, buildDigest, buildHabitPayload, buildPayload, buildRoutinePayload, buildJournalPayload, type DueDeadline, type DueJournal, type DueDigest, type DueHabit, type DueReminder, type DueRoutine } from './format.ts'
 import { REMINDER_FEATURE, reminderAllowed } from '../_shared/features.ts'
 
 const PUBLIC_KEY =
@@ -83,13 +83,14 @@ Deno.serve(async (req) => {
   }
   if (body.test) return sendTest(req, admin, Number(body.delay) || 0)
 
-  const [remindersRes, digestsRes, habitsRes, nagsRes, routinesRes, journalRes] = await Promise.all([
+  const [remindersRes, digestsRes, habitsRes, nagsRes, routinesRes, journalRes, deadlinesRes] = await Promise.all([
     admin.rpc('due_reminders', { window_minutes: 15 }),
     admin.rpc('due_digests', { window_minutes: 15 }),
     admin.rpc('due_habit_reminders', { window_minutes: 15 }),
     admin.rpc('due_nags', { window_minutes: 15 }),
     admin.rpc('due_routine_reminders', { window_minutes: 15 }),
     admin.rpc('due_journal_reminders', { window_minutes: 15 }),
+    admin.rpc('due_deadline_reminders', { window_minutes: 15 }),
   ])
   if (remindersRes.error) return json({ error: remindersRes.error.message }, 500)
   // Si la migración del resumen aún no está aplicada, los avisos siguen funcionando
@@ -98,6 +99,7 @@ Deno.serve(async (req) => {
   if (nagsRes.error) console.error('due_nags', nagsRes.error.message)
   if (routinesRes.error) console.error('due_routine_reminders', routinesRes.error.message)
   if (journalRes.error) console.error('due_journal_reminders', journalRes.error.message)
+  if (deadlinesRes.error) console.error('due_deadline_reminders', deadlinesRes.error.message)
 
   // Cada envío: a quién, qué (según la zona horaria del dispositivo) y qué apuntar al terminar
   interface Job {
@@ -116,6 +118,12 @@ Deno.serve(async (req) => {
       user_id: r.user_id,
       payload: (tz: string) => buildPayload(r, tz),
       log: { user_id: r.user_id, tbl: r.tbl, item_id: r.item_id, remind_at: r.remind_at },
+    })),
+    // Fechas límite: la víspera y el mismo día (una vez al día por tarea)
+    ...((deadlinesRes.data ?? []) as DueDeadline[]).map((d) => ({
+      user_id: d.user_id,
+      payload: () => buildDeadlinePayload(d),
+      log: { user_id: d.user_id, tbl: 'deadline', item_id: `${d.item_id}:${d.local_date}`, remind_at: new Date().toISOString() },
     })),
     ...((digestsRes.data ?? []) as DueDigest[]).map((d) => ({
       user_id: d.user_id,

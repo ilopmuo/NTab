@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { ChevronRight, Hash, ListFilter, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
+import { ChevronDown, ChevronRight, Hash, ListFilter, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'
 import { Kbd, ProgressPie, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
@@ -131,6 +131,37 @@ function NavGroup({ id, label, active, action, className, children }: { id: stri
   )
 }
 
+/**
+ * Al pie de un grupo, lo que está oculto (por defecto, Matriz y Plantillas):
+ * plegado tras «N más», salvo lo que estás viendo. Así no satura la barra y
+ * sigue a mano en el ordenador, como «Más» en el móvil.
+ */
+function MoreRows({ group, label, items, isActive, render }: { group: string; label: string; items: SectionDef[]; isActive: (d: SectionDef) => boolean; render: (d: SectionDef) => React.ReactNode }) {
+  // useCollapsed recuerda lo que se ha tocado; aquí «tocado» es «abierto»
+  const [open, toggle] = useCollapsed(`more:${group}`)
+  const shown = open ? items : items.filter(isActive)
+  const rest = items.length - shown.length
+  return (
+    <>
+      {shown.map(render)}
+      {(rest > 0 || open) && (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          aria-label={open ? `Ocultar las secciones ocultas de ${label}` : `Ver ${rest} más de ${label}`}
+          className="flex h-8 w-full items-center gap-2.5 rounded-[10px] px-2 text-[13px] font-medium text-muted transition-colors hover:bg-hover hover:text-fg"
+        >
+          <span className="flex w-6 shrink-0 justify-center">
+            <ChevronDown size={14} strokeWidth={2.6} aria-hidden className={cx('transition-transform duration-200', open && 'rotate-180')} />
+          </span>
+          {open ? 'Menos' : `${rest} más`}
+        </button>
+      )}
+    </>
+  )
+}
+
 /** En un grupo plegado, solo la fila de lo que estás viendo */
 function OnlyActive({ children }: { children: React.ReactNode }) {
   return <div className="nav-only-active space-y-px">{children}</div>
@@ -167,7 +198,10 @@ function SidebarContent() {
   // La lista: primero lo esencial sin grupo; luego cada grupo, plegable
   const list = nav.list.map(section)
   const core = list.filter((d) => !d.group)
-  const groups = FEATURE_GROUPS.map((g) => ({ ...g, items: list.filter((d) => d.group === g.id) })).filter((g) => g.items.length)
+  const hidden = nav.hidden.map(section)
+  const groups = FEATURE_GROUPS.map((g) => ({ ...g, items: list.filter((d) => d.group === g.id), more: hidden.filter((d) => d.group === g.id) })).filter(
+    (g) => g.items.length || g.more.length,
+  )
   const sectionRow = (d: SectionDef) => (
     <Row
       key={d.id}
@@ -281,8 +315,9 @@ function SidebarContent() {
         )}
 
         {groups.map((g) => (
-          <NavGroup key={g.id} id={g.id} label={g.label} active={g.items.some((d) => is(d.path))}>
+          <NavGroup key={g.id} id={g.id} label={g.label} active={[...g.items, ...g.more].some((d) => is(d.path))}>
             {g.items.map(sectionRow)}
+            {g.more.length > 0 && <MoreRows group={g.id} label={g.label} items={g.more} isActive={(d) => is(d.path)} render={sectionRow} />}
           </NavGroup>
         ))}
 

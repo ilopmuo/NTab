@@ -2,6 +2,7 @@
  * Texto de las notificaciones. Sin dependencias de Deno para poder probarlo
  * con los tests de la app (src/reminders/format.test.ts).
  */
+import { deadlineAlert, deadlineMessage } from '../_shared/deadlines.ts'
 
 export interface DueReminder {
   user_id: string
@@ -172,6 +173,28 @@ export function buildRoutinePayload(x: DueRoutine): PushPayload {
     url: `./#/routine/${x.routine_id}`,
     tag: `routines-${x.routine_id}`,
     key: `routines-${x.routine_id}-${x.local_date}`,
+  }
+}
+
+export interface DueDeadline {
+  user_id: string
+  item_id: string
+  title: string
+  deadline: string
+  local_date: string
+  tomorrow: string
+}
+
+/** Fecha límite: la víspera y el mismo día (con Hecho / Posponer, como cualquier tarea) */
+export function buildDeadlinePayload(d: DueDeadline): PushPayload {
+  const kind = deadlineAlert(d.deadline, d.local_date, d.tomorrow) ?? 'today'
+  return {
+    title: d.title,
+    body: deadlineMessage(kind),
+    url: `./#/task/${d.item_id}`,
+    tag: `tasks-${d.item_id}`,
+    key: `deadline-${d.item_id}-${d.local_date}`,
+    taskId: d.item_id,
   }
 }
 

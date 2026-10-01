@@ -16,6 +16,8 @@ export interface NavPrefs {
 export const FIXED = ['logbook', 'trash', 'settings']
 export const DEFAULT_TILES = ['today', 'upcoming', 'inbox', 'calendar', 'habits', 'notes']
 export const DEFAULT_LIST = ['shopping', 'menu', 'routines', 'trackers', 'things', 'journal', 'people', 'projects', 'tags', 'lists', 'matrix', 'someday', 'templates', 'goals', 'expenses', 'finance', 'review']
+/** De la lista, pero ocultas al empezar (para no saturar la barra): en «N más» de su grupo, en «Más» y en ⌘K */
+export const DEFAULT_HIDDEN = ['matrix', 'templates']
 export const DEFAULT_TABS = ['today', 'upcoming', 'calendar', 'habits']
 export const TAB_COUNT = 4
 /** Hoy es la portada: no se puede ocultar */
@@ -45,7 +47,7 @@ export function resolveNav(prefs: NavPrefs | null | undefined, sections: string[
 
   const place: Record<string, Place> = {}
   for (const id of order) {
-    let p = prefs?.place?.[id] ?? (DEFAULT_TILES.includes(id) ? 'tile' : 'list')
+    let p = prefs?.place?.[id] ?? (DEFAULT_TILES.includes(id) ? 'tile' : DEFAULT_HIDDEN.includes(id) ? 'hidden' : 'list')
     if (p !== 'tile' && p !== 'list' && p !== 'hidden') p = 'list'
     if (p === 'hidden' && ALWAYS_VISIBLE.includes(id)) p = DEFAULT_TILES.includes(id) ? 'tile' : 'list'
     place[id] = p

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildDigest, buildHabitPayload, buildJournalPayload, buildPayload, buildRoutinePayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
+import { buildDeadlinePayload, buildDigest, buildHabitPayload, buildJournalPayload, buildPayload, buildRoutinePayload, dayLabel, type DueReminder } from '../../supabase/functions/send-reminders/format'
+import { deadlineAlert } from '@/lib/deadlines'
 
 // Jueves 24 de septiembre de 2026, 10:00 en Madrid
 const now = new Date('2026-09-24T08:00:00Z')
@@ -104,5 +105,22 @@ describe('última vez y diario', () => {
   })
   it('aviso del diario', () => {
     expect(buildJournalPayload({ user_id: 'u', local_date: '2026-09-24', done_today: 3 })).toMatchObject({ title: '¿Qué tal el día?', url: './#/journal', key: 'journal-2026-09-24' })
+  })
+
+  it('fechas límite: la víspera y el mismo día, con los botones de las tareas', () => {
+    expect(deadlineAlert('2026-09-24', '2026-09-24', '2026-09-25')).toBe('today')
+    expect(deadlineAlert('2026-09-25', '2026-09-24', '2026-09-25')).toBe('tomorrow')
+    expect(deadlineAlert('2026-09-26', '2026-09-24', '2026-09-25')).toBeNull()
+    expect(deadlineAlert(undefined, '2026-09-24', '2026-09-25')).toBeNull()
+    const d = { user_id: 'u', item_id: 't1', title: 'Entregar la memoria', local_date: '2026-09-24', tomorrow: '2026-09-25' }
+    expect(buildDeadlinePayload({ ...d, deadline: '2026-09-25' })).toEqual({
+      title: 'Entregar la memoria',
+      body: 'Mañana es la fecha límite. ¿La dejas hecha hoy?',
+      url: './#/task/t1',
+      tag: 'tasks-t1',
+      key: 'deadline-t1-2026-09-24',
+      taskId: 't1',
+    })
+    expect(buildDeadlinePayload({ ...d, deadline: '2026-09-24' }).body).toBe('Hoy es la fecha límite.')
   })
 })
