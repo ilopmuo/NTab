@@ -242,7 +242,7 @@ function Palette() {
             Planificar el día
           </Item>
           <Item value="conectar claude conector ia asistente" icon={<G c="gray"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/settings'))}>
-            Conectar NTab con Claude
+            Conectar LUNO con Claude
           </Item>
           <Item value="funciones elegir apagar encender modulos simplificar" icon={<G c="gray"><LayoutGrid size={14} strokeWidth={2.4} /></G>} onSelect={() => ui.features()}>
             Elegir funciones

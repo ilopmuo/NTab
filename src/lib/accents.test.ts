@@ -34,8 +34,11 @@ function block(selector: string) {
 }
 
 const base = { dark: block(":root,\n[data-theme='dark']"), light: block("[data-theme='light']") }
-// Fondo de la app, celdas y hojas de cristal grueso (rgb(36 36 38 / 0.96) sobre negro)
-const SURFACES = { dark: [base.dark['--c-bg'], base.dark['--c-surface'], '#232325'], light: [base.light['--c-bg'], base.light['--c-surface']] }
+// Fondo de la app, celdas, celdas elevadas y hojas de cristal grueso (rgb(32 32 37 / 0.96) sobre el fondo)
+const SURFACES = {
+  dark: [base.dark['--c-bg'], base.dark['--c-surface'], base.dark['--c-elevated'], '#1f1f24'],
+  light: [base.light['--c-bg'], base.light['--c-surface']],
+}
 const SOFT = { dark: 0.2, light: 0.14 }
 const WHITE: RGB = [255, 255, 255]
 

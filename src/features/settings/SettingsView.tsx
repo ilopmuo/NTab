@@ -46,6 +46,7 @@ import { SectionIcon, section, type Tint } from '@/app/sections'
 import { setUI, toast, ui, useUI } from '@/app/store'
 import { a11yPrefs, setContrastPref, setMotionPref, setTheme, useA11yPrefs, useTheme } from '@/app/theme'
 import { AccentPicker } from './AccentPicker'
+import { LunoLockup } from '@/components/Brand'
 import { FEATURES } from '@/lib/features'
 import { useFeatures } from '@/app/features'
 import { TodayCardsEditor } from '../today/cards'
@@ -191,12 +192,12 @@ const OS_HELP = navigator.userAgent.includes('Mac')
   : 'En Windows: Configuración → Sistema → Notificaciones → activa tu navegador y el sonido. Revisa también el modo No molestar / Asistente de concentración.'
 
 const PUSH_HELP: Record<PushState, string> = {
-  on: 'Te llegarán los avisos aunque NTab esté cerrada.',
-  off: 'Actívalo para recibir los avisos aunque NTab esté cerrada.',
+  on: 'Te llegarán los avisos aunque LUNO esté cerrada.',
+  off: 'Actívalo para recibir los avisos aunque LUNO esté cerrada.',
   'needs-install':
-    'En iPhone y iPad los avisos solo funcionan con NTab en la pantalla de inicio: en Safari, Compartir → Añadir a pantalla de inicio, y ábrela desde el icono.',
-  denied: 'Has bloqueado las notificaciones. Actívalas en Ajustes del iPhone → Notificaciones → NTab (o en los ajustes del navegador).',
-  unsupported: 'Este navegador no permite notificaciones. Mientras NTab esté abierta te avisará dentro de la app.',
+    'En iPhone y iPad los avisos solo funcionan con LUNO en la pantalla de inicio: en Safari, Compartir → Añadir a pantalla de inicio, y ábrela desde el icono.',
+  denied: 'Has bloqueado las notificaciones. Actívalas en Ajustes del iPhone → Notificaciones → LUNO (o en los ajustes del navegador).',
+  unsupported: 'Este navegador no permite notificaciones. Mientras LUNO esté abierta te avisará dentro de la app.',
 }
 
 /** Avisos: notificaciones push en este dispositivo y aviso automático */
@@ -221,7 +222,7 @@ function NotificationsBlock() {
     setError(null)
     const r = await testHere()
     if (r === 'shown') toast(`¿No ves la notificación? ${OS_HELP}`, undefined, 12_000)
-    else if (r === 'denied') setError('El navegador tiene bloqueadas las notificaciones de NTab. Actívalas en los ajustes del sitio (el candado junto a la dirección).')
+    else if (r === 'denied') setError('El navegador tiene bloqueadas las notificaciones de LUNO. Actívalas en los ajustes del sitio (el candado junto a la dirección).')
     else setError('Este navegador no permite notificaciones.')
     void getPushState().then(setState)
   }
@@ -608,7 +609,7 @@ export function SettingsView() {
               await importData(data)
               toast('Copia importada correctamente')
             } catch {
-              toast('El archivo no es una copia válida de NTab')
+              toast('El archivo no es una copia válida de LUNO')
             }
           }}
         />
@@ -626,7 +627,10 @@ export function SettingsView() {
         />
       </Block>
 
-      <p className="text-center text-[13px] text-muted">NTab {__APP_VERSION__}</p>
+      <div className="flex flex-col items-center gap-2 pt-2 text-muted">
+        <LunoLockup height={10} />
+        <p className="text-[12px]">Versión {__APP_VERSION__}</p>
+      </div>
 
       <AreaForm open={creatingArea} onClose={() => setUI({ creating: null })} />
       <AreaForm area={editing} open={!!editing} onClose={() => setEditing(undefined)} />

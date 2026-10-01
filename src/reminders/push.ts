@@ -105,14 +105,14 @@ export async function enablePush(userId: string): Promise<PushState> {
   const permission = await withTimeout(
     askPermission(),
     120_000,
-    'El iPhone no respondió al pedir permiso. Cierra NTab del todo (desliza hacia arriba) y vuelve a abrirla.',
+    'El iPhone no respondió al pedir permiso. Cierra LUNO del todo (desliza hacia arriba) y vuelve a abrirla.',
   )
   if (permission !== 'granted') return permission === 'denied' ? 'denied' : 'off'
 
   const reg = await withTimeout(
     activeWorker(),
     15_000,
-    'La app aún no está lista en segundo plano. Cierra NTab del todo, ábrela otra vez y espera unos segundos.',
+    'La app aún no está lista en segundo plano. Cierra LUNO del todo, ábrela otra vez y espera unos segundos.',
   )
   let sub = await withTimeout(reg.pushManager.getSubscription(), 10_000, 'No se pudo consultar la suscripción de este dispositivo.')
   if (!sub) {

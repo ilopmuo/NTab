@@ -1,8 +1,8 @@
-// Edge Function: conector de NTab para Claude (servidor MCP por HTTP).
+// Edge Function: conector de LUNO para Claude (servidor MCP por HTTP).
 // URL: /functions/v1/mcp/<token>  (el token está en la tabla mcp_connectors)
 //
 // Se añade en Claude → Ajustes → Conectores → Añadir conector personalizado.
-// Así se usa NTab desde Claude con la suscripción de Claude, sin claves de API.
+// Así se usa LUNO desde Claude con la suscripción de Claude, sin claves de API.
 //
 // Con la misma URL privada + /capturar (POST con el texto) se apunta desde un
 // atajo de Siri: «llamar al dentista mañana a las 10», «compra: leche y pan».
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
   const capturing = isCapture(url)
   const token = tokenFrom(url)
   if (!TOKEN.test(token)) {
-    if (capturing) return text('Enlace no válido: cópialo de nuevo en NTab → Ajustes → Siri.', 404)
+    if (capturing) return text('Enlace no válido: cópialo de nuevo en LUNO → Ajustes → Siri.', 404)
     return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Enlace del conector no válido' } }, 404)
   }
 
@@ -69,8 +69,8 @@ Deno.serve(async (req) => {
   const { data: connector, error } = await admin.from('mcp_connectors').select('user_id,tz').eq('token', token).maybeSingle()
   if (error) return capturing ? text('No he podido apuntarlo: error del servidor.', 500) : json({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'Error interno' } }, 500)
   if (!connector) {
-    if (capturing) return text('Este enlace ya no es válido: cópialo de nuevo en NTab → Ajustes → Siri.', 404)
-    return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Este enlace ya no es válido: crea uno nuevo en NTab → Ajustes → Claude' } }, 404)
+    if (capturing) return text('Este enlace ya no es válido: cópialo de nuevo en LUNO → Ajustes → Siri.', 404)
+    return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Este enlace ya no es válido: crea uno nuevo en LUNO → Ajustes → Claude' } }, 404)
   }
   const userId = connector.user_id as string
 

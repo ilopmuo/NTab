@@ -1,5 +1,5 @@
 /**
- * Servidor MCP (Model Context Protocol) de NTab: responde a los mensajes
+ * Servidor MCP (Model Context Protocol) de LUNO: responde a los mensajes
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
@@ -13,9 +13,9 @@ export interface Store {
 }
 
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
-export const SERVER_INFO = { name: 'ntab', title: 'NTab', version: '1.0.0' }
+export const SERVER_INFO = { name: 'ntab', title: 'LUNO', version: '1.0.0' }
 
-const INSTRUCTIONS = `NTab es la app con la que el usuario organiza su vida: tareas, proyectos, hábitos, rutinas, objetivos, pagos, personas y sus cosas. Es muy despistado: ayúdale a no olvidar nada.
+const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza su vida: tareas, proyectos, hábitos, rutinas, objetivos, pagos, personas y sus cosas. Es muy despistado: ayúdale a no olvidar nada.
 - Ante «¿dónde dejé…?», «¿quién tiene mi…?» o «¿cuándo caduca…?», usa donde_esta; si te cuenta dónde guarda algo, a quién presta algo o que algo caduca, apúntalo con guardar_cosa.
 - Para lo que no puede olvidar (pastillas, llamadas importantes), crea la tarea con hora e insistir.
 - Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
@@ -37,7 +37,7 @@ const DURATION = { type: 'integer', minimum: 1, description: 'Minutos que calcul
 export const TOOLS = [
   {
     name: 'ver_resumen',
-    title: 'Ver resumen de NTab',
+    title: 'Ver resumen de LUNO',
     description:
       'Resumen completo: fecha y hora actuales, tareas atrasadas, con fecha y sin fecha (con sus id), proyectos, objetivos, hábitos de hoy, pagos próximos y personas (cumpleaños y a quién llamar). Úsalo antes de responder sobre la agenda o planificar.',
     inputSchema: { type: 'object', properties: {} },
@@ -74,7 +74,7 @@ export const TOOLS = [
     name: 'crear_tareas',
     title: 'Crear tareas',
     description:
-      'Crea una o varias tareas en NTab (por ejemplo, a partir de un email o una lista). Las tareas con hora avisan a su hora si el usuario tiene activado el aviso automático.',
+      'Crea una o varias tareas en LUNO (por ejemplo, a partir de un email o una lista). Las tareas con hora avisan a su hora si el usuario tiene activado el aviso automático.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -144,7 +144,7 @@ export const TOOLS = [
   {
     name: 'crear_nota',
     title: 'Crear nota',
-    description: 'Guarda una nota en NTab (ideas, resúmenes, apuntes de una reunión…).',
+    description: 'Guarda una nota en LUNO (ideas, resúmenes, apuntes de una reunión…).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -199,7 +199,7 @@ export const TOOLS = [
     name: 'guardar_cosa',
     title: 'Apuntar una cosa',
     description:
-      'Apunta o actualiza (por nombre) una cosa: dónde la guardó, a quién se la prestó (tipo "prestado" + persona), quién se la prestó ("me lo prestaron") o cuándo caduca un documento o garantía ("caduca" + fecha). NTab avisa de las caducidades y de reclamar o devolver préstamos.',
+      'Apunta o actualiza (por nombre) una cosa: dónde la guardó, a quién se la prestó (tipo "prestado" + persona), quién se la prestó ("me lo prestaron") o cuándo caduca un documento o garantía ("caduca" + fecha). LUNO avisa de las caducidades y de reclamar o devolver préstamos.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -333,7 +333,7 @@ export const TOOLS = [
   {
     name: 'anadir_compra',
     title: 'Añadir a la compra',
-    description: 'Añade cosas a la lista de la compra. Acepta texto libre con cantidades («leche, 2 barras de pan y detergente») o una lista. NTab las ordena por pasillos y no repite lo que ya está.',
+    description: 'Añade cosas a la lista de la compra. Acepta texto libre con cantidades («leche, 2 barras de pan y detergente») o una lista. LUNO las ordena por pasillos y no repite lo que ya está.',
     inputSchema: {
       type: 'object',
       properties: { cosas: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Lo que hay que comprar' } },
@@ -351,7 +351,7 @@ export const TOOLS = [
   {
     name: 'lo_he_hecho',
     title: 'Apuntar que lo ha hecho',
-    description: 'Apunta en «Última vez» que ha hecho algo hoy (o en «fecha»). Si no existe, lo crea. Con cada_dias, NTab le avisa cuando vuelva a tocar.',
+    description: 'Apunta en «Última vez» que ha hecho algo hoy (o en «fecha»). Si no existe, lo crea. Con cada_dias, LUNO le avisa cuando vuelva a tocar.',
     inputSchema: {
       type: 'object',
       properties: { cosa: { type: 'string' }, fecha: DATE, cada_dias: { type: 'integer', minimum: 1, description: 'Cada cuántos días debería hacerlo' } },
@@ -363,7 +363,7 @@ export const TOOLS = [
     name: 'crear_rutina',
     title: 'Crear rutina',
     description:
-      'Crea una rutina: una lista corta de pasos que hace siempre igual («Antes de salir de casa»: llaves, cartera, móvil…). NTab le avisa a la hora y le guía paso a paso. Para lo que se repite con varios pasos, mejor una rutina que muchas tareas.',
+      'Crea una rutina: una lista corta de pasos que hace siempre igual («Antes de salir de casa»: llaves, cartera, móvil…). LUNO le avisa a la hora y le guía paso a paso. Para lo que se repite con varios pasos, mejor una rutina que muchas tareas.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -476,7 +476,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       const from = isDate(args.desde) ? Date.parse(`${args.desde}T00:00:00Z`) - 864e5 : env.now - 864e5
       const to = isDate(args.hasta) ? Date.parse(`${args.hasta}T00:00:00Z`) + 2 * 864e5 : env.now + 8 * 864e5
       const cal = await store.events(from, Math.min(to, from + 95 * 864e5))
-      if (!Object.keys(cal.names).length) return text('No hay calendarios conectados. Se conectan en NTab → Ajustes → Tus calendarios.')
+      if (!Object.keys(cal.names).length) return text('No hay calendarios conectados. Se conectan en LUNO → Ajustes → Tus calendarios.')
       const lines = eventLines(cal.events, cal.names, env).filter((l) => {
         const m = l.match(/\((\d{4}-\d{2}-\d{2})\)/)
         return !m || ((!isDate(args.desde) || m[1] >= (args.desde as string)) && (!isDate(args.hasta) || m[1] <= (args.hasta as string)))

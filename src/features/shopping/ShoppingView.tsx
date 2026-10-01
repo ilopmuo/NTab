@@ -54,7 +54,7 @@ export function ShoppingView() {
       <PageHeader
         icon={<SectionIcon def={section('shopping')} size={40} />}
         title="Compra"
-        subtitle={pending.length ? `${pending.length} ${pending.length === 1 ? 'cosa' : 'cosas'} por comprar${inCart.length ? ` · ${inCart.length} en el carro` : ''}` : 'Escribe o dicta todo de golpe; NTab lo ordena por pasillos.'}
+        subtitle={pending.length ? `${pending.length} ${pending.length === 1 ? 'cosa' : 'cosas'} por comprar${inCart.length ? ` · ${inCart.length} en el carro` : ''}` : 'Escribe o dicta todo de golpe; LUNO lo ordena por pasillos.'}
       />
 
       <form
@@ -164,7 +164,7 @@ export function ShoppingView() {
 
       {inCart.length > 0 && (
         <div className="sticky bottom-[calc(max(env(safe-area-inset-bottom),10px)+80px)] z-10 flex justify-center lg:bottom-6">
-          <Button variant="primary" size="lg" onClick={() => void finish()} className="shadow-[0_10px_30px_-10px_var(--c-blue)]">
+          <Button variant="primary" size="lg" onClick={() => void finish()} className="shadow-[0_10px_28px_-12px_rgb(0_0_0/0.4)]">
             <Check size={18} strokeWidth={2.6} /> Terminar compra ({inCart.length})
           </Button>
         </div>

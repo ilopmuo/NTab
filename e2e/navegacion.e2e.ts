@@ -58,7 +58,7 @@ test('funciones: apagar Menú lo quita de la barra lateral, ⌘K y su página; e
   await page.keyboard.press('Escape')
   await expect(nav.getByRole('link', { name: 'Menú' })).toHaveCount(0)
   // El aviso de Hoy ya no vuelve
-  await expect(page.getByRole('region', { name: 'Haz NTab a tu medida' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Haz LUNO a tu medida' })).toHaveCount(0)
 
   await page.keyboard.press('Control+k')
   await page.locator('[cmdk-input]').fill('menú')

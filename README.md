@@ -1,6 +1,11 @@
-# NTab
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/luno-lockup-dark.svg">
+    <img src="docs/brand/luno-lockup.svg" alt="LUNO" height="40">
+  </picture>
+</p>
 
-**Tu vida, organizada.** Una herramienta personal para gestionar tareas, trabajo, proyectos, hábitos, notas y personas en un solo sitio. Pensada para despistados: captura en 2 segundos, olvídate, y deja que la app se acuerde por ti.
+**Tu sistema personal.** Un solo lugar para tareas, proyectos, hábitos, notas, calendario, foco, finanzas y personas, conectados entre sí. Pensado para despistados: captura en 2 segundos, olvídate, y deja que LUNO se acuerde por ti.
 
 ![Vista Hoy](docs/screenshots/hoy.png)
 
@@ -43,14 +48,14 @@
 | **Compra** | Escribe o dicta todo de golpe («leche, 2 barras de pan y detergente»): cada cosa va a su pasillo, con cantidades, «lo de siempre» y «Terminar compra» |
 | **Última vez** | ¿Cuándo cambiaste las sábanas o fuiste al dentista? Un toque para apuntarlo; si le pones «cada N días», te avisa cuando toca. Y **«Días sin…»** para lo que quieres dejar (como Quitzilla): días seguidos, récord, siguiente meta y dinero ahorrado |
 | **Diario** | Un minuto al día: ánimo, unas líneas y tres cosas buenas; lo que hiciste se apunta solo. Racha, tendencia y mapa de ánimo; **«Tal día como hoy»** (como Day One), **año en píxeles** y **«Lo que te sienta bien»**: el ánimo de los días que haces cada hábito frente a los que no (como Daylio) |
-| **¿Qué hago ahora?** | Dices cuánto tiempo tienes y cómo vas de energía, y NTab te propone la tarea que mejor encaja (con «Empezar» en modo foco) |
+| **¿Qué hago ahora?** | Dices cuánto tiempo tienes y cómo vas de energía, y LUNO te propone la tarea que mejor encaja (con «Empezar» en modo foco) |
 | **Gastos** | «12,50 café», «súper 63»: categoría automática, total del mes, proyección, presupuesto con aviso al 80 % y reparto por categorías |
 | **Menú** | Comida y cena de la semana con tus recetas; los ingredientes van a la lista de la compra en un toque |
 | **Cuenta atrás** | Días que faltan para lo que esperas, en Hoy |
 | **Personalizar Hoy** | Elige qué tarjetas ves en Hoy y en qué orden |
 | **Hora a hora** | En «Planifica tu día», el día con reuniones y tareas; «Colocar en huecos» da hora a lo que no la tiene, entre reuniones y lo importante primero. Arrastra un bloque para cambiarle la hora o tira de su borde para cambiar la duración (avisa si choca con una reunión) |
 | **Orden a mano** | Bandeja, proyectos, áreas y Hoy pueden pasar de orden automático a manual: arrastra el asa de cada tarea (o ↑/↓). Cada lista tiene su orden, y las subtareas también se arrastran |
-| **Siri** | «Oye Siri, apunta en NTab»: dictas «llamar al dentista mañana a las 10», «compra: leche y pan», «gasto 12 café», «nota: …», «hecho: cambiar las sábanas» o «+1 agua» y se apunta sin abrir la app (un atajo del iPhone, en Ajustes → Siri) |
+| **Siri** | «Oye Siri, apunta en LUNO»: dictas «llamar al dentista mañana a las 10», «compra: leche y pan», «gasto 12 café», «nota: …», «hecho: cambiar las sábanas» o «+1 agua» y se apunta sin abrir la app (un atajo del iPhone, en Ajustes → Siri) |
 | **Etiquetas** | Todas tus `#etiquetas` con sus tareas pendientes; cámbiales el nombre (si ya existe, se juntan) o quítalas, con «Deshacer» |
 | **Navegación a tu medida** | Barra lateral por grupos plegables (Organizar, Día a día, Casa, Dinero), con tus proyectos, áreas y etiquetas **fijados** arriba. Elige qué va en la cuadrícula, en la lista u oculto (lo oculto queda plegado en «N más» al pie de su grupo; Matriz y Plantillas empiezan así), y las cuatro pestañas del móvil; «Más» reúne el resto por grupos. En el ordenador se pliega (`⌘\`) |
 | **Procesar la bandeja** | Una tarea cada vez, como un mazo de cartas: hoy, mañana, otro día, a una lista, hecha, borrar o luego |
@@ -58,14 +63,14 @@
 | **Dictado** | Botón de micrófono en la captura rápida: dices la tarea y se entiende igual que escrita |
 | **Deslizar** (móvil) | Desliza una tarea → para completarla o ← para pasarla a mañana, con vibración en el iPhone |
 | **Arrastrar** | En Calendario y Próximo, arrastra una tarea a otro día; en «Hora a hora», a otra hora (en el móvil, pulsación larga) |
-| **Claude** | Conector para usar NTab desde Claude con tu suscripción: «¿qué tengo esta semana?», «planifícame el día», «apunta lo de este email» |
+| **Claude** | Conector para usar LUNO desde Claude con tu suscripción: «¿qué tengo esta semana?», «planifícame el día», «apunta lo de este email» |
 | **Calendario** | Suscríbete desde Calendario del iPhone, Google u Outlook y verás tus tareas, pagos y cumpleaños |
 | **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo. Los de cifra guardan su evolución y la enseñan en una gráfica con el ritmo que haría falta (como en Strides) |
 | **Pagos** | Suscripciones y recibos: cuánto pagas al mes y al año, y aviso antes de cada cargo |
 | **Paleta** (`⌘K`) | Busca cualquier cosa y ejecuta cualquier acción |
 | **Funciones activables** | Ajustes → Funciones: apaga lo que no uses (Menú, Gastos, Pagos, Cosas, Diario…). Desaparece de la barra lateral, las pestañas, ⌘K y Hoy, y deja de avisar; tus datos se quedan |
 | **Accesibilidad** | Contraste AA en todo (comprobado con axe en cada sección y diálogo), lector de pantalla (avisos y cambios de pantalla anunciados, «Saltar al contenido»), **más contraste** y **reducir movimiento** (siguen al sistema o se fuerzan), zonas táctiles de 44 px y todo con teclado: `j`/`k` entre tareas, `T` hoy, `M` mañana, `Supr` borrar y `⌘Z` deshacer |
-| **Tema y color** | Oscuro (por defecto), claro o del sistema, y el color de acento que prefieras: azul, violeta, rosa, naranja, verde azulado o grafito (todos con contraste AA) |
+| **Tema y color** | Oscuro (por defecto), claro o del sistema, y el color de acento que prefieras: índigo LUNO, azul, violeta, rosa, naranja, verde azulado o grafito (todos con contraste AA) |
 | **Sincronización** | Con tu cuenta, los datos están en el iPhone, el iPad y el ordenador, al momento |
 | **Funciona sin conexión** | Cada dispositivo guarda una copia local; los cambios se suben al volver la conexión |
 | **Instalable** | Se añade a la pantalla de inicio del iPhone/iPad sin App Store |
@@ -83,10 +88,12 @@
 
 ## Diseño
 
-Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de Apple. Detalles en [docs/DESIGN.md](docs/DESIGN.md).
+Minimalista, casi monocromo y tranquilo. La marca (símbolo, logotipo, paleta y tipografía) está en [docs/BRAND.md](docs/BRAND.md); el sistema de diseño, en [docs/DESIGN.md](docs/DESIGN.md).
 
-- **Blanco, negro y grises.** Solo **azul eléctrico** (u otro color de acento a tu elección) para actuar (hoy, selección, botones) y **verde lima** para lo hecho.
-- **Listas agrupadas**, títulos grandes, anillos de progreso y SF Pro en los dispositivos de Apple.
+- **Símbolo:** una órbita y su luna, que la abre: el centro de tu sistema y lo que gira alrededor.
+- **Casi negro, casi blanco y grises.** Solo el **índigo LUNO** (u otro color de acento a tu elección) para actuar (hoy, selección, botones) y **verde lima** para lo hecho.
+- **Inter** en todos los dispositivos, con cifras tabulares para los números.
+- **Listas agrupadas**, títulos grandes y anillos de progreso.
 - **Movimiento con física:**
   - arranque animado;
   - transiciones entre vistas;
@@ -123,7 +130,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 ## En el iPhone o el iPad
 
-1. Abre la web de NTab en **Safari**.
+1. Abre la web de LUNO en **Safari**.
 2. Pulsa **Compartir** → **Añadir a pantalla de inicio**.
 3. Ábrela desde el icono y entra con tu cuenta.
 
@@ -158,7 +165,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
   - **Captura con Siri**: la misma URL + `/capturar` (POST con el texto: JSON `{ "texto": … }`, formulario, texto plano o `?texto=`) lo entiende como la captura rápida y responde una frase en texto plano, que Siri lee. `compra: …` va a la lista de la compra, `gasto …` a gastos, `nota: …` a notas, `hecho: …` a «Última vez» y `+1 agua` (o el nombre exacto de un hábito) suma al hábito. El atajo se explica en Ajustes → Siri.
   - El lenguaje natural (`supabase/functions/_shared/parse.ts`) y los hábitos (`_shared/habits.ts`) son el mismo código en la app y en el servidor, sin dependencias.
 - **Calendario** (`supabase/functions/calendar`): enlace privado por usuario (`calendar_feeds.token`) que sirve un `.ics` con tareas con fecha, pagos y cumpleaños. Se crea y se cambia en Ajustes → Calendario.
-  - Google Calendar tarda horas en refrescar los calendarios suscritos. Para tenerlo al día (también lo que se borra), Ajustes → Calendario → Google Calendar da un script de Google Apps Script (`src/features/settings/googleScript.ts`). Se pega en script.google.com y cada 5 minutos lee `?format=json` y crea, cambia o borra los eventos del calendario «NTab».
+  - Google Calendar tarda horas en refrescar los calendarios suscritos. Para tenerlo al día (también lo que se borra), Ajustes → Calendario → Google Calendar da un script de Google Apps Script (`src/features/settings/googleScript.ts`). Se pega en script.google.com y cada 5 minutos lee `?format=json` y crea, cambia o borra los eventos del calendario «LUNO».
 - **Tus calendarios** (`supabase/functions/events`): la tabla `calendar_sources` guarda las direcciones .ics privadas de cada usuario (RLS). La Edge Function las lee en el servidor (el navegador no puede por CORS), expande repeticiones, excepciones y zonas horarias con `ical.js` y devuelve los eventos del rango pedido. La app los guarda 10 minutos y conserva una copia para verlos sin conexión. El conector de Claude los usa en `ver_resumen` (próximos 7 días y carga de hoy) y `ver_eventos`.
 - **Resumen de la mañana**: `due_digests()` + `send-reminders`, con la hora guardada en el ajuste `dailyDigest`.
 

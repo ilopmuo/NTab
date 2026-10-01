@@ -1,11 +1,13 @@
 /**
  * Color de acento (Ajustes → Apariencia). La app sigue siendo monocroma: el
- * acento sustituye al azul en todo lo que actúa (hoy, selección, botones,
- * enlaces). Los tonos de cada uno, para los dos temas, están en index.css
- * (`[data-accent=…]`) y los comprueba accents.test.ts (contraste AA).
+ * acento sustituye al índigo de LUNO en todo lo que actúa (hoy, selección,
+ * botones, enlaces). Los tonos de cada uno, para los dos temas, están en
+ * index.css (`[data-accent=…]`) y los comprueba accents.test.ts (contraste AA).
+ * El de la marca conserva el id `blue` (el que ya guardan los dispositivos).
  */
 export const ACCENTS = [
-  { id: 'blue', label: 'Azul', swatch: '#1766e8' },
+  { id: 'blue', label: 'Índigo LUNO', swatch: '#5b57e8' },
+  { id: 'azure', label: 'Azul', swatch: '#1766e8' },
   { id: 'violet', label: 'Violeta', swatch: '#7c3aed' },
   { id: 'pink', label: 'Rosa', swatch: '#db2777' },
   { id: 'orange', label: 'Naranja', swatch: '#c2410c' },

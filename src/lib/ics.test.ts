@@ -66,7 +66,7 @@ describe('eventos en JSON (script de Google Calendar)', () => {
     const ev = buildEvents(input)
     const byUid = Object.fromEntries(ev.map((e) => [e.uid, e]))
     expect(byUid['task-t1']).toMatchObject({ allDay: false, start: '2026-09-24T08:00:00.000Z', end: '2026-09-24T08:30:00.000Z' })
-    expect(byUid['task-t1'].description).toBe('Proyecto: Casa\n\nAbrir en NTab: https://ntab.vercel.app/#/task/t1')
+    expect(byUid['task-t1'].description).toBe('Proyecto: Casa\n\nAbrir en LUNO: https://ntab.vercel.app/#/task/t1')
     expect(byUid['task-t2']).toMatchObject({ allDay: true, start: '2026-09-25', end: '2026-09-26' })
     expect(byUid['payment-s1-2026-09-26'].title).toMatch(/^💳 Netflix · 12,99/)
     // El cumpleaños de marzo de este año ya pasó: solo el del año que viene

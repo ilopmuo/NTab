@@ -19,7 +19,7 @@ export async function downloadBackup() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `ntab-${backup.exportedAt.slice(0, 10)}.json`
+  a.download = `luno-${backup.exportedAt.slice(0, 10)}.json`
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

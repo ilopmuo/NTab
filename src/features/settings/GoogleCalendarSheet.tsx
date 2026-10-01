@@ -16,20 +16,20 @@ const STEPS = [
     <b className="font-semibold">Configuración avanzada → Ir a…</b>
   </>,
   <>
-    Si ya te habías suscrito con el enlace en Google Calendar, quita esa suscripción (el calendario «NTab» de <i>Otros calendarios</i> →
+    Si ya te habías suscrito con el enlace en Google Calendar, quita esa suscripción (el calendario «LUNO» de <i>Otros calendarios</i> →
     Anular suscripción) para no ver todo repetido.
   </>,
 ]
 
-/** Pasos para tener NTab en Google Calendar con cambios y borrados en 5 minutos */
+/** Pasos para tener LUNO en Google Calendar con cambios y borrados en 5 minutos */
 export function GoogleCalendarSheet({ jsonUrl, open, onClose }: { jsonUrl: string; open: boolean; onClose: () => void }) {
   return (
     <Modal open={open} onClose={onClose} position="center">
       <ModalHeader title="Google Calendar" onClose={onClose} />
       <div className="max-h-[70vh] space-y-4 overflow-y-auto px-5 pb-5">
         <p className="text-[15px] leading-relaxed text-muted">
-          Google tarda horas en refrescar los calendarios suscritos, así que lo que borras en NTab sigue ahí. Con este pequeño script en tu cuenta de
-          Google, el calendario <b className="font-semibold text-fg">NTab</b> se pone al día cada 5 minutos: crea, cambia y borra.
+          Google tarda horas en refrescar los calendarios suscritos, así que lo que borras en LUNO sigue ahí. Con este pequeño script en tu cuenta de
+          Google, el calendario <b className="font-semibold text-fg">LUNO</b> se pone al día cada 5 minutos: crea, cambia y borra.
         </p>
         <ol className="space-y-3">
           {STEPS.map((s, i) => (
@@ -50,7 +50,7 @@ export function GoogleCalendarSheet({ jsonUrl, open, onClose }: { jsonUrl: strin
           </a>
         </div>
         <p className="text-[13px] leading-snug text-muted">
-          Solo lectura: las tareas se siguen creando y completando en NTab. Para pararlo, en el script ejecuta <b className="font-semibold">desinstalar</b>.
+          Solo lectura: las tareas se siguen creando y completando en LUNO. Para pararlo, en el script ejecuta <b className="font-semibold">desinstalar</b>.
         </p>
       </div>
     </Modal>

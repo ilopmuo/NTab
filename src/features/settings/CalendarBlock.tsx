@@ -15,11 +15,11 @@ export function CalendarBlock() {
   const { token, busy } = link
   return (
     <LinkSection
-      title="NTab en tu calendario"
+      title="LUNO en tu calendario"
       footer={
         token
           ? 'Calendario de Apple se pone al día solo cada pocos minutos; para Google, usa «Google Calendar». Quien tenga el enlace ve tus tareas: no lo compartas y, si lo haces, cámbialo.'
-          : 'Solo lectura: las tareas se siguen creando y completando en NTab.'
+          : 'Solo lectura: las tareas se siguen creando y completando en LUNO.'
       }
     >
       {token ? (
@@ -46,7 +46,7 @@ export function CalendarBlock() {
           icon={<CalendarPlus size={15} strokeWidth={2.4} />}
           disabled={busy || token === undefined}
           onClick={() => void link.create()}
-          label={busy ? 'Creando enlace…' : 'Ver NTab en tu calendario'}
+          label={busy ? 'Creando enlace…' : 'Ver LUNO en tu calendario'}
           detail="Tareas con fecha, pagos y cumpleaños en Calendario, Google u Outlook"
           primary
         />

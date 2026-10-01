@@ -1,5 +1,5 @@
 /**
- * Script de Google Apps Script que copia NTab en un calendario de Google y lo
+ * Script de Google Apps Script que copia LUNO en un calendario de Google y lo
  * mantiene al día cada 5 minutos: crea, cambia y BORRA eventos. Google tarda
  * horas en refrescar los calendarios suscritos por URL; así no hace falta.
  *
@@ -8,15 +8,15 @@
  */
 export function googleScript(jsonUrl: string) {
   return `/**
- * NTab → Google Calendar
- * Copia tus tareas, pagos y cumpleaños de NTab en el calendario «NTab» de tu
+ * LUNO → Google Calendar
+ * Copia tus tareas, pagos y cumpleaños de LUNO en el calendario «LUNO» de tu
  * Google Calendar y lo mantiene al día cada 5 minutos (también borra lo que
- * borras o completas en NTab).
+ * borras o completas en LUNO).
  *
  * Instalación: elige la función «instalar» arriba y pulsa ▶ Ejecutar.
  */
-const NTAB_URL = '${jsonUrl}';
-const NOMBRE_CALENDARIO = 'NTab';
+const LUNO_URL = '${jsonUrl}';
+const NOMBRE_CALENDARIO = 'LUNO';
 const DIAS_ATRAS = 60;
 const DIAS_ADELANTE = 400;
 
@@ -31,16 +31,16 @@ function desinstalar() {
 }
 
 function sincronizar() {
-  const res = UrlFetchApp.fetch(NTAB_URL, { muteHttpExceptions: true });
+  const res = UrlFetchApp.fetch(LUNO_URL, { muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) {
-    throw new Error('NTab respondió ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200));
+    throw new Error('LUNO respondió ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200));
   }
   const eventos = JSON.parse(res.getContentText()).events;
   const cal = calendario();
   const desde = new Date(Date.now() - DIAS_ATRAS * 864e5);
   const hasta = new Date(Date.now() + DIAS_ADELANTE * 864e5);
 
-  // Lo que ya hay en Google, por identificador de NTab
+  // Lo que ya hay en Google, por identificador de LUNO
   const actuales = {};
   cal.getEvents(desde, hasta).forEach(function (e) {
     const uid = e.getTag('ntab');
@@ -78,7 +78,7 @@ function sincronizar() {
   Object.keys(actuales).forEach(function (uid) {
     if (!vistos[uid]) { actuales[uid].deleteEvent(); borrados++; }
   });
-  console.log('NTab: ' + creados + ' creados, ' + cambiados + ' cambiados, ' + borrados + ' borrados');
+  console.log('LUNO: ' + creados + ' creados, ' + cambiados + ' cambiados, ' + borrados + ' borrados');
 }
 
 function calendario() {

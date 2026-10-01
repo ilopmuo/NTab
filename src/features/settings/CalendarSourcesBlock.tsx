@@ -29,7 +29,7 @@ const HOWTO = [
   },
 ]
 
-/** Calendarios externos que NTab muestra junto a tus tareas (solo lectura) */
+/** Calendarios externos que LUNO muestra junto a tus tareas (solo lectura) */
 export function CalendarSourcesBlock() {
   const sync = useSync()
   const [sources, setSources] = useState<Source[] | null>(null)
@@ -48,7 +48,7 @@ export function CalendarSourcesBlock() {
   if (!sync.user) return null
 
   const remove = async (s: Source) => {
-    if (!window.confirm(`¿Dejar de ver «${s.name}» en NTab? El calendario original no se toca.`)) return
+    if (!window.confirm(`¿Dejar de ver «${s.name}» en LUNO? El calendario original no se toca.`)) return
     await (await getSupabase()).from('calendar_sources').delete().eq('id', s.id)
     await load()
     refreshEvents()
@@ -58,7 +58,7 @@ export function CalendarSourcesBlock() {
     <>
       <LinkSection
         title="Tus calendarios"
-        footer="Tus reuniones y citas aparecen en la Agenda de Hoy, en el Calendario y al planificar el día. Solo lectura: se editan en su app. La dirección es privada; se guarda en tu cuenta de NTab."
+        footer="Tus reuniones y citas aparecen en la Agenda de Hoy, en el Calendario y al planificar el día. Solo lectura: se editan en su app. La dirección es privada; se guarda en tu cuenta de LUNO."
       >
         {(sources ?? []).map((s) => {
           const err = errors.find((e) => e.sourceId === s.id)

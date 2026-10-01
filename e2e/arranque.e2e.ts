@@ -7,7 +7,7 @@ test('todas las secciones se abren sin errores', async ({ page }) => {
   await openApp(page)
   for (const path of PATHS) {
     await page.evaluate((p) => (location.hash = p), path)
-    await expect(page).toHaveTitle(new RegExp(`· NTab$`))
+    await expect(page).toHaveTitle(new RegExp(`· LUNO$`))
     await expect(page.locator('#main h1').first()).toBeVisible()
   }
 })

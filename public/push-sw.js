@@ -1,4 +1,4 @@
-/* Notificaciones push de NTab (lo importa el service worker que genera Workbox). */
+/* Notificaciones push de LUNO (lo importa el service worker que genera Workbox). */
 
 const SNOOZE_MINUTES = 15
 const TASK_ACTIONS = [
@@ -39,9 +39,9 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {}
   } catch {
-    data = { title: 'NTab', body: event.data ? event.data.text() : '' }
+    data = { title: 'LUNO', body: event.data ? event.data.text() : '' }
   }
-  const title = data.title || 'NTab'
+  const title = data.title || 'LUNO'
   const taskId = data.taskId || (data.tag && data.tag.startsWith('tasks-') ? data.tag.slice(6) : undefined)
   const options = {
     body: data.body || '',
@@ -49,7 +49,7 @@ self.addEventListener('push', (event) => {
     renotify: !!data.tag,
     requireInteraction: true,
     icon: 'icon-192.png',
-    badge: 'icon-192.png',
+    badge: 'badge-96.png',
     data: { url: data.url || './#/today', taskId, habitId: data.habitId },
     actions: taskId ? TASK_ACTIONS : data.habitId ? HABIT_ACTIONS : [],
   }

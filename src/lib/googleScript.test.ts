@@ -64,7 +64,7 @@ const today = new Date()
 const ymd = (d: number) => new Date(today.getTime() + d * 864e5).toISOString().slice(0, 10)
 
 describe('script de Google Calendar', () => {
-  it('crea, actualiza y borra los eventos de NTab', () => {
+  it('crea, actualiza y borra los eventos de LUNO', () => {
     const g = fakeGoogle()
     const input: IcsInput = {
       tz: 'Europe/Madrid',

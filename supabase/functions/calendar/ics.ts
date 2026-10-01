@@ -1,5 +1,5 @@
 /**
- * Calendario de NTab en formato iCalendar (RFC 5545), para suscribirse desde
+ * Calendario de LUNO en formato iCalendar (RFC 5545), para suscribirse desde
  * Calendario de Apple, Google Calendar u Outlook. Sin dependencias de Deno para
  * poder probarlo con los tests de la app (src/lib/ics.test.ts).
  */
@@ -102,10 +102,10 @@ export function buildCalendar(input: IcsInput): string {
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//NTab//Calendario//ES',
+    'PRODID:-//LUNO//Calendario//ES',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:NTab',
+    'X-WR-CALNAME:LUNO',
     `X-WR-TIMEZONE:${input.tz}`,
     'REFRESH-INTERVAL;VALUE=DURATION:PT15M',
     'X-PUBLISHED-TTL:PT15M',
@@ -205,7 +205,7 @@ export function buildEvents(input: IcsInput): FeedEvent[] {
   const now = (input.now ?? new Date()).getTime()
   const today = ymdIn(now, input.tz)
   const base = input.appUrl ? input.appUrl.replace(/#.*$/, '').replace(/\/?$/, '/') : null
-  const link = (path: string) => (base ? `Abrir en NTab: ${base}#${path}` : '')
+  const link = (path: string) => (base ? `Abrir en LUNO: ${base}#${path}` : '')
   const out: FeedEvent[] = []
 
   for (const t of input.tasks) {

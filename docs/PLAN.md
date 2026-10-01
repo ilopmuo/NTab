@@ -1,4 +1,4 @@
-# NTab — Plan del producto
+# LUNO — Plan del producto
 
 > Una sola herramienta para gestionar mi vida: tareas, trabajo, proyectos, hábitos, notas y personas.
 > Uso exclusivamente personal. Pensada para alguien despistado: **capturar en 2 segundos, olvidarse, y que la app se acuerde por mí.**
@@ -38,7 +38,7 @@
 | 16 | **Pagos** (finanzas ligeras) | Suscripciones y recibos, total al mes y al año, aviso antes de cada cargo | 4 |
 | 17 | **Recordatorios** | Aviso por tarea y notificaciones push con la app cerrada (Web Push) | 4 |
 | 18 | **Sincronización** | Mismos datos en móvil y ordenador (Supabase o similar) | 5 |
-| 19 | **Claude** | Conector MCP: desde Claude (con la suscripción) se consulta y organiza NTab: "¿qué tengo esta semana?", planificar el día, convertir un email en tareas | 5 |
+| 19 | **Claude** | Conector MCP: desde Claude (con la suscripción) se consulta y organiza LUNO: "¿qué tengo esta semana?", planificar el día, convertir un email en tareas | 5 |
 | 20 | **Integraciones** | Calendario suscribible (Apple, Google, Outlook); resumen de la mañana por push | 5 |
 
 ---

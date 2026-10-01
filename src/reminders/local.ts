@@ -111,7 +111,7 @@ export async function showSystemNotification(tag: string, title: string, body: s
     body,
     tag,
     icon: './icon-192.png',
-    badge: './icon-192.png',
+    badge: './badge-96.png',
     data: { url, habitId },
     requireInteraction: true,
     ...(tag.startsWith('tasks-') ? { actions: TASK_ACTIONS } : habitId ? { actions: [{ action: 'habit-done', title: 'Hecho' }] } : {}),
@@ -296,6 +296,6 @@ export async function testHere(): Promise<'shown' | 'denied' | 'unsupported'> {
   if (!('Notification' in window)) return 'unsupported'
   const permission = Notification.permission === 'default' ? await askPermission() : Notification.permission
   if (permission !== 'granted') return 'denied'
-  await showSystemNotification('ntab-test-local', 'NTab', 'Así te avisaré de tus tareas ⏰', './#/settings')
+  await showSystemNotification('ntab-test-local', 'LUNO', 'Así te avisaré de tus tareas ⏰', './#/settings')
   return 'shown'
 }

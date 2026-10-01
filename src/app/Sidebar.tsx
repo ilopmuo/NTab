@@ -2,6 +2,7 @@ import { AnimatePresence, m as motion } from 'motion/react'
 import { ChevronDown, ChevronRight, Hash, ListFilter, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'
+import { LunoLockup } from '@/components/Brand'
 import { Kbd, ProgressPie, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
 import { SyncBadge } from '@/sync/SyncBadge'
 import { useNavCounts, useProjectProgress, useSmartListCounts } from './counts'
@@ -30,7 +31,7 @@ function Tile({ def, count, active }: { def: SectionDef; count?: number | string
         'relative flex flex-col gap-2 overflow-hidden rounded-[14px] p-2.5 transition-[transform,box-shadow] duration-200 active:scale-[0.97]',
         active ? 'text-white shadow-lg' : 'bg-[var(--c-material)] shadow-[var(--c-shadow)] hover:brightness-[1.03]',
       )}
-      style={active ? { background: 'var(--c-accent-fill)', boxShadow: '0 8px 24px -8px var(--c-accent-fill)' } : undefined}
+      style={active ? { background: 'var(--c-accent-fill)', boxShadow: '0 6px 18px -10px rgb(0 0 0 / 0.35)' } : undefined}
     >
       <div className="flex items-start justify-between">
         {active ? (
@@ -232,7 +233,17 @@ function SidebarContent() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),14px)] pb-3">
+      <div className="flex items-center px-3 pt-[max(env(safe-area-inset-top),14px)]">
+        <a
+          href={href('/today')}
+          onClick={() => ui.sidebar(false)}
+          aria-label="LUNO: ir a Hoy"
+          className="flex h-9 items-center rounded-[10px] px-1.5 text-fg transition-opacity hover:opacity-80"
+        >
+          <LunoLockup height={11} />
+        </a>
+      </div>
+      <div className="flex items-center gap-2 px-3 pt-2 pb-3">
         <button
           type="button"
           onClick={() => {
@@ -253,7 +264,7 @@ function SidebarContent() {
             ui.sidebar(false)
             ui.quickAdd()
           }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white shadow-[0_4px_14px_-4px_var(--c-blue)] transition-transform active:scale-90"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white transition-transform active:scale-90"
         >
           <Plus size={19} strokeWidth={2.6} />
         </button>

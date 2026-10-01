@@ -47,7 +47,7 @@ async function sendTest(req: Request, admin: Admin, delaySeconds: number) {
   if (!subs.length) return json({ sent: 0 })
   // Un momento para salir de la app: iOS no siempre enseña el aviso con la app delante
   await new Promise((r) => setTimeout(r, Math.min(Math.max(delaySeconds, 0), 10) * 1000))
-  const payload = JSON.stringify({ title: 'NTab', body: 'Así te llegarán los avisos de tus tareas ⏰', tag: 'ntab-test', url: './#/settings' })
+  const payload = JSON.stringify({ title: 'LUNO', body: 'Así te llegarán los avisos de tus tareas ⏰', tag: 'ntab-test', url: './#/settings' })
   let sent = 0
   const gone: string[] = []
   const failures: string[] = []

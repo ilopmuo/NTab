@@ -74,7 +74,7 @@ export function RoutinesView() {
             icon={<ListChecks size={28} strokeWidth={2.2} />}
             color="var(--c-blue)"
             title="Aún no tienes rutinas"
-            hint="Una rutina es una lista corta que haces siempre igual. NTab te avisa a su hora y te guía paso a paso. Toca una idea:"
+            hint="Una rutina es una lista corta que haces siempre igual. LUNO te avisa a su hora y te guía paso a paso. Toca una idea:"
           >
             {presets}
           </Empty>

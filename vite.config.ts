@@ -35,22 +35,24 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // Solo alfabeto latino: las fuentes griega, cirílica y vietnamita no se usan
-        globIgnores: ['**/inter-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*.woff2'],
+        // ni la imagen para compartir enlaces (la piden las redes, no la app)
+        globIgnores: ['**/inter-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*.woff2', 'og.png'],
         importScripts: ['push-sw.js'],
       },
-      includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['icon.svg', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'NTab',
-        short_name: 'NTab',
-        description: 'Tu vida, organizada.',
-        theme_color: '#000000',
-        background_color: '#000000',
+        name: 'LUNO',
+        lang: 'es',
+        short_name: 'LUNO',
+        description: 'Tu sistema personal: tareas, proyectos, hábitos, notas, calendario, finanzas y personas, conectados.',
+        theme_color: '#0a0a0c',
+        background_color: '#0a0a0c',
         display: 'standalone',
         start_url: './',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
         // Pulsación larga en el icono (Android, Windows, macOS con Chrome/Edge)

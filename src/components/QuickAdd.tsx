@@ -238,7 +238,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
           type="submit"
           disabled={!parsed.title}
           aria-label="Añadir"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white shadow-[0_4px_14px_-4px_var(--c-blue)] transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none"
         >
           <ArrowUp size={18} strokeWidth={2.8} />
         </button>

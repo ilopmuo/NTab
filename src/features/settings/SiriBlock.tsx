@@ -28,7 +28,7 @@ export function SiriBlock() {
                 y <b className="font-semibold text-fg">Mostrar resultado</b>.
               </li>
               <li>
-                Llámalo «Apunta en NTab». Ya puedes decir: <i>«Oye Siri, apunta en NTab»</i> y dictar, por ejemplo:
+                Llámalo «Apunta en LUNO». Ya puedes decir: <i>«Oye Siri, apunta en LUNO»</i> y dictar, por ejemplo:
                 <ul className="mt-1 list-disc space-y-0.5 pl-4">
                   <li>«llamar al dentista mañana a las 10» o «sacar la ropa dentro de una hora» (tarea)</li>
                   <li>«compra: leche y pan» (lista de la compra) · «gasto 12 café» (gastos)</li>
@@ -41,7 +41,7 @@ export function SiriBlock() {
             <p className="mt-2">Es la misma URL privada que la del conector de Claude: si la cambias, cambia en los dos sitios.</p>
           </>
         ) : (
-          'Apunta tareas, compra y gastos diciéndoselo a Siri, sin abrir NTab. Se entiende igual que la captura rápida: fechas, horas, avisos, #etiquetas y +listas.'
+          'Apunta tareas, compra y gastos diciéndoselo a Siri, sin abrir LUNO. Se entiende igual que la captura rápida: fechas, horas, avisos, #etiquetas y +listas.'
         )
       }
     >

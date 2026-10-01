@@ -157,7 +157,7 @@ export function ExpensesView() {
 
       {list.length === 0 ? (
         <Group>
-          <Empty icon={<Receipt size={28} strokeWidth={2.2} />} color="var(--c-blue)" title={current ? 'Sin gastos este mes' : 'Sin gastos ese mes'} hint="Escribe el importe y en qué: NTab pone la categoría. También puedes decírselo a Claude." />
+          <Empty icon={<Receipt size={28} strokeWidth={2.2} />} color="var(--c-blue)" title={current ? 'Sin gastos este mes' : 'Sin gastos ese mes'} hint="Escribe el importe y en qué: LUNO pone la categoría. También puedes decírselo a Claude." />
         </Group>
       ) : (
         days.map((d) => {

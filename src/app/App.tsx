@@ -291,8 +291,8 @@ function Workspace() {
   }, [parts])
 
   useEffect(() => {
-    const title = TITLES[parts[0]] ?? 'NTab'
-    document.title = `${title} · NTab`
+    const title = TITLES[parts[0]] ?? 'LUNO'
+    document.title = `${title} · LUNO`
     const main = document.getElementById('main')
     main?.scrollTo({ top: 0 })
     // Para quien navega con teclado o lector de pantalla: se anuncia la pantalla
@@ -322,7 +322,7 @@ function Workspace() {
       <main
         id="main"
         tabIndex={-1}
-        aria-label={TITLES[parts[0]] ?? 'NTab'}
+        aria-label={TITLES[parts[0]] ?? 'LUNO'}
         className={cx(
           '@container h-full overflow-y-auto overscroll-contain transition-[padding] duration-300',
           !sidebarHidden && 'lg:pl-[272px]',

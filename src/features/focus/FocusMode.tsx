@@ -91,7 +91,7 @@ export function FocusMode() {
       focus.finish()
       void logFocus(task?.title ?? '')
       chime()
-      void showSystemNotification('ntab-focus', '⏱ Tiempo de foco terminado', task?.title ?? 'NTab', './#/today')
+      void showSystemNotification('ntab-focus', '⏱ Tiempo de foco terminado', task?.title ?? 'LUNO', './#/today')
     }
     const wait = s.endAt - Date.now()
     if (wait <= 0) return fire()

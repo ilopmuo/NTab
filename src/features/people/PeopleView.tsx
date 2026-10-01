@@ -74,7 +74,7 @@ export function PeopleView() {
           color="var(--c-purple)"
           icon={<Users size={28} strokeWidth={2.2} />}
           title="Añade a tu gente"
-          hint="Guarda contactos, cumpleaños y cada cuánto quieres hablar con cada uno. NTab te avisará cuando toque."
+          hint="Guarda contactos, cumpleaños y cada cuánto quieres hablar con cada uno. LUNO te avisará cuando toque."
         />
       ) : (
         <>

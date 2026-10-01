@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { ArrowRight, Cloud, Laptop, Loader2, Smartphone, Tablet } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
 import { authErrorMessage, sendPasswordReset, setLocalOnly, signIn, signUp } from '@/sync/service'
 import { m as motion } from 'motion/react'
 import { Input, cx, softSpring } from '@/components/ui'
+import { LunoMark, LunoWordmark } from '@/components/Brand'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
@@ -41,20 +42,21 @@ export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => v
   const valid = /\S+@\S+\.\S+/.test(email) && (mode === 'reset' || password.length >= 6)
 
   return (
-    <div className="relative z-10 flex min-h-full items-center justify-center overflow-y-auto px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={softSpring} className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <img src="./icon-512.png" alt="" className="mb-5 h-20 w-20 rounded-[22px] shadow-2xl" />
-          <h1 className="text-[34px] font-bold tracking-[-0.025em]">NTab</h1>
-          <p className="mt-1.5 text-[16px] text-muted">Tu vida, organizada. En todos tus dispositivos.</p>
-          <div className="mt-5 flex items-center gap-3 text-muted">
-            <Smartphone size={18} />
-            <span className="h-px w-5 bg-line-strong" />
-            <Cloud size={20} className="text-blue" strokeWidth={2.3} />
-            <span className="h-px w-5 bg-line-strong" />
-            <Laptop size={18} />
-            <Tablet size={18} />
+    <div className="relative z-10 flex min-h-full items-center justify-center overflow-x-hidden overflow-y-auto px-5 py-12">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={softSpring} className="relative w-full max-w-[380px]">
+        <div className="relative mb-9 flex flex-col items-center text-center">
+          {/* Órbitas muy tenues alrededor del símbolo: el sistema, sin decirlo */}
+          <div aria-hidden className="pointer-events-none absolute -z-10 top-[26px] left-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 [mask-image:linear-gradient(to_bottom,black_25%,transparent_62%)]">
+            <span className="absolute inset-0 rounded-full border border-line" />
+            <span className="absolute inset-[110px] rounded-full border border-line" />
+            <span className="absolute top-[72px] right-[72px] h-2 w-2 rounded-full bg-accent opacity-70" />
           </div>
+          <LunoMark size={52} className="mb-6 text-fg" />
+          <h1 className="text-fg">
+            <LunoWordmark height={26} title="LUNO" />
+          </h1>
+          <p className="mt-4 text-[17px] font-medium tracking-[-0.015em] text-fg">Tu sistema personal.</p>
+          <p className="mt-1 max-w-[300px] text-[14px] leading-snug text-muted">Tareas, proyectos, hábitos y notas, conectados en todos tus dispositivos.</p>
         </div>
 
         <form
@@ -62,7 +64,7 @@ export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => v
             e.preventDefault()
             if (valid && !busy) void submit()
           }}
-          className="glass-thick rounded-[26px] p-5"
+          className="rounded-[22px] bg-surface p-5 shadow-[var(--c-shadow)]"
         >
           {mode !== 'reset' && (
             <div className="mb-5 grid grid-cols-2 rounded-[10px] bg-fill p-[2px]">
@@ -115,7 +117,7 @@ export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => v
           <button
             type="submit"
             disabled={!valid || busy}
-            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent-fill text-[16px] font-semibold text-white shadow-[0_8px_24px_-8px_var(--c-blue)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
+            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent-fill text-[16px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
           >
             {busy ? (
               <Loader2 size={17} className="animate-spin" />

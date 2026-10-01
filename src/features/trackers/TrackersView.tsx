@@ -160,7 +160,7 @@ export function TrackersView() {
       <PageHeader
         icon={<SectionIcon def={section('trackers')} size={40} />}
         title="Última vez"
-        subtitle={due ? `Toca hacer ${due} ${due === 1 ? 'cosa' : 'cosas'}.` : '¿Cuándo fue la última vez que…? Apúntalo con un toque y NTab te avisa cuando toque. También cuenta los días sin lo que quieres dejar.'}
+        subtitle={due ? `Toca hacer ${due} ${due === 1 ? 'cosa' : 'cosas'}.` : '¿Cuándo fue la última vez que…? Apúntalo con un toque y LUNO te avisa cuando toque. También cuenta los días sin lo que quieres dejar.'}
         actions={
           <Button variant="primary" onClick={() => setUI({ creating: 'tracker' })}>
             <Plus size={16} strokeWidth={2.6} /> Nuevo

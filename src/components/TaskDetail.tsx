@@ -689,7 +689,7 @@ function RecurrenceEditor({ value, onChange }: { value: Recurrence; onChange: (r
   )
 }
 
-/** Fila "Aviso": cuándo te avisa NTab (notificación en el móvil u ordenador) */
+/** Fila "Aviso": cuándo te avisa LUNO (notificación en el móvil u ordenador) */
 function EstimateRow({ value, onChange }: { value?: number; onChange: (v: number | undefined) => void }) {
   const [custom, setCustom] = useState('')
   const quick = [15, 30, 60, 120]

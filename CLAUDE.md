@@ -1,4 +1,4 @@
-# NTab — notas para Claude
+# LUNO (repo NTab) — notas para Claude
 
 ## Flujo de trabajo con git
 

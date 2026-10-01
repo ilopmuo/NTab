@@ -1,4 +1,4 @@
-// Edge Function: calendario de NTab en formato iCalendar.
+// Edge Function: calendario de LUNO en formato iCalendar.
 // GET /functions/v1/calendar?token=<token de calendar_feeds>
 // Sin sesión (los calendarios no la envían): el token del enlace es la llave.
 // Con &format=json devuelve los eventos como lista (script de Google Calendar).
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   return new Response(ics, {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': 'inline; filename="ntab.ics"',
+      'Content-Disposition': 'inline; filename="luno.ics"',
       'Cache-Control': 'private, max-age=300',
     },
   })

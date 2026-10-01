@@ -160,14 +160,14 @@ export function TodayView() {
           <AnimatePresence>
             {featuresIntro === null && (
               <motion.section
-                aria-label="Haz NTab a tu medida"
+                aria-label="Haz LUNO a tu medida"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 transition={softSpring}
                 className="glass mb-4 overflow-hidden rounded-[18px] px-4 py-3.5"
               >
-                <p className="text-[15px] font-semibold">Haz NTab a tu medida</p>
+                <p className="text-[15px] font-semibold">Haz LUNO a tu medida</p>
                 <p className="mt-0.5 text-[14px] leading-snug text-muted">
                   Apaga lo que no uses (Menú, Gastos, Cosas…) y la barra lateral, ⌘K y Hoy se quedan solo con lo tuyo. Tus datos no se borran.
                 </p>

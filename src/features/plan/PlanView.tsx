@@ -201,7 +201,7 @@ export function PlanView() {
       )}
 
       <div className="sticky bottom-[calc(max(env(safe-area-inset-bottom),10px)+80px)] z-10 flex justify-center lg:bottom-6">
-        <Button variant="primary" size="lg" onClick={() => void finish()} className="shadow-[0_10px_30px_-10px_var(--c-blue)]">
+        <Button variant="primary" size="lg" onClick={() => void finish()} className="shadow-[0_10px_28px_-12px_rgb(0_0_0/0.4)]">
           <Check size={18} strokeWidth={2.6} /> Listo, a por el día <ArrowRight size={17} strokeWidth={2.4} />
         </Button>
       </div>

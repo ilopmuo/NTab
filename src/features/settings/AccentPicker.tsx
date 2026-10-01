@@ -15,7 +15,7 @@ export function AccentPicker() {
     refs.current[(i + ACCENTS.length) % ACCENTS.length]?.focus()
   }
   return (
-    <div role="radiogroup" aria-label="Color de acento" className="flex items-center gap-1.5">
+    <div role="radiogroup" aria-label="Color de acento" className="flex flex-wrap items-center justify-end gap-1.5">
       {ACCENTS.map((a, i) => {
         const on = a.id === current
         return (

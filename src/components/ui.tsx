@@ -434,19 +434,24 @@ export function Empty({
       transition={softSpring}
       className="flex flex-col items-center justify-center px-6 py-14 text-center"
     >
-      <motion.div
-        initial={{ scale: 0.6, rotate: -8 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ ...bouncy, delay: 0.05 }}
-        className="mb-4 flex h-16 w-16 items-center justify-center rounded-full"
-        style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
-      >
-        {/* Flota suavemente, para que la pantalla vacía no parezca muerta */}
-        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }} className="flex">
-          {icon}
-        </motion.span>
-      </motion.div>
-      <p className="text-[17px] font-semibold">{title}</p>
+      {/* El icono en su baldosa, dentro de una órbita tenue (la de LUNO) */}
+      <div className="relative mb-5 flex h-24 w-24 items-center justify-center">
+        <span aria-hidden className="absolute inset-0 rounded-full border border-line" />
+        <span aria-hidden className="absolute top-[11px] right-[11px] h-1.5 w-1.5 rounded-full bg-accent opacity-70" />
+        <motion.div
+          initial={{ scale: 0.7, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ ...bouncy, delay: 0.05 }}
+          className="flex h-14 w-14 items-center justify-center rounded-[16px] bg-surface shadow-[var(--c-shadow)]"
+          style={{ color }}
+        >
+          {/* Flota suavemente, para que la pantalla vacía no parezca muerta */}
+          <motion.span animate={{ y: [0, -2, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }} className="flex">
+            {icon}
+          </motion.span>
+        </motion.div>
+      </div>
+      <p className="text-[17px] font-semibold tracking-[-0.015em]">{title}</p>
       {hint && <p className="mt-1 max-w-xs text-[14px] leading-snug text-muted">{hint}</p>}
       {children && <div className="mt-5">{children}</div>}
     </motion.div>

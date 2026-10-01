@@ -1,5 +1,5 @@
 /**
- * Lógica del conector de NTab para Claude, sin dependencias de Deno (se prueba
+ * Lógica del conector de LUNO para Claude, sin dependencias de Deno (se prueba
  * con los tests de la app: src/lib/mcp.test.ts).
  *
  * Trabaja sobre los registros tal y como los guarda la sincronización
@@ -246,7 +246,7 @@ function loadLine(todays: Task[], meetings: EventLike[]) {
   return `Carga de hoy: ${total ? minutesLabel(total) : 'nada estimado'} (${parts.join(', ')}). Jornada de referencia: 6 h${total > 360 ? ' — HOY ESTÁ SOBRECARGADO, propón mover algo' : ''}.`
 }
 
-/** Resumen de todo NTab para que Claude responda y planifique */
+/** Resumen de todo LUNO para que Claude responda y planifique */
 export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLike[]; names: Record<string, string> }): string {
   const today = ymdIn(env.now, env.tz)
   const ix = new Index(rows)
@@ -781,7 +781,7 @@ export function markPaid(rows: Row[], args: { pago?: string }, env: Env): WriteR
 
 export function listTemplates(rows: Row[]): string {
   const tpls = rows.filter((r) => r.tbl === 'templates')
-  if (!tpls.length) return 'No hay plantillas. Se crean en NTab → Plantillas (o guardando un proyecto como plantilla).'
+  if (!tpls.length) return 'No hay plantillas. Se crean en LUNO → Plantillas (o guardando un proyecto como plantilla).'
   return tpls
     .map((t) => {
       const items = (Array.isArray(t.data.items) ? t.data.items : []) as TemplateItemLike[]
@@ -885,7 +885,7 @@ export function createRoutine(rows: Row[], args: { nombre?: string; pasos?: unkn
   if (isHhmm(args.hora)) routine.time = normTime(args.hora!)
   return {
     writes: [{ tbl: 'routines', id: String(routine.id), data: routine }],
-    report: [`Rutina creada: «${name}» con ${steps.length} pasos${routine.time ? `, aviso a las ${routine.time}` : ''}. La tiene en NTab → Rutinas y en Hoy.`],
+    report: [`Rutina creada: «${name}» con ${steps.length} pasos${routine.time ? `, aviso a las ${routine.time}` : ''}. La tiene en LUNO → Rutinas y en Hoy.`],
   }
 }
 
@@ -940,7 +940,7 @@ export function whereIs(rows: Row[], args: { busqueda?: string }, env: Env): str
     const hay = foldAll([r.data.name, r.data.location, r.data.personName, r.data.notes].map(str).join(' '))
     return words.every((w) => hay.includes(w))
   })
-  if (!all.length) return 'Aún no ha apuntado ninguna cosa en NTab (Cosas).'
+  if (!all.length) return 'Aún no ha apuntado ninguna cosa en LUNO (Cosas).'
   if (!hits.length) return `No hay nada apuntado que coincida con «${str(args.busqueda)}». Cosas apuntadas: ${all.map((r) => str(r.data.name)).slice(0, 40).join(', ')}.`
   return hits.slice(0, 30).map((r) => `- [${r.id}] ${thingLine(r.data, today)}`).join('\n')
 }
@@ -1249,7 +1249,7 @@ export function planMenu(rows: Row[], args: { comidas?: unknown }, _env: Env): W
     }
   }
   if (!writes.length) return { writes: [], report: ['No había comidas que poner (cada día: fecha y comida y/o cena).'] }
-  return { writes, report: ['Menú actualizado:', ...report, 'Con recetas guardadas, en NTab → Menú puede añadir sus ingredientes a la compra en un toque.'] }
+  return { writes, report: ['Menú actualizado:', ...report, 'Con recetas guardadas, en LUNO → Menú puede añadir sus ingredientes a la compra en un toque.'] }
 }
 
 export function createRecipe(rows: Row[], args: { nombre?: string; ingredientes?: unknown; notas?: string }, env: Env): WriteResult {

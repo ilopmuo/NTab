@@ -3,7 +3,7 @@ import { expect, openApp, quickAdd, test } from './fixtures'
 test('color de acento: se elige en Ajustes y se mantiene al recargar', async ({ page }) => {
   await openApp(page, '/settings')
   const group = page.getByRole('radiogroup', { name: 'Color de acento' })
-  await expect(group.getByRole('radio', { name: 'Azul', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(group.getByRole('radio', { name: 'Índigo LUNO', exact: true })).toHaveAttribute('aria-checked', 'true')
   await group.getByRole('radio', { name: 'Rosa' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'pink')
   // Con las flechas, al siguiente
@@ -15,7 +15,7 @@ test('color de acento: se elige en Ajustes y se mantiene al recargar', async ({ 
   // El botón principal usa el relleno del acento
   const fill = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--c-accent-fill').trim())
   expect(fill).toBe('#c2410c')
-  await page.getByRole('radio', { name: 'Azul', exact: true }).click()
+  await page.getByRole('radio', { name: 'Índigo LUNO', exact: true }).click()
   await expect(page.locator('html')).not.toHaveAttribute('data-accent', /.+/)
 })
 
