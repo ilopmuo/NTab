@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { Bell, Check, Flame, ListChecks, Pencil, Play, Plus } from 'lucide-react'
+import { Bell, Check, Flame, ListChecks, Pencil, Play, Plus, Timer } from 'lucide-react'
 import type { Routine } from '@/db/types'
 import { createRoutine, toggleRoutineStep } from '@/db/actions'
 import { WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
-import { ROUTINE_PRESETS, routineProgress, routineStreak, routineToday } from '@/lib/routines'
+import { ROUTINE_PRESETS, minutesLabel, routineProgress, routineStreak, routineToday, stepsMinutes } from '@/lib/routines'
 import { uid } from '@/lib/id'
 import { haptic } from '@/lib/haptics'
 import { SectionIcon, section } from '@/app/sections'
@@ -112,6 +112,11 @@ export function RoutinesView() {
                         </span>
                       )}
                       <span>{daysLabel(r.days)}</span>
+                      {stepsMinutes(r.steps) > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                          <Timer size={11} strokeWidth={2.4} aria-hidden /> {minutesLabel(stepsMinutes(r.steps))}
+                        </span>
+                      )}
                       {s > 0 && (
                         <span className="font-num inline-flex items-center gap-0.5 font-bold text-fg">
                           <Flame size={12} strokeWidth={2.6} /> {s}

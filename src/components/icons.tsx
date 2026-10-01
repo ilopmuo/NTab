@@ -44,6 +44,8 @@ import {
   Shirt,
   DoorOpen,
   Utensils,
+  Cigarette,
+  Wine,
 } from 'lucide-react'
 
 export const ICONS: Record<string, LucideIcon> = {
@@ -91,6 +93,8 @@ export const ICONS: Record<string, LucideIcon> = {
   shirt: Shirt,
   door: DoorOpen,
   food: Utensils,
+  cigarette: Cigarette,
+  wine: Wine,
 }
 
 export function Icon({

@@ -31,3 +31,23 @@ export function upcomingBirthdays(people: Person[], ref: string, withinDays: num
     })
     .sort((a, b) => a.date.localeCompare(b.date))
 }
+
+/**
+ * Fechas importantes que vuelven cada año (aniversarios, santos…), como en
+ * Monica o Clay: las de los próximos `withinDays` días, con los años que se
+ * cumplen si se sabe el año.
+ */
+export function upcomingDates(people: Person[], ref: string, withinDays: number) {
+  return people
+    .flatMap((person) =>
+      (person.dates ?? []).flatMap((d) => {
+        const next = nextBirthday(d.date, ref)
+        if (!next || diffDays(next.date, ref) > withinDays) return []
+        return [{ person, label: d.label, date: next.date, years: next.age }]
+      }),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/** Ideas de regalo aún sin regalar */
+export const pendingGifts = (p: Pick<Person, 'gifts'>) => (p.gifts ?? []).filter((g) => !g.given)

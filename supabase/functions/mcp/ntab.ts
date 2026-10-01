@@ -334,11 +334,29 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   for (const r of rows.filter((x) => x.tbl === 'people')) {
     const b = str(r.data.birthday)
     const md = b.slice(-5)
+    let soon = false
     if (/^\d{2}-\d{2}$/.test(md)) {
       let next = `${today.slice(0, 4)}-${md}`
       if (next < today) next = `${Number(today.slice(0, 4)) + 1}-${md}`
-      if (diffDays(next, today) <= 14) people.push(`- Cumpleaños de ${str(r.data.name)}: ${relDay(next, today)}`)
+      if (diffDays(next, today) <= 14) {
+        soon = true
+        people.push(`- Cumpleaños de ${str(r.data.name)}: ${relDay(next, today)}`)
+      }
     }
+    // Otras fechas que vuelven cada año (aniversarios, santos…)
+    for (const d of Array.isArray(r.data.dates) ? (r.data.dates as { label?: string; date?: string }[]) : []) {
+      const dm = str(d.date).slice(-5)
+      if (!/^\d{2}-\d{2}$/.test(dm)) continue
+      let next = `${today.slice(0, 4)}-${dm}`
+      if (next < today) next = `${Number(today.slice(0, 4)) + 1}-${dm}`
+      if (diffDays(next, today) <= 14) {
+        soon = true
+        people.push(`- ${str(d.label)} (${str(r.data.name)}): ${relDay(next, today)}`)
+      }
+    }
+    const gifts = Array.isArray(r.data.gifts) ? (r.data.gifts as { text?: string; given?: string }[]).filter((g) => !g.given).map((g) => str(g.text)) : []
+    // Las ideas de regalo, cuando se acerca su cumpleaños o una de sus fechas
+    if (soon && gifts.length) people.push(`- Ideas de regalo para ${str(r.data.name)}: ${gifts.join(', ')}`)
     const every = num(r.data.contactEvery)
     if (every > 0) {
       const days = isYmd(r.data.lastContact) ? diffDays(today, r.data.lastContact as string) : Infinity
@@ -368,7 +386,7 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   const trackers = rows.filter((r) => r.tbl === 'trackers' && !r.data.archived)
   const dueTrackers = trackers.filter((r) => {
     const last = (r.data.log as string[] | undefined)?.[0]
-    return num(r.data.every) > 0 && (!last || diffDays(today, last) >= num(r.data.every))
+    return !r.data.avoid && num(r.data.every) > 0 && (!last || diffDays(today, last) >= num(r.data.every))
   })
   if (dueTrackers.length) {
     s.push(`\nTOCA HACER (según «Última vez»):`)
@@ -634,7 +652,7 @@ function habitState(rows: Row[]) {
     .filter((r) => r.tbl === 'habits' && !r.data.archived)
     .map((r) => {
       const d = r.data
-      const rule: HabitLike = { days: Array.isArray(d.days) ? (d.days as number[]) : [], target: num(d.target) || undefined, unit: str(d.unit) || undefined, perWeek: num(d.perWeek) || undefined }
+      const rule: HabitLike = { days: Array.isArray(d.days) ? (d.days as number[]) : [], target: num(d.target) || undefined, unit: str(d.unit) || undefined, perWeek: num(d.perWeek) || undefined, breaks: Array.isArray(d.breaks) ? (d.breaks as HabitLike['breaks']) : undefined }
       return { id: r.id, name: str(d.name), rule }
     })
   const counts = groupLogs(rows.filter((r) => r.tbl === 'habitLogs').map((r) => ({ habitId: str(r.data.habitId), date: str(r.data.date), count: num(r.data.count) || undefined })))
@@ -984,6 +1002,13 @@ function trackerLine(d: Data, today: string) {
   const last = log[0]
   const every = num(d.every)
   const parts = [str(d.name)]
+  if (d.avoid) {
+    // «Días sin…»: el historial son las recaídas
+    const start = last ?? ymdIn(num(d.createdAt), 'UTC')
+    parts.push(`lo quiere dejar: ${diffDays(today, start)} días sin hacerlo${last ? ` (última recaída ${last})` : ''}`)
+    if (num(d.costPerDay)) parts.push(`ahorra ${num(d.costPerDay)} al día`)
+    return parts.join(' · ')
+  }
   parts.push(last ? `última vez ${relDay(last, today)} (${last}, hace ${diffDays(today, last)} días)` : 'nunca apuntado')
   if (every) parts.push(`cada ${every} días`)
   if (log.length > 1) parts.push(`${log.length} veces apuntado`)
@@ -994,7 +1019,7 @@ function trackerLine(d: Data, today: string) {
 function trackerRemindAt(d: Data, env: Env): number | undefined {
   const last = (d.log as string[] | undefined)?.[0]
   const every = num(d.every)
-  if (!every || !last || d.archived) return undefined
+  if (d.avoid || !every || !last || d.archived) return undefined
   const at = zonedToUtc(addDays(last, every), '10:00', env.tz)
   if (at > env.now) return at
   const today = ymdIn(env.now, env.tz)

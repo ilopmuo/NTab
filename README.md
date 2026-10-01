@@ -20,9 +20,9 @@
 | **Listas inteligentes** | Búsquedas guardadas que se actualizan solas (como los filtros de Todoist o TickTick): por fecha, prioridad, etiquetas, proyecto o área, persona y duración. Salen en la barra lateral, en «Mis listas» |
 | **Matriz de Eisenhower** | Lo pendiente en cuatro cuadrantes (urgente/importante, como en TickTick); arrastrar a otro cuadrante cambia la prioridad o la fecha |
 | **Tareas completas** | Prioridad, fecha, hora, repetición, subtareas, etiquetas y notas |
-| **Hábitos** | Seguimiento diario, rachas 🔥 y mapa de calor de 18 semanas. Con cantidad («8 vasos de agua», con botón +1) o «3 veces por semana», el día que quieras |
+| **Hábitos** | Seguimiento diario, rachas 🔥 y mapa de calor de 18 semanas. Con cantidad («8 vasos de agua», con botón +1) o «3 veces por semana», el día que quieras. **Fuerza del hábito** (como Loop: un fallo suelto apenas la baja) y mejor racha; **pausa** para vacaciones o enfermedad y «hoy no toca» (como Streaks) sin romper la racha ni avisar |
 | **Notas** | Autoguardado, agrupadas como en Notas de Apple (fijadas, hoy, ayer, 7 y 30 días, por mes); las líneas `- [ ] algo` se convierten en tareas con un clic. **Enlazadas** como en Bear u Obsidian: `[[Otra nota]]` (con sugerencias al escribir), «Mencionada en» y `#etiquetas` para filtrar; al cambiar el título de una nota, sus enlaces cambian con ella |
-| **Personas** (mini-CRM) | Cumpleaños, historial de contactos y aviso de "hace mucho que no hablas con…" |
+| **Personas** (mini-CRM) | Cumpleaños, historial de contactos y aviso de "hace mucho que no hablas con…". Como en Monica o Clay: **fechas importantes** que vuelven cada año (aniversarios, santos…) con aviso en Hoy, e **ideas de regalo** que se marcan al regalarlas |
 | **Revisión semanal** | Asistente paso a paso para vaciar la cabeza y planificar la semana, con «Algún día» y proyectos marcados como revisados (como en OmniFocus) |
 | **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada. Botones «Hecho» y «Posponer 15 min» |
 | **Resumen de la mañana** | Una notificación diaria, a la hora que elijas, con lo que tienes hoy |
@@ -38,11 +38,11 @@
 | **Duración y carga del día** | `~30m`, `~1h30` al escribir: la Agenda y «Planifica tu día» suman tareas y reuniones y avisan si el día no cabe |
 | **Selección múltiple** | «Seleccionar» en las listas (o `⌘`/`Ctrl` + clic): mueve a hoy, mañana o una fecha, cambia lista o prioridad, completa o borra varias a la vez |
 | **Avisos insistentes** | «insísteme» o «hasta que lo haga»: el aviso se repite cada 10 minutos (o lo que elijas) hasta que la marcas, también con la app cerrada |
-| **Rutinas** | Listas de pasos que haces siempre igual («Antes de salir de casa»: llaves, cartera, móvil…). Te avisa a su hora y te guía paso a paso a pantalla completa |
+| **Rutinas** | Listas de pasos que haces siempre igual («Antes de salir de casa»: llaves, cartera, móvil…). Te avisa a su hora y te guía paso a paso a pantalla completa; con **minutos por paso** (como Routinery), cuenta atrás que suena al acabar y la hora a la que terminas |
 | **Cosas** | Dónde guardaste algo (con foto), qué has prestado y a quién, qué te han prestado y qué caduca (DNI, ITV, garantías), con avisos. Búsqueda «¿Dónde está…?» |
 | **Compra** | Escribe o dicta todo de golpe («leche, 2 barras de pan y detergente»): cada cosa va a su pasillo, con cantidades, «lo de siempre» y «Terminar compra» |
-| **Última vez** | ¿Cuándo cambiaste las sábanas o fuiste al dentista? Un toque para apuntarlo; si le pones «cada N días», te avisa cuando toca |
-| **Diario** | Un minuto al día: ánimo, unas líneas y tres cosas buenas; lo que hiciste se apunta solo. Racha, tendencia y mapa de ánimo |
+| **Última vez** | ¿Cuándo cambiaste las sábanas o fuiste al dentista? Un toque para apuntarlo; si le pones «cada N días», te avisa cuando toca. Y **«Días sin…»** para lo que quieres dejar (como Quitzilla): días seguidos, récord, siguiente meta y dinero ahorrado |
+| **Diario** | Un minuto al día: ánimo, unas líneas y tres cosas buenas; lo que hiciste se apunta solo. Racha, tendencia y mapa de ánimo; **«Tal día como hoy»** (como Day One), **año en píxeles** y **«Lo que te sienta bien»**: el ánimo de los días que haces cada hábito frente a los que no (como Daylio) |
 | **¿Qué hago ahora?** | Dices cuánto tiempo tienes y cómo vas de energía, y NTab te propone la tarea que mejor encaja (con «Empezar» en modo foco) |
 | **Gastos** | «12,50 café», «súper 63»: categoría automática, total del mes, proyección, presupuesto con aviso al 80 % y reparto por categorías |
 | **Menú** | Comida y cena de la semana con tus recetas; los ingredientes van a la lista de la compra en un toque |
@@ -146,7 +146,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
   - «Última vez» cuando vuelve a tocar (`due_reminders` incluye `trackers`);
   - el diario por la noche si aún no se ha escrito (`due_journal_reminders`, hora en `settings/journalReminder`);
   - las fechas límite, la víspera y el mismo día (`due_deadline_reminders`, hora en `settings/deadlineAlerts`, a las 9 si no se cambia);
-  - hábitos a su hora si hoy no se ha llegado al objetivo y, en los de «N veces por semana», si la semana aún no está cumplida (`due_habit_reminders`).
+  - hábitos a su hora si hoy no se ha llegado al objetivo y, en los de «N veces por semana», si la semana aún no está cumplida; nunca en pausa ni el día libre (`due_habit_reminders`).
 - En el iPhone hacen falta iOS 16.4 o posterior y la app añadida a la pantalla de inicio. Se activan en **Ajustes → Avisos**.
 - Configuración única en Supabase: el secreto `VAPID_PRIVATE_KEY` de la Edge Function (la clave pública está en `src/reminders/push.ts`).
 

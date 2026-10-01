@@ -1,7 +1,7 @@
 import type { Tracker } from '@/db/types'
-import { addDaysYmd, fromYmd, today as todayYmd } from './dates'
+import { addDaysYmd, fromYmd, today as todayYmd, ymd } from './dates'
 
-export const TRACKER_PRESETS: { name: string; icon: string; every?: number }[] = [
+export const TRACKER_PRESETS: { name: string; icon: string; every?: number; avoid?: boolean }[] = [
   { name: 'Cambiar las sábanas', icon: 'bed', every: 14 },
   { name: 'Regar las plantas', icon: 'leaf', every: 4 },
   { name: 'Ir al dentista', icon: 'heart', every: 180 },
@@ -10,6 +10,14 @@ export const TRACKER_PRESETS: { name: string; icon: string; every?: number }[] =
   { name: 'Cambiar el cepillo de dientes', icon: 'droplet', every: 90 },
   { name: 'Lavar el coche', icon: 'car', every: 30 },
   { name: 'Hacer copia de las fotos', icon: 'camera', every: 60 },
+]
+
+/** Ideas de «Días sin…» (como Quitzilla): lo que quieres dejar */
+export const AVOID_PRESETS: { name: string; icon: string; avoid: true }[] = [
+  { name: 'Fumar', icon: 'cigarette', avoid: true },
+  { name: 'Alcohol', icon: 'wine', avoid: true },
+  { name: 'Comida basura', icon: 'food', avoid: true },
+  { name: 'Móvil en la cama', icon: 'moon', avoid: true },
 ]
 
 const dayMs = 864e5
@@ -69,9 +77,9 @@ export function everyLabel(every: number) {
   return `cada ${every} días`
 }
 
-/** Aviso: el día que toca, a las 10:00. Si ya pasó, a las 10:00 siguientes (una vez). */
-export function computeTrackerRemindAt(t: Pick<Tracker, 'log' | 'every' | 'archived'>, now = Date.now()): number | undefined {
-  if (!t.every || !t.log[0] || t.archived) return undefined
+/** Aviso: el día que toca, a las 10:00. Si ya pasó, a las 10:00 siguientes (una vez). Lo que se quiere dejar no avisa. */
+export function computeTrackerRemindAt(t: Pick<Tracker, 'log' | 'every' | 'archived' | 'avoid'>, now = Date.now()): number | undefined {
+  if (t.avoid || !t.every || !t.log[0] || t.archived) return undefined
   const at = fromYmd(addDaysYmd(t.log[0], t.every))
   at.setHours(10, 0, 0, 0)
   if (at.getTime() > now) return at.getTime()
@@ -81,11 +89,47 @@ export function computeTrackerRemindAt(t: Pick<Tracker, 'log' | 'every' | 'archi
   return next.getTime()
 }
 
-/** Primero lo que toca (lo más atrasado), luego lo que hace más que no se hace */
+/** Primero lo que toca (lo más atrasado), luego lo que hace más que no se hace; al final, lo que quieres dejar */
 export function sortTrackers<T extends Tracker>(list: T[], today = todayYmd()): T[] {
   const score = (t: Tracker) => {
+    if (t.avoid) return -1 - t.createdAt / 1e13
     const s = trackerState(t, today)
     return s.kind === 'due' ? 100000 + s.late : s.kind === 'never' ? 50000 : s.since
   }
   return [...list].sort((a, b) => score(b) - score(a))
 }
+
+// ── «Días sin…» (como Quitzilla o las tareas negativas de Streaks) ──
+
+/** Desde cuándo se cuenta: la última recaída o, si no hay, el día en que se creó */
+const startOf = (t: Pick<Tracker, 'log' | 'createdAt'>) => t.log[0] ?? ymd(new Date(t.createdAt))
+
+/** Días seguidos sin hacerlo */
+export const cleanDays = (t: Pick<Tracker, 'log' | 'createdAt'>, today = todayYmd()) => Math.max(0, daysBetween(startOf(t), today))
+
+/** La racha más larga sin hacerlo (la actual incluida) */
+export function cleanRecord(t: Pick<Tracker, 'log' | 'createdAt'>, today = todayYmd()) {
+  let best = cleanDays(t, today)
+  for (let i = 0; i + 1 < t.log.length; i++) best = Math.max(best, daysBetween(t.log[i + 1], t.log[i]))
+  return best
+}
+
+const MILESTONES = [1, 3, 7, 14, 30, 60, 90, 180, 365, 730, 1095]
+
+/** Siguiente meta (1 día, 3, 1 semana, 2 semanas, 1 mes…) y cuánto falta */
+export function nextMilestone(days: number): { at: number; left: number } | undefined {
+  const at = MILESTONES.find((m) => m > days)
+  return at ? { at, left: at - days } : undefined
+}
+
+/** «1 semana», «1 mes», «1 año», «45 días» */
+export function milestoneLabel(days: number) {
+  if (days === 7) return '1 semana'
+  if (days === 14) return '2 semanas'
+  if (days >= 30 && days < 365 && days % 30 === 0) return days === 30 ? '1 mes' : `${days / 30} meses`
+  if (days >= 365 && days % 365 === 0) return days === 365 ? '1 año' : `${days / 365} años`
+  return `${days} ${days === 1 ? 'día' : 'días'}`
+}
+
+/** Lo ahorrado en la racha actual */
+export const savedSince = (t: Pick<Tracker, 'log' | 'createdAt' | 'costPerDay'>, today = todayYmd()) => (t.costPerDay ? cleanDays(t, today) * t.costPerDay : 0)

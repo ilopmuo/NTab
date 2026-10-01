@@ -26,6 +26,31 @@ export function routineStreak(r: Routine, completed: Set<string>, today: string)
   return n
 }
 
+/** Minutos de los pasos (los que no tienen, no suman) */
+export const stepsMinutes = (steps: Pick<Routine['steps'][number], 'minutes'>[]) => steps.reduce((n, s) => n + (s.minutes ?? 0), 0)
+
+/** Minutos que quedan: los de los pasos sin hacer */
+export function minutesLeft(r: Routine, run?: RoutineRun) {
+  const done = new Set(run?.done ?? [])
+  return stepsMinutes(r.steps.filter((s) => !done.has(s.id)))
+}
+
+/** «8:15»: a qué hora acabas si empiezas ahora */
+export function finishAt(minutes: number, now = new Date()) {
+  const end = new Date(now.getTime() + minutes * 60_000)
+  return `${end.getHours()}:${String(end.getMinutes()).padStart(2, '0')}`
+}
+
+/** «15 min», «1 h 10 min» */
+export function minutesLabel(m: number) {
+  if (m < 60) return `${m} min`
+  const h = Math.floor(m / 60)
+  return m % 60 ? `${h} h ${m % 60} min` : `${h} h`
+}
+
+/** «04:59» de una cuenta atrás en segundos */
+export const clock = (secs: number) => `${String(Math.floor(Math.max(0, secs) / 60)).padStart(2, '0')}:${String(Math.max(0, secs) % 60).padStart(2, '0')}`
+
 export const ROUTINE_PRESETS: { name: string; icon: string; time?: string; days?: number[]; steps: string[] }[] = [
   { name: 'Antes de salir de casa', icon: 'key', steps: ['Llaves', 'Cartera', 'Móvil y cargador', 'Gafas', 'Luces y fuegos apagados', 'Ventanas cerradas'] },
   { name: 'Rutina de mañana', icon: 'sun', time: '08:00', days: [1, 2, 3, 4, 5], steps: ['Beber un vaso de agua', 'Tomar la medicación', 'Mirar la agenda de hoy', 'Preparar la mochila'] },

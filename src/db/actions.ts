@@ -1,7 +1,7 @@
 import { db } from './db'
 import type { Area, Goal, Habit, Interaction, Note, Person, Project, Expense, JournalEntry, MenuSlot, Recipe, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
 import { uid } from '@/lib/id'
-import { today } from '@/lib/dates'
+import { addDaysYmd, today } from '@/lib/dates'
 import { nextOccurrence } from '@/lib/recurrence'
 import { advanceCharge, rollForward } from '@/lib/finance'
 import { putInTrash } from './trash'
@@ -262,6 +262,31 @@ export async function createHabit(data: Partial<Habit> & { name: string }): Prom
   }
   await db.habits.add(habit)
   return habit
+}
+
+// ── Pausas de hábitos (como en Streaks): no cuentan ni rompen la racha ──
+
+/** Pone el hábito en pausa desde `from` (sin fecha de vuelta: hasta que se reanude) */
+export async function pauseHabit(id: string, from = today()) {
+  await db.habits.where('id').equals(id).modify((h) => {
+    if (h.breaks?.some((b) => !b.to)) return
+    h.breaks = [...(h.breaks ?? []), { from }]
+  })
+}
+
+/** Vuelve a contar desde `date` (si la pausa empezó ese mismo día, se quita) */
+export async function resumeHabit(id: string, date = today()) {
+  await db.habits.where('id').equals(id).modify((h) => {
+    h.breaks = (h.breaks ?? []).flatMap((b) => (b.to ? [b] : b.from >= date ? [] : [{ from: b.from, to: addDaysYmd(date, -1) }]))
+  })
+}
+
+/** «Hoy no toca»: un día libre (o deja de serlo) */
+export async function toggleHabitDayOff(id: string, date: string) {
+  await db.habits.where('id').equals(id).modify((h) => {
+    const one = (h.breaks ?? []).some((b) => b.from === date && b.to === date)
+    h.breaks = one ? h.breaks!.filter((b) => !(b.from === date && b.to === date)) : [...(h.breaks ?? []), { from: date, to: date }]
+  })
 }
 
 export async function toggleHabit(habitId: string, date: string) {

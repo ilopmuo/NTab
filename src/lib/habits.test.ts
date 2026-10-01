@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { completionRate, doneDays, groupLogs, isDue, isScheduled, progressLabel, streak, weekDone } from './habits'
+import { bestStreak, completionRate, doneDays, groupLogs, isDue, isScheduled, onBreak, openBreak, progressLabel, streak, strength, weekDone } from './habits'
 
 // Miércoles, 30 de septiembre de 2026 (la semana empieza el lunes 28)
 const T = '2026-09-30'
@@ -71,5 +71,51 @@ describe('hábitos de días fijos (como siempre)', () => {
     expect(isScheduled(mwf, '2026-09-29')).toBe(false)
     expect(isDue(mwf, new Set(), '2026-09-29')).toBe(false)
     expect(streak(mwf, new Set(['2026-09-25', '2026-09-28']), T)).toBe(2)
+  })
+})
+
+describe('pausas y días libres (como en Streaks y Loop)', () => {
+  const days = (from: string, n: number) => Array.from({ length: n }, (_, i) => new Date(Date.parse(from) + i * 864e5).toISOString().slice(0, 10))
+  it('un día libre no toca, no avisa y no rompe la racha', () => {
+    const h = { ...daily, breaks: [{ from: '2026-09-28', to: '2026-09-28' }] }
+    expect(onBreak(h, '2026-09-28')).toBe(true)
+    expect(isScheduled(h, '2026-09-28')).toBe(false)
+    expect(isDue(h, new Set(), '2026-09-28')).toBe(false)
+    expect(streak(h, new Set(['2026-09-26', '2026-09-27', '2026-09-29', '2026-09-30']), T)).toBe(4)
+    expect(streak(daily, new Set(['2026-09-26', '2026-09-27', '2026-09-29', '2026-09-30']), T)).toBe(2)
+  })
+  it('en pausa (sin fecha de vuelta), hasta que se reanude', () => {
+    const h = { ...daily, breaks: [{ from: '2026-09-29' }] }
+    expect(openBreak(h)).toEqual({ from: '2026-09-29' })
+    expect(isDue(h, new Set(), T)).toBe(false)
+    expect(isDue(h, new Set(), '2026-12-01')).toBe(false)
+    expect(streak(h, new Set(['2026-09-27', '2026-09-28']), T)).toBe(2)
+  })
+  it('por semanas: una semana de vacaciones sin llegar no corta', () => {
+    const h = { ...gym, breaks: [{ from: '2026-09-21', to: '2026-09-25' }] }
+    const done = new Set(['2026-09-14', '2026-09-16', '2026-09-18', '2026-09-28', '2026-09-29', '2026-09-30'])
+    expect(streak(h, done, T)).toBe(2)
+    expect(streak(gym, done, T)).toBe(1)
+    expect(bestStreak(h, done, T)).toBe(2)
+  })
+  it('fuerza: sube al cumplir, un fallo suelto apenas la baja y hoy sin hacer no resta', () => {
+    const fresh = { ...daily, createdAt: new Date(2026, 8, 1).getTime() }
+    const all = groupLogs(days('2026-09-01', 30).map((date) => ({ habitId: 'h', date })))
+    const s30 = strength(fresh, all.get('h'), T)
+    expect(s30).toBeGreaterThan(0.75)
+    expect(s30).toBeLessThan(0.85)
+    const oneMiss = groupLogs(days('2026-09-01', 30).filter((d) => d !== '2026-09-29').map((date) => ({ habitId: 'h', date })))
+    expect(s30 - strength(fresh, oneMiss.get('h'), T)).toBeLessThan(0.06)
+    // Hoy aún sin hacer: igual que ayer
+    const untilYesterday = groupLogs(days('2026-09-01', 29).map((date) => ({ habitId: 'h', date })))
+    expect(strength(fresh, untilYesterday.get('h'), T)).toBeCloseTo(strength(fresh, untilYesterday.get('h'), '2026-09-29'))
+    expect(strength(fresh, undefined, T)).toBe(0)
+    // Con cantidad, la parte hecha cuenta
+    const half = groupLogs(days('2026-09-01', 29).map((date) => ({ habitId: 'h', date, count: 4 })))
+    expect(strength({ ...water, createdAt: fresh.createdAt }, half.get('h'), T)).toBeCloseTo(strength(fresh, untilYesterday.get('h'), T) / 2, 2)
+  })
+  it('mejor racha', () => {
+    const done = new Set(['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-05', '2026-09-06'])
+    expect(bestStreak({ ...daily, createdAt: new Date(2026, 8, 1).getTime() }, done, T)).toBe(3)
   })
 })

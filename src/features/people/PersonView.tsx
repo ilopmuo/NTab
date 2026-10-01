@@ -8,6 +8,7 @@ import { toastTrashed } from '../trash/undo'
 import type { Interaction, Person } from '@/db/types'
 import { addDaysYmd, dateLabel, diffDays, relativeDays, today } from '@/lib/dates'
 import { nextBirthday } from '@/lib/people'
+import { PersonDates, PersonGifts } from './PersonExtras'
 import { href, navigate } from '@/app/router'
 import { toast, ui } from '@/app/store'
 import { ThingRow } from '../things/ThingRow'
@@ -38,7 +39,7 @@ export function PersonView({ id }: { id: string }) {
   return <PersonDetail key={person.id} person={person} interactions={interactions} />
 }
 
-function useField(person: Person, key: keyof Person) {
+function useField(person: Person, key: 'name' | 'company' | 'role' | 'email' | 'phone' | 'notes') {
   const [value, setValue] = useState(String(person[key] ?? ''))
   const first = useRef(true)
   useEffect(() => {
@@ -46,7 +47,7 @@ function useField(person: Person, key: keyof Person) {
       first.current = false
       return
     }
-    const t = setTimeout(() => db.people.update(person.id, { [key]: value }), 350)
+    const t = setTimeout(() => db.people.update(person.id, { [key]: value } as Partial<Person>), 350)
     return () => clearTimeout(t)
   }, [value, key, person.id])
   return [value, setValue] as const
@@ -154,6 +155,8 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
         <div className="min-w-0 space-y-6">
           <PendingWith personId={person.id} name={person.name} />
           <Loans personId={person.id} name={person.name} />
+          <PersonDates person={person} />
+          <PersonGifts person={person} />
           <Section title="Registrar contacto de hoy" tone="purple">
             <Card className="p-4">
               <div className="mb-3 flex flex-wrap gap-1.5">

@@ -2,8 +2,8 @@ import { Command, defaultFilter } from 'cmdk'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { runner } from '@/features/routines/useRoutines'
 import { whatNow } from '@/features/whatnow/store'
-import { markDone } from '@/features/trackers/markDone'
-import { sinceLabel } from '@/lib/trackers'
+import { markDone, markSlip } from '@/features/trackers/markDone'
+import { cleanDays, sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
 import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, LayoutGrid, ListChecks, ListFilter, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
@@ -338,8 +338,14 @@ function Palette() {
                     value={`v:${t.id}`}
                     keywords={['ultima vez', 'hecho', t.name]}
                     icon={<History size={17} />}
-                    onSelect={run(() => void markDone(t))}
-                    hint={t.log[0] ? `${sinceLabel(Math.round((Date.parse(today()) - Date.parse(t.log[0])) / 864e5))} · apuntar hoy` : 'Apuntar hoy'}
+                    onSelect={run(() => void (t.avoid ? markSlip(t) : markDone(t)))}
+                    hint={
+                      t.avoid
+                        ? `${cleanDays(t)} días sin · apuntar recaída`
+                        : t.log[0]
+                          ? `${sinceLabel(Math.round((Date.parse(today()) - Date.parse(t.log[0])) / 864e5))} · apuntar hoy`
+                          : 'Apuntar hoy'
+                    }
                   >
                     {t.name}
                   </Item>

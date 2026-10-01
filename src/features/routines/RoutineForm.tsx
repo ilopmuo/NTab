@@ -62,7 +62,7 @@ function Form({ routine, onClose }: { routine?: Routine; onClose: () => void }) 
           <Input autoFocus={!routine} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Antes de salir de casa" className="h-11 text-[15px]" />
         </div>
 
-        <Field label="Pasos">
+        <Field label="Pasos (y, si quieres, los minutos de cada uno)" group>
           <Reorder.Group axis="y" values={steps} onReorder={setSteps} className="space-y-1.5">
             {steps.map((s, i) => (
               <StepRow
@@ -70,6 +70,7 @@ function Form({ routine, onClose }: { routine?: Routine; onClose: () => void }) 
                 step={s}
                 index={i}
                 onChange={(title) => setSteps((all) => all.map((x) => (x.id === s.id ? { ...x, title } : x)))}
+                onMinutes={(minutes) => setSteps((all) => all.map((x) => (x.id === s.id ? { ...x, minutes } : x)))}
                 onRemove={() => setSteps((all) => all.filter((x) => x.id !== s.id))}
               />
             ))}
@@ -164,7 +165,19 @@ function Form({ routine, onClose }: { routine?: Routine; onClose: () => void }) 
   )
 }
 
-function StepRow({ step, index, onChange, onRemove }: { step: RoutineStep; index: number; onChange: (t: string) => void; onRemove: () => void }) {
+function StepRow({
+  step,
+  index,
+  onChange,
+  onMinutes,
+  onRemove,
+}: {
+  step: RoutineStep
+  index: number
+  onChange: (t: string) => void
+  onMinutes: (m: number | undefined) => void
+  onRemove: () => void
+}) {
   const controls = useDragControls()
   return (
     <Reorder.Item value={step} dragListener={false} dragControls={controls} className="flex items-center gap-2 rounded-xl bg-fill-2 py-1 pr-1 pl-1.5">
@@ -183,6 +196,23 @@ function StepRow({ step, index, onChange, onRemove }: { step: RoutineStep; index
         aria-label={`Paso ${index + 1}`}
         className="h-8 min-w-0 flex-1 bg-transparent text-[15px] outline-none"
       />
+      <label className="flex shrink-0 items-center gap-1 text-[13px] text-muted">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={240}
+          value={step.minutes ?? ''}
+          onChange={(e) => {
+            const n = Math.round(Number(e.target.value))
+            onMinutes(n > 0 ? Math.min(240, n) : undefined)
+          }}
+          placeholder="–"
+          aria-label={`Minutos del paso ${index + 1}`}
+          className="font-num h-8 w-11 rounded-lg bg-fill px-1.5 text-center text-[14px] font-semibold text-fg"
+        />
+        min
+      </label>
       <button type="button" aria-label={`Quitar ${step.title}`} onClick={onRemove} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg">
         <X size={14} />
       </button>

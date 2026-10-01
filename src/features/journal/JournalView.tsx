@@ -9,9 +9,10 @@ import { addDaysYmd, dateLabel, fmt, fromYmd, today, weekStart } from '@/lib/dat
 import { averageMood, hasContent, journalStreak, moodLabel, moodTrend } from '@/lib/journal'
 import { navigate } from '@/app/router'
 import { SectionIcon, section } from '@/app/sections'
-import { Card, Group, PageHeader, Section, Switch, Textarea, cx, softSpring } from '@/components/ui'
+import { Card, Group, PageHeader, Section, Segmented, Switch, Textarea, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { MoodIcon, MoodPicker, moodColor } from './MoodPicker'
+import { MoodBoosters, OnThisDay, YearPixels } from './JournalInsights'
 import { groupLogs, targetOf } from '@/lib/habits'
 
 const WEEKS = 20
@@ -23,6 +24,8 @@ export function JournalView({ date: routeDate }: { date?: string }) {
   const entries = useLiveQuery(() => db.journal.toArray(), [])
   const reminder = useLiveQuery(() => db.settings.get('journalReminder').then((r) => (r?.value as { enabled: boolean; time: string } | undefined) ?? null), [])
   const byDate = useMemo(() => new Map((entries ?? []).map((e) => [e.id, e])), [entries])
+  const [view, setView] = useState<'weeks' | 'year'>('weeks')
+  const [year, setYear] = useState(() => Number(t.slice(0, 4)))
   if (!entries || reminder === undefined) return null
 
   const entry = byDate.get(date)
@@ -66,9 +69,25 @@ export function JournalView({ date: routeDate }: { date?: string }) {
         />
       </div>
 
-      <Section title="Tu ánimo">
-        <MoodMap byDate={byDate} today={t} onPick={go} />
+      <OnThisDay byDate={byDate} date={date} onPick={go} />
+
+      <Section
+        title="Tu ánimo"
+        action={
+          <Segmented
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'weeks', label: `${WEEKS} semanas` },
+              { value: 'year', label: 'Año en píxeles' },
+            ]}
+          />
+        }
+      >
+        {view === 'weeks' ? <MoodMap byDate={byDate} today={t} onPick={go} /> : <YearPixels byDate={byDate} year={year} today={t} onYear={setYear} onPick={go} />}
       </Section>
+
+      <MoodBoosters byDate={byDate} today={t} />
 
       {past.length > 0 && (
         <Section title="Días anteriores">

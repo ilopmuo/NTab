@@ -74,6 +74,18 @@ describe('conector MCP', () => {
     expect(text).not.toContain('Comprar pan')
   })
 
+  it('resumen: fechas importantes, ideas de regalo, hábitos en pausa y «días sin…»', async () => {
+    const rows = base().map((r) =>
+      r.tbl === 'people' ? { ...r, data: { ...r.data, dates: [{ id: 'd', label: 'Aniversario', date: '2016-09-26' }], gifts: [{ id: 'g', text: 'Una novela' }, { id: 'h', text: 'Taza', given: '2026-01-06' }] } } : r.tbl === 'habits' ? { ...r, data: { ...r.data, breaks: [{ from: '2026-09-20' }] } } : r,
+    )
+    rows.push({ tbl: 'trackers', id: 'f', data: { id: 'f', name: 'Fumar', avoid: true, costPerDay: 5, log: ['2026-09-14'], archived: 0, createdAt: 0 } })
+    const { text } = await call(memoryStore(rows), 'ver_resumen')
+    expect(text).toContain('- Aniversario (Ana): el sábado 26')
+    expect(text).toContain('- Ideas de regalo para Ana: Una novela')
+    expect(text).not.toContain('Correr (pendiente)')
+    expect((await call(memoryStore(rows), 'ultima_vez', { cosa: 'fumar' })).text).toContain('Fumar · lo quiere dejar: 10 días sin hacerlo (última recaída 2026-09-14) · ahorra 5 al día')
+  })
+
   it('busca tareas', async () => {
     const store = memoryStore(base())
     expect((await call(store, 'buscar_tareas', { texto: 'banco' })).text).toContain('[t2]')

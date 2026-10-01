@@ -183,6 +183,8 @@ export interface Habit {
   unit?: string
   /** «N veces por semana», cualquier día (entonces `days` no se usa) */
   perWeek?: number
+  /** días de descanso (vacaciones, «hoy no toca»): no cuentan ni rompen la racha; sin `to`, en pausa */
+  breaks?: { from: string; to?: string }[]
   archived: 0 | 1
   order: number
   createdAt: number
@@ -192,6 +194,8 @@ export interface Habit {
 export interface RoutineStep {
   id: ID
   title: string
+  /** minutos que lleva (opcional): en el modo paso a paso, cuenta atrás */
+  minutes?: number
 }
 
 export interface Routine {
@@ -266,6 +270,10 @@ export interface Tracker {
   log: string[]
   /** cada cuántos días toca (opcional): avisa cuando se pasa */
   every?: number
+  /** algo que quiero dejar («Días sin…»): el historial son las recaídas */
+  avoid?: boolean
+  /** lo que cuesta cada día que se hace (para el ahorro), en la moneda de los gastos */
+  costPerDay?: number
   /** momento del aviso ya calculado (ms) */
   remindAt?: number
   archived: 0 | 1
@@ -375,6 +383,10 @@ export interface Person {
   lastContact?: string
   /** cada cuántos días quiero hablar con esta persona */
   contactEvery?: number
+  /** otras fechas que vuelven cada año (aniversario, santo…): MM-DD o YYYY-MM-DD */
+  dates?: { id: ID; label: string; date: string }[]
+  /** ideas de regalo; `given`: cuándo se regaló */
+  gifts?: { id: ID; text: string; given?: string }[]
   createdAt: number
 }
 

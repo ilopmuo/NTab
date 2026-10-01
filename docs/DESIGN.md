@@ -54,6 +54,7 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Tarea nueva | Su fila se tiñe muy suave del acento, con una barra a la izquierda, y se apaga despacio (1,8 s), para ver dónde ha caído; suave a propósito, para que su texto se siga leyendo |
 | Tableros (proyecto, matriz) | Las tarjetas se arrastran (en táctil, con pulsación larga) y la columna o el cuadrante de destino se marca con el acento; al moverse, las demás se recolocan con un muelle |
 | Evolución de un objetivo | La línea se dibuja de izquierda a derecha y el área de debajo aparece después |
+| Rutina con tiempo | Bajo el paso, la cuenta atrás en grande y una barra que se llena; al llegar a cero suena, vibra y el reloj pasa al acento |
 | Selección en la barra lateral | La píldora se desliza al nuevo elemento (*shared layout*) |
 | Hojas y modales | Suben o crecen con muelle; en móvil se cierran arrastrando hacia abajo |
 | Anillos y números | Se llenan y cuentan desde cero al aparecer; los contadores ruedan al cambiar (el número viejo sale, el nuevo entra en la dirección del cambio). Al cerrarse un anillo, una onda sale de él |

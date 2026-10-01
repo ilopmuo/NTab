@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { averageEvery, computeTrackerRemindAt, everyLabel, sinceLabel, trackerState, withDate } from './trackers'
+import { averageEvery, cleanDays, cleanRecord, computeTrackerRemindAt, everyLabel, milestoneLabel, nextMilestone, savedSince, sinceLabel, sortTrackers, trackerState, withDate } from './trackers'
 
 describe('última vez', () => {
   it('historial sin repetir y ordenado', () => {
@@ -28,5 +28,32 @@ describe('última vez', () => {
     // Ya toca: mañana a las 10:00
     expect(computeTrackerRemindAt({ log: ['2026-09-01'], every: 14, archived: 0 }, now)).toBe(new Date(2026, 8, 25, 10).getTime())
     expect(computeTrackerRemindAt({ log: ['2026-09-01'], archived: 0 }, now)).toBeUndefined()
+  })
+})
+
+describe('«Días sin…»', () => {
+  const T = '2026-10-01'
+  const base = { id: 'f', name: 'Fumar', icon: 'cigarette', avoid: true, archived: 0 as const, order: 0, createdAt: new Date(2026, 8, 1).getTime() }
+  it('cuenta desde la última recaída o, sin ninguna, desde que se creó', () => {
+    expect(cleanDays({ ...base, log: [] }, T)).toBe(30)
+    expect(cleanDays({ ...base, log: ['2026-09-21', '2026-09-01'] }, T)).toBe(10)
+    expect(cleanDays({ ...base, log: [T] }, T)).toBe(0)
+  })
+  it('récord, metas y ahorro', () => {
+    expect(cleanRecord({ ...base, log: ['2026-09-21', '2026-08-01'] }, T)).toBe(51)
+    expect(cleanRecord({ ...base, log: ['2026-09-21'] }, T)).toBe(10)
+    expect(nextMilestone(10)).toEqual({ at: 14, left: 4 })
+    expect(nextMilestone(0)).toEqual({ at: 1, left: 1 })
+    expect(milestoneLabel(7)).toBe('1 semana')
+    expect(milestoneLabel(60)).toBe('2 meses')
+    expect(milestoneLabel(365)).toBe('1 año')
+    expect(milestoneLabel(3)).toBe('3 días')
+    expect(savedSince({ ...base, log: ['2026-09-21'], costPerDay: 4.5 }, T)).toBe(45)
+    expect(savedSince({ ...base, log: ['2026-09-21'] }, T)).toBe(0)
+  })
+  it('no avisa y va al final de la lista', () => {
+    expect(computeTrackerRemindAt({ log: ['2026-09-01'], every: 14, archived: 0, avoid: true })).toBeUndefined()
+    const sheets = { ...base, id: 's', name: 'Sábanas', avoid: undefined, log: ['2026-09-30'], every: 14 }
+    expect(sortTrackers([{ ...base, log: [] }, sheets], T).map((t) => t.id)).toEqual(['s', 'f'])
   })
 })

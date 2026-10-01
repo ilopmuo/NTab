@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { motion } from 'motion/react'
-import { Check, History, Plus } from 'lucide-react'
+import { Check, History, Plus, RotateCcw, Trophy } from 'lucide-react'
 import type { Tracker } from '@/db/types'
 import { db } from '@/db/db'
 import { createTracker } from '@/db/actions'
-import { markDone } from './markDone'
+import { markDone, markSlip } from './markDone'
 import { today } from '@/lib/dates'
-import { TRACKER_PRESETS, everyLabel, inLabel, sinceLabel, sortTrackers, trackerState } from '@/lib/trackers'
+import { AVOID_PRESETS, TRACKER_PRESETS, cleanDays, cleanRecord, everyLabel, inLabel, milestoneLabel, nextMilestone, savedSince, sinceLabel, sortTrackers, trackerState } from '@/lib/trackers'
+import { money } from '@/lib/finance'
 import { setUI, useUI } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Icon } from '@/components/icons'
@@ -16,8 +17,65 @@ import { Page } from '../Page'
 import { TrackerForm } from './TrackerForm'
 
 
+/** «Días sin…»: cuántos días llevas, tu récord, lo ahorrado y la siguiente meta */
+function AvoidCard({ tracker, onEdit, index = 0 }: { tracker: Tracker; onEdit: () => void; index?: number }) {
+  const t = today()
+  const days = cleanDays(tracker, t)
+  const record = cleanRecord(tracker, t)
+  const saved = savedSince(tracker, t)
+  const next = nextMilestone(days)
+  const slipToday = tracker.log[0] === t
+  const what = tracker.name.charAt(0).toLowerCase() + tracker.name.slice(1)
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...spring, delay: Math.min(index, 8) * 0.04 }}
+      className="glass flex flex-col rounded-[20px] p-4"
+    >
+      <button type="button" onClick={onEdit} className="flex items-start gap-3 text-left">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fill text-fg">
+          <Icon name={tracker.icon} size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-semibold">{tracker.name}</span>
+          <span className="flex items-center gap-1 text-[13px] text-muted">
+            {record > 0 ? (
+              <>
+                <Trophy size={12} strokeWidth={2.4} aria-hidden /> Récord: {milestoneLabel(record)}
+              </>
+            ) : (
+              'Lo quieres dejar'
+            )}
+          </span>
+        </span>
+      </button>
+      <p className="mt-4 flex items-baseline gap-2">
+        <span className="font-num text-[34px] leading-none font-bold tracking-tight">{days}</span>{' '}
+        <span className="text-[15px] font-semibold">
+          {days === 1 ? 'día' : 'días'} sin {what}
+        </span>
+      </p>
+      <p className="mt-1 text-[12.5px] text-muted">
+        {[saved > 0 && `${money(saved)} ahorrados`, next && `Próxima meta: ${milestoneLabel(next.at)} (${next.left === 1 ? 'mañana' : `faltan ${next.left} días`})`].filter(Boolean).join(' · ') || '¡Lo has conseguido!'}
+      </p>
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.96 }}
+        disabled={slipToday}
+        onClick={() => void markSlip(tracker)}
+        className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[14px] bg-fill text-[15px] font-semibold text-fg transition-colors hover:bg-press disabled:text-muted"
+      >
+        <RotateCcw size={16} strokeWidth={2.6} aria-hidden /> {slipToday ? 'Apuntado hoy' : 'He vuelto a caer'}
+      </motion.button>
+    </motion.div>
+  )
+}
+
 /** Una tarjeta: cuánto hace, si toca y el botón de «Hecho hoy» */
 export function TrackerCard({ tracker, onEdit, index = 0 }: { tracker: Tracker; onEdit: () => void; index?: number }) {
+  if (tracker.avoid) return <AvoidCard tracker={tracker} onEdit={onEdit} index={index} />
   const t = today()
   const s = trackerState(tracker, t)
   const doneToday = tracker.log[0] === t
@@ -75,7 +133,7 @@ export function TrackersView() {
   if (!trackers) return null
   const list = sortTrackers(trackers)
   const due = list.filter((t) => trackerState(t).kind === 'due').length
-  const ideas = TRACKER_PRESETS.filter((p) => !trackers.some((t) => t.name === p.name))
+  const ideas = [...TRACKER_PRESETS, ...AVOID_PRESETS].filter((p) => !trackers.some((t) => t.name === p.name))
   const presets = (
     <div className="flex flex-wrap justify-center gap-2">
       {ideas.map((p, i) => (
@@ -92,7 +150,7 @@ export function TrackersView() {
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-fill text-fg">
             <Icon name={p.icon} size={14} strokeWidth={2.4} />
           </span>
-          {p.name}
+          {'avoid' in p ? `Dejar: ${p.name.toLowerCase()}` : p.name}
         </motion.button>
       ))}
     </div>
@@ -102,7 +160,7 @@ export function TrackersView() {
       <PageHeader
         icon={<SectionIcon def={section('trackers')} size={40} />}
         title="Última vez"
-        subtitle={due ? `Toca hacer ${due} ${due === 1 ? 'cosa' : 'cosas'}.` : '¿Cuándo fue la última vez que…? Apúntalo con un toque y NTab te avisa cuando toque.'}
+        subtitle={due ? `Toca hacer ${due} ${due === 1 ? 'cosa' : 'cosas'}.` : '¿Cuándo fue la última vez que…? Apúntalo con un toque y NTab te avisa cuando toque. También cuenta los días sin lo que quieres dejar.'}
         actions={
           <Button variant="primary" onClick={() => setUI({ creating: 'tracker' })}>
             <Plus size={16} strokeWidth={2.6} /> Nuevo

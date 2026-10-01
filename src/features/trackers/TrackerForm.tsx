@@ -7,10 +7,10 @@ import { fmt, today } from '@/lib/dates'
 import { averageEvery, everyLabel, withDate } from '@/lib/trackers'
 import { ICONS, Icon } from '@/components/icons'
 import { toastTrashed } from '../trash/undo'
-import { Button, Field, Input, Modal, ModalHeader, Select, cx } from '@/components/ui'
+import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, cx } from '@/components/ui'
 
 const EVERY = [0, 1, 2, 3, 4, 7, 14, 21, 30, 45, 60, 90, 180, 365]
-const TRACKER_ICONS = ['bed', 'leaf', 'heart', 'sparkles', 'home', 'droplet', 'car', 'camera', 'dog', 'pill', 'shirt', 'food', 'cart', 'wallet', 'phone', 'circle'].filter((k) => k in ICONS)
+const TRACKER_ICONS = ['bed', 'leaf', 'heart', 'sparkles', 'home', 'droplet', 'car', 'camera', 'dog', 'pill', 'shirt', 'food', 'cart', 'wallet', 'cigarette', 'wine', 'coffee', 'moon', 'circle'].filter((k) => k in ICONS)
 
 export function TrackerForm({ tracker, open, onClose }: { tracker?: Tracker; open: boolean; onClose: () => void }) {
   return (
@@ -24,13 +24,16 @@ function Form({ tracker, onClose }: { tracker?: Tracker; onClose: () => void }) 
   const [name, setName] = useState(tracker?.name ?? '')
   const [icon, setIcon] = useState(tracker?.icon ?? 'circle')
   const [every, setEvery] = useState(tracker?.every ?? 0)
+  const [avoid, setAvoid] = useState(!!tracker?.avoid)
+  const [cost, setCost] = useState(tracker?.costPerDay ? String(tracker.costPerDay).replace('.', ',') : '')
   const [log, setLog] = useState<string[]>(tracker?.log ?? [])
   const [past, setPast] = useState('')
   const avg = averageEvery({ log })
 
   const save = async () => {
     if (!name.trim()) return
-    const data = { name: name.trim(), icon, every: every || undefined }
+    const perDay = Number(cost.replace(',', '.'))
+    const data = { name: name.trim(), icon, every: avoid ? undefined : every || undefined, avoid: avoid || undefined, costPerDay: avoid && perDay > 0 ? perDay : undefined }
     if (tracker) {
       await db.trackers.update(tracker.id, data)
       if (log.join() !== tracker.log.join()) await setTrackerLog(tracker.id, log)
@@ -45,14 +48,29 @@ function Form({ tracker, onClose }: { tracker?: Tracker; onClose: () => void }) 
         void save()
       }}
     >
-      <ModalHeader title={tracker ? 'Editar' : '¿Qué quieres recordar?'} onClose={onClose} />
+      <ModalHeader title={tracker ? 'Editar' : avoid ? '¿Qué quieres dejar?' : '¿Qué quieres recordar?'} onClose={onClose} />
       <div className="max-h-[70vh] space-y-5 overflow-y-auto p-5">
+        <Segmented
+          className="w-full"
+          value={avoid ? 'avoid' : 'do'}
+          onChange={(v) => setAvoid(v === 'avoid')}
+          options={[
+            { value: 'do', label: 'Lo hago de vez en cuando' },
+            { value: 'avoid', label: 'Lo quiero dejar' },
+          ]}
+        />
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fill text-fg">
             <Icon name={icon} size={22} />
           </span>
-          <Input autoFocus={!tracker} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Cambiar las sábanas" className="h-11 text-[15px]" />
+          <Input autoFocus={!tracker} aria-label="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder={avoid ? 'Ej. Fumar' : 'Ej. Cambiar las sábanas'} className="h-11 text-[15px]" />
         </div>
+        {avoid ? (
+          <Field label="Lo que te cuesta al día (opcional)">
+            <Input inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Ej. 5,50 €" />
+            <p className="mt-1.5 px-1 text-[12.5px] text-muted">Para saber cuánto llevas ahorrado. Sin avisos: solo cuenta los días.</p>
+          </Field>
+        ) : (
         <Field label="¿Cada cuánto debería?">
           <Select value={every} onChange={(e) => setEvery(Number(e.target.value))}>
             {EVERY.map((d) => (
@@ -63,7 +81,8 @@ function Form({ tracker, onClose }: { tracker?: Tracker; onClose: () => void }) 
           </Select>
           {avg && <p className="mt-1.5 px-1 text-[12.5px] text-muted">De media lo haces {everyLabel(avg)}.</p>}
         </Field>
-        <Field label="Veces que lo has hecho">
+        )}
+        <Field label={avoid ? 'Las veces que has caído (la última, desde cuándo cuenta)' : 'Veces que lo has hecho'} group>
           <div className="space-y-1.5">
             {log.slice(0, 12).map((d) => (
               <div key={d} className="flex h-10 items-center gap-2 rounded-xl bg-fill-2 pr-1 pl-3.5">

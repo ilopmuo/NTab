@@ -9,3 +9,10 @@ export async function markDone(t: Tracker) {
   const before = await logTracker(t.id)
   if (before) toast(`${t.name}: apuntado hoy`, { label: 'Deshacer', run: () => void setTrackerLog(t.id, before) })
 }
+
+/** «Días sin…»: apuntar una recaída (la cuenta vuelve a cero; el récord se queda), con deshacer */
+export async function markSlip(t: Tracker) {
+  haptic('light')
+  const before = await logTracker(t.id)
+  if (before) toast(`${t.name}: vuelves a empezar. Lo importante es seguir`, { label: 'Deshacer', run: () => void setTrackerLog(t.id, before) })
+}

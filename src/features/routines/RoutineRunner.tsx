@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, ChevronLeft, Flame, RotateCcw, SkipForward, X } from 'lucide-react'
+import { Check, ChevronLeft, Flame, Pause, Play, Plus, RotateCcw, SkipForward, X } from 'lucide-react'
 import { resetRoutineRun, toggleRoutineStep } from '@/db/actions'
-import { routineProgress, routineStreak } from '@/lib/routines'
+import { clock, finishAt, minutesLeft, routineProgress, routineStreak } from '@/lib/routines'
+import { chime } from '@/reminders/sound'
 import { haptic } from '@/lib/haptics'
 import { Icon } from '@/components/icons'
 import { Confetti } from '@/components/Celebrate'
@@ -17,6 +18,70 @@ import { runner, useRoutines, useRunner } from './useRoutines'
 export function RoutineRunner() {
   const id = useRunner()
   return <AnimatePresence>{id && <Runner key={id} id={id} />}</AnimatePresence>
+}
+
+/**
+ * Cuenta atrás del paso (como en Routinery): se puede parar y sumar un minuto;
+ * al llegar a cero suena y vibra, y el paso sigue esperando su «Hecho».
+ */
+function StepTimer({ minutes }: { minutes: number }) {
+  // En marcha: la hora a la que acaba. Parada: los segundos que quedaban
+  const [end, setEnd] = useState<number | null>(() => Date.now() + minutes * 60_000)
+  const [frozen, setFrozen] = useState(minutes * 60)
+  const [now, setNow] = useState(() => Date.now())
+  const rang = useRef(false)
+  useEffect(() => {
+    if (end === null) return
+    const t = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [end])
+  const left = end === null ? frozen : Math.max(0, Math.round((end - now) / 1000))
+  useEffect(() => {
+    if (left > 0 || rang.current) return
+    rang.current = true
+    setFrozen(0)
+    setEnd(null)
+    chime()
+    haptic('success')
+  }, [left])
+  const over = left === 0
+  const running = end !== null
+  const part = 1 - left / (minutes * 60)
+  return (
+    <div className="mt-6 flex flex-col items-center gap-3">
+      <div className="relative h-1.5 w-56 overflow-hidden rounded-full bg-fill">
+        <span className="absolute inset-y-0 left-0 rounded-full bg-blue transition-[width] duration-300" style={{ width: `${Math.min(100, Math.max(0, part) * 100)}%` }} />
+      </div>
+      <p className={cx('font-num text-[44px] leading-none font-bold tracking-tight', over && 'text-blue')} aria-hidden>
+        {clock(left)}
+      </p>
+      <p className="sr-only" aria-live="polite">
+        {over ? 'Tiempo cumplido' : ''}
+      </p>
+      {over ? (
+        <p className="text-[15px] font-semibold text-blue">¡Tiempo! Marca «Hecho» cuando acabes</p>
+      ) : (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-label={running ? 'Parar la cuenta atrás' : 'Seguir la cuenta atrás'}
+            onClick={() => {
+              if (running) {
+                setFrozen(left)
+                setEnd(null)
+              } else setEnd(Date.now() + frozen * 1000)
+            }}
+          >
+            {running ? <Pause size={14} /> : <Play size={14} />} {running ? 'Parar' : 'Seguir'}
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => (running ? setEnd((e) => e! + 60_000) : setFrozen((f) => f + 60))}>
+            <Plus size={14} /> 1 min
+          </Button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Runner({ id }: { id: string }) {
@@ -84,6 +149,7 @@ function Runner({ id }: { id: string }) {
           <p className="truncate text-[15px] font-bold">{routine.name}</p>
           <p className="font-num text-[13px] text-muted">
             {n} de {total}
+            {!complete && minutesLeft(routine, run) > 0 && <span className="ml-2">· acabas a las {finishAt(minutesLeft(routine, run))}</span>}
             {streak > 0 && (
               <span className="ml-2 inline-flex items-center gap-0.5 font-bold text-fg">
                 <Flame size={12} strokeWidth={2.6} /> {streak}
@@ -146,6 +212,7 @@ function Runner({ id }: { id: string }) {
                 Paso {index + 1} de {total}
               </p>
               <p className="max-w-md text-[34px] leading-[1.15] font-bold tracking-tight [text-wrap:balance]">{current.title}</p>
+              {current.minutes ? <StepTimer key={current.id} minutes={current.minutes} /> : null}
               {pending.length > 1 && <p className="mt-4 text-[14px] text-muted">Luego: {pending.filter((s) => s.id !== current.id)[0]?.title}</p>}
             </motion.div>
           ) : (

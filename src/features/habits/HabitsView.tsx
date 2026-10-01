@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { Check, Flame, Plus } from 'lucide-react'
+import { CalendarOff, Check, Flame, MoreHorizontal, Pause, Pencil, Play, Plus, Trophy } from 'lucide-react'
 import type { Habit } from '@/db/types'
-import { createHabit, toggleHabit } from '@/db/actions'
+import { createHabit, pauseHabit, resumeHabit, toggleHabit, toggleHabitDayOff } from '@/db/actions'
 import { addDaysYmd, fmt, fromYmd, weekStart, WEEKDAYS_SHORT } from '@/lib/dates'
-import { completionRate, isCounted, isDue, isScheduled, perWeekOf, progressLabel, streak, streakLabel, targetOf } from '@/lib/habits'
+import { bestStreak, isCounted, isDue, isScheduled, onBreak, openBreak, perWeekOf, progressLabel, streak, streakLabel, strength, targetOf } from '@/lib/habits'
 import { bumpHabit } from './bump'
 import { SectionIcon, section } from '@/app/sections'
-import { setUI, useUI } from '@/app/store'
+import { setUI, toast, useUI } from '@/app/store'
+import { Menu } from '@/components/Menu'
 import { Icon } from '@/components/icons'
 import { Button, Empty, Group, PageHeader, ProgressRing, bouncy, cx, spring } from '@/components/ui'
 import { Page } from '../Page'
@@ -84,9 +85,12 @@ export function HabitsView() {
           const done = byHabit.get(h.id) ?? new Set<string>()
           const count = counts.get(h.id)
           const s = streak(h, done, today)
-          const rate = completionRate(h, done, today, 30)
+          const power = strength(h, count, today)
+          const best = bestStreak(h, done, today)
           const progress = progressLabel(h, count, done, today)
           const counted = isCounted(h)
+          const paused = openBreak(h)
+          const dayOff = !paused && (h.breaks ?? []).some((b) => b.from === today && b.to === today)
           return (
             <motion.div
               key={h.id}
@@ -94,11 +98,12 @@ export function HabitsView() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...spring, delay: idx * 0.04 }}
-              className="glass flex flex-col gap-4 rounded-[22px] p-4 @[900px]:flex-row @[900px]:items-center"
+              className="glass relative flex flex-col gap-4 rounded-[22px] p-4 pr-12 @[900px]:flex-row @[900px]:items-center"
             >
+              <HabitMenu habit={h} paused={!!paused} dayOff={dayOff} today={today} onEdit={() => setEditing(h)} />
               <button type="button" onClick={() => setEditing(h)} className="flex min-w-0 items-center gap-3 text-left @[900px]:w-72">
                 <div className="relative shrink-0">
-                  <ProgressRing value={rate} size={52} stroke={5} color="var(--c-green)" track="var(--c-fill)" delay={0.15 + idx * 0.05} />
+                  <ProgressRing value={power} size={52} stroke={5} color={paused ? 'var(--c-muted)' : 'var(--c-green)'} track="var(--c-fill)" delay={0.15 + idx * 0.05} />
                   <span className="absolute inset-0 flex items-center justify-center text-fg">
                     <Icon name={h.icon} size={20} strokeWidth={2.3} />
                   </span>
@@ -110,12 +115,29 @@ export function HabitsView() {
                       <Flame size={13} strokeWidth={2.6} /> {s}
                       {perWeekOf(h) ? ' sem' : ''}
                     </span>
-                    {progress && <span className="font-num font-semibold text-fg/80">{progress}</span>}
-                    <span className="font-num">{Math.round(rate * 100)}% este mes</span>
+                    {progress && !paused && <span className="font-num font-semibold text-fg/80">{progress}</span>}
+                    <span className="font-num" title="Fuerza del hábito: sube cada vez que lo haces y un fallo suelto apenas la baja">
+                      Fuerza {Math.round(power * 100)} %
+                    </span>
+                    {best > s && (
+                      <span className="font-num inline-flex items-center gap-0.5" title={`Mejor racha: ${streakLabel(h, best)}`}>
+                        <Trophy size={12} strokeWidth={2.4} aria-hidden /> {best}
+                      </span>
+                    )}
                   </span>
+                  {paused && (
+                    <span className="mt-0.5 flex items-center gap-1 text-[13px] font-semibold text-fg">
+                      <Pause size={12} strokeWidth={2.8} aria-hidden /> En pausa desde {fmt(paused.from, "d 'de' MMMM")}
+                    </span>
+                  )}
+                  {dayOff && (
+                    <span className="mt-0.5 flex items-center gap-1 text-[13px] font-semibold text-fg">
+                      <CalendarOff size={12} strokeWidth={2.6} aria-hidden /> Hoy no toca
+                    </span>
+                  )}
                 </span>
               </button>
-              {counted && (
+              {counted && !paused && (
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.9 }}
@@ -130,6 +152,7 @@ export function HabitsView() {
               <div className="flex gap-1.5">
                 {last7.map((d) => {
                   const scheduled = isScheduled(h, d)
+                  const off = onBreak(h, d)
                   const on = done.has(d)
                   const isToday = d === today
                   const n = count?.get(d) ?? 0
@@ -139,7 +162,7 @@ export function HabitsView() {
                       key={d}
                       type="button"
                       onClick={() => (counted ? void bumpHabit(h, d) : (haptic(), void toggleHabit(h.id, d)))}
-                      title={`${fmt(d, "EEEE d 'de' MMMM")}${counted ? ` · ${n}/${targetOf(h)}` : ''}`}
+                      title={`${fmt(d, "EEEE d 'de' MMMM")}${off ? ' · día libre' : counted ? ` · ${n}/${targetOf(h)}` : ''}`}
                       className="flex flex-col items-center gap-1"
                     >
                       <span className={cx('text-[11px] font-semibold', isToday ? 'text-blue' : 'text-muted')}>{WEEKDAYS_SHORT[fromYmd(d).getDay()]}</span>
@@ -165,6 +188,7 @@ export function HabitsView() {
                           </motion.span>
                         )}
                         {!on && !partial && isToday && scheduled && <span className="h-1.5 w-1.5 rounded-full bg-blue" />}
+                        {!on && off && <Pause size={12} strokeWidth={2.8} className="text-muted" aria-label="Día libre" />}
                       </motion.span>
                     </button>
                   )
@@ -187,6 +211,39 @@ export function HabitsView() {
       <HabitForm open={creating} onClose={() => setUI({ creating: null })} />
       <HabitForm habit={editing} open={!!editing} onClose={() => setEditing(undefined)} />
     </Page>
+  )
+}
+
+/** «…» de un hábito: hoy no toca, pausar o reanudar, editar */
+function HabitMenu({ habit, paused, dayOff, today, onEdit }: { habit: Habit; paused: boolean; dayOff: boolean; today: string; onEdit: () => void }) {
+  return (
+    <div className="absolute top-3 right-3 z-10">
+    <Menu
+      label={`Opciones de ${habit.name}`}
+      trigger={<MoreHorizontal size={16} strokeWidth={2.4} />}
+      items={[
+        !paused && {
+          label: dayOff ? 'Hoy sí toca' : 'Hoy no toca',
+          icon: <CalendarOff size={14} />,
+          onSelect: () => {
+            void toggleHabitDayOff(habit.id, today)
+            if (!dayOff) toast(`${habit.name}: día libre. La racha no se rompe`, { label: 'Deshacer', run: () => void toggleHabitDayOff(habit.id, today) })
+          },
+        },
+        paused
+          ? { label: 'Reanudar', icon: <Play size={14} />, onSelect: () => void resumeHabit(habit.id).then(() => toast(`${habit.name}, otra vez en marcha`)) }
+          : {
+              label: 'Pausar (vacaciones, enfermedad…)',
+              icon: <Pause size={14} />,
+              onSelect: () => {
+                void pauseHabit(habit.id)
+                toast(`${habit.name}, en pausa: no avisa ni rompe la racha`, { label: 'Deshacer', run: () => void resumeHabit(habit.id) })
+              },
+            },
+        { label: 'Editar', icon: <Pencil size={14} />, onSelect: onEdit },
+      ]}
+    />
+    </div>
   )
 }
 
