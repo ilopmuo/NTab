@@ -73,7 +73,7 @@ function Form({ tracker, onClose }: { tracker?: Tracker; onClose: () => void }) 
                 </button>
               </div>
             ))}
-            {log.length > 12 && <p className="px-1 text-[12.5px] text-faint">…y {log.length - 12} más</p>}
+            {log.length > 12 && <p className="px-1 text-[12.5px] text-muted">…y {log.length - 12} más</p>}
             <div className="flex gap-2">
               <Input type="date" value={past} max={today()} onChange={(e) => setPast(e.target.value)} aria-label="Otra fecha" className="flex-1" />
               <Button

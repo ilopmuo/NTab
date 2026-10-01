@@ -160,7 +160,7 @@ function Editor({ template, onClose }: { template?: Template; onClose: () => voi
                   placeholder={`Tarea ${i + 1}`}
                   className="h-9 min-w-0 flex-1 bg-transparent px-2 text-[15px] placeholder:text-faint"
                 />
-                {it.subtasks?.length ? <span className="shrink-0 text-[12px] text-faint">+{it.subtasks.length}</span> : null}
+                {it.subtasks?.length ? <span className="shrink-0 text-[12px] text-muted">+{it.subtasks.length}</span> : null}
                 <label className="flex shrink-0 items-center gap-1 text-[12px] text-muted" title="Día respecto al inicio (vacío = sin fecha)">
                   Día
                   <input
@@ -307,7 +307,7 @@ function UseForm({ template, onClose }: { template: Template; onClose: () => voi
             <div key={i} className="flex items-center gap-3 px-3.5 py-2 text-[14px] shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
               <span className="h-[18px] w-[18px] shrink-0 rounded-full border-[1.6px] border-faint" />
               <span className="min-w-0 flex-1 truncate">{x.title}</span>
-              {x.subtasks.length > 0 && <span className="text-[12px] text-faint">+{x.subtasks.length}</span>}
+              {x.subtasks.length > 0 && <span className="text-[12px] text-muted">+{x.subtasks.length}</span>}
               <span className="shrink-0 text-[12.5px] font-medium text-muted">{x.dueDate ? `${dateLabel(x.dueDate)}${x.dueTime ? ` ${x.dueTime}` : ''}` : 'Sin fecha'}</span>
             </div>
           ))}

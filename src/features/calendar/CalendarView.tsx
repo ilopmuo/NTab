@@ -120,7 +120,7 @@ export function CalendarView() {
           <Card className="overflow-hidden p-2">
             <div className="grid grid-cols-7 pb-1">
               {HEAD.map((h, i) => (
-                <div key={h} className={cx('py-2 text-center text-[12px] font-semibold', i >= 5 ? 'text-faint' : 'text-muted')}>
+                <div key={h} className={cx('py-2 text-center text-[12px] font-semibold', i >= 5 ? 'text-muted' : 'text-muted')}>
                   {h}
                 </div>
               ))}
@@ -194,7 +194,7 @@ function EventRow({ event, source }: { event: CalEvent; source?: string }) {
       <span className="h-7 w-[3px] shrink-0 rounded-full bg-line-strong" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px]">{event.title}</span>
-        <span className="block truncate text-[12px] text-faint">{[source, event.location].filter(Boolean).join(' · ')}</span>
+        <span className="block truncate text-[12px] text-muted">{[source, event.location].filter(Boolean).join(' · ')}</span>
       </span>
     </div>
   )

@@ -107,3 +107,32 @@ test('autocompletar en la captura: #etiqueta y +proyecto de varias palabras', as
   await expect(row).toBeVisible()
   await expect(row.locator('p').first()).toHaveText('Pedir cita')
 })
+
+test('teclado en las listas: j/k, mañana, borrar y ⌘Z', async ({ page }) => {
+  await openApp(page, '/inbox')
+  for (const t of ['Uno', 'Dos', 'Tres']) await quickAdd(page, t)
+  const focused = () => page.evaluate(() => (document.activeElement?.classList.contains('task-title') ? document.activeElement.textContent?.replace(/^!+\s*/, '').trim() : undefined))
+  const names = (await page.locator('#main [data-task-id] .task-title').allInnerTexts()).map((t) => t.replace(/^!+\s*/, '').trim())
+  await page.locator('#main h1').click()
+  await page.keyboard.press('j')
+  expect(await focused()).toBe(names[0])
+  await page.keyboard.press('j')
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).toBe(names[2])
+  await page.keyboard.press('k')
+  expect(await focused()).toBe(names[1])
+
+  // M: a mañana (sale de la Bandeja) y el foco se queda en su sitio
+  await page.keyboard.press('m')
+  await expect(page.locator('#main [data-task-id]', { hasText: names[1] })).toHaveCount(0)
+  await expect.poll(focused).toBe(names[2])
+  await page.keyboard.press('Control+z')
+  await expect(page.locator('#main [data-task-id]', { hasText: names[1] })).toHaveCount(1)
+
+  // Supr: a la papelera, y ⌘Z la recupera
+  await page.locator('#main [data-task-id]', { hasText: 'Tres' }).locator('.task-title').focus()
+  await page.keyboard.press('Delete')
+  await expect(page.locator('#main [data-task-id]', { hasText: 'Tres' })).toHaveCount(0)
+  await page.keyboard.press('Control+z')
+  await expect(page.locator('#main [data-task-id]', { hasText: 'Tres' })).toHaveCount(1)
+})

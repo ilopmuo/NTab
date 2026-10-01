@@ -46,7 +46,7 @@ export function Agenda({ tasks, events = [], names = {} }: { tasks: Task[]; even
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
         <CalendarClock size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Agenda</h3>
+        <h2 className="text-[15px] font-bold">Agenda</h2>
         <a href={href('/plan')} className="ml-auto text-[13px] font-semibold text-blue hover:underline">
           Organizar
         </a>

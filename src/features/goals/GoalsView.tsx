@@ -156,7 +156,7 @@ function GoalCard({
             <a key={project.id} href={href(`/project/${project.id}`)} className="block">
               <div className="mb-1 flex items-baseline gap-2 text-[13px]">
                 <span className="min-w-0 flex-1 truncate font-medium">{project.name}</span>
-                <span className="font-num text-[12px] text-faint">{value >= 1 ? 'Hecho' : open ? `${open} pend.` : 'Sin tareas'}</span>
+                <span className="font-num text-[12px] text-muted">{value >= 1 ? 'Hecho' : open ? `${open} pend.` : 'Sin tareas'}</span>
               </div>
               <ProgressBar value={value} color={value >= 1 ? 'var(--c-green)' : 'var(--c-blue)'} />
             </a>

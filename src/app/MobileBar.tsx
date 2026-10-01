@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
-import { Menu, Plus } from 'lucide-react'
+import { LayoutGrid, Plus } from 'lucide-react'
 import { RollingNumber, cx, spring } from '@/components/ui'
 import { useNavCounts } from './counts'
 import { useNav } from './nav'
@@ -38,16 +38,19 @@ export function MobileBar() {
   const mini = useMinimized(path)
   const c = useNavCounts()
   const tabs = useNav().tabs.map(section)
+  const isOn = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
+  const moreOn = path === '/more' || !tabs.some((t) => isOn(t.path))
   const badge: Record<string, number> = { today: c.today, habits: c.habitsLeft, inbox: c.inbox, shopping: c.shopping, people: c.peopleDue }
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),10px)] lg:hidden">
       <motion.nav initial={false} animate={{ height: mini ? 50 : 62 }} transition={barSpring} className="glass-thick pointer-events-auto flex flex-1 items-center rounded-full px-1.5">
         {tabs.map((t) => {
-          const on = path === t.path || path.startsWith(t.path + '/') || (t.path === '/tags' && path.startsWith('/tag/'))
+          const on = isOn(t.path)
           return (
             <a
               key={t.id}
               href={href(t.path)}
+              aria-current={on ? 'page' : undefined}
               className={cx('relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full transition-[height] duration-300 active:scale-95', mini ? 'h-[40px]' : 'h-[52px]')}
               style={{ color: on ? tint(t.tint) : 'var(--c-text)' }}
             >
@@ -76,14 +79,17 @@ export function MobileBar() {
             </a>
           )
         })}
-        <button
-          type="button"
-          onClick={() => ui.sidebar(true)}
-          className={cx('relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-fg transition-[height] duration-300 active:scale-95', mini ? 'h-[40px]' : 'h-[52px]')}
+        {/* «Más»: todo lo demás, por grupos (y activa si lo que ves no está en las pestañas) */}
+        <a
+          href={href('/more')}
+          aria-current={moreOn ? 'page' : undefined}
+          className={cx('relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full transition-[height] duration-300 active:scale-95', mini ? 'h-[40px]' : 'h-[52px]')}
+          style={{ color: moreOn ? 'var(--c-blue)' : 'var(--c-text)' }}
         >
-          <Menu size={22} strokeWidth={1.9} />
+          {moreOn && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
+          <LayoutGrid size={22} strokeWidth={moreOn ? 2.3 : 1.9} className="relative" />
           <Label mini={mini}>Más</Label>
-        </button>
+        </a>
       </motion.nav>
       <motion.button
         type="button"

@@ -51,7 +51,7 @@ export function Checkbox({
         e.stopPropagation()
         onChange()
       }}
-      className="group/cb relative flex shrink-0 items-center justify-center rounded-full"
+      className="group/cb hit relative flex shrink-0 items-center justify-center rounded-full"
       style={{ width: size, height: size }}
     >
       <span className="absolute inset-0 rounded-full border-[1.6px] transition-colors" style={{ borderColor: checked ? color : ring }} />
@@ -174,7 +174,7 @@ function PickMark({ on, onClick }: { on: boolean; onClick: () => void }) {
         e.stopPropagation()
         onClick()
       }}
-      className={cx('flex h-[22px] w-[22px] items-center justify-center rounded-full border-[1.6px] transition-colors', on ? 'border-accent-fill bg-accent-fill text-white' : 'border-faint')}
+      className={cx('hit relative flex h-[22px] w-[22px] items-center justify-center rounded-full border-[1.6px] transition-colors', on ? 'border-accent-fill bg-accent-fill text-white' : 'border-faint')}
     >
       {on && (
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
@@ -342,7 +342,7 @@ export const TaskItem = memo(function TaskItem({
         )}
       >
         <div className="pt-px">
-          {picking ? <PickMark on={picked} onClick={() => selection.toggle(task.id)} /> : <Checkbox checked={checked} onChange={onToggle} priority={task.priority} />}
+          {picking ? <PickMark on={picked} onClick={() => selection.toggle(task.id)} /> : <Checkbox checked={checked} onChange={onToggle} priority={task.priority} label={task.title || 'Sin título'} />}
         </div>
         <div className="min-w-0 flex-1">
           <p

@@ -5,7 +5,7 @@ import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, SlidersHorizontal,
 import { whatNow } from './whatnow/store'
 import { DayComplete } from '@/components/Celebrate'
 import { db } from '@/db/db'
-import { updateTask } from '@/db/actions'
+import { setSetting, updateTask } from '@/db/actions'
 import { useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, greeting, longDateLabel, today, weekStart } from '@/lib/dates'
 import { isDue } from '@/lib/habits'
@@ -20,6 +20,7 @@ import { JournalPrompt } from './journal/JournalPrompt'
 import { TodayMeals } from './menu/TodayMeals'
 import { CountdownsCard } from './countdowns/CountdownsCard'
 import { TodayCardsEditor, useTodayCards } from './today/cards'
+import { useFeatures } from '@/app/features'
 import { ThingsAttention } from './things/ThingsAttention'
 import { TrackersDue } from './trackers/TrackersDue'
 import { useHabits } from './habits/useHabits'
@@ -50,11 +51,14 @@ export function TodayView() {
   const lastReview = useLiveQuery(() => db.settings.get('lastReview'), [])
   // null = nunca se ha planificado; undefined = aún cargando
   const lastPlan = useLiveQuery(() => db.settings.get('lastPlan').then((r) => r ?? null), [])
+  // Una vez: presentar Ajustes → Funciones (null = aún no se ha visto)
+  const featuresIntro = useLiveQuery(() => db.settings.get('featuresIntro').then((r) => r ?? null), [])
   const { habits, byHabit } = useHabits(7)
   const cal = useEvents(t, t)
   const todayEvents = cal.events.filter((e) => (e.allDay ? e.start <= t && e.end > t : new Date(e.start).toDateString() === new Date().toDateString()))
   const [showDone, setShowDone] = useState(false)
   const cards = useTodayCards()
+  const features = useFeatures()
   const [customizing, setCustomizing] = useState(false)
   // Confeti solo si el día se completa ahora (no al volver a la pantalla)
   const lastPending = useRef<number | null>(null)
@@ -81,10 +85,10 @@ export function TodayView() {
 
   if (!open) return null
   const total = pending + done.length
-  const scheduledHabits = (habits ?? []).filter((h) => isDue(h, byHabit.get(h.id) ?? new Set(), t))
+  const scheduledHabits = features.on('habits') ? (habits ?? []).filter((h) => isDue(h, byHabit.get(h.id) ?? new Set(), t)) : []
   const habitsDone = scheduledHabits.filter((h) => byHabit.get(h.id)?.has(t)).length
   const reviewDays = lastReview ? Math.floor((Date.now() - (lastReview.value as number)) / 864e5) : null
-  const needsReview = reviewDays === null ? [0, 5, 6].includes(new Date().getDay()) : reviewDays >= 7
+  const needsReview = features.on('review') && (reviewDays === null ? [0, 5, 6].includes(new Date().getDay()) : reviewDays >= 7)
   const inboxCount = (open ?? []).filter((x) => !x.areaId && !x.projectId && !x.dueDate).length
   // Planificar el día: si aún no se ha hecho hoy y hay algo que decidir
   const needsPlan = lastPlan !== undefined && lastPlan?.value !== t && (overdue.length > 0 || inboxCount > 0)
@@ -141,7 +145,7 @@ export function TodayView() {
             <DayRings
               rings={[
                 { label: 'Tareas de hoy', done: done.length, total, color: 'var(--c-blue)' },
-                { label: 'Hábitos', done: habitsDone, total: scheduledHabits.length, color: 'var(--c-green)' },
+                ...(features.on('habits') ? [{ label: 'Hábitos', done: habitsDone, total: scheduledHabits.length, color: 'var(--c-green)' }] : []),
                 { label: 'Esta semana', done: doneWeek, total: doneWeek + weekOpen, color: 'var(--c-text)' },
               ]}
             />
@@ -149,6 +153,38 @@ export function TodayView() {
         )}
 
         <div className="min-w-0 [grid-area:tasks]">
+          <AnimatePresence>
+            {featuresIntro === null && (
+              <motion.section
+                aria-label="Haz NTab a tu medida"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={softSpring}
+                className="glass mb-4 overflow-hidden rounded-[18px] px-4 py-3.5"
+              >
+                <p className="text-[15px] font-semibold">Haz NTab a tu medida</p>
+                <p className="mt-0.5 text-[14px] leading-snug text-muted">
+                  Apaga lo que no uses (Menú, Gastos, Cosas…) y la barra lateral, ⌘K y Hoy se quedan solo con lo tuyo. Tus datos no se borran.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      void setSetting('featuresIntro', true)
+                      ui.features()
+                    }}
+                  >
+                    Elegir funciones
+                  </Button>
+                  <Button size="sm" onClick={() => void setSetting('featuresIntro', true)}>
+                    Ahora no
+                  </Button>
+                </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
           <AnimatePresence>
             {needsPlan && (
               <motion.a
@@ -251,7 +287,7 @@ export function TodayView() {
               >
                 <ChevronRight size={18} strokeWidth={2.6} className={cx('transition-transform duration-300', showDone && 'rotate-90')} />
                 Completadas hoy
-                <span className="font-num text-[15px] text-faint">{done.length}</span>
+                <span className="font-num text-[15px] text-muted">{done.length}</span>
               </button>
               <AnimatePresence initial={false}>
                 {showDone && (

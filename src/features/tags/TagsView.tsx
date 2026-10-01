@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, Hash, MoreHorizontal, Pencil, Tags, Trash2 } from 'lucide-react'
+import { ChevronRight, Hash, MoreHorizontal, Pencil, Pin, Tags, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import { deleteTag, renameTag, restoreTasks } from '@/db/actions'
 import { cleanTag, tagStats, type TagStat } from '@/lib/tags'
 import { SectionIcon, section } from '@/app/sections'
 import { href } from '@/app/router'
 import { toast } from '@/app/store'
+import { isPinned, togglePinWithToast, usePins } from '@/app/pins'
 import { Menu } from '@/components/Menu'
 import { Empty, Group, PageHeader } from '@/components/ui'
 import { Page } from '../Page'
@@ -62,12 +63,14 @@ export async function deleteTagUndoable(tag: string) {
 
 /** Menú «…» de una etiqueta (en la lista y en la vista de la etiqueta) */
 export function TagMenu({ tag, onRename, total, afterDelete }: { tag: string; onRename: () => void; total: number; afterDelete?: () => void }) {
+  const pinned = isPinned(usePins(), 'tag', tag)
   return (
     <Menu
       label={`Opciones de #${tag}`}
       trigger={<MoreHorizontal size={16} strokeWidth={2.4} />}
       items={[
         { label: 'Cambiar el nombre', icon: <Pencil size={14} />, onSelect: onRename },
+        { label: pinned ? 'Quitar de Fijados' : 'Fijar en la barra lateral', icon: <Pin size={14} />, onSelect: () => void togglePinWithToast('tag', tag, `#${tag}`) },
         {
           label: 'Quitar la etiqueta',
           icon: <Trash2 size={14} />,

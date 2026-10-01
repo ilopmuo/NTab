@@ -528,7 +528,7 @@ function TaskDetail({ task }: { task: Task }) {
                   ))}
               </select>
             ) : (
-              <a href="#/people" className="px-1 text-[13px] text-faint">
+              <a href="#/people" className="px-1 text-[13px] text-muted">
                 Crea personas en Personas
               </a>
             )}
@@ -596,7 +596,7 @@ function TaskDetail({ task }: { task: Task }) {
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Detalles, enlaces, ideas…" rows={3} className="min-h-20 px-4 pt-2 pb-3" />
         </Group>
 
-        <p className="px-2 text-center text-[12px] text-faint">
+        <p className="px-2 text-center text-[12px] text-muted">
           Creada el {format(task.createdAt, "d 'de' MMMM 'de' yyyy", { locale: es })}
           {task.completedAt ? ` · completada el ${format(task.completedAt, "d 'de' MMMM", { locale: es })}` : ''}
         </p>
@@ -858,7 +858,7 @@ function SubtaskRow({
         defaultValue={s.title}
         onBlur={(e) => e.target.value !== s.title && mutateTask(task.id, (x) => void x.subtasks.forEach((y) => y.id === s.id && (y.title = e.target.value)))}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).blur()}
-        className={cx('min-w-0 flex-1 bg-transparent text-[15px]', s.done && 'text-faint line-through')}
+        className={cx('min-w-0 flex-1 bg-transparent text-[15px]', s.done && 'text-muted line-through')}
       />
       <button
         type="button"

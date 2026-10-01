@@ -148,6 +148,35 @@
   --c-accent-on-soft: #1d1d1f;
 }
 
+/* ── Más contraste (Ajustes → Accesibilidad, o el sistema) ───────────
+   Grises de texto más oscuros (o más claros en oscuro), bordes y rellenos más
+   marcados y materiales opacos: menos cristal, más definición. */
+
+[data-theme='dark'][data-contrast='more'] {
+  --c-muted: rgb(235 235 245 / 0.86);
+  --c-faint: rgb(235 235 245 / 0.6);
+  --c-border: rgb(255 255 255 / 0.24);
+  --c-border-strong: rgb(255 255 255 / 0.36);
+  --c-fill: rgb(120 120 128 / 0.42);
+  --c-fill-2: rgb(120 120 128 / 0.3);
+  --c-material: rgb(28 28 30 / 1);
+  --c-material-thick: rgb(36 36 38 / 1);
+  --c-sidebar: rgb(12 12 13 / 1);
+  --ambient-opacity: 0;
+}
+[data-theme='light'][data-contrast='more'] {
+  --c-muted: rgb(40 40 45 / 0.92);
+  --c-faint: rgb(60 60 67 / 0.62);
+  --c-border: rgb(60 60 67 / 0.32);
+  --c-border-strong: rgb(60 60 67 / 0.48);
+  --c-fill: rgb(120 120 128 / 0.26);
+  --c-fill-2: rgb(120 120 128 / 0.16);
+  --c-material: rgb(255 255 255 / 1);
+  --c-material-thick: rgb(255 255 255 / 1);
+  --c-sidebar: rgb(250 250 252 / 1);
+  --ambient-opacity: 0;
+}
+
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', system-ui, sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
@@ -341,5 +370,57 @@
 @media (prefers-reduced-motion: reduce) {
   .ambient > span {
     animation: none !important;
+  }
+}
+
+/* Grupo plegado de la barra lateral: solo se ve la fila de lo que estás viendo */
+.nav-only-active > :not(:has([aria-current='page'])):not([aria-current='page']) {
+  display: none;
+}
+
+/* Menos movimiento (el sistema o Ajustes → Accesibilidad): fuera animaciones y
+   transiciones de CSS (las de Motion las corta MotionConfig en App) */
+[data-motion='reduce'] *,
+[data-motion='reduce'] *::before,
+[data-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* El contenido recibe el foco al cambiar de pantalla: sin marco alrededor */
+#main:focus {
+  outline: none;
+}
+
+/* Foco visible también en interruptores, opciones de color, selectores y campos pequeños */
+:where([role='switch'], [role='radio'], select, input[type='time'], input[type='date']):focus-visible {
+  outline: 2px solid var(--c-blue);
+  outline-offset: 2px;
+}
+
+/* Táctil: los botones de icono pequeños (24–36 px) reciben al menos 44 px de
+   zona de toque, sin cambiar cómo se ven */
+@media (pointer: coarse) {
+  :where(button, a, [role='button'], [role='checkbox']):is(.h-6.w-6, .h-7.w-7, .h-8.w-8, .h-9.w-9):not(.absolute, .fixed, .sticky) {
+    position: relative;
+  }
+  :where(button, a, [role='button'], [role='checkbox']):is(.h-6.w-6, .h-7.w-7, .h-8.w-8, .h-9.w-9)::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+  }
+  :where(button, a, [role='button'], [role='checkbox']).h-9.w-9::after {
+    inset: -4px;
+  }
+  :where(button, a, [role='button'], [role='checkbox']).h-8.w-8::after {
+    inset: -6px;
+  }
+  /* Casillas de las tareas (22 px): zona de toque de 44 px */
+  .hit::after {
+    content: '';
+    position: absolute;
+    inset: -11px;
   }
 }

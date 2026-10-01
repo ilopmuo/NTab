@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { SECTIONS } from './sections'
+import { sectionEnabled } from './features'
 import { navigate } from './router'
-import { getUI, ui } from './store'
+import { getUI, ui, undoLast } from './store'
+import { handleTaskKey } from './taskKeys'
 import { selection } from '@/features/select/selection'
 
 function isTyping(e: KeyboardEvent) {
@@ -25,6 +27,10 @@ export function useGlobalShortcuts() {
         ui.toggleSidebarHidden()
         return
       }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !isTyping(e)) {
+        if (undoLast()) e.preventDefault()
+        return
+      }
       if (e.key === 'Escape') {
         const s = getUI()
         if (selection.get().active) selection.clear()
@@ -35,11 +41,12 @@ export function useGlobalShortcuts() {
       if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return
       const s = getUI()
       if (s.paletteOpen || s.quickAdd.open || s.helpOpen) return
+      if (!gPressed && handleTaskKey(e)) return
 
       const k = e.key.toLowerCase()
       if (gPressed && Date.now() - gPressed < 1200) {
         gPressed = 0
-        const target = SECTIONS.find((n) => n.key.toLowerCase() === k)
+        const target = SECTIONS.find((n) => n.key.toLowerCase() === k && sectionEnabled(n.id))
         if (target) {
           e.preventDefault()
           navigate(target.path)

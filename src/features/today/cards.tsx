@@ -3,6 +3,7 @@ import { Reorder, useDragControls } from 'motion/react'
 import { GripVertical } from 'lucide-react'
 import { db } from '@/db/db'
 import { setSetting } from '@/db/actions'
+import { useFeatures } from '@/app/features'
 import { Modal, ModalHeader, Switch } from '@/components/ui'
 
 /** Tarjetas de la columna de Hoy, en su orden por defecto */
@@ -33,18 +34,23 @@ export function useTodayCards() {
   const known = TODAY_CARDS.map((c) => c.id as string)
   const order = [...(prefs?.order ?? []).filter((id) => known.includes(id)), ...known.filter((id) => !(prefs?.order ?? []).includes(id))] as TodayCardId[]
   const hidden = new Set(prefs?.hidden ?? [])
-  return { loaded: !!prefs, order, hidden, visible: order.filter((id) => !hidden.has(id)) }
+  // Las tarjetas de funciones apagadas no salen (ni en Hoy ni en el editor)
+  const features = useFeatures()
+  const enabled = order.filter((id) => features.card(id))
+  return { loaded: !!prefs, order, enabled, hidden, visible: enabled.filter((id) => !hidden.has(id)) }
 }
 
 export function TodayCardsEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { order, hidden } = useTodayCards()
+  const { order, enabled, hidden } = useTodayCards()
   const save = (next: Partial<Prefs>) => void setSetting('todayCards', { order, hidden: [...hidden], ...next })
+  // Al reordenar, las de funciones apagadas conservan su sitio al final
+  const reorder = (o: string[]) => save({ order: [...o, ...order.filter((id) => !o.includes(id))] })
   return (
     <Modal open={open} onClose={onClose} position="center">
       <ModalHeader title="Personalizar Hoy" onClose={onClose} />
       <p className="px-5 pb-3 text-[13.5px] text-muted">Elige qué tarjetas ves en Hoy y arrástralas para ordenarlas.</p>
-      <Reorder.Group axis="y" values={order} onReorder={(o) => save({ order: o })} className="max-h-[60vh] space-y-1.5 overflow-y-auto px-5 pb-5">
-        {order.map((id) => (
+      <Reorder.Group axis="y" values={enabled} onReorder={reorder} className="max-h-[60vh] space-y-1.5 overflow-y-auto px-5 pb-5">
+        {enabled.map((id) => (
           <Row key={id} id={id} on={!hidden.has(id)} onToggle={(v) => save({ hidden: v ? [...hidden].filter((x) => x !== id) : [...hidden, id] })} />
         ))}
       </Reorder.Group>
@@ -60,7 +66,7 @@ function Row({ id, on, onToggle }: { id: TodayCardId; on: boolean; onToggle: (v:
       <button type="button" aria-label={`Mover ${label}`} onPointerDown={(e) => controls.start(e)} className="flex h-10 w-7 shrink-0 cursor-grab touch-none items-center justify-center text-faint active:cursor-grabbing">
         <GripVertical size={16} />
       </button>
-      <span className={on ? 'flex-1 text-[15px]' : 'flex-1 text-[15px] text-faint'}>{label}</span>
+      <span className={on ? 'flex-1 text-[15px]' : 'flex-1 text-[15px] text-muted'}>{label}</span>
       <Switch label={label} checked={on} onChange={onToggle} />
     </Reorder.Item>
   )

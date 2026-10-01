@@ -7,9 +7,11 @@ import {
   ChevronUp,
   Clock,
   Cloud,
+  Contrast,
   Download,
   Droplet,
   Keyboard,
+  LayoutGrid,
   Loader2,
   LogIn,
   LogOut,
@@ -29,6 +31,7 @@ import {
   Trash2,
   Upload,
   Volume2,
+  Wind,
 } from 'lucide-react'
 import { openAuth, signOut, syncNow, useSync } from '@/sync/service'
 import { syncLabel } from '@/sync/SyncBadge'
@@ -40,8 +43,10 @@ import { downloadBackup, importData, isBackup, wipeData } from '@/db/backup'
 import { seedIfEmpty } from '@/db/seed'
 import { SectionIcon, section, type Tint } from '@/app/sections'
 import { setUI, toast, ui, useUI } from '@/app/store'
-import { setTheme, useTheme } from '@/app/theme'
+import { a11yPrefs, setContrastPref, setMotionPref, setTheme, useA11yPrefs, useTheme } from '@/app/theme'
 import { AccentPicker } from './AccentPicker'
+import { FEATURES } from '@/lib/features'
+import { useFeatures } from '@/app/features'
 import { TodayCardsEditor } from '../today/cards'
 import { AreaBadge } from '@/components/icons'
 import { Group, IconButton, PageHeader, Segmented, Switch, cx } from '@/components/ui'
@@ -355,6 +360,9 @@ export function SettingsView() {
   }
 
   const [todayCards, setTodayCards] = useState(false)
+  const features = useFeatures()
+  useA11yPrefs()
+  const a11y = a11yPrefs()
   return (
     <Page>
       <PageHeader icon={<SectionIcon def={section('settings')} size={40} />} title="Ajustes" />
@@ -366,6 +374,60 @@ export function SettingsView() {
       <SiriBlock />
       <CalendarSourcesBlock />
       <CalendarBlock />
+
+      <Block title="Funciones" footer="Apaga lo que no uses: la barra lateral, ⌘K y Hoy se quedan con lo tuyo.">
+        <Row
+          glyph={
+            <Glyph c="blue">
+              <LayoutGrid size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Elegir funciones"
+          detail={`${FEATURES.filter((f) => features.on(f.id)).length} de ${FEATURES.length} encendidas`}
+          onClick={() => ui.features()}
+        />
+      </Block>
+
+      <Block title="Accesibilidad" footer="«Automático» sigue a lo que tengas en el sistema. Con «Sí», en este dispositivo siempre.">
+        <Row
+          glyph={
+            <Glyph c="blue">
+              <Contrast size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Más contraste"
+          detail="Textos y bordes más marcados, sin transparencias"
+          right={
+            <Segmented
+              value={a11y.contrast}
+              onChange={setContrastPref}
+              options={[
+                { value: 'system', label: 'Auto', title: 'Automático' },
+                { value: 'on', label: 'Sí', title: 'Siempre' },
+              ]}
+            />
+          }
+        />
+        <Row
+          glyph={
+            <Glyph c="blue">
+              <Wind size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Reducir movimiento"
+          detail="Sin animaciones, confeti ni transiciones"
+          right={
+            <Segmented
+              value={a11y.motion}
+              onChange={setMotionPref}
+              options={[
+                { value: 'system', label: 'Auto', title: 'Automático' },
+                { value: 'on', label: 'Sí', title: 'Siempre' },
+              ]}
+            />
+          }
+        />
+      </Block>
 
       <Block title="Apariencia">
         <Row
@@ -536,7 +598,7 @@ export function SettingsView() {
         />
       </Block>
 
-      <p className="text-center text-[13px] text-faint">NTab {__APP_VERSION__}</p>
+      <p className="text-center text-[13px] text-muted">NTab {__APP_VERSION__}</p>
 
       <AreaForm open={creatingArea} onClose={() => setUI({ creating: null })} />
       <AreaForm area={editing} open={!!editing} onClose={() => setEditing(undefined)} />

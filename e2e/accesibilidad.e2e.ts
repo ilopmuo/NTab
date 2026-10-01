@@ -6,11 +6,12 @@ import { expect, openApp, quickAdd, test } from './fixtures'
  * temas. Falla con cualquier problema serio o crítico: contraste, controles
  * sin nombre, controles anidados…
  */
-const PATHS = ['/today', '/inbox', '/upcoming', '/calendar', '/habits', '/notes', '/shopping', '/plan', '/people', '/projects', '/tags', '/expenses', '/journal', '/settings']
+// Todas las secciones (las de src/app/sections.tsx), «Más» y Planificar
+const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/templates', '/goals', '/expenses', '/finance', '/review', '/trash', '/logbook', '/settings', '/plan', '/more']
 
 for (const theme of ['dark', 'light'] as const) {
   test(`sin problemas serios de accesibilidad (tema ${theme === 'dark' ? 'oscuro' : 'claro'})`, async ({ page }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(300_000)
     await page.addInitScript((t) => localStorage.setItem('ntab-theme', t), theme)
     await openApp(page)
     await quickAdd(page, 'Llamar al dentista mañana a las 10 #salud')
@@ -44,15 +45,39 @@ for (const theme of ['dark', 'light'] as const) {
     await page.waitForTimeout(500)
     await scan('captura con sugerencias')
     await page.keyboard.press('Escape')
+    // Diálogos y menús: funciones, atajos, editor de la barra lateral, un menú abierto
+    await page.evaluate(() => (location.hash = '/settings'))
+    await page.getByRole('button', { name: /Elegir funciones/ }).click()
+    await page.waitForTimeout(500)
+    await scan('funciones')
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('?')
+    await expect(page.getByRole('dialog')).toBeVisible()
+    // Que termine de aparecer (a medio fundido los textos no tienen su color final)
+    await page.waitForTimeout(1000)
+    await scan('atajos')
+    await page.keyboard.press('Escape')
+    await page.evaluate(() => (location.hash = '/tags'))
+    await page.getByRole('button', { name: 'Opciones de #salud' }).click()
+    await page.waitForTimeout(300)
+    await scan('menú de etiqueta')
+    await page.keyboard.press('Escape')
     expect(found, found.join('\n')).toEqual([])
   })
 }
 
 // Otros colores de acento: sus tonos los comprueba accents.test.ts; aquí, cómo quedan en pantalla
-for (const [theme, accent] of [['light', 'pink'], ['dark', 'graphite']] as const) {
-  test(`acento ${accent} en tema ${theme === 'dark' ? 'oscuro' : 'claro'}: sin problemas serios`, async ({ page }) => {
+for (const [theme, accent, contrast] of [['light', 'pink', ''], ['dark', 'graphite', ''], ['dark', 'blue', 'on']] as const) {
+  test(`acento ${accent}${contrast ? ', más contraste,' : ''} en tema ${theme === 'dark' ? 'oscuro' : 'claro'}: sin problemas serios`, async ({ page }) => {
     test.setTimeout(120_000)
-    await page.addInitScript(([t, a]) => (localStorage.setItem('ntab-theme', t), localStorage.setItem('ntab-accent', a)), [theme, accent])
+    await page.addInitScript(
+      ([t, a, c]) => {
+        localStorage.setItem('ntab-theme', t)
+        localStorage.setItem('ntab-accent', a)
+        if (c) localStorage.setItem('ntab-contrast', c)
+      },
+      [theme, accent, contrast],
+    )
     await openApp(page)
     await quickAdd(page, 'Llamar al dentista hoy a las 10 !alta #salud')
     const found: string[] = []

@@ -140,7 +140,7 @@ export function RoutinesView() {
                             <motion.span className="absolute inset-[-1.6px] rounded-full bg-green" initial={false} animate={{ scale: ok ? 1 : 0 }} transition={bouncy} />
                             {ok && <Check size={12} strokeWidth={3.2} className="relative text-on-green" />}
                           </span>
-                          <span className={cx('text-[15px] transition-colors', ok ? 'text-faint line-through' : 'text-fg')}>{st.title}</span>
+                          <span className={cx('text-[15px] transition-colors', ok ? 'text-muted line-through' : 'text-fg')}>{st.title}</span>
                         </button>
                       </li>
                     )

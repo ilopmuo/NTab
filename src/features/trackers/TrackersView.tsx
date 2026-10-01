@@ -50,7 +50,7 @@ export function TrackerCard({ tracker, onEdit, index = 0 }: { tracker: Tracker; 
         </span>
       </button>
       <p className="font-num mt-4 text-[28px] leading-none font-bold tracking-tight">{s.kind === 'never' ? 'Nunca' : sinceLabel(s.since)}</p>
-      <p className="mt-1 text-[12.5px] text-faint">{s.kind === 'never' ? 'Aún no lo has apuntado' : `Última vez · ${tracker.log.length} ${tracker.log.length === 1 ? 'vez' : 'veces'}`}</p>
+      <p className="mt-1 text-[12.5px] text-muted">{s.kind === 'never' ? 'Aún no lo has apuntado' : `Última vez · ${tracker.log.length} ${tracker.log.length === 1 ? 'vez' : 'veces'}`}</p>
       <motion.button
         type="button"
         whileTap={{ scale: 0.96 }}

@@ -47,7 +47,7 @@ export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => v
           <img src="./icon-512.png" alt="" className="mb-5 h-20 w-20 rounded-[22px] shadow-2xl" />
           <h1 className="text-[34px] font-bold tracking-[-0.025em]">NTab</h1>
           <p className="mt-1.5 text-[16px] text-muted">Tu vida, organizada. En todos tus dispositivos.</p>
-          <div className="mt-5 flex items-center gap-3 text-faint">
+          <div className="mt-5 flex items-center gap-3 text-muted">
             <Smartphone size={18} />
             <span className="h-px w-5 bg-line-strong" />
             <Cloud size={20} className="text-blue" strokeWidth={2.3} />
@@ -136,7 +136,7 @@ export function AuthScreen({ onCancel, initialEmail = '' }: { onCancel?: () => v
                 Volver
               </button>
             ) : (
-              <span className="text-faint">Solo tú puedes ver tus datos.</span>
+              <span className="text-muted">Solo tú puedes ver tus datos.</span>
             )}
           </div>
         </form>

@@ -3,6 +3,7 @@ import { EyeOff, GripVertical, LayoutGrid, List } from 'lucide-react'
 import { ALWAYS_VISIBLE, setTab, type Place } from '@/lib/nav'
 import { Button, Modal, ModalHeader, Segmented, Select } from '@/components/ui'
 import { saveNav, useNav } from './nav'
+import { useFeatures } from './features'
 import { SECTIONS, SectionIcon, section } from './sections'
 import { ui, useUI } from './store'
 
@@ -36,7 +37,7 @@ export function NavEditor() {
 function SidebarEditor() {
   const nav = useNav()
   const save = (next: { order?: string[]; place?: Record<string, Place> }) =>
-    void saveNav({ order: nav.order, place: nav.place, tabs: nav.tabs, ...next })
+    void saveNav({ order: nav.order, place: nav.place, tabs: nav.tabs, ...next }, nav.prefs)
   return (
     <>
       <p className="px-5 pb-3 text-[13.5px] text-muted">
@@ -73,7 +74,7 @@ function SectionRow({ id, place, onPlace }: { id: string; place: Place; onPlace:
         <GripVertical size={16} />
       </button>
       <SectionIcon def={def} size={26} square />
-      <span className={place === 'hidden' ? 'min-w-0 flex-1 truncate text-[15px] text-faint' : 'min-w-0 flex-1 truncate text-[15px]'}>{def.label}</span>
+      <span className={place === 'hidden' ? 'min-w-0 flex-1 truncate text-[15px] text-muted' : 'min-w-0 flex-1 truncate text-[15px]'}>{def.label}</span>
       <Segmented value={place} onChange={onPlace} options={options} />
     </Reorder.Item>
   )
@@ -81,6 +82,7 @@ function SectionRow({ id, place, onPlace }: { id: string; place: Place; onPlace:
 
 function TabsEditor() {
   const nav = useNav()
+  const features = useFeatures()
   return (
     <>
       <p className="px-5 pb-3 text-[13.5px] text-muted">Las cuatro pestañas de la barra inferior en el iPhone. «Más» abre todo lo demás.</p>
@@ -102,9 +104,9 @@ function TabsEditor() {
             <Select
               aria-label={`Pestaña ${slot + 1}`}
               value={id}
-              onChange={(e) => void saveNav({ order: nav.order, place: nav.place, tabs: setTab(nav.tabs, slot, e.target.value) })}
+              onChange={(e) => void saveNav({ order: nav.order, place: nav.place, tabs: setTab(nav.tabs, slot, e.target.value) }, nav.prefs)}
             >
-              {SECTIONS.map((s) => (
+              {SECTIONS.filter((s) => features.section(s.id)).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}
                 </option>
@@ -113,7 +115,7 @@ function TabsEditor() {
           </label>
         ))}
       </div>
-      <Footer onReset={() => void saveNav({ order: nav.order, place: nav.place })} />
+      <Footer onReset={() => void saveNav({ order: nav.order, place: nav.place }, nav.prefs)} />
     </>
   )
 }

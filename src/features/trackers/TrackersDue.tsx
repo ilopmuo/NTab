@@ -16,7 +16,7 @@ export function TrackersDue() {
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
         <History size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Toca hacer</h3>
+        <h2 className="text-[15px] font-bold">Toca hacer</h2>
         <a href={href('/trackers')} className="ml-auto text-[13px] font-semibold text-blue hover:underline">
           Ver todo
         </a>

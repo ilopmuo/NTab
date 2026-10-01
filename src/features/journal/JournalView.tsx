@@ -150,7 +150,7 @@ function Entry({ date, entry }: { date: string; entry?: JournalEntry }) {
       <div className="space-y-1.5">
         {good.map((g, i) => (
           <label key={i} className="flex h-10 items-center gap-2.5 rounded-xl bg-fill-2 px-3">
-            <span className="font-num text-[13px] font-bold text-faint">{i + 1}</span>
+            <span className="font-num text-[13px] font-bold text-muted">{i + 1}</span>
             <input
               value={g}
               onChange={(e) => setGood(good.map((x, j) => (j === i ? e.target.value : x)))}

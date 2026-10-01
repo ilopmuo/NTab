@@ -19,7 +19,7 @@ export function TodayMeals() {
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
         <CookingPot size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Hoy se come</h3>
+        <h2 className="text-[15px] font-bold">Hoy se come</h2>
         <a href={href('/menu')} className="ml-auto text-[13px] font-semibold text-blue hover:underline">
           Menú
         </a>

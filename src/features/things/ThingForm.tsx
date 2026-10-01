@@ -154,7 +154,7 @@ function Form({ thing, initialKind, onClose }: { thing?: Thing; initialKind?: Th
             </Button>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void pickPhoto(e.target.files?.[0])} />
           </div>
-          <p className="mt-1.5 px-1 text-[12.5px] text-faint">Una foto del sitio ayuda a encontrarlo a la primera.</p>
+          <p className="mt-1.5 px-1 text-[12.5px] text-muted">Una foto del sitio ayuda a encontrarlo a la primera.</p>
         </Field>
 
         <Field label="Notas">

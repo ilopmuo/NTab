@@ -71,3 +71,14 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Compra | Lo que vas a añadir aparece en píldoras con su pasillo mientras escribes; al marcar, la fila baja al carro |
 
 La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el interruptor nativo oculto (`src/lib/haptics.ts`).
+
+## 6. Navegación y accesibilidad
+
+- **Funciones activables** (`src/lib/features.ts`): lo que se apaga desaparece de la barra lateral, las pestañas, ⌘K, los atajos, Hoy y los avisos del servidor. Lo esencial (Hoy, Próximo, Bandeja, Calendario, Proyectos, Etiquetas) no se apaga.
+- **Barra lateral por grupos** (Organizar, Día a día, Casa, Dinero, Mis áreas, Fijados), plegables y recordados en cada dispositivo; un grupo plegado sigue enseñando la fila de lo que estás viendo. En el móvil, «Más» es una página con los mismos grupos en cuadrícula.
+- **Texto**: `--c-faint` nunca para texto que haya que leer (contadores, días de la semana, hechas tachadas): `--c-muted`. Nada de transparencias sobre texto.
+- **Más contraste** (`[data-contrast='more']`): grises de texto y bordes más marcados, materiales opacos y sin halo de fondo. **Menos movimiento** (`[data-motion='reduce']`): sin animaciones de CSS ni de Motion, sin confeti ni revelados. Ambos siguen al sistema o se fuerzan en Ajustes → Accesibilidad.
+- **Lector de pantalla**: los avisos y los cambios de pantalla se anuncian (`#announcer`, `aria-live`); «Saltar al contenido» es lo primero al tabular; al navegar desde la barra lateral el foco pasa al contenido. Títulos: un `h1` por pantalla y `h2` para los bloques.
+- **Táctil**: los botones de icono pequeños y las casillas tienen al menos 44 px de zona de toque (`pointer: coarse`), sin cambiar cómo se ven.
+- **Teclado**: `j`/`k` o `↑`/`↓` entre tareas, `Intro` abre, `Espacio` completa, `T` hoy, `M` mañana, `Supr` papelera, `⌘Z` deshace. Los menús, el selector de color y el de fecha se manejan con flechas.
+- **Comprobación**: axe (WCAG 2.1 AA) en todas las secciones y en los diálogos principales, en tema claro y oscuro, con otros acentos y con más contraste (`e2e/accesibilidad.e2e.ts`).

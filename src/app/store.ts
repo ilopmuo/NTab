@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { Task } from '@/db/types'
+import { announce } from './announce'
 
 export interface ToastAction {
   label: string
@@ -11,6 +12,8 @@ export interface UIState {
   quickAdd: { open: boolean; defaults?: Partial<Task>; text?: string }
   paletteOpen: boolean
   helpOpen: boolean
+  /** Ajustes → Funciones (se abre desde Ajustes, Más o ⌘K) */
+  featuresOpen: boolean
   sidebarOpen: boolean
   /** en el ordenador, barra lateral plegada (se recuerda en este dispositivo) */
   sidebarHidden: boolean
@@ -34,6 +37,7 @@ let state: UIState = {
   quickAdd: { open: false },
   paletteOpen: false,
   helpOpen: false,
+  featuresOpen: false,
   sidebarOpen: false,
   sidebarHidden: readSidebarHidden(),
   navEditor: null,
@@ -69,6 +73,7 @@ export const ui = {
   closeQuickAdd: () => setUI({ quickAdd: { open: false } }),
   palette: (open = true) => setUI({ paletteOpen: open }),
   help: (open = true) => setUI({ helpOpen: open }),
+  features: (open = true) => setUI({ featuresOpen: open, paletteOpen: false, sidebarOpen: false }),
   sidebar: (open: boolean) => setUI({ sidebarOpen: open }),
   /** Pliega o despliega la barra lateral del ordenador */
   toggleSidebarHidden: () => {
@@ -85,6 +90,19 @@ export const ui = {
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
+/** Lo último que se puede deshacer (⌘Z), durante un minuto */
+let lastUndo: { run: () => void; at: number } | null = null
+
+/** ⌘Z / Ctrl Z fuera de un campo de texto: deshace la última acción con «Deshacer» */
+export function undoLast(): boolean {
+  if (!lastUndo || Date.now() - lastUndo.at > 60_000) return false
+  const { run } = lastUndo
+  lastUndo = null
+  run()
+  setUI({ toast: null })
+  toast('Deshecho')
+  return true
+}
 export function toast(
   message: string,
   action?: ToastAction | ToastAction[],
@@ -94,6 +112,9 @@ export function toast(
   clearTimeout(toastTimer)
   const id = Date.now()
   const actions = action ? (Array.isArray(action) ? action : [action]) : []
+  const undo = actions.find((a) => a.label === 'Deshacer')
+  if (undo) lastUndo = { run: undo.run, at: Date.now() }
+  announce(undo ? `${message}. Puedes deshacerlo con Comando Z.` : message)
   setUI({ toast: { id, message, actions, icon: opts.icon ?? 'check', onClick: opts.onClick, duration: durationMs } })
   toastTimer = setTimeout(() => setUI((s) => (s.toast?.id === id ? { toast: null } : {})), durationMs)
 }

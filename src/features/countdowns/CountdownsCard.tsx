@@ -24,7 +24,7 @@ export function CountdownsCard() {
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
         <Hourglass size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Cuenta atrás</h3>
+        <h2 className="text-[15px] font-bold">Cuenta atrás</h2>
         <button type="button" aria-label="Nueva cuenta atrás" onClick={() => setEditing('new')} className="ml-auto flex h-7 w-7 items-center justify-center rounded-full bg-fill text-fg active:scale-90">
           <Plus size={15} strokeWidth={2.6} />
         </button>

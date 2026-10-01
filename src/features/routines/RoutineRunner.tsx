@@ -146,7 +146,7 @@ function Runner({ id }: { id: string }) {
                 Paso {index + 1} de {total}
               </p>
               <p className="max-w-md text-[34px] leading-[1.15] font-bold tracking-tight [text-wrap:balance]">{current.title}</p>
-              {pending.length > 1 && <p className="mt-4 text-[14px] text-faint">Luego: {pending.filter((s) => s.id !== current.id)[0]?.title}</p>}
+              {pending.length > 1 && <p className="mt-4 text-[14px] text-muted">Luego: {pending.filter((s) => s.id !== current.id)[0]?.title}</p>}
             </motion.div>
           ) : (
             <p className="text-muted">Esta rutina no tiene pasos.</p>

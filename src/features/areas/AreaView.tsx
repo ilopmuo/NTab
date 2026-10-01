@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, FileText, Pencil, Plus, StickyNote } from 'lucide-react'
+import { ChevronRight, FileText, Pencil, Pin, Plus, StickyNote } from 'lucide-react'
 import { db } from '@/db/db'
 import { createNote } from '@/db/actions'
 import { useProjects } from '@/db/hooks'
@@ -9,6 +9,7 @@ import { AreaBadge } from '@/components/icons'
 import { TaskList } from '@/components/TaskList'
 import { OrderToggle } from '@/components/ManualOrder'
 import { Button, Empty, Group, IconButton, PageHeader, Section } from '@/components/ui'
+import { isPinned, togglePinWithToast, usePins } from '@/app/pins'
 import { Page } from '../Page'
 import { ProjectCard } from '../projects/ProjectCard'
 import { ProjectForm } from '../projects/ProjectForm'
@@ -22,11 +23,13 @@ export function AreaView({ id }: { id: string }) {
   const projects = useProjects().filter((p) => p.areaId === id && p.status !== 'done')
   const [editing, setEditing] = useState(false)
   const [creatingProject, setCreatingProject] = useState(false)
+  const pins = usePins()
 
   if (area === undefined || !tasks) return null
   if (area === null) return <Page><Empty icon={<FileText size={22} />} title="Área no encontrada" /></Page>
 
   const loose = tasks.filter((t) => !t.done && !t.projectId)
+  const pinned = isPinned(pins, 'area', area.id)
 
   return (
     <Page wide>
@@ -37,6 +40,15 @@ export function AreaView({ id }: { id: string }) {
         actions={
           <>
             <SelectButton />
+            <IconButton
+              label={pinned ? 'Quitar de Fijados' : 'Fijar en la barra lateral'}
+              filled
+              aria-pressed={pinned}
+              onClick={() => void togglePinWithToast('area', area.id, area.name)}
+              className={pinned ? '!bg-accent-soft !text-accent-on-soft' : undefined}
+            >
+              <Pin size={15} strokeWidth={2.3} />
+            </IconButton>
             <IconButton label="Editar área" filled onClick={() => setEditing(true)}>
               <Pencil size={15} strokeWidth={2.3} />
             </IconButton>

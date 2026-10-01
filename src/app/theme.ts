@@ -44,7 +44,7 @@ export function setTheme(p: ThemePref) {
   const before = document.documentElement.dataset.theme
   const after = p === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : p
   const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }
-  if (before === after || !doc.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return commit()
+  if (before === after || !doc.startViewTransition || reducedMotion()) return commit()
   const { x, y } = lastPointer ?? { x: innerWidth / 2, y: 0 }
   const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
   document.documentElement.classList.add('theme-transition')
@@ -109,7 +109,7 @@ export function setAccent(a: Accent) {
     accentListeners.forEach((l) => l())
   }
   const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown }
-  if (a === accent || !doc.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return commit()
+  if (a === accent || !doc.startViewTransition || reducedMotion()) return commit()
   doc.startViewTransition(commit)
 }
 
@@ -122,3 +122,72 @@ export function useAccent(): Accent {
     () => accent,
   )
 }
+
+// ── Más contraste y menos movimiento ──────────────────────────
+// «Automático» sigue al sistema (prefers-contrast / prefers-reduced-motion);
+// «Sí» lo fuerza en este dispositivo. Se aplica antes de pintar (index.html).
+export type A11yPref = 'system' | 'on'
+const CONTRAST_KEY = 'ntab-contrast'
+const MOTION_KEY = 'ntab-motion'
+const a11yListeners = new Set<() => void>()
+
+function readPref(key: string): A11yPref {
+  try {
+    return localStorage.getItem(key) === 'on' ? 'on' : 'system'
+  } catch {
+    return 'system'
+  }
+}
+
+let contrastPref = readPref(CONTRAST_KEY)
+let motionPref = readPref(MOTION_KEY)
+
+function applyA11y() {
+  const html = document.documentElement
+  const more = contrastPref === 'on' || matchMedia('(prefers-contrast: more)').matches
+  const reduce = motionPref === 'on' || matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (more) html.dataset.contrast = 'more'
+  else delete html.dataset.contrast
+  if (reduce) html.dataset.motion = 'reduce'
+  else delete html.dataset.motion
+}
+applyA11y()
+matchMedia('(prefers-contrast: more)').addEventListener('change', applyA11y)
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => (applyA11y(), a11yListeners.forEach((l) => l())))
+
+/** ¿Hay que evitar animaciones? (el sistema lo pide o se ha elegido en Ajustes) */
+export const reducedMotion = () => document.documentElement.dataset.motion === 'reduce'
+
+export function setContrastPref(p: A11yPref) {
+  contrastPref = p
+  try {
+    localStorage.setItem(CONTRAST_KEY, p)
+  } catch {
+    /* solo en memoria */
+  }
+  applyA11y()
+  a11yListeners.forEach((l) => l())
+}
+
+export function setMotionPref(p: A11yPref) {
+  motionPref = p
+  try {
+    localStorage.setItem(MOTION_KEY, p)
+  } catch {
+    /* solo en memoria */
+  }
+  applyA11y()
+  a11yListeners.forEach((l) => l())
+}
+
+export function useA11yPrefs() {
+  return useSyncExternalStore(
+    (l) => {
+      a11yListeners.add(l)
+      return () => a11yListeners.delete(l)
+    },
+    () => `${contrastPref}|${motionPref}|${reducedMotion()}`,
+  )
+}
+
+export const a11yPrefs = () => ({ contrast: contrastPref, motion: motionPref, reduce: reducedMotion() })

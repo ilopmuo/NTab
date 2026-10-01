@@ -212,6 +212,9 @@ export function Segmented<T extends string | number>({
             key={String(o.value)}
             type="button"
             title={o.title}
+            aria-pressed={on}
+            // Si solo hay un icono, el nombre para el lector de pantalla es el título
+            aria-label={typeof o.label === 'string' ? undefined : o.title}
             onClick={() => onChange(o.value)}
             className={cx(
               'relative flex h-7 min-w-9 flex-1 items-center justify-center gap-1 rounded-[8px] px-3 text-[13px] font-medium whitespace-nowrap transition-colors',
@@ -445,10 +448,10 @@ export function Section({
   return (
     <section className={cx('mb-8', className)}>
       <div className="mb-2 flex min-h-8 items-center gap-2 px-1">
-        <h3 className="text-[19px] font-bold tracking-tight" style={{ color: tone ? TONES[tone] : undefined }}>
+        <h2 className="text-[19px] font-bold tracking-tight" style={{ color: tone ? TONES[tone] : undefined }}>
           {title}
-        </h3>
-        {count !== undefined && count > 0 && <RollingNumber value={count} className="text-[15px] font-semibold text-faint" />}
+        </h2>
+        {count !== undefined && count > 0 && <RollingNumber value={count} className="text-[15px] font-semibold text-muted" />}
         <div className="ml-auto">{action}</div>
       </div>
       {children}

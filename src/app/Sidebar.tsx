@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
+import { ChevronRight, Hash, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'
 import { Kbd, ProgressPie, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
@@ -11,6 +11,9 @@ import { SectionIcon, section, type SectionDef } from './sections'
 import { FIXED } from '@/lib/nav'
 import { ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
+import { FEATURE_GROUPS } from '@/lib/features'
+import { usePins } from './pins'
+import { useCollapsed } from './navGroups'
 
 const FOOT = FIXED.map(section)
 
@@ -19,6 +22,7 @@ function Tile({ def, count, active }: { def: SectionDef; count?: number | string
   return (
     <a
       href={href(def.path)}
+      aria-current={active ? 'page' : undefined}
       onClick={() => ui.sidebar(false)}
       className={cx(
         'relative flex flex-col gap-2 overflow-hidden rounded-[14px] p-2.5 transition-[transform,box-shadow] duration-200 active:scale-[0.97]',
@@ -65,6 +69,7 @@ function Row({
   return (
     <a
       href={href(to)}
+      aria-current={active ? 'page' : undefined}
       onClick={() => ui.sidebar(false)}
       className={cx(
         'relative flex h-9 items-center gap-2.5 rounded-[10px] px-2 text-[14px] transition-colors',
@@ -82,6 +87,53 @@ function Row({
   )
 }
 
+/**
+ * Grupo de la barra lateral con su título, que se pliega y se despliega (se
+ * recuerda en este dispositivo). Si lo que estás viendo está dentro, el grupo
+ * plegado lo enseña igualmente.
+ */
+function NavGroup({ id, label, active, action, className, children }: { id: string; label: string; active?: boolean; action?: React.ReactNode; className?: string; children: React.ReactNode }) {
+  const [collapsed, toggle] = useCollapsed(id)
+  const bodyId = `nav-group-${id}`
+  return (
+    <section className={cx('mt-5', className)} aria-label={label}>
+      <div className="mb-1 flex items-center px-2">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
+          className="-ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-md px-1 py-0.5 text-left text-[13px] font-bold text-muted transition-colors hover:text-fg"
+        >
+          <ChevronRight size={13} strokeWidth={2.8} aria-hidden className={cx('shrink-0 transition-transform duration-200', !collapsed && 'rotate-90')} />
+          <span className="truncate">{label}</span>
+        </button>
+        {action}
+      </div>
+      <AnimatePresence initial={false}>
+        {(!collapsed || active) && (
+          <motion.div
+            key="body"
+            id={bodyId}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 40 }}
+            className="space-y-px overflow-hidden"
+          >
+            {collapsed && active ? <OnlyActive>{children}</OnlyActive> : children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  )
+}
+
+/** En un grupo plegado, solo la fila de lo que estás viendo */
+function OnlyActive({ children }: { children: React.ReactNode }) {
+  return <div className="nav-only-active space-y-px">{children}</div>
+}
+
 function SidebarContent() {
   const { path } = useRoute()
   const desktop = useMediaQuery('(min-width: 1024px)')
@@ -92,6 +144,8 @@ function SidebarContent() {
   const dark = document.documentElement.dataset.theme === 'dark'
   const activeProjects = projects.filter((p) => p.status === 'active')
   const progress = useProjectProgress(activeProjects.map((p) => p.id))
+  const pins = usePins()
+  const pinProgress = useProjectProgress(pins.filter((p) => p.kind === 'project').map((p) => p.id))
   const is = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
 
   const tileCount: Record<string, number | string> = {
@@ -104,6 +158,38 @@ function SidebarContent() {
     shopping: c.shopping,
     people: c.peopleDue,
   }
+
+  // La lista: primero lo esencial sin grupo; luego cada grupo, plegable
+  const list = nav.list.map(section)
+  const core = list.filter((d) => !d.group)
+  const groups = FEATURE_GROUPS.map((g) => ({ ...g, items: list.filter((d) => d.group === g.id) })).filter((g) => g.items.length)
+  const sectionRow = (d: SectionDef) => (
+    <Row
+      key={d.id}
+      to={d.path}
+      active={is(d.path)}
+      icon={<SectionIcon def={d} size={24} square />}
+      label={d.label}
+      count={d.id === 'people' ? c.peopleDue : d.id === 'shopping' ? c.shopping : undefined}
+      countTone={d.id === 'people' ? 'var(--c-purple)' : undefined}
+    />
+  )
+  const pinRows = pins.flatMap((pin) => {
+    if (pin.kind === 'project') {
+      const p = projects.find((x) => x.id === pin.id)
+      if (!p) return []
+      const to = `/project/${p.id}`
+      return [{ key: `p:${p.id}`, to, active: path === to, label: p.name, count: c.byProject.get(p.id), icon: <ProgressPie value={pinProgress.get(p.id) ?? 0} className="text-muted" /> }]
+    }
+    if (pin.kind === 'area') {
+      const a = areas.find((x) => x.id === pin.id)
+      if (!a) return []
+      const to = `/area/${a.id}`
+      return [{ key: `a:${a.id}`, to, active: path === to, label: a.name, count: c.byArea.get(a.id), icon: <AreaBadge icon={a.icon} /> }]
+    }
+    const to = `/tag/${encodeURIComponent(pin.id)}`
+    return [{ key: `t:${pin.id}`, to, active: path === to, label: pin.id, count: undefined, icon: <span className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-fill text-fg"><Hash size={13} strokeWidth={2.6} /></span> }]
+  })
 
   return (
     <div className="flex h-full flex-col">
@@ -141,36 +227,45 @@ function SidebarContent() {
           ))}
         </div>
 
-        <div className={cx('space-y-px', nav.tiles.length > 0 && 'mt-4')}>
-          {nav.list.map(section).map((d) => (
-            <Row
-              key={d.id}
-              to={d.path}
-              active={is(d.path)}
-              icon={<SectionIcon def={d} size={24} square />}
-              label={d.label}
-              count={d.id === 'people' ? c.peopleDue : d.id === 'shopping' ? c.shopping : undefined}
-              countTone={d.id === 'people' ? 'var(--c-purple)' : undefined}
-            />
-          ))}
-        </div>
+        {pinRows.length > 0 && (
+          <NavGroup id="pins" label="Fijados" active={pinRows.some((r) => r.active)} className={cx(nav.tiles.length > 0 && 'mt-4')}>
+            {pinRows.map((r) => (
+              <Row key={r.key} to={r.to} active={r.active} icon={r.icon} label={r.label} count={r.count} />
+            ))}
+          </NavGroup>
+        )}
 
-        <div className="mt-5 mb-1 flex items-center px-2">
-          <span className="text-[13px] font-bold text-muted">Mis áreas</span>
-          <button
-            type="button"
-            aria-label="Nueva área"
-            onClick={() => {
-              ui.sidebar(false)
-              window.location.hash = '/settings'
-              ui.create('area')
-            }}
-            className="ml-auto flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg"
-          >
-            <Plus size={15} />
-          </button>
-        </div>
-        <div className="space-y-px">
+        {core.length > 0 && (
+          <div className={cx('space-y-px', (nav.tiles.length > 0 || pinRows.length > 0) && 'mt-4')}>
+            {core.map(sectionRow)}
+          </div>
+        )}
+
+        {groups.map((g) => (
+          <NavGroup key={g.id} id={g.id} label={g.label} active={g.items.some((d) => is(d.path))}>
+            {g.items.map(sectionRow)}
+          </NavGroup>
+        ))}
+
+        <NavGroup
+          id="areas"
+          label="Mis áreas"
+          active={path.startsWith('/area/') || path.startsWith('/project/')}
+          action={
+            <button
+              type="button"
+              aria-label="Nueva área"
+              onClick={() => {
+                ui.sidebar(false)
+                window.location.hash = '/settings'
+                ui.create('area')
+              }}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg"
+            >
+              <Plus size={15} />
+            </button>
+          }
+        >
           {areas.map((a) => (
             <div key={a.id}>
               <Row
@@ -207,7 +302,7 @@ function SidebarContent() {
                 count={c.byProject.get(p.id)}
               />
             ))}
-        </div>
+        </NavGroup>
       </div>
 
       <div className="space-y-px px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] shadow-[inset_0_1px_0_var(--c-border)]">

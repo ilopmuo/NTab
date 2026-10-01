@@ -9,6 +9,7 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { buildDigest, buildHabitPayload, buildPayload, buildRoutinePayload, buildJournalPayload, type DueJournal, type DueDigest, type DueHabit, type DueReminder, type DueRoutine } from './format.ts'
+import { REMINDER_FEATURE, reminderAllowed } from '../_shared/features.ts'
 
 const PUBLIC_KEY =
   Deno.env.get('VAPID_PUBLIC_KEY') ?? 'BITtwUVzfRk6yMCn5x36uN9n3nRV7fpCXOyk_bf1RwMYryFTJ54C6HbJFCzdNVPNVMBuTzlT3OEOYbwM6eH3CJM'
@@ -138,6 +139,16 @@ Deno.serve(async (req) => {
     })),
   ]
   if (!jobs.length) return json({ sent: 0 })
+
+  // Lo de las funciones apagadas (Ajustes → Funciones) no avisa
+  const withFeatures = [...new Set(jobs.filter((j) => REMINDER_FEATURE[j.log.tbl]).map((j) => j.user_id))]
+  if (withFeatures.length) {
+    const { data: rows, error: featuresError } = await admin.from('records').select('user_id,data').eq('tbl', 'settings').eq('id', 'features').eq('deleted', false).in('user_id', withFeatures)
+    if (featuresError) console.error('features', featuresError.message)
+    const flags = new Map((rows ?? []).map((r: { user_id: string; data: { value?: Record<string, unknown> } | null }) => [r.user_id, r.data?.value]))
+    for (let i = jobs.length - 1; i >= 0; i--) if (!reminderAllowed(flags.get(jobs[i].user_id), jobs[i].log.tbl)) jobs.splice(i, 1)
+    if (!jobs.length) return json({ sent: 0 })
+  }
 
   const users = [...new Set(jobs.map((j) => j.user_id))]
   const { data: subsData, error: subsError } = await admin.from('push_subscriptions').select('endpoint,user_id,p256dh,auth,tz').in('user_id', users)

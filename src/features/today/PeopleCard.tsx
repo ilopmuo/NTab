@@ -16,7 +16,7 @@ export function PeopleCard({ people }: { people: Person[] }) {
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
         <Users size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Personas</h3>
+        <h2 className="text-[15px] font-bold">Personas</h2>
       </div>
       <div className="space-y-0.5">
         {birthdays.map(({ person, date, age }) => (

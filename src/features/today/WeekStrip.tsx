@@ -18,7 +18,7 @@ export function WeekStrip({ tasks }: { tasks: Task[] }) {
     <Card className="p-4">
       <div className="mb-3 flex items-center gap-2">
         <CalendarClock size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Próximos días</h3>
+        <h2 className="text-[15px] font-bold">Próximos días</h2>
         <a href={href('/upcoming')} className="ml-auto text-[13px] font-semibold text-blue hover:underline">
           Ver todo
         </a>
@@ -33,7 +33,7 @@ export function WeekStrip({ tasks }: { tasks: Task[] }) {
               href={href('/upcoming')}
               className={cx('flex flex-col items-center gap-1 rounded-xl py-1.5 transition-colors hover:bg-hover', n > 0 && 'bg-fill-2')}
             >
-              <span className={cx('text-[11px] font-semibold', weekend ? 'text-faint' : 'text-muted')}>{WEEKDAYS_SHORT[fromYmd(d).getDay()]}</span>
+              <span className={cx('text-[11px] font-semibold', weekend ? 'text-muted' : 'text-muted')}>{WEEKDAYS_SHORT[fromYmd(d).getDay()]}</span>
               <span className="font-num text-[16px] font-bold">{fromYmd(d).getDate()}</span>
               <span className="flex h-1.5 gap-0.5">
                 {Array.from({ length: Math.min(n, 3) }, (_, i) => (
@@ -60,7 +60,7 @@ export function WeekStrip({ tasks }: { tasks: Task[] }) {
               <span className="shrink-0 text-[12px] font-medium text-muted">{dateLabel(x.dueDate!)}</span>
             </button>
           ))}
-          {upcoming.length > 4 && <p className="px-1 pt-1 text-[12px] text-faint">y {upcoming.length - 4} más</p>}
+          {upcoming.length > 4 && <p className="px-1 pt-1 text-[12px] text-muted">y {upcoming.length - 4} más</p>}
         </div>
       )}
     </Card>

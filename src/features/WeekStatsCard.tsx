@@ -66,7 +66,7 @@ export function WeekStatsCard() {
           const isToday = d.date === t
           return (
             <div key={d.date} className="flex h-full flex-col items-center justify-end gap-1.5" title={`${d.done} tareas · ${d.focusMin} min de foco`}>
-              <span className={cx('font-num text-[12px] font-semibold', d.done ? 'text-fg' : 'text-faint')}>{d.done || ''}</span>
+              <span className={cx('font-num text-[12px] font-semibold', d.done ? 'text-fg' : 'text-muted')}>{d.done || ''}</span>
               <motion.span
                 className={cx('w-full max-w-10 rounded-[8px]', isToday ? 'bg-green' : 'bg-blue')}
                 initial={{ height: 0 }}

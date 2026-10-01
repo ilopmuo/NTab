@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, CheckCircle2, ChevronRight, ClipboardList, FileText, MoreHorizontal, Pause, Pencil, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
+import { Check, CheckCircle2, ChevronRight, ClipboardList, FileText, MoreHorizontal, Pause, Pencil, Pin, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import { createNote, deleteProject } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
@@ -9,6 +9,7 @@ import type { ProjectStatus } from '@/db/types'
 import { dateLabel, relativeDays, today } from '@/lib/dates'
 import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
+import { isPinned, togglePinWithToast, usePins } from '@/app/pins'
 import { AreaBadge } from '@/components/icons'
 import { TaskList } from '@/components/TaskList'
 import { Menu } from '@/components/Menu'
@@ -29,6 +30,7 @@ export function ProjectView({ id }: { id: string }) {
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showDone, setShowDone] = useState(false)
+  const pins = usePins()
 
   if (project === undefined || !tasks) return null
   if (project === null) return <Page><Empty icon={<FileText size={28} />} title="Proyecto no encontrado" /></Page>
@@ -110,6 +112,11 @@ export function ProjectView({ id }: { id: string }) {
               project.status === 'active' && { label: 'Pausar', icon: <Pause size={14} />, onSelect: () => void setStatus('paused') },
               project.status === 'paused' && { label: 'Terminar', icon: <CheckCircle2 size={14} />, onSelect: () => void setStatus('done') },
               {
+                label: isPinned(pins, 'project', project.id) ? 'Quitar de Fijados' : 'Fijar en la barra lateral',
+                icon: <Pin size={14} />,
+                onSelect: () => void togglePinWithToast('project', project.id, project.name),
+              },
+              {
                 label: 'Guardar como plantilla',
                 icon: <ClipboardList size={14} />,
                 onSelect: async () => {
@@ -129,7 +136,7 @@ export function ProjectView({ id }: { id: string }) {
         <section className="mb-8">
           <button type="button" onClick={() => setShowDone((v) => !v)} className="mb-2 flex items-center gap-1.5 px-1 text-[17px] font-bold">
             <ChevronRight size={18} strokeWidth={2.6} className={cx('transition-transform duration-300', showDone && 'rotate-90')} />
-            Completadas <span className="font-num text-[15px] text-faint">{done.length}</span>
+            Completadas <span className="font-num text-[15px] text-muted">{done.length}</span>
           </button>
           <AnimatePresence initial={false}>
             {showDone && (

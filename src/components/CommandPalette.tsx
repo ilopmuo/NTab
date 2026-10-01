@@ -5,7 +5,7 @@ import { whatNow } from '@/features/whatnow/store'
 import { markDone } from '@/features/trackers/markDone'
 import { sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
-import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, ListChecks, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
+import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, LayoutGrid, ListChecks, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import { createNote } from '@/db/actions'
@@ -17,6 +17,7 @@ import { toggleTheme } from '@/app/theme'
 import { AreaBadge } from './icons'
 import { Kbd, Modal } from './ui'
 import { SECTIONS, SectionIcon, tint, type Tint } from '@/app/sections'
+import { useFeatures } from '@/app/features'
 
 
 function Item({
@@ -44,7 +45,7 @@ function Item({
     >
       <span className="flex w-7 shrink-0 justify-center text-muted group-data-[selected=true]:text-white">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {hint && <span className="shrink-0 text-[13px] text-faint group-data-[selected=true]:text-white/75">{hint}</span>}
+      {hint && <span className="shrink-0 text-[13px] text-muted group-data-[selected=true]:text-white">{hint}</span>}
     </Command.Item>
   )
 }
@@ -91,6 +92,7 @@ export function CommandPalette() {
 
 function Palette() {
   const [search, setSearch] = useState('')
+  const { on, section } = useFeatures()
   const { areas, projects } = useLookup()
   const tasks = useLiveQuery(() => db.tasks.toArray(), []) ?? []
   const notes = useLiveQuery(() => db.notes.toArray(), []) ?? []
@@ -159,57 +161,82 @@ function Palette() {
           <Item value="nueva tarea añadir crear" icon={<G c="blue"><Plus size={16} strokeWidth={2.8} /></G>} onSelect={run(() => ui.quickAdd())} hint={<Kbd>N</Kbd>}>
             Nueva tarea
           </Item>
-          <Item
-            value="nueva nota crear"
-            icon={<G c="yellow"><FileText size={14} strokeWidth={2.4} /></G>}
-            onSelect={run(async () => {
-              const n = await createNote()
-              navigate(`/notes/${n.id}`)
-            })}
-          >
-            Nueva nota
-          </Item>
+          {on('notes') && (
+            <Item
+              value="nueva nota crear"
+              icon={<G c="yellow"><FileText size={14} strokeWidth={2.4} /></G>}
+              onSelect={run(async () => {
+                const n = await createNote()
+                navigate(`/notes/${n.id}`)
+              })}
+            >
+              Nueva nota
+            </Item>
+          )}
           <Item value="nuevo proyecto crear" icon={<G c="indigo"><FolderPlus size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/projects'), ui.create('project')))}>
             Nuevo proyecto
           </Item>
-          <Item value="nuevo hábito crear" icon={<G c="green"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/habits'), ui.create('habit')))}>
-            Nuevo hábito
-          </Item>
-          <Item value="apuntar cosa donde esta guardado prestar prestamo caduca documento" icon={<G c="blue"><Box size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/things'), ui.create('thing')))}>
-            Apuntar una cosa (dónde está, préstamo, caducidad)
-          </Item>
+          {on('habits') && (
+            <Item value="nuevo hábito crear" icon={<G c="green"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/habits'), ui.create('habit')))}>
+              Nuevo hábito
+            </Item>
+          )}
+          {on('things') && (
+            <Item value="apuntar cosa donde esta guardado prestar prestamo caduca documento" icon={<G c="blue"><Box size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/things'), ui.create('thing')))}>
+              Apuntar una cosa (dónde está, préstamo, caducidad)
+            </Item>
+          )}
           <Item value="que hago ahora sugerencia tiempo libre tengo minutos" icon={<G c="blue"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(whatNow.open)}>
             ¿Qué hago ahora?
           </Item>
-          <Item value="gasto apuntar gastos dinero presupuesto" icon={<G c="blue"><Receipt size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/expenses'))}>
-            Apuntar un gasto
-          </Item>
-          <Item value="diario escribir como ha ido el dia animo" icon={<G c="blue"><BookOpen size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/journal'))}>
-            Escribir en el diario
-          </Item>
-          <Item value="compra añadir lista de la compra supermercado" icon={<G c="blue"><ShoppingCart size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/shopping'))}>
-            Lista de la compra
-          </Item>
-          <Item value="nueva rutina crear checklist lista de pasos" icon={<G c="blue"><ListChecks size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/routines'), ui.create('routine')))}>
-            Nueva rutina
-          </Item>
-          <Item value="nueva persona contacto crear" icon={<G c="purple"><UserPlus size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/people'), ui.create('person')))}>
-            Nueva persona
-          </Item>
-          <Item value="nuevo objetivo meta crear" icon={<G c="blue"><Target size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/goals'), ui.create('goal')))}>
-            Nuevo objetivo
-          </Item>
-          <Item value="nuevo pago suscripción recibo gasto crear" icon={<G c="gray"><Wallet size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/finance'), ui.create('subscription')))}>
-            Nuevo pago o suscripción
-          </Item>
-          <Item value="nueva plantilla lista checklist crear" icon={<G c="gray"><ClipboardList size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/templates'), ui.create('template')))}>
-            Nueva plantilla
-          </Item>
+          {on('expenses') && (
+            <Item value="gasto apuntar gastos dinero presupuesto" icon={<G c="blue"><Receipt size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/expenses'))}>
+              Apuntar un gasto
+            </Item>
+          )}
+          {on('journal') && (
+            <Item value="diario escribir como ha ido el dia animo" icon={<G c="blue"><BookOpen size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/journal'))}>
+              Escribir en el diario
+            </Item>
+          )}
+          {on('shopping') && (
+            <Item value="compra añadir lista de la compra supermercado" icon={<G c="blue"><ShoppingCart size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/shopping'))}>
+              Lista de la compra
+            </Item>
+          )}
+          {on('routines') && (
+            <Item value="nueva rutina crear checklist lista de pasos" icon={<G c="blue"><ListChecks size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/routines'), ui.create('routine')))}>
+              Nueva rutina
+            </Item>
+          )}
+          {on('people') && (
+            <Item value="nueva persona contacto crear" icon={<G c="purple"><UserPlus size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/people'), ui.create('person')))}>
+              Nueva persona
+            </Item>
+          )}
+          {on('goals') && (
+            <Item value="nuevo objetivo meta crear" icon={<G c="blue"><Target size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/goals'), ui.create('goal')))}>
+              Nuevo objetivo
+            </Item>
+          )}
+          {on('finance') && (
+            <Item value="nuevo pago suscripción recibo gasto crear" icon={<G c="gray"><Wallet size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/finance'), ui.create('subscription')))}>
+              Nuevo pago o suscripción
+            </Item>
+          )}
+          {on('templates') && (
+            <Item value="nueva plantilla lista checklist crear" icon={<G c="gray"><ClipboardList size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/templates'), ui.create('template')))}>
+              Nueva plantilla
+            </Item>
+          )}
           <Item value="planificar el dia hoy organizar" icon={<G c="blue"><Sun size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/plan'))}>
             Planificar el día
           </Item>
           <Item value="conectar claude conector ia asistente" icon={<G c="gray"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/settings'))}>
             Conectar NTab con Claude
+          </Item>
+          <Item value="funciones elegir apagar encender modulos simplificar" icon={<G c="gray"><LayoutGrid size={14} strokeWidth={2.4} /></G>} onSelect={() => ui.features()}>
+            Elegir funciones
           </Item>
           <Item value="personalizar barra lateral secciones ocultar pestañas movil navegacion menu" icon={<G c="gray"><PanelLeft size={14} strokeWidth={2.4} /></G>} onSelect={() => ui.navEditor('sidebar')}>
             Personalizar la barra lateral
@@ -226,7 +253,7 @@ function Palette() {
         </Command.Group>
 
         <Command.Group heading="Ir a" className={groupCls}>
-          {SECTIONS.map((n) => (
+          {SECTIONS.filter((n) => section(n.id)).map((n) => (
             <Item key={n.path} value={`ir ${n.label}`} icon={<SectionIcon def={n} size={26} square />} onSelect={() => go(n.path)} hint={`G ${n.key}`}>
               {n.label}
             </Item>
@@ -264,55 +291,65 @@ function Palette() {
                 </Item>
               ))}
             </Command.Group>
-            <Command.Group heading="Notas" className={groupCls}>
-              {notes.map((n) => (
-                <Item key={n.id} value={`n:${n.id}`} keywords={[n.title, n.content.slice(0, 200)]} icon={<FileText size={17} style={{ color: tint('yellow') }} />} onSelect={() => go(`/notes/${n.id}`)}>
-                  {n.title || 'Sin título'}
-                </Item>
-              ))}
-            </Command.Group>
-            <Command.Group heading="Cosas" className={groupCls}>
-              {things.map((t) => (
-                <Item
-                  key={t.id}
-                  value={`c:${t.id}`}
-                  keywords={[t.name, t.location ?? '', t.personName ?? '', 'donde esta']}
-                  icon={<Box size={17} />}
-                  onSelect={() => go(`/things/${t.id}`)}
-                  hint={t.location ?? t.personName}
-                >
-                  {t.name}
-                </Item>
-              ))}
-            </Command.Group>
-            <Command.Group heading="Última vez" className={groupCls}>
-              {trackers.map((t) => (
-                <Item
-                  key={t.id}
-                  value={`v:${t.id}`}
-                  keywords={['ultima vez', 'hecho', t.name]}
-                  icon={<History size={17} />}
-                  onSelect={run(() => void markDone(t))}
-                  hint={t.log[0] ? `${sinceLabel(Math.round((Date.parse(today()) - Date.parse(t.log[0])) / 864e5))} · apuntar hoy` : 'Apuntar hoy'}
-                >
-                  {t.name}
-                </Item>
-              ))}
-            </Command.Group>
-            <Command.Group heading="Rutinas" className={groupCls}>
-              {routines.map((r) => (
-                <Item key={r.id} value={`r:${r.id}`} keywords={['rutina', 'empezar', r.name]} icon={<ListChecks size={17} />} onSelect={run(() => runner.open(r.id))} hint="Empezar">
-                  {r.name}
-                </Item>
-              ))}
-            </Command.Group>
-            <Command.Group heading="Personas" className={groupCls}>
-              {people.map((p) => (
-                <Item key={p.id} value={`p:${p.id}`} keywords={[p.name, p.company]} icon={<User size={17} style={{ color: tint('purple') }} />} onSelect={() => go(`/people/${p.id}`)} hint={p.company}>
-                  {p.name}
-                </Item>
-              ))}
-            </Command.Group>
+            {on('notes') && (
+              <Command.Group heading="Notas" className={groupCls}>
+                {notes.map((n) => (
+                  <Item key={n.id} value={`n:${n.id}`} keywords={[n.title, n.content.slice(0, 200)]} icon={<FileText size={17} style={{ color: tint('yellow') }} />} onSelect={() => go(`/notes/${n.id}`)}>
+                    {n.title || 'Sin título'}
+                  </Item>
+                ))}
+              </Command.Group>
+            )}
+            {on('things') && (
+              <Command.Group heading="Cosas" className={groupCls}>
+                {things.map((t) => (
+                  <Item
+                    key={t.id}
+                    value={`c:${t.id}`}
+                    keywords={[t.name, t.location ?? '', t.personName ?? '', 'donde esta']}
+                    icon={<Box size={17} />}
+                    onSelect={() => go(`/things/${t.id}`)}
+                    hint={t.location ?? t.personName}
+                  >
+                    {t.name}
+                  </Item>
+                ))}
+              </Command.Group>
+            )}
+            {on('trackers') && (
+              <Command.Group heading="Última vez" className={groupCls}>
+                {trackers.map((t) => (
+                  <Item
+                    key={t.id}
+                    value={`v:${t.id}`}
+                    keywords={['ultima vez', 'hecho', t.name]}
+                    icon={<History size={17} />}
+                    onSelect={run(() => void markDone(t))}
+                    hint={t.log[0] ? `${sinceLabel(Math.round((Date.parse(today()) - Date.parse(t.log[0])) / 864e5))} · apuntar hoy` : 'Apuntar hoy'}
+                  >
+                    {t.name}
+                  </Item>
+                ))}
+              </Command.Group>
+            )}
+            {on('routines') && (
+              <Command.Group heading="Rutinas" className={groupCls}>
+                {routines.map((r) => (
+                  <Item key={r.id} value={`r:${r.id}`} keywords={['rutina', 'empezar', r.name]} icon={<ListChecks size={17} />} onSelect={run(() => runner.open(r.id))} hint="Empezar">
+                    {r.name}
+                  </Item>
+                ))}
+              </Command.Group>
+            )}
+            {on('people') && (
+              <Command.Group heading="Personas" className={groupCls}>
+                {people.map((p) => (
+                  <Item key={p.id} value={`p:${p.id}`} keywords={[p.name, p.company]} icon={<User size={17} style={{ color: tint('purple') }} />} onSelect={() => go(`/people/${p.id}`)} hint={p.company}>
+                    {p.name}
+                  </Item>
+                ))}
+              </Command.Group>
+            )}
             {!hasResults && (
               <Command.Group heading="Sin resultados" className={groupCls}>
                 <Item value={`crear nueva tarea ${q}`} icon={<G c="blue"><Plus size={16} strokeWidth={2.8} /></G>} onSelect={run(() => ui.quickAdd(undefined, q))} hint="Tarea">

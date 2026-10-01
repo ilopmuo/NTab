@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { TodayView } from '@/features/Today'
 import { DragGhost } from '@/components/dayDrag'
@@ -12,6 +12,10 @@ import { cx } from '@/components/ui'
 import { navigate, useRoute } from './router'
 import { useGlobalShortcuts } from './shortcuts'
 import { Sidebar } from './Sidebar'
+import { announce } from './announce'
+import { reducedMotion, useA11yPrefs } from './theme'
+import { useFeatures } from './features'
+import { FeatureOff } from '@/features/FeatureOff'
 import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
 import { ui, useUI } from './store'
@@ -41,6 +45,7 @@ const loaders = {
   SettingsView: () => import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
   TagView: () => import('@/features/TagView').then((m) => ({ default: m.TagView })),
   TagsView: () => import('@/features/tags/TagsView').then((m) => ({ default: m.TagsView })),
+  MoreView: () => import('@/features/more/MoreView').then((m) => ({ default: m.MoreView })),
   UpcomingView: () => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView })),
   ThingsView: () => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView })),
   MenuView: () => import('@/features/menu/MenuView').then((m) => ({ default: m.MenuView })),
@@ -50,7 +55,7 @@ const loaders = {
   TrackersView: () => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView })),
   RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), MoreView = lazy(loaders.MoreView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
@@ -67,8 +72,9 @@ const panels = {
   SelectionBar: () => import('@/features/select/SelectionBar').then((m) => ({ default: m.SelectionBar })),
   AuthScreen: () => import('@/features/auth/AuthScreen').then((m) => ({ default: m.AuthScreen })),
   NavEditor: () => import('./NavEditor').then((m) => ({ default: m.NavEditor })),
+  FeaturesSheet: () => import('@/features/settings/FeaturesSheet').then((m) => ({ default: m.FeaturesSheet })),
 }
-const TaskDetailPanel = lazy(panels.TaskDetailPanel), CommandPalette = lazy(panels.CommandPalette), ShortcutsHelp = lazy(panels.ShortcutsHelp), RecoveryModal = lazy(panels.RecoveryModal), FocusMode = lazy(panels.FocusMode), RoutineRunner = lazy(panels.RoutineRunner), WhatNow = lazy(panels.WhatNow), SelectionBar = lazy(panels.SelectionBar), AuthScreen = lazy(panels.AuthScreen), NavEditor = lazy(panels.NavEditor)
+const TaskDetailPanel = lazy(panels.TaskDetailPanel), CommandPalette = lazy(panels.CommandPalette), ShortcutsHelp = lazy(panels.ShortcutsHelp), RecoveryModal = lazy(panels.RecoveryModal), FocusMode = lazy(panels.FocusMode), RoutineRunner = lazy(panels.RoutineRunner), WhatNow = lazy(panels.WhatNow), SelectionBar = lazy(panels.SelectionBar), AuthScreen = lazy(panels.AuthScreen), NavEditor = lazy(panels.NavEditor), FeaturesSheet = lazy(panels.FeaturesSheet)
 
 /** Monta su contenido la primera vez que `when` es cierto y lo deja montado (para que se anime al cerrar) */
 function Deferred({ when, children }: { when: boolean; children: ReactNode }) {
@@ -88,7 +94,11 @@ function preloadViews() {
 function Screen() {
   const { parts } = useRoute()
   const [section, id] = parts
+  const features = useFeatures()
+  if (section && !features.section(section)) return <FeatureOff id={section} />
   switch (section) {
+    case 'more':
+      return <MoreView />
     case 'inbox':
       return <InboxView />
     case 'upcoming':
@@ -164,6 +174,7 @@ const TITLES: Record<string, string> = {
   people: 'Personas',
   projects: 'Proyectos',
   tags: 'Etiquetas',
+  more: 'Más',
   tag: 'Etiqueta',
   goals: 'Objetivos',
   finance: 'Pagos',
@@ -183,13 +194,16 @@ export function App() {
   // Sin sesión y sin cuenta previa en este dispositivo → pantalla de inicio de sesión.
   // Si el dispositivo ya estuvo conectado, la app sigue funcionando con los datos
   // locales y un aviso pide volver a entrar (ver knownEmail en sync/service).
+  // Menos movimiento: lo pide el sistema o se ha elegido en Ajustes
+  useA11yPrefs()
+  const reduce = reducedMotion()
   const needsLogin = sync.state === 'signed-out' && !sync.localOnly && !sync.knownEmail
   // Un dispositivo que ya se usaba (con cuenta o sin ella) no espera a Supabase:
   // la app trabaja con IndexedDB y la sesión llega un momento después
   const early = sync.state === 'loading' && !AUTH_IN_URL && (sync.localOnly || !!sync.knownEmail)
   const waiting = sync.state === 'loading' && !early
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion={reduce ? 'always' : 'never'}>
       {waiting ? null : needsLogin ? (
         <Suspense fallback={null}>
           <AuthScreen />
@@ -221,6 +235,7 @@ function Workspace() {
   useGlobalShortcuts()
   useEffect(preloadViews, [])
   const { path, parts } = useRoute()
+  const firstRender = useRef(true)
   const panelOpen = useUI((s) => !!s.selectedTaskId)
 
   // Enlace de una notificación: #/task/<id> abre la tarea sobre Hoy;
@@ -252,8 +267,18 @@ function Workspace() {
   }, [parts])
 
   useEffect(() => {
-    document.title = `${TITLES[parts[0]] ?? 'NTab'} · NTab`
-    document.getElementById('main')?.scrollTo({ top: 0 })
+    const title = TITLES[parts[0]] ?? 'NTab'
+    document.title = `${title} · NTab`
+    const main = document.getElementById('main')
+    main?.scrollTo({ top: 0 })
+    // Para quien navega con teclado o lector de pantalla: se anuncia la pantalla
+    // y, si venía de la barra lateral o de las pestañas, el foco pasa al contenido
+    if (!firstRender.current) {
+      announce(title)
+      const from = document.activeElement
+      if (!from || from === document.body || from.closest('nav')) main?.focus({ preventScroll: true })
+    }
+    firstRender.current = false
   }, [path, parts])
 
   const sidebarHidden = useUI((s) => s.sidebarHidden)
@@ -261,9 +286,19 @@ function Workspace() {
   const screenKey = parts[0] === 'notes' || parts[0] === 'things' || parts[0] === 'journal' ? parts[0] : path
   return (
     <div className="relative z-10 h-full">
+      <button
+        type="button"
+        onClick={() => document.getElementById('main')?.focus()}
+        className="sr-only z-[80] rounded-full bg-accent-fill px-4 py-2 text-[14px] font-semibold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Saltar al contenido
+      </button>
+      <div id="announcer" role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
       <Sidebar />
       <main
         id="main"
+        tabIndex={-1}
+        aria-label={TITLES[parts[0]] ?? 'NTab'}
         className={cx(
           '@container h-full overflow-y-auto overscroll-contain transition-[padding] duration-300',
           !sidebarHidden && 'lg:pl-[272px]',
@@ -300,6 +335,7 @@ function Panels() {
   const palette = useUI((s) => s.paletteOpen)
   const help = useUI((s) => s.helpOpen)
   const navEditor = useUI((s) => !!s.navEditor)
+  const featuresOpen = useUI((s) => s.featuresOpen)
   const { recovery } = useSync()
   const focusing = !!useFocus()
   const routine = !!useRunner()
@@ -312,6 +348,9 @@ function Panels() {
     <>
       <Deferred when={task}>
         <TaskDetailPanel />
+      </Deferred>
+      <Deferred when={featuresOpen}>
+        <FeaturesSheet />
       </Deferred>
       <Deferred when={palette}>
         <CommandPalette />

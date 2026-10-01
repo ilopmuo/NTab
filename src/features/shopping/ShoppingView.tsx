@@ -136,7 +136,7 @@ export function ShoppingView() {
             if (!list.length) return null
             return (
               <section key={a.id} className="mb-5">
-                <h3 className="mb-1.5 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">{a.label}</h3>
+                <h2 className="mb-1.5 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">{a.label}</h2>
                 <Group>
                   <AnimatePresence initial={false}>
                     {list.map((i) => (
@@ -149,7 +149,7 @@ export function ShoppingView() {
           })}
           {inCart.length > 0 && (
             <section className="mb-24">
-              <h3 className="mb-1.5 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">En el carro · {inCart.length}</h3>
+              <h2 className="mb-1.5 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">En el carro · {inCart.length}</h2>
               <Group>
                 <AnimatePresence initial={false}>
                   {inCart.map((i) => (
@@ -200,7 +200,7 @@ function Row({ item }: { item: ShoppingItem }) {
             <motion.span className="absolute inset-[-1.6px] rounded-full bg-green" initial={false} animate={{ scale: on ? 1 : 0 }} transition={bouncy} />
             {on && <Check size={13} strokeWidth={3.2} className="relative text-on-green" />}
           </span>
-          <span className={cx('truncate text-[16px] transition-colors', on && 'text-faint line-through')}>{item.name}</span>
+          <span className={cx('truncate text-[16px] transition-colors', on && 'text-muted line-through')}>{item.name}</span>
           {item.qty && <span className="font-num shrink-0 rounded-full bg-fill px-2 py-0.5 text-[12.5px] font-semibold text-muted">{item.qty}</span>}
         </button>
         {!on && (

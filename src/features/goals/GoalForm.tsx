@@ -115,7 +115,7 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
                         {on && <Check size={13} strokeWidth={3.2} />}
                       </span>
                       <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                      {other && !on && <span className="text-[12px] text-faint">En otro objetivo</span>}
+                      {other && !on && <span className="text-[12px] text-muted">En otro objetivo</span>}
                     </button>
                   )
                 })}

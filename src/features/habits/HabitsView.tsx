@@ -106,7 +106,7 @@ export function HabitsView() {
                 <span className="min-w-0">
                   <span className="block truncate text-[16px] font-semibold">{h.name}</span>
                   <span className="flex flex-wrap items-center gap-x-2 text-[13px] text-muted">
-                    <span title={`Racha: ${streakLabel(h, s)}`} className={cx('font-num inline-flex items-center gap-0.5 font-bold', s > 0 ? 'text-orange' : 'text-faint')}>
+                    <span title={`Racha: ${streakLabel(h, s)}`} className={cx('font-num inline-flex items-center gap-0.5 font-bold', s > 0 ? 'text-orange' : 'text-muted')}>
                       <Flame size={13} strokeWidth={2.6} /> {s}
                       {perWeekOf(h) ? ' sem' : ''}
                     </span>
@@ -142,7 +142,7 @@ export function HabitsView() {
                       title={`${fmt(d, "EEEE d 'de' MMMM")}${counted ? ` · ${n}/${targetOf(h)}` : ''}`}
                       className="flex flex-col items-center gap-1"
                     >
-                      <span className={cx('text-[11px] font-semibold', isToday ? 'text-blue' : 'text-faint')}>{WEEKDAYS_SHORT[fromYmd(d).getDay()]}</span>
+                      <span className={cx('text-[11px] font-semibold', isToday ? 'text-blue' : 'text-muted')}>{WEEKDAYS_SHORT[fromYmd(d).getDay()]}</span>
                       <motion.span
                         whileTap={{ scale: 0.8 }}
                         className={cx(

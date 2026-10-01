@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
+import { reducedMotion } from '@/app/theme'
 import { haptic } from '@/lib/haptics'
 import { bouncy, softSpring } from './ui'
 
@@ -8,7 +9,8 @@ const COLORS = ['var(--c-green)', 'var(--c-green)', 'var(--c-blue)', 'var(--c-te
 
 /** Lluvia de confeti sobria (lima, azul y grises) que dura un par de segundos */
 export function Confetti({ onDone }: { onDone?: () => void }) {
-  const reduce = useReducedMotion()
+  // Sin confeti si se pide menos movimiento (el sistema o Ajustes)
+  const reduce = reducedMotion()
   const pieces = useMemo(
     () =>
       Array.from({ length: 46 }, (_, i) => ({

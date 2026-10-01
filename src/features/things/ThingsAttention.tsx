@@ -15,7 +15,7 @@ export function ThingsAttention() {
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
         <Box size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Cosas</h3>
+        <h2 className="text-[15px] font-bold">Cosas</h2>
         <a href={href('/things')} className="ml-auto text-[13px] font-semibold text-blue hover:underline">
           Ver todas
         </a>

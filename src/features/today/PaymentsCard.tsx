@@ -24,7 +24,7 @@ export function PaymentsCard() {
     <Card className="p-4">
       <a href={href('/finance')} className="mb-2 flex items-center gap-2">
         <Wallet size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Pagos esta semana</h3>
+        <h2 className="text-[15px] font-bold">Pagos esta semana</h2>
         <span className="font-num ml-auto text-[13px] font-semibold text-muted">{money(total, soon[0].currency)}</span>
       </a>
       <div className="space-y-0.5">

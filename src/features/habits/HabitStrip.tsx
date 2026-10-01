@@ -20,9 +20,9 @@ export function HabitStrip() {
     <Card className="p-4">
       <div className="mb-3 flex items-center gap-2">
         <Flame size={16} className="text-fg" strokeWidth={2.4} />
-        <h3 className="text-[15px] font-bold">Hábitos</h3>
+        <h2 className="text-[15px] font-bold">Hábitos</h2>
         {todays.length > 0 && (
-          <span className="font-num text-[14px] font-semibold text-faint">
+          <span className="font-num text-[14px] font-semibold text-muted">
             {doneCount}/{todays.length}
           </span>
         )}

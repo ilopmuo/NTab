@@ -71,7 +71,7 @@ export function Toast() {
                   }}
                   className={
                     i === 0
-                      ? 'shrink-0 rounded-full bg-accent-soft px-3 py-1.5 text-[13px] font-bold text-blue transition-transform active:scale-95'
+                      ? 'shrink-0 rounded-full bg-accent-soft px-3 py-1.5 text-[13px] font-bold text-accent-on-soft transition-transform active:scale-95'
                       : 'shrink-0 rounded-full bg-fill px-3 py-1.5 text-[13px] font-bold text-fg transition-transform active:scale-95'
                   }
                 >

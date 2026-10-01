@@ -47,7 +47,7 @@
 | **Orden a mano** | Bandeja, proyectos, áreas y Hoy pueden pasar de orden automático a manual: arrastra el asa de cada tarea (o ↑/↓). Cada lista tiene su orden, y las subtareas también se arrastran |
 | **Siri** | «Oye Siri, apunta en NTab»: dictas «llamar al dentista mañana a las 10», «compra: leche y pan», «gasto 12 café», «nota: …», «hecho: cambiar las sábanas» o «+1 agua» y se apunta sin abrir la app (un atajo del iPhone, en Ajustes → Siri) |
 | **Etiquetas** | Todas tus `#etiquetas` con sus tareas pendientes; cámbiales el nombre (si ya existe, se juntan) o quítalas, con «Deshacer» |
-| **Navegación a tu medida** | Elige qué secciones van en la cuadrícula de la barra lateral, cuáles en la lista y cuáles ocultas, y las cuatro pestañas del móvil. En el ordenador, la barra lateral se pliega (`⌘\`) para trabajar a todo lo ancho |
+| **Navegación a tu medida** | Barra lateral por grupos plegables (Organizar, Día a día, Casa, Dinero), con tus proyectos, áreas y etiquetas **fijados** arriba. Elige qué va en la cuadrícula, en la lista u oculto, y las cuatro pestañas del móvil; «Más» reúne el resto por grupos. En el ordenador se pliega (`⌘\`) |
 | **Procesar la bandeja** | Una tarea cada vez, como un mazo de cartas: hoy, mañana, otro día, a una lista, hecha, borrar o luego |
 | **Autocompletar** | Al escribir `#`, `+` o `@` en la captura, te sugiere tus etiquetas, proyectos, áreas y personas: `Tab` o un toque para completar |
 | **Dictado** | Botón de micrófono en la captura rápida: dices la tarea y se entiende igual que escrita |
@@ -58,6 +58,8 @@
 | **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo |
 | **Pagos** | Suscripciones y recibos: cuánto pagas al mes y al año, y aviso antes de cada cargo |
 | **Paleta** (`⌘K`) | Busca cualquier cosa y ejecuta cualquier acción |
+| **Funciones activables** | Ajustes → Funciones: apaga lo que no uses (Menú, Gastos, Pagos, Cosas, Diario…). Desaparece de la barra lateral, las pestañas, ⌘K y Hoy, y deja de avisar; tus datos se quedan |
+| **Accesibilidad** | Contraste AA en todo (comprobado con axe en cada sección y diálogo), lector de pantalla (avisos y cambios de pantalla anunciados, «Saltar al contenido»), **más contraste** y **reducir movimiento** (siguen al sistema o se fuerzan), zonas táctiles de 44 px y todo con teclado: `j`/`k` entre tareas, `T` hoy, `M` mañana, `Supr` borrar y `⌘Z` deshacer |
 | **Tema y color** | Oscuro (por defecto), claro o del sistema, y el color de acento que prefieras: azul, violeta, rosa, naranja, verde azulado o grafito (todos con contraste AA) |
 | **Sincronización** | Con tu cuenta, los datos están en el iPhone, el iPad y el ordenador, al momento |
 | **Funciona sin conexión** | Cada dispositivo guarda una copia local; los cambios se suben al volver la conexión |
@@ -107,7 +109,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 ## Atajos
 
-`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`Y`/`T`/`F`/`R`/`S` ir a sección · `Tab` en la captura completa `#`/`+`/`@` · `⌘`/`Ctrl` + `\` oculta o muestra la barra lateral · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
+`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`Y`/`T`/`F`/`R`/`S` ir a sección · `Tab` en la captura completa `#`/`+`/`@` · `⌘`/`Ctrl` + `\` oculta o muestra la barra lateral · en una lista, `j`/`k` (o `↑`/`↓`) entre tareas, `T` a hoy, `M` a mañana, `Supr` a la papelera · `⌘Z` deshace lo último · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
 
 ## En el iPhone o el iPad
 

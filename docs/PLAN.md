@@ -149,6 +149,7 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
+- ✅ **Fase 19 — Menos es más** · Funciones activables (apaga lo que no uses: fuera de la barra lateral, ⌘K, Hoy y sus avisos), barra lateral por grupos plegables con Fijados, «Más» del móvil por grupos, y accesibilidad a fondo: anuncios para lectores de pantalla, «Saltar al contenido», títulos jerarquizados, más contraste y menos movimiento, zonas táctiles de 44 px, teclado en las listas (`j`/`k`, `T`, `M`, `Supr`) y `⌘Z`; axe en todas las secciones y diálogos.
 - ✅ **Fase 18 — A tu gusto** · Color de acento a elegir (con contraste AA comprobado en la CI), calendario propio para elegir fechas en el detalle, quesitos de progreso de los proyectos en la barra lateral, calendario más claro en el móvil (cabecera que cabe, días libres compactos, lo pasado más apagado) y cabeceras que ya no cortan el título; Próximo con los días libres en una línea y el mes solo cuando cambia, notas agrupadas por fecha, barra lateral plegable en el ordenador (`⌘\`) y horas a un toque en el detalle.
 - ✅ **Fase 17 — Ordenado y a la vista** · Secciones dentro de los proyectos (también en plantillas y desde Claude), página de Etiquetas para renombrar, juntar o quitar etiquetas con «Deshacer», tarjetas de proyecto con el siguiente paso, autocompletar `#etiqueta`, `+proyecto` y `@persona` al capturar, y `+Proyecto de varias palabras`.
 - ✅ **Fase 15 — Sin fricción** · Apuntar con Siri sin abrir la app (tareas, compra y gastos, con el mismo lenguaje natural en el servidor), hábitos con cantidad y «N veces por semana», orden a mano propio de cada lista, subtareas arrastrables, tests end-to-end con Playwright y CI con límite de tamaño.
@@ -183,4 +184,6 @@ src/
 | `↑` / `↓` en «Hora a hora» | Mover la tarea 15 min (con `⇧`, cambiar su duración) |
 | `Tab` en la captura | Completar la etiqueta, lista o persona sugerida (`↑`/`↓` para elegir otra) |
 | `⌘`/`Ctrl` + `\` | Ocultar o mostrar la barra lateral (ordenador) |
+| `j` / `k` (o `↑` / `↓`) en una lista | Pasar de una tarea a otra; `T` hoy, `M` mañana, `Supr` papelera |
+| `⌘`/`Ctrl` + `Z` | Deshacer lo último |
 | `?` | Ver todos los atajos |

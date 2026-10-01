@@ -41,6 +41,18 @@ const GROUPS: [string, [string[], string][]][] = [
     ],
   ],
   [
+    'En las listas de tareas',
+    [
+      [['j', 'k'], 'Pasar a la tarea siguiente o anterior (también ↑ ↓)'],
+      [['↵'], 'Abrir la tarea'],
+      [['Espacio'], 'Completarla'],
+      [['T'], 'Pasarla a hoy'],
+      [['M'], 'Pasarla a mañana'],
+      [['Supr'], 'Borrarla (a la papelera)'],
+      [['⌘', 'Z'], 'Deshacer lo último'],
+    ],
+  ],
+  [
     'Ordenar',
     [
       [['↑', '↓'], 'Sobre el asa (orden a mano): subir o bajar la tarea'],

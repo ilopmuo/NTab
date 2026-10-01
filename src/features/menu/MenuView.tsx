@@ -97,7 +97,7 @@ export function MenuView() {
                         className={cx('min-w-0 rounded-[12px] px-3 py-2 text-left transition-colors', name ? 'bg-fill' : 'border border-dashed border-line-strong hover:bg-hover')}
                       >
                         <span className="block text-[11.5px] font-semibold text-muted">{m.label}</span>
-                        <span className={cx('block truncate text-[14px]', name ? 'font-semibold' : 'text-faint')}>{name ?? 'Añadir'}</span>
+                        <span className={cx('block truncate text-[14px]', name ? 'font-semibold' : 'text-muted')}>{name ?? 'Añadir'}</span>
                       </motion.button>
                     )
                   })}
