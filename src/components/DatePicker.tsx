@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { addMonths, endOfMonth, startOfMonth } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { addDaysYmd, capitalize, fmt, fromYmd, today, weekStart, ymd } from '@/lib/dates'

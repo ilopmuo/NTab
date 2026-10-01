@@ -176,7 +176,7 @@ npm run preview    # sirve el build
 
 **Tests end-to-end** (`e2e/*.e2e.ts`, Playwright): recorren la app de verdad en Chromium, sin red (Supabase cortado, modo sin cuenta). Incluyen una revisión de accesibilidad con axe (WCAG 2.1 AA) de las pantallas principales en los dos temas, que falla con cualquier problema serio: contraste, controles sin nombre o anidados. Si el navegador no está instalado: `npx playwright install chromium`.
 
-**CI** (`.github/workflows/ci.yml`), en cada PR y en `main`: tipos, tests, build, límite de tamaño del arranque (`scripts/check-size.mjs`, 240 KB gzip), los e2e y `deno check` de las Edge Functions.
+**CI** (`.github/workflows/ci.yml`), en cada PR y en `main`: tipos, tests, build, límite de tamaño del arranque (`scripts/check-size.mjs`, 215 KB gzip), los e2e y `deno check` de las Edge Functions.
 
 **Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Motion · Dexie (IndexedDB) · Supabase · date-fns · lucide · cmdk · vite-plugin-pwa · Vitest.
 
@@ -184,8 +184,10 @@ Se publica en Vercel (`vercel.json`). La URL y la clave pública de Supabase est
 
 **Carga.** Al arrancar solo se descarga lo necesario para pintar Hoy:
 - El cliente de Supabase (`src/sync/client.ts`) se carga aparte, en paralelo.
-- Las vistas y los paneles globales (detalle de tarea, `⌘K`, foco, rutinas, «¿Qué hago?», selección, inicio de sesión) se cargan la primera vez que se abren, y se precargan cuando el navegador está libre (`src/app/App.tsx`).
-- React, Motion, Dexie y date-fns van en trozos propios (`vite.config.ts`): al publicar una versión nueva, el iPhone solo vuelve a bajar el código de la app.
+- Las vistas y los paneles globales (detalle de tarea, captura rápida, `⌘K`, foco, rutinas, «¿Qué hago?», selección, inicio de sesión) se cargan la primera vez que se abren, y se precargan cuando el navegador está libre (`src/app/App.tsx`).
+- Motion va en su versión ligera (`LazyMotion` con `m`): lo pesado (layout, arrastrar, animar a mano) llega justo después de pintar (`src/lib/motionFeatures.ts`); hasta entonces, lo que se mueve aparece sin animación. Lo que arrastra para ordenar (`Reorder`) también va aparte.
+- También llegan después: el analizador de lenguaje natural (al abrir un campo de tarea), los avisos con la app abierta, los pasillos de la compra y el confeti.
+- React, Dexie y date-fns van en trozos propios (`vite.config.ts`): al publicar una versión nueva, el iPhone solo vuelve a bajar el código de la app.
 
 ## Plan
 

@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { ArrowDownLeft, ArrowUpRight, Box, FileClock, MapPin } from 'lucide-react'
 import type { Thing } from '@/db/types'
 import { updateThing } from '@/db/actions'

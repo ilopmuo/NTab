@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Bell, Check, Flame, ListChecks, Pencil, Play, Plus, Timer } from 'lucide-react'
 import type { Routine } from '@/db/types'
 import { createRoutine, toggleRoutineStep } from '@/db/actions'

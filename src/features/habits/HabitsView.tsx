@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { CalendarOff, Check, Flame, MoreHorizontal, Pause, Pencil, Play, Plus, Trophy } from 'lucide-react'
 import type { Habit } from '@/db/types'
 import { createHabit, pauseHabit, resumeHabit, toggleHabit, toggleHabitDayOff } from '@/db/actions'

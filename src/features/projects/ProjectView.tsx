@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Check, CheckCircle2, ChevronRight, ClipboardList, Columns3, FileText, List, MoreHorizontal, Pause, Pencil, Pin, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import { createNote, deleteProject, markReviewed } from '@/db/actions'

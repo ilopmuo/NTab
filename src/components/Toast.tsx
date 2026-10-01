@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Bell, Check } from 'lucide-react'
 import { setUI, useUI } from '@/app/store'
 import { spring } from './ui'

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Check, Minimize2, Pause, Play, Plus, Timer, X } from 'lucide-react'
 import { db } from '@/db/db'
 import { mutateTask, toggleTask } from '@/db/actions'

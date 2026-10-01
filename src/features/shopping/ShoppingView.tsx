@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { ArrowRightLeft, ArrowUp, Check, Mic, Plus, ShoppingCart, X } from 'lucide-react'
 import { db } from '@/db/db'
 import type { ShoppingItem } from '@/db/types'

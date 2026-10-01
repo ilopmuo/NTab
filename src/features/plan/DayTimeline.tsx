@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Wand2 } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { mutateTasks, restoreTasks, setTaskTimes } from '@/db/actions'

@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { KeyRound } from 'lucide-react'
 import { softSpring } from '@/components/ui'
 import { openAuth, useSync } from './service'

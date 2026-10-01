@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Check, Minus, Plus, Target } from 'lucide-react'
 import { db } from '@/db/db'
 import { setGoalCurrent, setGoalStatus } from '@/db/actions'

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Check, Flame, Plus } from 'lucide-react'
 import { toggleHabit } from '@/db/actions'
 import { isCounted, isDue, progressLabel, streak, targetOf } from '@/lib/habits'

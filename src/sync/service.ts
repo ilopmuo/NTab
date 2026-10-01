@@ -6,7 +6,6 @@ import { toast } from '@/app/store'
 import { SyncEngine } from './engine'
 import { getSupabase, loadSupabase } from './client'
 import { onLocalChange } from './tracking'
-import { disablePush, isPushEnabledHere } from '@/reminders/push'
 
 export type SyncState = 'loading' | 'signed-out' | 'syncing' | 'synced' | 'pending' | 'offline' | 'error'
 
@@ -261,6 +260,7 @@ export async function signOut() {
   const local = new SyncEngine(rawDb, new SupabaseRemote(''))
   // Dejar de recibir avisos en este dispositivo
   try {
+    const { disablePush, isPushEnabledHere } = await import('@/reminders/push')
     if (isPushEnabledHere()) await disablePush()
   } catch {
     /* sin conexión: el servidor lo limpiará cuando el aviso falle */

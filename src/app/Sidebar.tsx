@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { ChevronDown, ChevronRight, Hash, ListFilter, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { reducedMotion } from '@/app/theme'
 import { haptic } from '@/lib/haptics'
 import { bouncy, softSpring } from './ui'

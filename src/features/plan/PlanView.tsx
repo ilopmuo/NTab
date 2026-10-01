@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { ArrowRight, CalendarCheck, CalendarRange, Check, Inbox, Sun, X } from 'lucide-react'
 import { mutateTask, setSetting, toggleTask } from '@/db/actions'
 import { useLookup, useOpenTasks } from '@/db/hooks'

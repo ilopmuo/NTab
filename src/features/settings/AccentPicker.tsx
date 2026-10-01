@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Check } from 'lucide-react'
 import { ACCENTS } from '@/lib/accents'
 import { setAccent, useAccent } from '@/app/theme'

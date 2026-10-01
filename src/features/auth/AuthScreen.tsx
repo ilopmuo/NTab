@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowRight, Cloud, Laptop, Loader2, Smartphone, Tablet } from 'lucide-react'
 import { authErrorMessage, sendPasswordReset, setLocalOnly, signIn, signUp } from '@/sync/service'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Input, cx, softSpring } from '@/components/ui'
 
 type Mode = 'signin' | 'signup' | 'reset'

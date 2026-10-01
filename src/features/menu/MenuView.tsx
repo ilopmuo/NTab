@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { ChevronLeft, ChevronRight, CookingPot, Plus, ShoppingCart, Trash2, X } from 'lucide-react'
 import { db } from '@/db/db'
 import type { MenuSlot, Recipe } from '@/db/types'

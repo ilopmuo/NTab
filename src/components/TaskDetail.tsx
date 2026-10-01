@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, Reorder, motion, useDragControls } from 'motion/react'
+import { AnimatePresence, Reorder, m as motion, useDragControls } from 'motion/react'
 import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'

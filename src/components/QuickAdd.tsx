@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowUp, AtSign, Folder, Hash, Inbox, Mic } from 'lucide-react'
 import type { Task } from '@/db/types'

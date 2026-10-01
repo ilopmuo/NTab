@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { inViewTransition } from '@/app/router'
-import { AnimatePresence, animate, motion, useDragControls, useMotionValue, useTransform, type PanInfo } from 'motion/react'
+import { AnimatePresence, m as motion, useDragControls, useMotionValue, useTransform, type PanInfo } from 'motion/react'
 import { ChevronDown, X } from 'lucide-react'
 
 export function cx(...c: (string | false | 0 | null | undefined)[]) {
@@ -43,14 +43,22 @@ export function CountUp({ value, className }: { value: number; className?: strin
   useEffect(() => {
     const from = prev.current
     prev.current = value
-    const controls = animate(from, value, {
-      duration: 0.8,
-      ease: [0.2, 0.8, 0.2, 1],
-      onUpdate: (v) => {
-        if (ref.current) ref.current.textContent = String(Math.round(v))
-      },
-    })
-    return () => controls.stop()
+    const el = ref.current
+    if (!el) return
+    // Sin Motion (que se carga después): un fotograma tras otro, frenando al final
+    if (from === value || document.documentElement.dataset.motion === 'reduce') {
+      el.textContent = String(value)
+      return
+    }
+    const start = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / 800)
+      el.textContent = String(Math.round(from + (value - from) * (1 - Math.pow(1 - t, 3))))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
   }, [value])
   return (
     <span ref={ref} className={cx('font-num', className)}>

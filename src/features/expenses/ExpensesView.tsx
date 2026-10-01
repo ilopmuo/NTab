@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { ArrowUp, ChevronLeft, ChevronRight, Pencil, Receipt, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import type { Expense } from '@/db/types'

@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { ChevronRight, Hash, LayoutGrid, PanelBottom, Search } from 'lucide-react'
 import { FEATURE_GROUPS } from '@/lib/features'
 import { useLookup } from '@/db/hooks'

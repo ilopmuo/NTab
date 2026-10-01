@@ -1,4 +1,4 @@
-import { normalize } from './parse'
+import { normalize } from './text'
 
 export type SuggestKind = 'tag' | 'project' | 'area' | 'person'
 

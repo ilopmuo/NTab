@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Bell, Check, Plus, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { markPaid, rollSubscriptions } from '@/db/actions'

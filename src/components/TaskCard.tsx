@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { ArrowRight, CalendarClock, ListChecks, MoreHorizontal } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { useLookup } from '@/db/hooks'

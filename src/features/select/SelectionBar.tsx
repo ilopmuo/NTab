@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { CalendarDays, Check, CheckSquare, Flag, Folder, Sun, Sunrise, Trash2, X } from 'lucide-react'
 import { completeTasks, deleteTask, mutateTasks, restoreTasks } from '@/db/actions'
 import { useLookup } from '@/db/hooks'

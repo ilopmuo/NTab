@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { CalendarClock } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { ui } from '@/app/store'

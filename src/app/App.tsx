@@ -1,12 +1,11 @@
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
-import { AnimatePresence, MotionConfig, motion } from 'motion/react'
+import { AnimatePresence, LazyMotion, MotionConfig, m as motion } from 'motion/react'
 import { TodayView } from '@/features/Today'
 import { DragGhost } from '@/components/dayDrag'
 import { useFocus } from '@/features/focus/focus'
 import { selection, useSelecting } from '@/features/select/selection'
 import { useWhatNowOpen } from '@/features/whatnow/store'
 import { runner, useRunner } from '@/features/routines/useRoutines'
-import { QuickAdd } from '@/components/QuickAdd'
 import { Toast } from '@/components/Toast'
 import { cx } from '@/components/ui'
 import { inViewTransition, navigate, useRoute } from './router'
@@ -20,8 +19,11 @@ import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
 import { ui, useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
-import { applyReminderAction, openTaskFromNotification } from '@/reminders/local'
+// Los avisos con la app abierta se cargan aparte (ver main.tsx)
+const reminders = () => import('@/reminders/local')
 import { ReauthBanner } from '@/sync/ReauthBanner'
+
+const loadMotionFeatures = () => import('@/lib/motionFeatures').then((m) => m.default)
 
 // Hoy se carga con la app; el resto de vistas, al abrirlas (y en segundo plano
 // en cuanto la app está lista, para que navegar siga siendo instantáneo)
@@ -77,8 +79,9 @@ const panels = {
   AuthScreen: () => import('@/features/auth/AuthScreen').then((m) => ({ default: m.AuthScreen })),
   NavEditor: () => import('./NavEditor').then((m) => ({ default: m.NavEditor })),
   FeaturesSheet: () => import('@/features/settings/FeaturesSheet').then((m) => ({ default: m.FeaturesSheet })),
+  QuickAdd: () => import('@/components/QuickAdd').then((m) => ({ default: m.QuickAdd })),
 }
-const TaskDetailPanel = lazy(panels.TaskDetailPanel), CommandPalette = lazy(panels.CommandPalette), ShortcutsHelp = lazy(panels.ShortcutsHelp), RecoveryModal = lazy(panels.RecoveryModal), FocusMode = lazy(panels.FocusMode), RoutineRunner = lazy(panels.RoutineRunner), WhatNow = lazy(panels.WhatNow), SelectionBar = lazy(panels.SelectionBar), AuthScreen = lazy(panels.AuthScreen), NavEditor = lazy(panels.NavEditor), FeaturesSheet = lazy(panels.FeaturesSheet)
+const TaskDetailPanel = lazy(panels.TaskDetailPanel), CommandPalette = lazy(panels.CommandPalette), ShortcutsHelp = lazy(panels.ShortcutsHelp), RecoveryModal = lazy(panels.RecoveryModal), FocusMode = lazy(panels.FocusMode), RoutineRunner = lazy(panels.RoutineRunner), WhatNow = lazy(panels.WhatNow), SelectionBar = lazy(panels.SelectionBar), AuthScreen = lazy(panels.AuthScreen), NavEditor = lazy(panels.NavEditor), FeaturesSheet = lazy(panels.FeaturesSheet), QuickAdd = lazy(panels.QuickAdd)
 
 /** Monta su contenido la primera vez que `when` es cierto y lo deja montado (para que se anime al cerrar) */
 function Deferred({ when, children }: { when: boolean; children: ReactNode }) {
@@ -221,6 +224,8 @@ export function App() {
   const early = sync.state === 'loading' && !AUTH_IN_URL && (sync.localOnly || !!sync.knownEmail)
   const waiting = sync.state === 'loading' && !early
   return (
+    // Motion ligero: los componentes son `m` y sus funciones (layout, arrastrar…) llegan después
+    <LazyMotion features={loadMotionFeatures}>
     <MotionConfig reducedMotion={reduce ? 'always' : 'never'}>
       {waiting ? null : needsLogin ? (
         <Suspense fallback={null}>
@@ -246,6 +251,7 @@ export function App() {
       </AnimatePresence>
       <Splash ready={!waiting} />
     </MotionConfig>
+    </LazyMotion>
   )
 }
 
@@ -273,15 +279,15 @@ function Workspace() {
     }
     if (parts[0] === 'habit' && parts[1] && parts[2] === 'habit-done') {
       navigate('/habits')
-      void applyReminderAction('habit-done', parts[1])
+      void reminders().then((r) => r.applyReminderAction('habit-done', parts[1]))
       return
     }
     if (parts[0] !== 'task' || !parts[1]) return
     const action = parts[2]
     if (action === 'done' || action === 'snooze') {
       navigate('/today')
-      void applyReminderAction(action, parts[1])
-    } else openTaskFromNotification(parts[1])
+      void reminders().then((r) => r.applyReminderAction(action, parts[1]))
+    } else void reminders().then((r) => r.openTaskFromNotification(parts[1]))
   }, [parts])
 
   useEffect(() => {
@@ -342,7 +348,6 @@ function Workspace() {
       </main>
       <MobileBar />
       <Panels />
-      <QuickAdd />
       <DragGhost />
       <Toast />
     </div>
@@ -355,6 +360,7 @@ function Panels() {
   const help = useUI((s) => s.helpOpen)
   const navEditor = useUI((s) => !!s.navEditor)
   const featuresOpen = useUI((s) => s.featuresOpen)
+  const quickAdd = useUI((s) => s.quickAdd.open)
   const { recovery } = useSync()
   const focusing = !!useFocus()
   const routine = !!useRunner()
@@ -394,6 +400,9 @@ function Panels() {
       </Deferred>
       <Deferred when={navEditor}>
         <NavEditor />
+      </Deferred>
+      <Deferred when={quickAdd}>
+        <QuickAdd />
       </Deferred>
     </>
   )

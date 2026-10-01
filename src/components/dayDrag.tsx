@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { CalendarDays, Columns3, Grid2x2 } from 'lucide-react'
 import { mutateTask } from '@/db/actions'
 import type { Task } from '@/db/types'

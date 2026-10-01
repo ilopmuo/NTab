@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
 import { whatNow } from './whatnow/store'
-import { DayComplete } from '@/components/Celebrate'
 import { db } from '@/db/db'
 import { setSetting, updateTask } from '@/db/actions'
 import { useOpenTasks } from '@/db/hooks'
@@ -33,6 +32,9 @@ import { PeopleCard } from './today/PeopleCard'
 import { WeekStrip } from './today/WeekStrip'
 import { Page } from './Page'
 import { SelectButton } from '@/features/select/SelectButton'
+
+// El anillo y el confeti de «día completado», solo cuando hace falta
+const DayComplete = lazy(() => import('@/components/Celebrate').then((m) => ({ default: m.DayComplete })))
 
 const PARTS = [
   { id: 'morning', title: 'Por la mañana', test: (t?: string) => !!t && t < '12:00' },
@@ -261,7 +263,9 @@ export function TodayView() {
             </Group>
           ) : pending === 0 ? (
             <Group className="mb-8">
-              <DayComplete count={done.length} celebrate={justFinished} />
+              <Suspense fallback={<div className="h-[260px]" />}>
+                <DayComplete count={done.length} celebrate={justFinished} />
+              </Suspense>
             </Group>
           ) : (
             <>

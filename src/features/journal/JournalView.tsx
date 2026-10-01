@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Bell, BookOpen, Check, ChevronLeft, ChevronRight, Flame, Minus, Timer, TrendingDown, TrendingUp } from 'lucide-react'
 import { db } from '@/db/db'
 import type { JournalEntry } from '@/db/types'

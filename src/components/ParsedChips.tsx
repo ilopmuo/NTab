@@ -7,7 +7,7 @@ import { recurrenceLabel } from '@/lib/recurrence'
 import { nagLabel, reminderLabel } from '@/lib/reminders'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor } from '@/lib/tasks'
 import { Icon } from './icons'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { bouncy, cx } from './ui'
 
 function Chip({ children, color }: { children: React.ReactNode; color?: string }) {

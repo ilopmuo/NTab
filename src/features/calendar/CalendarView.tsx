@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { addMonths, endOfMonth, startOfMonth } from 'date-fns'
 import { Cake, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { db } from '@/db/db'

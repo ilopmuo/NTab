@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { LayoutGrid, Plus } from 'lucide-react'
 import { RollingNumber, cx, spring } from '@/components/ui'
 import { useNavCounts } from './counts'

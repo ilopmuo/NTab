@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Check, ChevronLeft, Flame, Pause, Play, Plus, RotateCcw, SkipForward, X } from 'lucide-react'
 import { resetRoutineRun, toggleRoutineStep } from '@/db/actions'
 import { clock, finishAt, minutesLeft, routineProgress, routineStreak } from '@/lib/routines'

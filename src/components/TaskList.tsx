@@ -1,15 +1,19 @@
-import { useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { Suspense, lazy, useMemo, useState } from 'react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { useLookup } from '@/db/hooks'
 import { createTask } from '@/db/actions'
-import { parseQuickAdd } from '@/lib/parse'
+import { loadParser, useParser } from '@/lib/useParser'
 import { isFresh, sortManual, sortTasks } from '@/lib/tasks'
 import { TaskItem } from './TaskItem'
-import { ManualRows, useListOrder } from './ManualOrder'
-import { ParsedChips } from './ParsedChips'
+import { useListOrder } from './ManualOrder'
 import { Group, cx } from './ui'
+
+// Lo entendido al escribir (fecha, etiquetas…), solo al escribir
+const ParsedChips = lazy(() => import('./ParsedChips').then((m) => ({ default: m.ParsedChips })))
+// Arrastrar para ordenar necesita el motor completo de animaciones: solo se carga en las listas con orden a mano
+const ManualRows = lazy(() => import('./ManualRows').then((m) => ({ default: m.ManualRows })))
 
 const rowSeparator =
   "relative after:pointer-events-none after:absolute after:right-0 after:bottom-0 after:left-[50px] after:h-px after:bg-line after:content-[''] last:after:hidden"
@@ -56,7 +60,9 @@ export function TaskList({
   const rows = (
     <>
       {manual ? (
-        <ManualRows listKey={orderKey!} tasks={list} lookup={lookup} rowClass={rowSeparator} hideDate={hideDate} hideProject={hideProject} compact={compact} />
+        <Suspense fallback={list.map((t) => <div key={t.id} className={rowSeparator}><TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} /></div>)}>
+          <ManualRows listKey={orderKey!} tasks={list} lookup={lookup} rowClass={rowSeparator} hideDate={hideDate} hideProject={hideProject} compact={compact} />
+        </Suspense>
       ) : (
         <AnimatePresence initial={true}>
           {list.map((t, i) => (
@@ -98,9 +104,11 @@ export function InlineAdd({
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
   const { areas, projects, people } = useLookup()
-  const parsed = useMemo(() => parseQuickAdd(value, { areas, projects, people }), [value, areas, projects, people])
+  const parse = useParser(open)
+  const parsed = useMemo(() => parse?.(value, { areas, projects, people }), [parse, value, areas, projects, people])
 
   const submit = async () => {
+    const parsed = (parse ?? (await loadParser()))(value, { areas, projects, people })
     if (!parsed.title) return
     const data: Partial<Task> & { title: string } = {
       ...defaults,
@@ -169,7 +177,11 @@ export function InlineAdd({
           className="min-w-0 flex-1 bg-transparent text-[15px] placeholder:text-faint"
         />
       </div>
-      {value && <ParsedChips parsed={parsed} className="mt-2 pl-[34px]" />}
+      {value && parsed && (
+        <Suspense fallback={null}>
+          <ParsedChips parsed={parsed} className="mt-2 pl-[34px]" />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { animate, useMotionValue, type MotionValue } from 'motion/react'
+import { useMotionValue, type MotionValue } from 'motion/react'
 import { haptic } from '@/lib/haptics'
 
 /**
@@ -11,6 +11,9 @@ import { haptic } from '@/lib/haptics'
 export interface SwipeSide {
   run: () => void | Promise<unknown>
 }
+
+/** Animar a mano es de lo pesado de Motion: se carga al soltar (para entonces ya suele estar) */
+const animate = async (...args: Parameters<typeof import('motion/react').animate>) => (await import('@/lib/motionFeatures')).animate(...args)
 
 const START = 10
 /** fracción del ancho a partir de la cual, al soltar, se hace la acción */

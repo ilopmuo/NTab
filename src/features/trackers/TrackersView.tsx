@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Check, History, Plus, RotateCcw, Trophy } from 'lucide-react'
 import type { Tracker } from '@/db/types'
 import { db } from '@/db/db'

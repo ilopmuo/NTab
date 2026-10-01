@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Cake, ChevronLeft, Mail, MessageSquare, Phone, Plus, Trash2, Users, Video, X } from 'lucide-react'
 import { db } from '@/db/db'
 import { createTask, deletePerson, logInteraction } from '@/db/actions'

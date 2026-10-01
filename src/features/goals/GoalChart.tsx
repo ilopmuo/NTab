@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import type { Goal } from '@/db/types'
 import { addDaysYmd, dateLabel, diffDays, today } from '@/lib/dates'
 import { goalChange } from '@/lib/goals'

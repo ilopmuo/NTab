@@ -7,7 +7,6 @@ import { App } from './app/App'
 import { seedIfEmpty } from './db/seed'
 import { db } from './db/db'
 import { watchPrefs } from './lib/prefs'
-import { startLocalReminders } from './reminders/local'
 import { initSync } from './sync/service'
 import { startLookupCache } from './db/hooks'
 import { requestPersistentStorage } from './sync/authStorage'
@@ -22,7 +21,8 @@ void requestPersistentStorage()
 seedIfEmpty().finally(() => {
   startLookupCache()
   watchPrefs(db)
-  startLocalReminders()
+  // Los avisos con la app abierta, en cuanto haya cargado lo demás
+  void import('./reminders/local').then((m) => m.startLocalReminders())
   void rollSubscriptions()
   void purgeTrash()
   initSync()

@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { CalendarClock, Check, Circle } from 'lucide-react'
 import type { Project, Task } from '@/db/types'
 import { dateLabel, relativeDays, today } from '@/lib/dates'

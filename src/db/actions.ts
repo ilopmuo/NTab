@@ -6,7 +6,10 @@ import { nextOccurrence } from '@/lib/recurrence'
 import { advanceCharge, rollForward } from '@/lib/finance'
 import { putInTrash } from './trash'
 import { withDate } from '@/lib/trackers'
-import { aisleFor, itemKey, type ParsedItem } from '@/lib/shopping'
+import type { ParsedItem } from '@/lib/shopping'
+
+/** Los pasillos de la compra solo hacen falta en la compra: fuera del arranque */
+const shoppingLib = () => import('@/lib/shopping')
 import { cleanTag, replaceTag } from '@/lib/tags'
 import { logGoal } from '@/lib/goals'
 import { renameLinks } from '@/lib/notes'
@@ -652,6 +655,7 @@ export async function deleteTracker(id: string) {
 
 /** Añade cosas a la lista (sin repetir lo que ya está pendiente). Devuelve lo añadido. */
 export async function addShoppingItems(items: ParsedItem[]): Promise<ShoppingItem[]> {
+  const { aisleFor, itemKey } = await shoppingLib()
   return db.transaction('rw', db.shopping, db.pantry, async () => {
     const pantry = await db.pantry.toArray()
     const known = Object.fromEntries(pantry.map((p) => [p.id, p.aisle]))
@@ -681,6 +685,7 @@ export async function toggleShopping(id: string) {
 
 /** Cambia el pasillo y lo recuerda para la próxima vez */
 export async function setShoppingAisle(id: string, aisle: string) {
+  const { itemKey } = await shoppingLib()
   await db.transaction('rw', db.shopping, db.pantry, async () => {
     const it = await db.shopping.get(id)
     if (!it) return
@@ -693,6 +698,7 @@ export async function setShoppingAisle(id: string, aisle: string) {
 
 /** Terminar la compra: lo del carro sale de la lista y cuenta para «lo de siempre» */
 export async function finishShopping(): Promise<ShoppingItem[]> {
+  const { itemKey } = await shoppingLib()
   return db.transaction('rw', db.shopping, db.pantry, async () => {
     const bought = await db.shopping.where('checked').equals(1).toArray()
     const now = Date.now()

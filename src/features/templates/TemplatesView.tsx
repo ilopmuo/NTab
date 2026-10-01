@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { ClipboardList, Minus, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Check, Play, Shuffle, Sparkles } from 'lucide-react'
 import { useOpenTasks } from '@/db/hooks'
 import { today } from '@/lib/dates'

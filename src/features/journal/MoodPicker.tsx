@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Annoyed, Frown, Laugh, Meh, Smile } from 'lucide-react'
 import { MOODS } from '@/lib/journal'
 import { haptic } from '@/lib/haptics'

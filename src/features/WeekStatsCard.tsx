@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Flame, Timer, TrendingDown, TrendingUp } from 'lucide-react'
 import { db } from '@/db/db'
 import { addDaysYmd, capitalize, fmt, today } from '@/lib/dates'

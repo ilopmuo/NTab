@@ -6,6 +6,7 @@
  */
 import { addDays, addMonths, weekday } from './time.ts'
 import { parseDuration } from './duration.ts'
+import { normalize } from './text.ts'
 
 export type Priority = 0 | 1 | 2 | 3
 export interface Recurrence {
@@ -122,12 +123,7 @@ function firstOccurrence(from: string, r: Recurrence): string {
   return from
 }
 
-export function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-}
+export { normalize }
 
 function toNumber(s: string): number {
   const n = Number(s)

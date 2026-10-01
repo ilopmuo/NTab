@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { motion, useTransform, type MotionValue } from 'motion/react'
+import { m as motion, useTransform, type MotionValue } from 'motion/react'
 import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, ListChecks, Repeat, RotateCcw, StickyNote, Sunrise, Telescope } from 'lucide-react'
 import { durationLabel } from '@/lib/duration'
 import type { Task } from '@/db/types'

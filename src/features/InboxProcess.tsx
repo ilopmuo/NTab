@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react'
+import { AnimatePresence, m as motion, useMotionValue, useTransform } from 'motion/react'
 import { CalendarDays, Check, Folder, SkipForward, Sun, Sunrise, Telescope, Trash2, X } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { deleteTask, mutateTask, restoreTasks, toggleTask } from '@/db/actions'

@@ -1,5 +1,5 @@
 import { addDaysYmd, capitalize, fmt, today, ymd } from './dates'
-import { normalize } from './parse'
+import { normalize } from './text'
 
 /**
  * Grupo de una nota en la lista, como en Notas de Apple: Hoy, Ayer, 7 días,

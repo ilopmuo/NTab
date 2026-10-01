@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m as motion } from 'motion/react'
 import { Box, CheckCircle2, CookingPot, History, Flame, Folder, ListChecks, RotateCcw, StickyNote, Target, Trash2, User, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { TRASH_DAYS, deleteForever, emptyTrash, restoreFromTrash } from '@/db/trash'

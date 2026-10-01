@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m as motion } from 'motion/react'
 import { Check, ChevronRight, ListChecks } from 'lucide-react'
 import { routineProgress, routineToday } from '@/lib/routines'
 import { href } from '@/app/router'

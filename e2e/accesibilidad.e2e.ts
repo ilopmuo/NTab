@@ -16,8 +16,12 @@ for (const theme of ['dark', 'light'] as const) {
     await openApp(page)
     await quickAdd(page, 'Llamar al dentista mañana a las 10 #salud')
     await quickAdd(page, 'Revisar el correo')
+    // Que se vaya el aviso (a medio desvanecer no tiene su color final)
+    await expect(page.locator('.z-\\[60\\] .glass-thick')).toHaveCount(0, { timeout: 8000 })
     const found: string[] = []
     const scan = async (where: string) => {
+      // Diálogos ya del todo visibles (con la máquina cargada, las animaciones tardan más)
+      await page.waitForFunction(() => Array.from(document.querySelectorAll('[role=dialog]')).every((d) => getComputedStyle(d).opacity === '1'))
       const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
       for (const v of r.violations.filter((x) => x.impact === 'serious' || x.impact === 'critical'))
         for (const n of v.nodes) found.push(`${where} · ${v.id}: ${n.target.join(' ')} → ${n.failureSummary?.split('\n')[1]?.trim() ?? v.help}`)
