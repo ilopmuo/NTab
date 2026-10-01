@@ -10,6 +10,7 @@ const GROUPS: [string, [string[], string][]][] = [
       [['?'], 'Esta ayuda'],
       [['Esc'], 'Cerrar panel'],
       [['⌘', 'clic'], 'Seleccionar varias tareas'],
+      [['⌘', '\\'], 'Ocultar o mostrar la barra lateral'],
     ],
   ],
   [

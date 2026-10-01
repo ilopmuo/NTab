@@ -15,6 +15,21 @@ test('barra lateral: ocultar una sección y pasar otra a la cuadrícula', async 
   await expect(page.locator('#main h1')).toHaveText('Bandeja de entrada')
 })
 
+test('barra lateral plegable: botón, ⌘\\ y se recuerda', async ({ page }) => {
+  await openApp(page)
+  const nav = page.getByRole('navigation', { name: 'Barra lateral' })
+  await page.getByRole('button', { name: 'Ocultar la barra lateral' }).click()
+  await expect(page.getByRole('button', { name: 'Mostrar la barra lateral' })).toBeVisible()
+  await expect(nav).not.toBeInViewport()
+  // El contenido ocupa todo el ancho
+  await expect.poll(() => page.locator('#main').evaluate((el) => getComputedStyle(el).paddingLeft)).toBe('0px')
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Mostrar la barra lateral' })).toBeVisible()
+  await page.keyboard.press('Control+Backslash')
+  await expect(nav).toBeInViewport()
+  await expect(page.getByRole('button', { name: 'Mostrar la barra lateral' })).toHaveCount(0)
+})
+
 test.describe('en el móvil', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 

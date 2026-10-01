@@ -202,6 +202,9 @@ function Pill({ active, onClick, children, tone = 'accent' }: { active?: boolean
 
 const fieldCls = 'h-8 rounded-full bg-fill px-3 text-[13px] font-medium text-fg'
 
+/** Horas a un toque en el detalle (las demás, con el campo de hora) */
+const QUICK_TIMES = ['09:00', '13:00', '18:00', '21:00']
+
 type RepeatKind = 'none' | 'day' | 'weekdays' | 'week' | 'month' | 'year' | 'custom'
 
 function repeatKind(r?: Recurrence): RepeatKind {
@@ -337,11 +340,21 @@ function TaskDetail({ task }: { task: Task }) {
             value={task.dueTime}
             onClear={task.dueTime ? () => set({ dueTime: undefined }) : undefined}
           >
-            <input aria-label="Hora"
+            {QUICK_TIMES.map((h) => (
+              <Pill key={h} active={task.dueTime === h} onClick={() => set({ dueTime: h, dueDate: task.dueDate ?? t })}>
+                <span className="font-num">{h}</span>
+              </Pill>
+            ))}
+            <input
+              aria-label="Otra hora"
               type="time"
-              value={task.dueTime ?? ''}
+              value={task.dueTime && !QUICK_TIMES.includes(task.dueTime) ? task.dueTime : ''}
               onChange={(e) => set({ dueTime: e.target.value || undefined, dueDate: task.dueDate ?? t })}
-              className={fieldCls}
+              className={
+                task.dueTime && !QUICK_TIMES.includes(task.dueTime)
+                  ? 'h-8 rounded-full bg-accent-fill px-3 text-[13px] font-medium text-white [color-scheme:dark]'
+                  : fieldCls
+              }
             />
           </Row>
           <EstimateRow value={task.estimate} onChange={(estimate) => set({ estimate })} />

@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { Plus } from 'lucide-react'
+import { ui } from '@/app/store'
 import { useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, capitalize, fmt, fromYmd, today } from '@/lib/dates'
 import { SectionIcon, section } from '@/app/sections'
@@ -31,9 +33,17 @@ export function UpcomingView() {
           <TaskList tasks={overdue} draggable />
         </Section>
       )}
-      {days.map((d, i) => (
-        <DaySection key={d} day={d} index={i} tasks={tasks.filter((x) => x.dueDate === d)} />
-      ))}
+      {days.map((d, i) => {
+        const list = tasks.filter((x) => x.dueDate === d)
+        // El mes, como separador, solo cuando cambia (y no antes del primer día)
+        const newMonth = i > 0 && d.slice(0, 7) !== days[i - 1].slice(0, 7)
+        return (
+          <div key={d}>
+            {newMonth && <h2 className="mt-6 mb-3 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">{fmt(d, 'MMMM')}</h2>}
+            {list.length ? <DaySection day={d} index={i} tasks={list} /> : <FreeDay day={d} index={i} />}
+          </div>
+        )
+      })}
       {later.length > 0 && (
         <Section title="Más adelante" count={later.length} tone="orange">
           <TaskList tasks={later} draggable />
@@ -43,23 +53,48 @@ export function UpcomingView() {
   )
 }
 
+const dayLabel = (day: string, index: number) => (index === 0 ? 'Hoy' : index === 1 ? 'Mañana' : capitalize(fmt(day, 'EEEE')))
+
 function DaySection({ day, index, tasks }: { day: string; index: number; tasks: Task[] }) {
   const over = useDropOver(day)
   const weekend = [0, 6].includes(fromYmd(day).getDay())
-  const label = index === 0 ? 'Hoy' : index === 1 ? 'Mañana' : capitalize(fmt(day, 'EEEE'))
   return (
     <section data-drop-day={day} className={cx('-mx-2 mb-4 rounded-[20px] px-2 pt-1 pb-2 transition-colors', over && 'bg-accent-soft ring-2 ring-blue')}>
       <div className="mb-2 flex items-baseline gap-2 px-1">
         <span className={cx('font-num text-[28px] leading-none font-bold', index === 0 ? 'text-blue' : weekend ? 'text-muted' : 'text-fg')}>{fromYmd(day).getDate()}</span>
-        <span className="text-[17px] font-bold">{label}</span>
-        <span className="text-[14px] text-muted">{capitalize(fmt(day, 'MMMM'))}</span>
+        <span className="text-[17px] font-bold">{dayLabel(day, index)}</span>
+        {index === 0 && <span className="text-[14px] text-muted">{capitalize(fmt(day, 'MMMM'))}</span>}
       </div>
-      <TaskList
-        tasks={tasks}
-        hideDate
-        draggable
-        add={tasks.length > 0 || index < 7 ? { defaults: { dueDate: day }, placeholder: 'Nueva tarea', color: 'var(--c-blue)' } : undefined}
-      />
+      <TaskList tasks={tasks} hideDate draggable add={{ defaults: { dueDate: day }, placeholder: 'Nueva tarea', color: 'var(--c-blue)' }} />
+    </section>
+  )
+}
+
+/** Un día sin nada: una línea (se puede soltar una tarea encima o añadir con +) */
+function FreeDay({ day, index }: { day: string; index: number }) {
+  const over = useDropOver(day)
+  const weekend = [0, 6].includes(fromYmd(day).getDay())
+  return (
+    <section
+      data-drop-day={day}
+      className={cx(
+        '-mx-2 mb-1.5 flex items-center gap-2 rounded-[14px] px-3 py-1.5 transition-colors',
+        over ? 'bg-accent-soft ring-2 ring-blue' : 'hover:bg-hover',
+      )}
+    >
+      <span className={cx('font-num w-8 text-[20px] leading-none font-bold', index === 0 ? 'text-blue' : 'text-muted')}>{fromYmd(day).getDate()}</span>
+      <span className={cx('text-[15px] font-semibold', weekend && 'text-muted')}>{dayLabel(day, index)}</span>
+      {index === 0 && <span className="text-[14px] text-muted">{capitalize(fmt(day, 'MMMM'))}</span>}
+      <span className="text-[13px] text-muted">· libre</span>
+      <button
+        type="button"
+        onClick={() => ui.quickAdd({ dueDate: day })}
+        aria-label={`Añadir el ${fmt(day, "EEEE d 'de' MMMM")}`}
+        title="Añadir"
+        className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-blue transition-colors hover:bg-press"
+      >
+        <Plus size={17} strokeWidth={2.6} />
+      </button>
     </section>
   )
 }

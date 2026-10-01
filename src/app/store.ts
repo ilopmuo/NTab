@@ -12,11 +12,21 @@ export interface UIState {
   paletteOpen: boolean
   helpOpen: boolean
   sidebarOpen: boolean
+  /** en el ordenador, barra lateral plegada (se recuerda en este dispositivo) */
+  sidebarHidden: boolean
   /** editor de la barra lateral o de las pestañas del móvil */
   navEditor: 'sidebar' | 'tabs' | null
   /** abre el formulario de creación de la vista correspondiente */
   creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | 'template' | 'routine' | 'thing' | 'tracker' | 'shopping' | null
   toast: { id: number; message: string; actions: ToastAction[]; icon: 'check' | 'bell'; onClick?: () => void; duration: number } | null
+}
+
+function readSidebarHidden() {
+  try {
+    return localStorage.getItem('ntab-sidebar-hidden') === '1'
+  } catch {
+    return false
+  }
 }
 
 let state: UIState = {
@@ -25,6 +35,7 @@ let state: UIState = {
   paletteOpen: false,
   helpOpen: false,
   sidebarOpen: false,
+  sidebarHidden: readSidebarHidden(),
   navEditor: null,
   creating: null,
   toast: null,
@@ -59,6 +70,16 @@ export const ui = {
   palette: (open = true) => setUI({ paletteOpen: open }),
   help: (open = true) => setUI({ helpOpen: open }),
   sidebar: (open: boolean) => setUI({ sidebarOpen: open }),
+  /** Pliega o despliega la barra lateral del ordenador */
+  toggleSidebarHidden: () => {
+    const hidden = !state.sidebarHidden
+    try {
+      localStorage.setItem('ntab-sidebar-hidden', hidden ? '1' : '0')
+    } catch {
+      /* solo en memoria */
+    }
+    setUI({ sidebarHidden: hidden })
+  },
   navEditor: (mode: UIState['navEditor']) => setUI({ navEditor: mode, sidebarOpen: false, paletteOpen: false }),
   create: (what: UIState['creating']) => setUI({ creating: what, paletteOpen: false }),
 }

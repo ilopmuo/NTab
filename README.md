@@ -11,12 +11,12 @@
 | **Hoy** | Saludo, progreso del día, atrasadas, hábitos de hoy, personas a contactar y próximos 7 días |
 | **Captura rápida** (`N`) | Escribe en español natural: `Llamar al dentista mañana a las 10 !alta #salud +Salud` |
 | **Bandeja de entrada** | Todo lo capturado sin fecha ni proyecto, para procesarlo luego |
-| **Próximo** y **Calendario** | Vista de dos semanas, mes y semana; doble clic en un día para añadir |
+| **Próximo** y **Calendario** | Vista de dos semanas (los días libres, en una línea), mes y semana; doble clic en un día para añadir |
 | **Áreas y proyectos** | Trabajo, Salud, Finanzas… con proyectos, progreso, fecha límite y su siguiente paso a la vista |
 | **Secciones** | Divide un proyecto en bloques («Diseño», «Contenido», «Lanzamiento»), cada uno con su orden; las plantillas y Claude también las usan |
 | **Tareas completas** | Prioridad, fecha, hora, repetición, subtareas, etiquetas y notas |
 | **Hábitos** | Seguimiento diario, rachas 🔥 y mapa de calor de 18 semanas. Con cantidad («8 vasos de agua», con botón +1) o «3 veces por semana», el día que quieras |
-| **Notas** | Autoguardado; las líneas `- [ ] algo` se convierten en tareas con un clic |
+| **Notas** | Autoguardado, agrupadas como en Notas de Apple (fijadas, hoy, ayer, 7 y 30 días, por mes); las líneas `- [ ] algo` se convierten en tareas con un clic |
 | **Personas** (mini-CRM) | Cumpleaños, historial de contactos y aviso de "hace mucho que no hablas con…" |
 | **Revisión semanal** | Asistente de 6 pasos para vaciar la cabeza y planificar la semana |
 | **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada. Botones «Hecho» y «Posponer 15 min» |
@@ -47,7 +47,7 @@
 | **Orden a mano** | Bandeja, proyectos, áreas y Hoy pueden pasar de orden automático a manual: arrastra el asa de cada tarea (o ↑/↓). Cada lista tiene su orden, y las subtareas también se arrastran |
 | **Siri** | «Oye Siri, apunta en NTab»: dictas «llamar al dentista mañana a las 10», «compra: leche y pan», «gasto 12 café», «nota: …», «hecho: cambiar las sábanas» o «+1 agua» y se apunta sin abrir la app (un atajo del iPhone, en Ajustes → Siri) |
 | **Etiquetas** | Todas tus `#etiquetas` con sus tareas pendientes; cámbiales el nombre (si ya existe, se juntan) o quítalas, con «Deshacer» |
-| **Navegación a tu medida** | Elige qué secciones van en la cuadrícula de la barra lateral, cuáles en la lista y cuáles ocultas, y las cuatro pestañas del móvil |
+| **Navegación a tu medida** | Elige qué secciones van en la cuadrícula de la barra lateral, cuáles en la lista y cuáles ocultas, y las cuatro pestañas del móvil. En el ordenador, la barra lateral se pliega (`⌘\`) para trabajar a todo lo ancho |
 | **Procesar la bandeja** | Una tarea cada vez, como un mazo de cartas: hoy, mañana, otro día, a una lista, hecha, borrar o luego |
 | **Autocompletar** | Al escribir `#`, `+` o `@` en la captura, te sugiere tus etiquetas, proyectos, áreas y personas: `Tab` o un toque para completar |
 | **Dictado** | Botón de micrófono en la captura rápida: dices la tarea y se entiende igual que escrita |
@@ -107,7 +107,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 ## Atajos
 
-`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`Y`/`T`/`F`/`R`/`S` ir a sección · `Tab` en la captura completa `#`/`+`/`@` · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
+`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`Y`/`T`/`F`/`R`/`S` ir a sección · `Tab` en la captura completa `#`/`+`/`@` · `⌘`/`Ctrl` + `\` oculta o muestra la barra lateral · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
 
 ## En el iPhone o el iPad
 

@@ -149,7 +149,7 @@ src/
 - ✅ **Fase 2 — Organización** · Calendario, Hábitos, Notas.
 - ✅ **Fase 3 — Vida** · Personas (mini-CRM), Revisión semanal.
 - ✅ **Fase 4 — Automatización** · Recordatorios y notificaciones push, Objetivos, Pagos (finanzas ligeras).
-- ✅ **Fase 18 — A tu gusto** · Color de acento a elegir (con contraste AA comprobado en la CI), calendario propio para elegir fechas en el detalle, quesitos de progreso de los proyectos en la barra lateral, calendario más claro en el móvil (cabecera que cabe, días libres compactos, lo pasado más apagado) y cabeceras que ya no cortan el título.
+- ✅ **Fase 18 — A tu gusto** · Color de acento a elegir (con contraste AA comprobado en la CI), calendario propio para elegir fechas en el detalle, quesitos de progreso de los proyectos en la barra lateral, calendario más claro en el móvil (cabecera que cabe, días libres compactos, lo pasado más apagado) y cabeceras que ya no cortan el título; Próximo con los días libres en una línea y el mes solo cuando cambia, notas agrupadas por fecha, barra lateral plegable en el ordenador (`⌘\`) y horas a un toque en el detalle.
 - ✅ **Fase 17 — Ordenado y a la vista** · Secciones dentro de los proyectos (también en plantillas y desde Claude), página de Etiquetas para renombrar, juntar o quitar etiquetas con «Deshacer», tarjetas de proyecto con el siguiente paso, autocompletar `#etiqueta`, `+proyecto` y `@persona` al capturar, y `+Proyecto de varias palabras`.
 - ✅ **Fase 15 — Sin fricción** · Apuntar con Siri sin abrir la app (tareas, compra y gastos, con el mismo lenguaje natural en el servidor), hábitos con cantidad y «N veces por semana», orden a mano propio de cada lista, subtareas arrastrables, tests end-to-end con Playwright y CI con límite de tamaño.
 - ✅ **Fase 14 — A tu manera** · Arranque más ligero (Supabase y paneles bajo demanda, librerías en trozos propios), barra lateral y pestañas del móvil personalizables, orden manual arrastrando en Bandeja, proyectos, áreas y Hoy, y mover o estirar tareas en «Hora a hora».
@@ -182,4 +182,5 @@ src/
 | `↑` / `↓` sobre el asa | Subir o bajar una tarea en una lista con orden a mano |
 | `↑` / `↓` en «Hora a hora» | Mover la tarea 15 min (con `⇧`, cambiar su duración) |
 | `Tab` en la captura | Completar la etiqueta, lista o persona sugerida (`↑`/`↓` para elegir otra) |
+| `⌘`/`Ctrl` + `\` | Ocultar o mostrar la barra lateral (ordenador) |
 | `?` | Ver todos los atajos |

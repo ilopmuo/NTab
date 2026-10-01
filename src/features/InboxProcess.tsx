@@ -241,7 +241,7 @@ function Card({ task, dir, onToday, onSkip }: { task: Task; dir: number; onToday
       <p className="mt-6 text-[13px] font-medium text-muted">{since(task.createdAt)}</p>
       <p className="mt-2 line-clamp-4 text-[26px] leading-tight font-bold tracking-tight [text-wrap:balance]">{task.title}</p>
       {task.notes.trim() && <p className="mt-3 line-clamp-3 text-[15px] leading-snug text-muted">{task.notes}</p>}
-      <p className="mt-auto text-center text-[12.5px] text-faint">Arrastra → para hoy · ← para luego</p>
+      <p className="mt-auto text-center text-[12.5px] text-muted">Arrastra → para hoy · ← para luego</p>
     </motion.div>
   )
 }

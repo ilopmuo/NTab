@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Moon, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
+import { Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'
 import { Kbd, ProgressPie, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
@@ -84,6 +84,7 @@ function Row({
 
 function SidebarContent() {
   const { path } = useRoute()
+  const desktop = useMediaQuery('(min-width: 1024px)')
   const c = useNavCounts()
   const nav = useNav()
   const { areas, projects } = useLookup()
@@ -217,6 +218,17 @@ function SidebarContent() {
           <div className="min-w-0 flex-1">
             <SyncBadge />
           </div>
+          {desktop && (
+            <button
+              type="button"
+              onClick={ui.toggleSidebarHidden}
+              aria-label="Ocultar la barra lateral"
+              title="Ocultar la barra lateral (⌘\)"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg"
+            >
+              <PanelLeftClose size={15} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => ui.navEditor('sidebar')}
@@ -245,11 +257,40 @@ function SidebarContent() {
 export function Sidebar() {
   const open = useUI((s) => s.sidebarOpen)
   const desktop = useMediaQuery('(min-width: 1024px)')
+  const hidden = useUI((s) => s.sidebarHidden)
   if (desktop) {
     return (
-      <nav className="fixed inset-y-0 left-0 z-20 w-[272px] shadow-[inset_-1px_0_0_var(--c-border)] backdrop-blur-[40px] backdrop-saturate-[1.8]" style={{ background: 'var(--c-sidebar)' }}>
-        <SidebarContent />
-      </nav>
+      <>
+        <motion.nav
+          aria-label="Barra lateral"
+          initial={false}
+          animate={{ x: hidden ? -280 : 0 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 40 }}
+          inert={hidden}
+          className="fixed inset-y-0 left-0 z-20 w-[272px] shadow-[inset_-1px_0_0_var(--c-border)] backdrop-blur-[40px] backdrop-saturate-[1.8]"
+          style={{ background: 'var(--c-sidebar)' }}
+        >
+          <SidebarContent />
+        </motion.nav>
+        {/* Plegada: un botón arriba a la izquierda para volver a abrirla */}
+        <AnimatePresence>
+          {hidden && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              transition={spring}
+              onClick={ui.toggleSidebarHidden}
+              aria-label="Mostrar la barra lateral"
+              title="Mostrar la barra lateral (⌘\)"
+              className="glass fixed top-3.5 left-3.5 z-30 flex h-9 w-9 items-center justify-center rounded-full text-fg shadow-[var(--c-shadow)] transition-colors hover:bg-hover"
+            >
+              <PanelLeftOpen size={17} strokeWidth={2.2} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </>
     )
   }
   return (

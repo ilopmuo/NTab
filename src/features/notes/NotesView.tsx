@@ -12,6 +12,23 @@ import { useLookup } from '@/db/hooks'
 import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { Empty, IconButton, Select, Textarea, cx } from '@/components/ui'
+import { groupNotes } from '@/lib/notes'
+
+/** Cuándo se tocó: la hora si es de hoy; si no, hace cuánto */
+function noteWhen(t: number) {
+  const d = new Date(t)
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    : formatDistanceToNow(t, { locale: es, addSuffix: false })
+}
+
+/** Primera línea con texto, sin las marcas de lista ni de casilla */
+const preview = (content: string) =>
+  content
+    .split('\n')
+    .map((l) => l.replace(/^\s*(?:[-*]\s*)?(?:\[[ xX]\]\s*)?#*\s*/, '').trim())
+    .find(Boolean)
+    ?.slice(0, 80) ?? ''
 
 export function NotesView({ id }: { id?: string }) {
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
@@ -52,22 +69,39 @@ export function NotesView({ id }: { id?: string }) {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-3 pb-36 lg:pb-4">
-          {list.length === 0 && <p className="px-3 py-6 text-center text-[13px] text-muted">{q ? 'Sin resultados' : 'Ninguna nota todavía'}</p>}
-          {list.map((n) => (
-            <a
-              key={n.id}
-              href={href(`/notes/${n.id}`)}
-              className={cx('mb-1 block rounded-[14px] px-3.5 py-3 transition-colors', n.id === id ? 'bg-fill' : 'hover:bg-hover')}
-            >
-              <div className="flex items-center gap-1.5">
-                {!!n.pinned && <Pin size={12} className="shrink-0 text-muted" strokeWidth={2.6} />}
-                <span className="truncate text-[15px] font-semibold">{n.title || 'Sin título'}</span>
+          {list.length === 0 &&
+            (q || notes.length ? (
+              <p className="px-3 py-6 text-center text-[13px] text-muted">Sin resultados</p>
+            ) : (
+              // Sin notas: en el móvil, el aviso con su botón (en el ordenador ya sale a la derecha)
+              <div className="md:hidden">
+                <Empty icon={<StickyNote size={28} strokeWidth={2.2} />} title="Aún no hay notas" hint="Ideas, apuntes de reuniones, listas, contraseñas del wifi…">
+                  <button type="button" onClick={newNote} className="h-10 rounded-full bg-accent-fill px-5 text-[14px] font-semibold text-white transition-transform active:scale-95">
+                    Crear nota
+                  </button>
+                </Empty>
               </div>
-              <p className="mt-0.5 truncate text-[13px] text-muted">
-                <span className="font-medium text-fg/70">{formatDistanceToNow(n.updatedAt, { locale: es, addSuffix: false })}</span>
-                {n.content && ` · ${n.content.slice(0, 80)}`}
-              </p>
-            </a>
+            ))}
+          {groupNotes(list).map((g) => (
+            <section key={g.title} className="mb-3">
+              <h2 className="px-3.5 pt-2 pb-1 text-[12px] font-semibold tracking-wide text-muted uppercase">{g.title}</h2>
+              {g.items.map((n) => (
+                <a
+                  key={n.id}
+                  href={href(`/notes/${n.id}`)}
+                  className={cx('mb-1 block rounded-[14px] px-3.5 py-3 transition-colors', n.id === id ? 'bg-fill' : 'hover:bg-hover')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {!!n.pinned && <Pin size={12} className="shrink-0 text-muted" strokeWidth={2.6} />}
+                    <span className="truncate text-[15px] font-semibold">{n.title || 'Sin título'}</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[13px] text-muted">
+                    <span className="font-medium text-fg/70">{noteWhen(n.updatedAt)}</span>
+                    {preview(n.content) && ` · ${preview(n.content)}`}
+                  </p>
+                </a>
+              ))}
+            </section>
           ))}
         </div>
       </div>
@@ -76,7 +110,7 @@ export function NotesView({ id }: { id?: string }) {
         {current ? (
           <NoteEditor key={current.id} note={current} />
         ) : (
-          <Empty icon={<StickyNote size={28} strokeWidth={2.2} />} color="var(--c-yellow)" title={id ? 'Nota no encontrada' : 'Selecciona una nota'} hint="Ideas, apuntes de reuniones, listas, contraseñas del wifi…">
+          <Empty icon={<StickyNote size={28} strokeWidth={2.2} />} color="var(--c-yellow)" title={id ? 'Nota no encontrada' : notes.length ? 'Selecciona una nota' : 'Aún no hay notas'} hint="Ideas, apuntes de reuniones, listas, contraseñas del wifi…">
             <button type="button" onClick={newNote} className="h-10 rounded-full bg-accent-fill px-5 text-[14px] font-semibold text-white transition-transform active:scale-95">
               Crear nota
             </button>

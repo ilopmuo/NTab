@@ -256,6 +256,7 @@ function Workspace() {
     document.getElementById('main')?.scrollTo({ top: 0 })
   }, [path, parts])
 
+  const sidebarHidden = useUI((s) => s.sidebarHidden)
   // Abrir una nota o una cosa no cambia de pantalla (no se anima la entrada)
   const screenKey = parts[0] === 'notes' || parts[0] === 'things' || parts[0] === 'journal' ? parts[0] : path
   return (
@@ -264,7 +265,8 @@ function Workspace() {
       <main
         id="main"
         className={cx(
-          '@container h-full overflow-y-auto overscroll-contain transition-[padding] duration-300 lg:pl-[272px]',
+          '@container h-full overflow-y-auto overscroll-contain transition-[padding] duration-300',
+          !sidebarHidden && 'lg:pl-[272px]',
           panelOpen && 'xl:pr-[420px]',
         )}
       >

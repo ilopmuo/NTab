@@ -19,6 +19,12 @@ export function useGlobalShortcuts() {
         ui.palette(!getUI().paletteOpen)
         return
       }
+      // ⌘\ / Ctrl \: plegar o desplegar la barra lateral (en el ordenador)
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\' && matchMedia('(min-width: 1024px)').matches) {
+        e.preventDefault()
+        ui.toggleSidebarHidden()
+        return
+      }
       if (e.key === 'Escape') {
         const s = getUI()
         if (selection.get().active) selection.clear()
