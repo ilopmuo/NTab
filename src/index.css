@@ -424,3 +424,60 @@
     inset: -11px;
   }
 }
+
+/* ── Transiciones entre pantallas (View Transitions, ver app/router.ts) ──
+   La barra lateral y la de pestañas no se mueven; el contenido sale fundido y
+   el nuevo entra subiendo un poco. Lo que tiene el mismo nombre en las dos
+   pantallas (el título, el anillo de un proyecto) viaja de un sitio a otro. */
+::view-transition-group(*) {
+  animation-duration: 0.42s;
+  animation-timing-function: cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+::view-transition-old(root) {
+  animation: 0.16s ease-out both vt-fade-out;
+}
+::view-transition-new(root) {
+  animation: 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) 0.04s both vt-rise-in;
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+/* Al cambiar de tema o de color, todo es una sola imagen (el revelado circular la necesita entera) */
+.vt-whole * {
+  view-transition-name: none !important;
+}
+
+/* Tachado que se dibuja al completar (de izquierda a derecha, también en varias
+   líneas); lo que ya estaba hecho aparece tachado sin animación */
+.strike {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 58%;
+  background-size: 0% 1.5px;
+  transition: background-size 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.strike[data-on='true'] {
+  background-size: 100% 1.5px;
+}
+
+/* Tarea recién creada: su fila se ilumina con el acento y se apaga despacio */
+@keyframes just-added {
+  0%,
+  25% {
+    background-color: color-mix(in srgb, var(--c-blue) 22%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.just-added {
+  animation: just-added 1.8s ease-out both;
+}

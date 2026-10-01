@@ -5,6 +5,9 @@ export function isInbox(t: Task) {
   return !t.areaId && !t.projectId && !t.dueDate
 }
 
+/** Recién creada (hace menos de 3 s): su fila se ilumina un momento para ver dónde ha caído */
+export const isFresh = (t: Pick<Task, 'createdAt'>) => Date.now() - t.createdAt < 3000
+
 export function isOverdue(t: Task, ref = today()) {
   return !t.done && !!t.dueDate && t.dueDate < ref
 }

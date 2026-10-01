@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { inViewTransition } from '@/app/router'
 import { AnimatePresence, animate, motion, useDragControls, useMotionValue, useTransform, type PanInfo } from 'motion/react'
 import { ChevronDown, X } from 'lucide-react'
 
@@ -490,8 +491,28 @@ export function ProgressRing({
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   const v = Math.max(0, Math.min(1, value))
+  // Al cerrarse (llegar al 100 % mientras se ve), una onda sale del anillo
+  const prev = useRef(v)
+  const [closed, setClosed] = useState(0)
+  useEffect(() => {
+    if (prev.current < 1 && v >= 1) setClosed((n) => n + 1)
+    prev.current = v
+  }, [v])
   return (
-    <svg width={size} height={size} className="-rotate-90">
+    <svg width={size} height={size} className="-rotate-90 overflow-visible">
+      {closed > 0 && (
+        <motion.circle
+          key={closed}
+          cx={size / 2}
+          cy={size / 2}
+          fill="none"
+          stroke={color}
+          initial={{ r, opacity: 0.7, strokeWidth: stroke }}
+          animate={{ r: r + stroke * 1.4, opacity: 0, strokeWidth: stroke * 0.4 }}
+          transition={{ duration: 0.75, ease: [0.2, 0.8, 0.2, 1], delay: 0.35 }}
+          aria-hidden
+        />
+      )}
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track ?? `color-mix(in srgb, ${color} 18%, transparent)`} strokeWidth={stroke} />
       <motion.circle
         cx={size / 2}
@@ -536,6 +557,7 @@ export function PageHeader({
   actions,
   tint,
   eyebrow,
+  titleName = 'page-title',
 }: {
   title: ReactNode
   subtitle?: ReactNode
@@ -543,7 +565,11 @@ export function PageHeader({
   actions?: ReactNode
   tint?: string
   eyebrow?: ReactNode
+  /** nombre del título en las transiciones entre pantallas (viaja desde el elemento con el mismo nombre) */
+  titleName?: string
 }) {
+  // Dentro de una View Transition el navegador ya anima el cambio: sin entrada propia
+  const vt = inViewTransition()
   const ref = useRef<HTMLDivElement>(null)
   const [compact, setCompact] = useState(false)
   const slot = typeof document !== 'undefined' ? document.getElementById('topbar') : null
@@ -562,7 +588,7 @@ export function PageHeader({
         <div className="min-w-0 flex-1 basis-60">
           {eyebrow && (
             <motion.p
-              initial={{ opacity: 0, y: 6 }}
+              initial={vt ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={softSpring}
               className="mb-1 text-[13px] font-semibold tracking-wide uppercase"
@@ -573,22 +599,23 @@ export function PageHeader({
           )}
           <div ref={ref} className="flex items-center gap-3">
             {icon && (
-              <motion.span initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={bouncy}>
+              <motion.span initial={vt ? false : { scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={bouncy} style={{ viewTransitionName: 'page-icon' }}>
                 {icon}
               </motion.span>
             )}
             <motion.h1
-              initial={{ opacity: 0, y: 8 }}
+              initial={vt ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...softSpring, delay: 0.03 }}
               className="min-w-0 truncate text-[34px] leading-[1.1] font-bold tracking-[-0.025em]"
+              style={{ viewTransitionName: titleName }}
             >
               {title}
             </motion.h1>
           </div>
           {subtitle && (
             <motion.p
-              initial={{ opacity: 0 }}
+              initial={vt ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1 }}
               className="mt-1.5 text-[15px] leading-snug text-muted"

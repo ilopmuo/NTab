@@ -348,7 +348,7 @@ export const TaskItem = memo(function TaskItem({
           <p
             className={cx(
               'text-[15px] leading-[21px] transition-colors duration-300',
-              checked ? 'text-muted line-through decoration-[1.5px]' : 'text-fg',
+              checked ? 'text-muted' : 'text-fg',
             )}
           >
             {/* El título es el botón (teclado y lectores de pantalla): Intro abre la tarea
@@ -369,7 +369,10 @@ export const TaskItem = memo(function TaskItem({
                   {BANGS[task.priority]}
                 </span>
               )}
-              {task.title || <span className="text-muted">Sin título</span>}
+              {/* El tachado se dibuja de izquierda a derecha al completarla */}
+              <span className="strike" data-on={checked}>
+                {task.title || <span className="text-muted">Sin título</span>}
+              </span>
             </button>
           </p>
           {meta.length > 0 && (

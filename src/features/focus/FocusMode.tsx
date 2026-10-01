@@ -44,8 +44,21 @@ function Ring({ value, running, done, size }: { value: number; running: boolean;
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   return (
-    <svg width={size} height={size} className="-rotate-90">
+    <svg width={size} height={size} className="relative -rotate-90 overflow-visible">
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--c-fill)" strokeWidth={stroke} />
+      {/* Al acabar, una onda verde sale del anillo */}
+      {done && (
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          fill="none"
+          stroke="var(--c-green)"
+          initial={{ r, opacity: 0.8, strokeWidth: stroke }}
+          animate={{ r: r + stroke * 2.2, opacity: 0, strokeWidth: stroke * 0.3 }}
+          transition={{ duration: 1, ease: [0.2, 0.8, 0.2, 1], repeat: 2, repeatDelay: 0.5 }}
+          aria-hidden
+        />
+      )}
       <motion.circle
         cx={size / 2}
         cy={size / 2}
@@ -160,6 +173,15 @@ export function FocusMode() {
             </div>
 
             <div className="relative">
+              {/* Halo que respira despacio (4 s dentro, 4 s fuera) mientras corre el tiempo */}
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute -inset-6 rounded-full"
+                style={{ background: `radial-gradient(circle, color-mix(in srgb, ${s.finished ? 'var(--c-green)' : 'var(--c-blue)'} 45%, transparent) 0%, transparent 68%)` }}
+                initial={false}
+                animate={running ? { scale: [0.9, 1.06, 0.9], opacity: [0.35, 0.75, 0.35] } : { scale: s.finished ? 1.04 : 0.9, opacity: s.finished ? 0.6 : 0 }}
+                transition={running ? { duration: 8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.5 }}
+              />
               <Ring value={progress} running={running} done={!!s.finished} size={260} />
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="font-num text-[56px] leading-none font-bold tracking-tight">{s.finished ? '0:00' : clock(left)}</span>

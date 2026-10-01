@@ -6,7 +6,7 @@ import { db } from '@/db/db'
 import { setSetting } from '@/db/actions'
 import type { Task } from '@/db/types'
 import type { Lookup } from '@/db/hooks'
-import { moveItem, orderIn, renumber, reorderUpdates, sortTasks } from '@/lib/tasks'
+import { isFresh, moveItem, orderIn, renumber, reorderUpdates, sortTasks } from '@/lib/tasks'
 import { haptic } from '@/lib/haptics'
 import { useSelecting } from '@/features/select/selection'
 import { TaskItem } from './TaskItem'
@@ -179,7 +179,7 @@ function Row({
       }}
       exit={{ opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
       whileDrag={{ scale: 1.02 }}
-      className={cx(className, 'relative flex items-stretch', lifted && 'z-10 rounded-xl bg-surface shadow-[var(--c-shadow-lg)]')}
+      className={cx(className, 'relative flex items-stretch', lifted && 'z-10 rounded-xl bg-surface shadow-[var(--c-shadow-lg)]', isFresh(task) && 'just-added')}
     >
       <div className="min-w-0 flex-1">{children}</div>
       {handle && (

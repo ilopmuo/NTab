@@ -13,8 +13,10 @@ import { startLookupCache } from './db/hooks'
 import { requestPersistentStorage } from './sync/authStorage'
 import { rollSubscriptions } from './db/actions'
 import { purgeTrash } from './db/trash'
+import { interceptLinks } from './app/router'
 
 registerSW({ immediate: true })
+interceptLinks()
 void requestPersistentStorage()
 
 seedIfEmpty().finally(() => {

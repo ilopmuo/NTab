@@ -4,7 +4,7 @@ import { Hash } from 'lucide-react'
 import { db } from '@/db/db'
 import { TaskList } from '@/components/TaskList'
 import { PageHeader } from '@/components/ui'
-import { href, navigate } from '@/app/router'
+import { href, navigate, vtName } from '@/app/router'
 import { Page } from './Page'
 import { SelectButton } from '@/features/select/SelectButton'
 import { TagMenu, TagNameInput, renameTagUndoable } from './tags/TagsView'
@@ -26,6 +26,7 @@ export function TagView({ tag }: { tag: string }) {
           </span>
         }
         title={tag}
+        titleName={vtName('tag', tag)}
         subtitle={`${open.length} ${open.length === 1 ? 'tarea pendiente' : 'tareas pendientes'}${done ? ` · ${done} ${done === 1 ? 'hecha' : 'hechas'}` : ''}`}
         actions={
           <>

@@ -5,7 +5,7 @@ import type { Task } from '@/db/types'
 import { useLookup } from '@/db/hooks'
 import { createTask } from '@/db/actions'
 import { parseQuickAdd } from '@/lib/parse'
-import { sortManual, sortTasks } from '@/lib/tasks'
+import { isFresh, sortManual, sortTasks } from '@/lib/tasks'
 import { TaskItem } from './TaskItem'
 import { ManualRows, useListOrder } from './ManualOrder'
 import { ParsedChips } from './ParsedChips'
@@ -67,7 +67,7 @@ export function TaskList({
               animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 32, delay: Math.min(i, 12) * 0.03 } }}
               // Recorta solo al plegarse; si no, las chispas de la casilla saldrían cortadas
               exit={{ opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
-              className={rowSeparator}
+              className={cx(rowSeparator, isFresh(t) && 'just-added')}
             >
               <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} draggable={draggable} />
             </motion.div>

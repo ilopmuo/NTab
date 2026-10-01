@@ -5,7 +5,7 @@ import { db } from '@/db/db'
 import { deleteTag, renameTag, restoreTasks } from '@/db/actions'
 import { cleanTag, tagStats, type TagStat } from '@/lib/tags'
 import { SectionIcon, section } from '@/app/sections'
-import { href } from '@/app/router'
+import { href, vtName } from '@/app/router'
 import { toast } from '@/app/store'
 import { isPinned, togglePinWithToast, usePins } from '@/app/pins'
 import { Menu } from '@/components/Menu'
@@ -123,7 +123,9 @@ function TagRow({ stat, names }: { stat: TagStat; names: string[] }) {
         />
       ) : (
         <a href={href(`/tag/${encodeURIComponent(stat.tag)}`)} className="group flex min-w-0 flex-1 items-center gap-2 self-stretch">
-          <span className="min-w-0 truncate text-[16px] font-medium">{stat.tag}</span>
+          <span className="min-w-0 truncate text-[16px] font-medium" style={{ viewTransitionName: vtName('tag', stat.tag) }}>
+            {stat.tag}
+          </span>
           <span className="ml-auto shrink-0 text-[14px] text-muted">
             {stat.open ? `${stat.open} ${stat.open === 1 ? 'pendiente' : 'pendientes'}` : 'Todo hecho'}
           </span>

@@ -9,7 +9,7 @@ import { runner, useRunner } from '@/features/routines/useRoutines'
 import { QuickAdd } from '@/components/QuickAdd'
 import { Toast } from '@/components/Toast'
 import { cx } from '@/components/ui'
-import { navigate, useRoute } from './router'
+import { inViewTransition, navigate, useRoute } from './router'
 import { useGlobalShortcuts } from './shortcuts'
 import { Sidebar } from './Sidebar'
 import { announce } from './announce'
@@ -309,7 +309,8 @@ function Workspace() {
         <ReauthBanner />
         <motion.div
           key={screenKey}
-          initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
+          // Con View Transition, la transición ya la hace el navegador
+          initial={inViewTransition() ? false : { opacity: 0, y: 10, filter: 'blur(6px)' }}
           // Al terminar se quita el filtro: si se queda, el cristal de las tarjetas
           // no puede difuminar el fondo ambiental (el filtro crea una "raíz de fondo")
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}

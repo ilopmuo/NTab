@@ -47,7 +47,7 @@ export function setTheme(p: ThemePref) {
   if (before === after || !doc.startViewTransition || reducedMotion()) return commit()
   const { x, y } = lastPointer ?? { x: innerWidth / 2, y: 0 }
   const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
-  document.documentElement.classList.add('theme-transition')
+  document.documentElement.classList.add('theme-transition', 'vt-whole')
   const vt = doc.startViewTransition(commit)
   vt.ready
     .then(() =>
@@ -57,7 +57,7 @@ export function setTheme(p: ThemePref) {
       ).finished,
     )
     .catch(() => {})
-    .finally(() => document.documentElement.classList.remove('theme-transition'))
+    .finally(() => document.documentElement.classList.remove('theme-transition', 'vt-whole'))
 }
 
 export function toggleTheme() {
@@ -110,7 +110,9 @@ export function setAccent(a: Accent) {
   }
   const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown }
   if (a === accent || !doc.startViewTransition || reducedMotion()) return commit()
-  doc.startViewTransition(commit)
+  document.documentElement.classList.add('vt-whole')
+  const vt = doc.startViewTransition(commit) as { finished?: Promise<void> } | undefined
+  void (vt?.finished ?? Promise.resolve()).catch(() => {}).finally(() => document.documentElement.classList.remove('vt-whole'))
 }
 
 export function useAccent(): Accent {

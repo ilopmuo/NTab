@@ -49,11 +49,15 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Momento | Animación |
 |---|---|
 | Arranque | El logo aparece con un muelle y el contenido entra escalonado |
-| Cambio de vista | Fundido con desplazamiento de 8 px y desenfoque, en 250 ms |
-| Completar tarea | El círculo se rellena con un muelle, el ✓ se dibuja y la fila se pliega |
+| Cambio de vista | Con View Transitions (Chrome, Edge, Safari 18): el contenido sale fundido y el nuevo sube 10 px; la barra lateral y la de pestañas no se mueven; el título viaja al nuevo título, y el nombre y el anillo de un proyecto viajan de su tarjeta a su página (igual con las etiquetas). Sin ellas: fundido con desplazamiento de 8 px y desenfoque |
+| Completar tarea | El círculo se rellena con un muelle, el ✓ se dibuja, el tachado cruza el título de izquierda a derecha y la fila se pliega |
+| Tarea nueva | Su fila se ilumina con el acento y se apaga despacio (1,8 s), para ver dónde ha caído |
 | Selección en la barra lateral | La píldora se desliza al nuevo elemento (*shared layout*) |
 | Hojas y modales | Suben o crecen con muelle; en móvil se cierran arrastrando hacia abajo |
-| Anillos y números | Se llenan y cuentan desde cero al aparecer; los contadores ruedan al cambiar (el número viejo sale, el nuevo entra en la dirección del cambio) |
+| Anillos y números | Se llenan y cuentan desde cero al aparecer; los contadores ruedan al cambiar (el número viejo sale, el nuevo entra en la dirección del cambio). Al cerrarse un anillo, una onda sale de él |
+| Hábitos en Hoy | Al marcarlo, el lima crece en círculo desde donde tocas; la llama de la racha da un respingo y el número rueda; en los de cantidad, cada toque suelta un «+1» que sube y se desvanece |
+| Pestañas | La pestaña elegida da un saltito, como los SF Symbols |
+| Modo foco | Mientras corre el tiempo, un halo respira detrás del anillo (8 s por respiración); al acabar, ondas verdes |
 | Completar | Chispas lima y azul salen de la casilla, con toque háptico |
 | Día completado | El anillo lima se cierra, se dibuja el ✓ y cae confeti (solo si acaba de pasar, no al volver a Hoy) |
 | Deslizar una tarea (táctil) | → hecha (lima), ← a mañana (azul). La franja se colorea al pasar el umbral, con toque háptico; si no llega, vuelve con muelle |
@@ -69,6 +73,8 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | ¿Qué hago ahora? | La propuesta entra desde abajo; «Otra» la cambia con un fundido |
 | Gastos | La cifra del mes aparece al apuntar; barras de presupuesto y categorías crecen con muelle (una sola serie, un solo color: azul) |
 | Compra | Lo que vas a añadir aparece en píldoras con su pasillo mientras escribes; al marcar, la fila baja al carro |
+
+Con «Reducir movimiento» (sistema o Ajustes) no hay transiciones entre pantallas, ni animaciones de CSS o de Motion, ni confeti.
 
 La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el interruptor nativo oculto (`src/lib/haptics.ts`).
 

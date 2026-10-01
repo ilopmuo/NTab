@@ -55,3 +55,27 @@ function dueDate(page: import('@playwright/test').Page, title: string) {
     return all.find((x) => x.title === t)?.dueDate
   }, title)
 }
+
+for (const reduce of [false, true])
+  test(`transición entre pantallas ${reduce ? 'desactivada con «Reducir movimiento»' : 'con View Transitions'}`, async ({ page }) => {
+    await page.addInitScript((r) => {
+      if (r) localStorage.setItem('ntab-motion', 'on')
+      // Cuenta las transiciones que pide la app
+      const w = window as unknown as { __vt: number }
+      w.__vt = 0
+      const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown }
+      const orig = doc.startViewTransition?.bind(document)
+      if (orig) doc.startViewTransition = (cb: () => void) => (w.__vt++, orig(cb))
+    }, reduce)
+    await openApp(page, '/today')
+    const nav = page.getByRole('navigation', { name: 'Barra lateral' })
+    await nav.getByRole('link', { name: 'Proyectos' }).click()
+    await expect(page.locator('#main h1').first()).toHaveText('Proyectos')
+    await expect(page).toHaveURL(/#\/projects$/)
+    const count = await page.evaluate(() => (window as unknown as { __vt: number }).__vt)
+    if (reduce) expect(count).toBe(0)
+    else expect(count).toBeGreaterThan(0)
+    // Atrás vuelve a la pantalla anterior
+    await page.goBack()
+    await expect(page.locator('#main h1').first()).not.toHaveText('Proyectos')
+  })

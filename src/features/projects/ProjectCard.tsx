@@ -3,7 +3,7 @@ import { CalendarClock, Check, Circle } from 'lucide-react'
 import type { Project, Task } from '@/db/types'
 import { dateLabel, relativeDays, today } from '@/lib/dates'
 import { nextStep } from '@/lib/projects'
-import { href } from '@/app/router'
+import { href, vtName } from '@/app/router'
 import { useListModes } from '@/components/ManualOrder'
 import { ProgressRing, cx } from '@/components/ui'
 
@@ -42,14 +42,18 @@ export function ProjectCard({ project, tasks, index = 0 }: { project: Project; t
       className="glass flex flex-col rounded-[20px] p-4"
     >
       <div className="flex items-start gap-3">
-        <div className="relative shrink-0">
+        <div className="relative shrink-0" style={{ viewTransitionName: vtName('proj-ring', project.id) }}>
           <ProgressRing value={s.progress} size={44} stroke={5} color={complete ? 'var(--c-green)' : 'var(--c-blue)'} track="var(--c-fill)" delay={0.1 + index * 0.04} />
           <span className="font-num absolute inset-0 flex items-center justify-center text-[11px] font-bold">
             {complete ? <Check size={18} strokeWidth={3} aria-label="Completado" /> : `${Math.round(s.progress * 100)}%`}
           </span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[16px] font-semibold">{project.name}</p>
+          <p className="truncate text-[16px] font-semibold">
+            <span className="inline-block max-w-full truncate align-bottom" style={{ viewTransitionName: vtName('proj-title', project.id) }}>
+              {project.name}
+            </span>
+          </p>
           <p className="truncate text-[13px] text-muted">
             {s.open ? `${s.open} ${s.open === 1 ? 'pendiente' : 'pendientes'}` : complete ? 'Todo hecho' : 'Sin tareas'}
             {sections > 1 && ` · ${sections} secciones`}

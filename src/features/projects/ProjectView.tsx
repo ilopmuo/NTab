@@ -7,7 +7,7 @@ import { createNote, deleteProject } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
 import type { ProjectStatus } from '@/db/types'
 import { dateLabel, relativeDays, today } from '@/lib/dates'
-import { href, navigate } from '@/app/router'
+import { href, inViewTransition, navigate, vtName } from '@/app/router'
 import { toast } from '@/app/store'
 import { isPinned, togglePinWithToast, usePins } from '@/app/pins'
 import { AreaBadge } from '@/components/icons'
@@ -64,7 +64,7 @@ export function ProjectView({ id }: { id: string }) {
           </div>
         )}
         <div className="flex items-center gap-4">
-          <div className="relative shrink-0">
+          <div className="relative shrink-0" style={{ viewTransitionName: vtName('proj-ring', project.id) }}>
             <ProgressRing value={progress} size={64} stroke={7} color={progress === 1 ? 'var(--c-green)' : 'var(--c-blue)'} track="var(--c-fill)" />
             <span className="font-num absolute inset-0 flex items-center justify-center text-[15px] font-bold">
               {progress === 1 ? <Check size={24} strokeWidth={3} aria-label="Completado" /> : `${Math.round(progress * 100)}%`}
@@ -72,12 +72,15 @@ export function ProjectView({ id }: { id: string }) {
           </div>
           <div className="min-w-0 flex-1">
             <motion.h1
-              initial={{ opacity: 0, y: 8 }}
+              initial={inViewTransition() ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={softSpring}
               className="truncate text-[32px] leading-tight font-bold tracking-[-0.025em]"
             >
-              {project.name}
+              {/* Viaja desde el nombre de su tarjeta (transición entre pantallas) */}
+              <span className="inline-block max-w-full truncate align-bottom" style={{ viewTransitionName: vtName('proj-title', project.id) }}>
+                {project.name}
+              </span>
             </motion.h1>
             <p className="mt-0.5 text-[14px] text-muted">
               {done.length} de {tasks.length} completadas

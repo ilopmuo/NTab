@@ -88,7 +88,10 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
   - casillas que se rellenan con un muelle;
   - hojas que se cierran arrastrando;
   - chispas al completar y confeti al acabar el día;
-  - contadores que ruedan, tema que cambia en círculo y barra de pestañas que se encoge al bajar.
+  - contadores que ruedan, tema que cambia en círculo y barra de pestañas que se encoge al bajar;
+  - transiciones entre pantallas en las que el título (y el nombre y el anillo de un proyecto) viaja de un sitio a otro;
+  - tachado que se dibuja al completar, la tarea nueva que se ilumina, ondas al cerrar un anillo, hábitos que se rellenan desde el toque y un modo foco que respira.
+- **Todo respeta «Reducir movimiento»** (del sistema o de Ajustes).
 
 ## Lenguaje natural
 

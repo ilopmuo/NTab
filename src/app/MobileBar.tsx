@@ -42,7 +42,10 @@ export function MobileBar() {
   const moreOn = path === '/more' || !tabs.some((t) => isOn(t.path))
   const badge: Record<string, number> = { today: c.today, habits: c.habitsLeft, inbox: c.inbox, shopping: c.shopping, people: c.peopleDue }
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),10px)] lg:hidden">
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),10px)] lg:hidden"
+      style={{ viewTransitionName: 'tabbar' }}
+    >
       <motion.nav initial={false} animate={{ height: mini ? 50 : 62 }} transition={barSpring} className="glass-thick pointer-events-auto flex flex-1 items-center rounded-full px-1.5">
         {tabs.map((t) => {
           const on = isOn(t.path)
@@ -55,7 +58,13 @@ export function MobileBar() {
               style={{ color: on ? tint(t.tint) : 'var(--c-text)' }}
             >
               {on && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
-              <span className="relative">
+              {/* Al elegirla, el icono da un saltito (como los SF Symbols) */}
+              <motion.span
+                className="relative"
+                key={on ? 'on' : 'off'}
+                animate={on ? { y: [0, -5, 0], scale: [1, 1.12, 1] } : { y: 0, scale: 1 }}
+                transition={{ duration: 0.42, ease: [0.3, 1.4, 0.5, 1] }}
+              >
                 {t.icon === 'today' ? (
                   <span
                     className={cx('font-num flex h-[22px] w-[22px] items-center justify-center rounded-[6px] border-[1.8px] text-[11px] font-bold', on ? '' : 'opacity-90')}
@@ -74,7 +83,7 @@ export function MobileBar() {
                     <RollingNumber value={badge[t.id]} />
                   </span>
                 )}
-              </span>
+              </motion.span>
               <Label mini={mini}>{t.short}</Label>
             </a>
           )
@@ -87,7 +96,14 @@ export function MobileBar() {
           style={{ color: moreOn ? 'var(--c-blue)' : 'var(--c-text)' }}
         >
           {moreOn && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
-          <LayoutGrid size={22} strokeWidth={moreOn ? 2.3 : 1.9} className="relative" />
+          <motion.span
+            className="relative"
+            key={moreOn ? 'on' : 'off'}
+            animate={moreOn ? { y: [0, -5, 0], scale: [1, 1.12, 1] } : { y: 0, scale: 1 }}
+            transition={{ duration: 0.42, ease: [0.3, 1.4, 0.5, 1] }}
+          >
+            <LayoutGrid size={22} strokeWidth={moreOn ? 2.3 : 1.9} />
+          </motion.span>
           <Label mini={mini}>Más</Label>
         </a>
       </motion.nav>

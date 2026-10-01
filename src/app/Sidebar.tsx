@@ -363,7 +363,7 @@ export function Sidebar() {
           transition={{ type: 'spring', stiffness: 380, damping: 40 }}
           inert={hidden}
           className="fixed inset-y-0 left-0 z-20 w-[272px] shadow-[inset_-1px_0_0_var(--c-border)] backdrop-blur-[40px] backdrop-saturate-[1.8]"
-          style={{ background: 'var(--c-sidebar)' }}
+          style={{ background: 'var(--c-sidebar)', viewTransitionName: 'sidebar' }}
         >
           <SidebarContent />
         </motion.nav>
