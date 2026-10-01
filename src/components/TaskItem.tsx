@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { motion, useTransform, type MotionValue } from 'motion/react'
-import { Bell, Check, ChevronRight, Clock, Hourglass, ListChecks, Repeat, RotateCcw, StickyNote, Sunrise } from 'lucide-react'
+import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, ListChecks, Repeat, RotateCcw, StickyNote, Sunrise, Telescope } from 'lucide-react'
 import { durationLabel } from '@/lib/duration'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
@@ -256,6 +256,23 @@ export const TaskItem = memo(function TaskItem({
     meta.push(
       <span key="d" className="font-medium" style={{ color: task.done ? undefined : dateColor(task.dueDate, t) }}>
         {dateLabel(task.dueDate, t)}
+      </span>,
+    )
+  }
+  if (task.someday && !task.dueDate && !hideDate) {
+    meta.push(
+      <span key="sd" className="inline-flex items-center gap-1">
+        <Telescope size={11} strokeWidth={2.4} aria-hidden />
+        Algún día
+      </span>,
+    )
+  }
+  if (task.deadline && !task.done) {
+    meta.push(
+      <span key="dl" className="inline-flex items-center gap-1 font-medium" style={{ color: dateColor(task.deadline, t) }} title="Fecha límite">
+        <CalendarClock size={11} strokeWidth={2.4} aria-hidden />
+        <span className="sr-only">Fecha límite: </span>
+        {dateLabel(task.deadline, t)}
       </span>,
     )
   }

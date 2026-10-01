@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupNotes, noteGroup } from './notes'
+import { allNoteTags, backlinks, findNote, groupNotes, noteGroup, noteLinks, noteTags, suggestLink } from './notes'
 
 const at = (s: string) => new Date(`${s}T12:00:00`).getTime()
 
@@ -25,5 +25,34 @@ describe('grupos de notas', () => {
       ['Hoy', 'bc'],
       ['Junio', 'd'],
     ])
+  })
+})
+
+describe('notas enlazadas', () => {
+  const notes = [
+    { id: '1', title: 'Recetas', content: 'Ver [[Lista de la compra]] y [[lista de la COMPRA]]. #cocina' },
+    { id: '2', title: 'Lista de la compra', content: '- Pan\n- Leche #casa #cocina' },
+    { id: '3', title: 'Menú', content: 'Lunes: lentejas\nIdeas en [[Recetas]] y [[Recétas]]' },
+  ]
+  it('lee los [[enlaces]] y las #etiquetas', () => {
+    expect(noteLinks(notes[0].content)).toEqual(['Lista de la compra'])
+    expect(noteLinks('nada [[ ]] ni [[a\nb]]')).toEqual([])
+    expect(noteTags('# Título\n#Casa y #casa, (#viaje/2026) #1 email@x.com #fin-')).toEqual(['casa', 'viaje/2026', 'fin'])
+    expect(allNoteTags(notes)).toEqual(['cocina', 'casa'])
+  })
+  it('encuentra la nota enlazada y quién la menciona', () => {
+    expect(findNote(notes, 'lista de la compra')?.id).toBe('2')
+    expect(findNote(notes, 'recetas ')?.id).toBe('1')
+    expect(findNote(notes, 'No existe')).toBeUndefined()
+    expect(backlinks(notes, notes[0]).map((b) => [b.note.id, b.line])).toEqual([['3', 'Ideas en [[Recetas]] y [[Recétas]]']])
+    expect(backlinks(notes, notes[2])).toEqual([])
+  })
+  it('sugiere títulos al escribir [[', () => {
+    const titles = notes.map((n) => n.title)
+    const v = 'Mira [[lis'
+    expect(suggestLink(v, v.length, titles)).toEqual({ start: 5, end: v.length, items: ['Lista de la compra'] })
+    const w = 'Mira [[re]] luego'
+    expect(suggestLink(w, 9, titles)).toEqual({ start: 5, end: 11, items: ['Recetas'] })
+    expect(suggestLink('Mira [[Recetas]] ', 17, titles)).toBeUndefined()
   })
 })

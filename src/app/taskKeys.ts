@@ -6,7 +6,7 @@ import { toast } from './store'
 /**
  * Teclado sobre las listas de tareas (para no depender del ratón):
  * j / ↓ y k / ↑ pasan de una tarea a otra; con una tarea enfocada, T la pasa a
- * hoy, M a mañana y Supr la borra (Intro la abre y Espacio la completa, en el
+ * hoy, M a mañana, S a «algún día» y Supr la borra (Intro la abre y Espacio la completa, en el
  * propio título). Todo con «Deshacer» (o ⌘Z).
  */
 const titles = () => [...document.querySelectorAll<HTMLElement>('#main [data-task-id] .task-title')]
@@ -67,6 +67,19 @@ export function handleTaskKey(e: KeyboardEvent): boolean {
   if (lower === 'm') {
     e.preventDefault()
     void moveTo(id, addDaysYmd(today(), 1), 'mañana', index)
+    return true
+  }
+  if (lower === 's') {
+    e.preventDefault()
+    void (async () => {
+      const before = await mutateTasks([id], (x) => {
+        x.someday = true
+        delete x.dueDate
+        delete x.dueTime
+      })
+      toast('→ algún día', { label: 'Deshacer', run: () => void restoreTasks(before) })
+      refocusAfter(index)
+    })()
     return true
   }
   if (k === 'Delete' || k === 'Backspace') {

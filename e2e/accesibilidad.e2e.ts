@@ -7,7 +7,7 @@ import { expect, openApp, quickAdd, test } from './fixtures'
  * sin nombre, controles anidados…
  */
 // Todas las secciones (las de src/app/sections.tsx), «Más» y Planificar
-const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/templates', '/goals', '/expenses', '/finance', '/review', '/trash', '/logbook', '/settings', '/plan', '/more']
+const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/lists', '/matrix', '/someday', '/templates', '/goals', '/expenses', '/finance', '/review', '/trash', '/logbook', '/settings', '/plan', '/more']
 
 for (const theme of ['dark', 'light'] as const) {
   test(`sin problemas serios de accesibilidad (tema ${theme === 'dark' ? 'oscuro' : 'claro'})`, async ({ page }) => {
@@ -80,6 +80,8 @@ for (const [theme, accent, contrast] of [['light', 'pink', ''], ['dark', 'graphi
     )
     await openApp(page)
     await quickAdd(page, 'Llamar al dentista hoy a las 10 !alta #salud')
+    // Que se vaya el aviso (a medio desvanecer no tiene su color final)
+    await expect(page.locator('.z-\\[60\\] .glass-thick')).toHaveCount(0, { timeout: 8000 })
     const found: string[] = []
     for (const path of ['/today', '/plan', '/calendar', '/inbox', '/settings']) {
       await page.evaluate((p) => (location.hash = p), path)

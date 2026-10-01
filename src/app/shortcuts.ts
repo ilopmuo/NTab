@@ -46,7 +46,7 @@ export function useGlobalShortcuts() {
       const k = e.key.toLowerCase()
       if (gPressed && Date.now() - gPressed < 1200) {
         gPressed = 0
-        const target = SECTIONS.find((n) => n.key.toLowerCase() === k && sectionEnabled(n.id))
+        const target = SECTIONS.find((n) => n.key && n.key.toLowerCase() === k && sectionEnabled(n.id))
         if (target) {
           e.preventDefault()
           navigate(target.path)

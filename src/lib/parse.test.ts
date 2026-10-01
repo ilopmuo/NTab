@@ -343,9 +343,29 @@ describe('franjas del día y fechas', () => {
     expect(p('Pagar alquiler a finales de mes')).toMatchObject({ title: 'Pagar alquiler', dueDate: '2026-09-30' })
     expect(p('Revisar cuentas el último día del mes').dueDate).toBe('2026-09-30')
   })
-  it('«antes del viernes» no queda en el título', () => {
-    expect(p('Enviar informe antes del viernes')).toMatchObject({ title: 'Enviar informe', dueDate: '2026-09-25' })
+  it('«antes del viernes» es la fecha límite (y no queda en el título)', () => {
+    const r = p('Enviar informe antes del viernes')
+    expect(r).toMatchObject({ title: 'Enviar informe', deadline: '2026-09-25' })
+    expect(r.dueDate).toBeUndefined()
     expect(p('Entregar trabajo para el lunes')).toMatchObject({ title: 'Entregar trabajo', dueDate: '2026-09-28' })
     expect(p('Hacerlo como antes').title).toBe('Hacerlo como antes')
+  })
+  it('«algún día»: sin fecha y fuera de la Bandeja', () => {
+    expect(p('Aprender a tocar el piano algún día')).toMatchObject({ title: 'Aprender a tocar el piano', someday: true })
+    expect(p('Pintar el salón en algún momento #casa')).toMatchObject({ title: 'Pintar el salón', someday: true, tags: ['casa'] })
+    // Con fecha, manda la fecha
+    expect(p('Llamar a Ana mañana algún día').someday).toBeUndefined()
+  })
+  it('fecha para hacerla y fecha límite a la vez', () => {
+    expect(p('Preparar la charla mañana, como muy tarde el 3 de octubre')).toMatchObject({ title: 'Preparar la charla', dueDate: '2026-09-24', deadline: '2026-10-03' })
+    expect(p('Pagar la multa a más tardar el 30')).toMatchObject({ title: 'Pagar la multa', deadline: '2026-09-30' })
+    expect(p('Renovar DNI fecha límite 15/11')).toMatchObject({ title: 'Renovar DNI', deadline: '2026-11-15' })
+    expect(p('Pagar la factura que vence el 5')).toMatchObject({ title: 'Pagar la factura', deadline: '2026-10-05' })
+    expect(p('Enviar informe antes del 30')).toMatchObject({ title: 'Enviar informe', deadline: '2026-09-30' })
+    // «charla mañana» no es «la mañana»
+    expect(p('Preparar la charla mañana')).toMatchObject({ title: 'Preparar la charla', dueDate: '2026-09-24' })
+    // Sin fecha detrás, las palabras se quedan
+    expect(p('Comer algo antes de salir')).toMatchObject({ title: 'Comer algo antes de salir' })
+    expect(p('Comer algo antes de salir').deadline).toBeUndefined()
   })
 })

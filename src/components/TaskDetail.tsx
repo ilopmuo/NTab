@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'motion/react'
-import { AtSign, Bell, Calendar, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Subtask, Task } from '@/db/types'
 import { useLookup, useTask } from '@/db/hooks'
 import { deleteTask, duplicateTask, mutateTask, skipOccurrence, updateTask } from '@/db/actions'
-import { addDaysYmd, capitalize, dateLabel, fmt, fromYmd, longDateLabel, today, weekStart, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
+import { addDaysYmd, capitalize, dateLabel, fmt, fromYmd, longDateLabel, relativeDays, today, weekStart, ymd, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
+import { endOfMonth } from 'date-fns'
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor, moveItem } from '@/lib/tasks'
 import { uid } from '@/lib/id'
@@ -127,17 +128,27 @@ function Row({
  * Elegir el día: atajos (hoy, mañana, el sábado, el lunes que viene) y un
  * calendario propio que se despliega debajo.
  */
-function DateChoice({ value, onChange }: { value?: string; onChange: (day: string) => void }) {
+function DateChoice({ value, onChange, kind = 'when' }: { value?: string; onChange: (day: string) => void; kind?: 'when' | 'deadline' }) {
   const t = today()
   const [open, setOpen] = useState(false)
   const monday = weekStart(t)
   const saturday = addDaysYmd(monday, 5) < t ? addDaysYmd(monday, 12) : addDaysYmd(monday, 5)
-  const presets = [
-    { day: t, label: 'Hoy' },
-    { day: addDaysYmd(t, 1), label: 'Mañana' },
-    ...(saturday > addDaysYmd(t, 1) ? [{ day: saturday, label: 'El sábado' }] : []),
-    { day: addDaysYmd(monday, 7), label: 'El lunes' },
-  ]
+  const friday = addDaysYmd(monday, 4) < t ? addDaysYmd(monday, 11) : addDaysYmd(monday, 4)
+  const monthEnd = ymd(endOfMonth(fromYmd(t)))
+  // Para hacerla: hoy, mañana, el sábado, el lunes. Para la fecha límite: el viernes, fin de mes
+  const presets =
+    kind === 'deadline'
+      ? [
+          { day: friday, label: 'El viernes' },
+          { day: addDaysYmd(friday, 7), label: 'El otro viernes' },
+          ...(monthEnd > addDaysYmd(friday, 7) ? [{ day: monthEnd, label: 'Fin de mes' }] : []),
+        ]
+      : [
+          { day: t, label: 'Hoy' },
+          { day: addDaysYmd(t, 1), label: 'Mañana' },
+          ...(saturday > addDaysYmd(t, 1) ? [{ day: saturday, label: 'El sábado' }] : []),
+          { day: addDaysYmd(monday, 7), label: 'El lunes' },
+        ]
   const other = value && !presets.some((p) => p.day === value)
   return (
     <>
@@ -156,7 +167,7 @@ function DateChoice({ value, onChange }: { value?: string; onChange: (day: strin
         )}
       >
         <CalendarDays size={14} strokeWidth={2.4} aria-hidden />
-        {other ? capitalize(fmt(value, 'EEE d MMM')) : 'Otro día'}
+        {other ? capitalize(fmt(value, 'EEE d MMM')) : kind === 'deadline' ? 'Otra fecha' : 'Otro día'}
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -328,10 +339,30 @@ function TaskDetail({ task }: { task: Task }) {
             icon={<Calendar size={16} strokeWidth={2.4} />}
             color={task.done ? 'var(--c-gray)' : dateColor(task.dueDate)}
             label="Fecha"
-            value={task.dueDate ? (overdue ? `${longDateLabel(task.dueDate)} · atrasada` : `${dateLabel(task.dueDate)} · ${longDateLabel(task.dueDate)}`) : undefined}
+            value={task.dueDate ? (overdue ? `${longDateLabel(task.dueDate)} · atrasada` : `${dateLabel(task.dueDate)} · ${longDateLabel(task.dueDate)}`) : task.someday ? 'Algún día' : undefined}
             onClear={task.dueDate ? () => set({ dueDate: undefined, dueTime: undefined, recurrence: undefined }) : undefined}
           >
-            <DateChoice value={task.dueDate} onChange={(dueDate) => set({ dueDate })} />
+            <DateChoice value={task.dueDate} onChange={(dueDate) => set({ dueDate, someday: undefined })} />
+            <Pill
+              tone="strong"
+              active={!!task.someday && !task.dueDate}
+              onClick={() => (task.someday ? set({ someday: undefined }) : set({ someday: true, dueDate: undefined, dueTime: undefined, recurrence: undefined }))}
+            >
+              Algún día
+            </Pill>
+          </Row>
+          <Row
+            icon={<CalendarClock size={16} strokeWidth={2.4} />}
+            color={task.done || !task.deadline ? 'var(--c-gray)' : dateColor(task.deadline)}
+            label="Fecha límite"
+            value={
+              task.deadline
+                ? `${dateLabel(task.deadline)} · ${task.deadline < t ? `venció ${relativeDays(task.deadline)}` : relativeDays(task.deadline)}`
+                : undefined
+            }
+            onClear={task.deadline ? () => set({ deadline: undefined }) : undefined}
+          >
+            <DateChoice kind="deadline" value={task.deadline} onChange={(deadline) => set({ deadline })} />
           </Row>
           <Row
             icon={<Clock size={16} strokeWidth={2.4} />}

@@ -1,22 +1,39 @@
 import { useSyncExternalStore } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Columns3, Grid2x2 } from 'lucide-react'
 import { mutateTask } from '@/db/actions'
 import type { Task } from '@/db/types'
 import { dateLabel } from '@/lib/dates'
 import { toast } from '@/app/store'
 
 /**
- * Arrastrar una tarea a otro día (Calendario y Próximo). Con ratón empieza al
+ * Arrastrar una tarea a otro día (Calendario y Próximo), a otra columna del
+ * tablero de un proyecto o a otro cuadrante de la matriz. Con ratón empieza al
  * moverla; en pantallas táctiles, con una pulsación larga, para no estorbar al
- * scroll. Los destinos son elementos con data-drop-day="YYYY-MM-DD".
+ * scroll. Los destinos son elementos con data-drop-<tipo>="<valor>"
+ * (data-drop-day="YYYY-MM-DD", data-drop-section="<id>"…) y data-drop-label
+ * con el nombre que enseña la etiqueta que sigue al puntero.
  */
+type Kind = 'day' | 'section' | 'quadrant'
+
+/** A dónde se arrastra: el tipo de destino, de dónde sale y qué hacer al soltar */
+export interface DropKind {
+  kind: Kind
+  from?: string
+  drop: (task: Task, to: string, label: string) => void
+}
+
+const DAY: DropKind['drop'] = (task, to) => void moveTaskToDay(task, to)
+
 interface DragState {
   task: Task
+  kind: Kind
+  from?: string
   x: number
   y: number
-  /** día bajo el puntero */
+  /** destino bajo el puntero */
   over: string | null
+  overLabel?: string
 }
 
 let state: DragState | null = null
@@ -36,7 +53,10 @@ function useDrag() {
 }
 
 const LONG_PRESS = 350
-const dayAt = (x: number, y: number) => document.elementFromPoint(x, y)?.closest('[data-drop-day]')?.getAttribute('data-drop-day') ?? null
+function targetAt(kind: Kind, x: number, y: number) {
+  const el = document.elementFromPoint(x, y)?.closest(`[data-drop-${kind}]`)
+  return { over: el?.getAttribute(`data-drop-${kind}`) ?? null, overLabel: el?.getAttribute('data-drop-label') ?? undefined }
+}
 
 /** Tras soltar, el clic que genera el navegador no debe abrir la tarea */
 export function swallowNextClick() {
@@ -64,7 +84,25 @@ export async function moveTaskToDay(task: Task, day: string) {
   })
 }
 
-function startDrag(e: React.PointerEvent, task: Task) {
+export async function moveTaskToSection(task: Task, sectionId: string, name: string) {
+  const to = sectionId === '-' ? undefined : sectionId
+  if (task.sectionId === to) return
+  const prev = task.sectionId
+  await mutateTask(task.id, (t) => {
+    if (to) t.sectionId = to
+    else delete t.sectionId
+  })
+  toast(`${task.title} → ${name}`, {
+    label: 'Deshacer',
+    run: () =>
+      void mutateTask(task.id, (t) => {
+        if (prev) t.sectionId = prev
+        else delete t.sectionId
+      }),
+  })
+}
+
+function startDrag(e: React.PointerEvent, task: Task, { kind, from, drop }: DropKind) {
   if (e.button !== 0) return
   // La casilla, los enlaces y los campos funcionan como siempre
   if ((e.target as HTMLElement).closest('[role=checkbox], a, input, textarea, select')) return
@@ -76,10 +114,12 @@ function startDrag(e: React.PointerEvent, task: Task) {
   let started = false
   let raf = 0
   const main = document.getElementById('main')
+  // El tablero se desplaza en horizontal
+  const row = (e.currentTarget as HTMLElement).closest<HTMLElement>('[data-drag-scroll-x]')
 
   const begin = () => {
     started = true
-    set({ task, x, y, over: dayAt(x, y) })
+    set({ task, kind, from, x, y, ...targetAt(kind, x, y) })
     if (touch) navigator.vibrate?.(10)
     document.body.style.userSelect = 'none'
     // Desplazarse al acercarse a los bordes
@@ -88,7 +128,12 @@ function startDrag(e: React.PointerEvent, task: Task) {
       const h = window.innerHeight
       if (y < 90) main.scrollBy(0, -Math.ceil((90 - y) / 6))
       else if (y > h - 110) main.scrollBy(0, Math.ceil((y - (h - 110)) / 6))
-      if (state) set({ ...state, over: dayAt(x, y) })
+      if (row) {
+        const r = row.getBoundingClientRect()
+        if (x < r.left + 60) row.scrollBy(-Math.ceil((r.left + 60 - x) / 5), 0)
+        else if (x > r.right - 60) row.scrollBy(Math.ceil((x - (r.right - 60)) / 5), 0)
+      }
+      if (state) set({ ...state, ...targetAt(kind, x, y) })
       raf = requestAnimationFrame(edge)
     }
     raf = requestAnimationFrame(edge)
@@ -105,7 +150,7 @@ function startDrag(e: React.PointerEvent, task: Task) {
       if (dist < 6) return
       begin()
     }
-    set({ task, x, y, over: dayAt(x, y) })
+    set({ task, kind, from, x, y, ...targetAt(kind, x, y) })
   }
   const blockScroll = (ev: TouchEvent) => {
     if (started) ev.preventDefault()
@@ -121,11 +166,12 @@ function startDrag(e: React.PointerEvent, task: Task) {
   }
   const up = () => {
     const over = state?.over
+    const label = state?.overLabel
     cleanup()
     if (!started) return
     set(null)
     swallowNextClick()
-    if (over) void moveTaskToDay(task, over)
+    if (over && over !== from) drop(task, over, label ?? '')
   }
   const cancel = () => {
     cleanup()
@@ -138,17 +184,28 @@ function startDrag(e: React.PointerEvent, task: Task) {
 }
 
 /** Props para hacer arrastrable algo que representa una tarea */
-export function dragToDay(task: Task) {
+export function dragTask(task: Task, to: DropKind) {
   return {
-    onPointerDown: (e: React.PointerEvent) => startDrag(e, task),
+    onPointerDown: (e: React.PointerEvent) => startDrag(e, task, to),
     style: { WebkitTouchCallout: 'none' } as React.CSSProperties,
   }
 }
 
-/** ¿Se está arrastrando algo sobre este día? */
-export function useDropOver(day: string) {
+export const dragToDay = (task: Task) => dragTask(task, { kind: 'day', from: task.dueDate, drop: DAY })
+
+export const dragToSection = (task: Task) =>
+  dragTask(task, { kind: 'section', from: task.sectionId ?? '-', drop: (t, to, label) => void moveTaskToSection(t, to, label) })
+
+/** ¿Se está arrastrando algo sobre este día (o esta columna, o este cuadrante)? */
+export function useDropOver(target: string, kind: Kind = 'day') {
   const s = useDrag()
-  return !!s && s.over === day && s.task.dueDate !== day
+  return !!s && s.kind === kind && s.over === target && s.from !== target
+}
+
+/** La tarea que se está arrastrando (para atenuar su tarjeta) */
+export function useDragging(id: string) {
+  const s = useDrag()
+  return s?.task.id === id
 }
 
 /** La tarea que sigue al puntero mientras se arrastra */
@@ -167,10 +224,12 @@ export function DragGhost() {
           style={{ left: s.x + 12, top: s.y + 12 }}
         >
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white">
-            <CalendarDays size={13} strokeWidth={2.6} />
+            {s.kind === 'day' ? <CalendarDays size={13} strokeWidth={2.6} /> : s.kind === 'section' ? <Columns3 size={13} strokeWidth={2.6} /> : <Grid2x2 size={13} strokeWidth={2.6} />}
           </span>
           <span className="min-w-0 truncate">{s.task.title}</span>
-          {s.over && s.over !== s.task.dueDate && <span className="shrink-0 font-semibold text-blue">→ {dateLabel(s.over)}</span>}
+          {s.over && s.over !== s.from && (
+            <span className="shrink-0 font-semibold text-blue">→ {s.kind === 'day' ? dateLabel(s.over) : s.overLabel}</span>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

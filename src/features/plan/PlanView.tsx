@@ -5,7 +5,7 @@ import { mutateTask, setSetting, toggleTask } from '@/db/actions'
 import { useLookup, useOpenTasks } from '@/db/hooks'
 import type { Task } from '@/db/types'
 import { addDaysYmd, longDateLabel, relativeDays, today } from '@/lib/dates'
-import { isInbox, sortTasks } from '@/lib/tasks'
+import { isInbox, sortTasks, whenDue } from '@/lib/tasks'
 import { dayLoad, durationLabel } from '@/lib/duration'
 import { eventMinutes, eventsByDay, useEvents } from '@/lib/calendarEvents'
 import { navigate } from '@/app/router'
@@ -76,8 +76,8 @@ export function PlanView() {
   const { todays, overdue, inbox, soon } = useMemo(() => {
     const list = [...(open ?? [])].sort(sortTasks)
     return {
-      todays: list.filter((x) => x.dueDate === t),
-      overdue: list.filter((x) => x.dueDate && x.dueDate < t),
+      todays: list.filter((x) => whenDue(x) === t),
+      overdue: list.filter((x) => (whenDue(x) ?? '9') < t),
       inbox: list.filter(isInbox),
       soon: list.filter((x) => x.dueDate && x.dueDate > t && x.dueDate <= addDaysYmd(t, 7)),
     }

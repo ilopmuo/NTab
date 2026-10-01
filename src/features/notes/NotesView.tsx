@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -11,8 +11,9 @@ import { createNote, createTask, updateNote, deleteNote } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
-import { Empty, IconButton, Select, Textarea, cx } from '@/components/ui'
-import { groupNotes } from '@/lib/notes'
+import { Empty, IconButton, Select, Textarea, cx, useMediaQuery } from '@/components/ui'
+import { allNoteTags, groupNotes, noteTags, suggestLink } from '@/lib/notes'
+import { LinkSuggestions, NoteConnections } from './NoteLinks'
 
 /** Cuándo se tocó: la hora si es de hoy; si no, hace cuánto */
 function noteWhen(t: number) {
@@ -26,7 +27,7 @@ function noteWhen(t: number) {
 const preview = (content: string) =>
   content
     .split('\n')
-    .map((l) => l.replace(/^\s*(?:[-*]\s*)?(?:\[[ xX]\]\s*)?#*\s*/, '').trim())
+    .map((l) => l.replace(/^\s*(?:[-*]\s*)?(?:\[[ xX]\]\s*)?#*\s*/, '').replace(/\[\[([^[\]\n]+?)\]\]/g, '$1').trim())
     .find(Boolean)
     ?.slice(0, 80) ?? ''
 
@@ -35,10 +36,18 @@ export function NotesView({ id }: { id?: string }) {
   const [q, setQ] = useState('')
   const list = useMemo(() => {
     const s = q.trim().toLowerCase()
-    const all = (notes ?? []).filter((n) => !s || n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s))
+    // «#etiqueta» sola: las notas con esa etiqueta
+    const tag = /^#[^\s#]+$/.test(s) ? s.slice(1) : undefined
+    const all = (notes ?? []).filter((n) => !s || (tag ? noteTags(n.content).includes(tag) : n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s)))
     return [...all.filter((n) => n.pinned), ...all.filter((n) => !n.pinned)]
   }, [notes, q])
+  const tags = useMemo(() => allNoteTags(notes ?? []).slice(0, 12), [notes])
   const current = notes?.find((n) => n.id === id)
+  const narrow = useMediaQuery('(max-width: 767px)')
+  const showTag = (t: string) => {
+    setQ(`#${t}`)
+    if (narrow) navigate('/notes')
+  }
 
   const newNote = async () => {
     const n = await createNote()
@@ -67,6 +76,24 @@ export function NotesView({ id }: { id?: string }) {
               className="h-10 w-full rounded-[12px] bg-fill pr-3 pl-9 text-[15px] placeholder:text-muted"
             />
           </div>
+          {tags.length > 0 && (
+            <div className="no-scrollbar -mx-4 mt-2.5 flex gap-1.5 overflow-x-auto px-4" role="group" aria-label="Filtrar por etiqueta">
+              {tags.map((t) => {
+                const on = q.trim().toLowerCase() === `#${t}`
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setQ(on ? '' : `#${t}`)}
+                    className={cx('h-7 shrink-0 rounded-full px-2.5 text-[13px] font-medium transition-colors', on ? 'bg-accent-fill text-white' : 'bg-fill text-fg hover:bg-hover')}
+                  >
+                    #{t}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto px-3 pb-36 lg:pb-4">
           {list.length === 0 &&
@@ -108,7 +135,7 @@ export function NotesView({ id }: { id?: string }) {
 
       <div className={cx('min-w-0 flex-1', !id && 'hidden md:block')}>
         {current ? (
-          <NoteEditor key={current.id} note={current} />
+          <NoteEditor key={current.id} note={current} notes={notes} onTag={showTag} />
         ) : (
           <Empty icon={<StickyNote size={28} strokeWidth={2.2} />} color="var(--c-yellow)" title={id ? 'Nota no encontrada' : notes.length ? 'Selecciona una nota' : 'Aún no hay notas'} hint="Ideas, apuntes de reuniones, listas, contraseñas del wifi…">
             <button type="button" onClick={newNote} className="h-10 rounded-full bg-accent-fill px-5 text-[14px] font-semibold text-white transition-transform active:scale-95">
@@ -121,12 +148,38 @@ export function NotesView({ id }: { id?: string }) {
   )
 }
 
-function NoteEditor({ note }: { note: Note }) {
+function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: (tag: string) => void }) {
   const { areas, projects } = useLookup()
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
   const titleRef = useRef<HTMLInputElement>(null)
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null)
   const dirty = useRef(false)
+
+  // Enlaces: al escribir «[[» salen los títulos de las demás notas
+  const [caret, setCaret] = useState<number | null>(null)
+  const [active, setActive] = useState(0)
+  const [dismissed, setDismissed] = useState<number | null>(null)
+  const titles = useMemo(() => notes.filter((n) => n.id !== note.id && n.title.trim()).map((n) => n.title.trim()), [notes, note.id])
+  const linking = caret === null ? undefined : suggestLink(content, caret, titles)
+  const suggestions = linking && linking.start !== dismissed ? linking : undefined
+  const pendingCaret = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    const el = bodyRef.current
+    if (pendingCaret.current === null || !el) return
+    el.setSelectionRange(pendingCaret.current, pendingCaret.current)
+    pendingCaret.current = null
+  })
+  const pick = (t: string) => {
+    if (!suggestions) return
+    const insert = `[[${t}]]`
+    dirty.current = true
+    setContent(content.slice(0, suggestions.start) + insert + content.slice(suggestions.end))
+    const at = suggestions.start + insert.length
+    pendingCaret.current = at
+    setCaret(at)
+    setActive(0)
+  }
 
   useEffect(() => {
     if (!note.title && !note.content) titleRef.current?.focus()
@@ -243,14 +296,39 @@ function NoteEditor({ note }: { note: Note }) {
         className="mb-3 w-full bg-transparent text-[30px] font-bold tracking-[-0.02em] placeholder:text-faint"
       />
       <Textarea
+        ref={bodyRef}
+        aria-label="Texto de la nota"
         value={content}
         onChange={(e) => {
           dirty.current = true
           setContent(e.target.value)
+          setCaret(e.target.selectionStart)
+          setActive(0)
         }}
-        placeholder={'Empieza a escribir…\n\nTruco: escribe "- [ ] algo" y pulsa el botón de lista para convertirlo en tarea.'}
+        onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+        onBlur={() => setCaret(null)}
+        onKeyDown={(e) => {
+          if (!suggestions) return
+          const n = suggestions.items.length
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault()
+            setActive((a) => (a + (e.key === 'ArrowDown' ? 1 : n - 1)) % n)
+          } else if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault()
+            pick(suggestions.items[Math.min(active, n - 1)])
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            e.stopPropagation()
+            setDismissed(suggestions.start)
+          }
+        }}
+        aria-controls={suggestions ? 'note-link-suggestions' : undefined}
+        aria-activedescendant={suggestions ? `note-link-${Math.min(active, suggestions.items.length - 1)}` : undefined}
+        placeholder={'Empieza a escribir…\n\nTrucos: «- [ ] algo» se convierte en tarea con el botón de lista; [[Otra nota]] la enlaza; #etiqueta la clasifica.'}
         className="min-h-[50vh] flex-1 text-[17px] leading-[1.65]"
       />
+      {suggestions && <LinkSuggestions items={suggestions.items} active={Math.min(active, suggestions.items.length - 1)} onPick={pick} />}
+      <NoteConnections note={note} title={title} content={content} notes={notes} onTag={onTag} />
     </div>
   )
 }

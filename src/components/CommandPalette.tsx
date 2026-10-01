@@ -5,7 +5,7 @@ import { whatNow } from '@/features/whatnow/store'
 import { markDone } from '@/features/trackers/markDone'
 import { sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
-import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, LayoutGrid, ListChecks, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
+import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, LayoutGrid, ListChecks, ListFilter, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import { createNote } from '@/db/actions'
@@ -18,6 +18,7 @@ import { AreaBadge } from './icons'
 import { Kbd, Modal } from './ui'
 import { SECTIONS, SectionIcon, tint, type Tint } from '@/app/sections'
 import { useFeatures } from '@/app/features'
+import { useSmartLists } from '@/app/smartLists'
 
 
 function Item({
@@ -94,6 +95,8 @@ function Palette() {
   const [search, setSearch] = useState('')
   const { on, section } = useFeatures()
   const { areas, projects } = useLookup()
+  const allSmart = useSmartLists()
+  const smart = on('lists') ? allSmart : []
   const tasks = useLiveQuery(() => db.tasks.toArray(), []) ?? []
   const notes = useLiveQuery(() => db.notes.toArray(), []) ?? []
   const people = useLiveQuery(() => db.people.toArray(), []) ?? []
@@ -117,16 +120,17 @@ function Palette() {
       ...areas.map((a) => `área ${a.name}`),
       ...projects.map((p) => `proyecto ${p.name}`),
       ...tagNames.map((t) => `etiqueta #${t}`),
+      ...smart.map((l) => `lista ${l.name}`),
       ...tasks.map((t) => [t.title, ...t.tags].join(' ')),
       ...notes.map((n) => `${n.title} ${n.content.slice(0, 200)}`),
       ...people.map((p) => `${p.name} ${p.company}`),
       ...routines.map((r) => `rutina empezar ${r.name}`),
       ...things.map((t) => `${t.name} ${t.location ?? ''} ${t.personName ?? ''}`),
       ...trackers.map((t) => `ultima vez hecho ${t.name}`),
-      'gasto gastos presupuesto que hago ahora diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector personalizar barra lateral pestañas cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
+      'lista inteligente filtro matriz eisenhower gasto gastos presupuesto que hago ahora diario animo compra supermercado plantilla planificar dia nueva tarea añadir crear nota proyecto hábito persona contacto objetivo meta pago suscripción recibo claude conector personalizar barra lateral pestañas cambiar tema oscuro claro exportar copia de seguridad backup atajos teclado ayuda',
     ]
     return values.some((v) => score(v, q) > 0)
-  }, [q, areas, projects, tasks, notes, people, tagNames])
+  }, [q, areas, projects, tasks, notes, people, tagNames, smart])
 
   return (
     <Command
@@ -229,6 +233,11 @@ function Palette() {
               Nueva plantilla
             </Item>
           )}
+          {on('lists') && (
+            <Item value="nueva lista inteligente filtro busqueda guardada crear" icon={<G c="blue"><ListFilter size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/lists'), ui.create('smartList')))}>
+              Nueva lista inteligente
+            </Item>
+          )}
           <Item value="planificar el dia hoy organizar" icon={<G c="blue"><Sun size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/plan'))}>
             Planificar el día
           </Item>
@@ -254,7 +263,7 @@ function Palette() {
 
         <Command.Group heading="Ir a" className={groupCls}>
           {SECTIONS.filter((n) => section(n.id)).map((n) => (
-            <Item key={n.path} value={`ir ${n.label}`} icon={<SectionIcon def={n} size={26} square />} onSelect={() => go(n.path)} hint={`G ${n.key}`}>
+            <Item key={n.path} value={`ir ${n.label}`} icon={<SectionIcon def={n} size={26} square />} onSelect={() => go(n.path)} hint={n.key ? `G ${n.key}` : undefined}>
               {n.label}
             </Item>
           ))}
@@ -266,6 +275,11 @@ function Palette() {
           {projects.map((p) => (
             <Item key={p.id} value={`pr:${p.id}`} keywords={['proyecto', p.name]} icon={<span className="h-2.5 w-2.5 rounded-full bg-faint" />} onSelect={() => go(`/project/${p.id}`)} hint="Proyecto">
               {p.name}
+            </Item>
+          ))}
+          {smart.map((l) => (
+            <Item key={l.id} value={`sl:${l.id}`} keywords={['lista', 'filtro', l.name]} icon={<ListFilter size={17} className="text-muted" />} onSelect={() => go(`/list/${l.id}`)} hint="Lista">
+              {l.name}
             </Item>
           ))}
           {tagNames.map((t) => (

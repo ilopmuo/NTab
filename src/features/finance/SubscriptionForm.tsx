@@ -80,10 +80,10 @@ function Form({ sub, onClose }: { sub?: Subscription; onClose: () => void }) {
             </Select>
           </Field>
         </div>
-        <Field label="Cada cuánto">
+        <Field label="Cada cuánto" group>
           <Segmented className="w-full" value={cycle} onChange={setCycle} options={CYCLES.map((c) => ({ value: c.value, label: c.label }))} />
         </Field>
-        <Field label="Cómo se paga">
+        <Field label="Cómo se paga" group>
           <Segmented
             className="w-full"
             value={kind}

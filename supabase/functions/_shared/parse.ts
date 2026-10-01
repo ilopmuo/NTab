@@ -37,6 +37,10 @@ export interface ParseContext {
 export interface ParsedTask {
   title: string
   dueDate?: string
+  /** fecha límite («antes del viernes»): para cuándo tiene que estar, aparte de cuándo hacerla */
+  deadline?: string
+  /** «algún día»: sin fecha y fuera de la Bandeja */
+  someday?: boolean
   dueTime?: string
   priority: Priority
   tags: string[]
@@ -447,9 +451,12 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
   }
 
   // ── Fecha ─────────────────────────────────────────────────
+  // Las mismas reglas sirven para la fecha («cuándo la hago») y para la fecha
+  // límite («antes del viernes»): `target` dice dónde va la que se encuentre.
+  let target: 'dueDate' | 'deadline' = 'dueDate'
   const setDate = (d?: string) => {
     if (!d) return false
-    out.dueDate = d
+    out[target] = d
   }
   const dateRules: [RegExp, (m: RegExpMatchArray) => boolean | void][] = [
     [new RegExp(`${B}pasado\\s+ma[nñ]ana${E}`, 'i'), () => setDate(addDays(base, 2))],
@@ -467,7 +474,7 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
       new RegExp(`${B}(?:a\\s+)?(?:finales|final|fin)\\s+de(?:l)?\\s+mes|(?:el\\s+)?[uú]ltimo\\s+d[ií]a\\s+del\\s+mes${E}`, 'i'),
       () => setDate(addDays(addMonths(`${base.slice(0, 8)}01`, 1), -1)),
     ],
-    [new RegExp(`${B}(?<!la\\s)(?:ma[nñ]ana)${E}`, 'i'), () => setDate(addDays(base, 1))],
+    [new RegExp(`${B}(?<!(?:^|[\\s,;(])la\\s)(?:ma[nñ]ana)${E}`, 'i'), () => setDate(addDays(base, 1))],
     [
       new RegExp(`${B}(?:(?:la\\s+)?(?:pr[oó]xima\\s+semana|semana\\s+que\\s+viene))${E}`, 'i'),
       () => setDate(nextWeekday(base, 1, false)),
@@ -516,11 +523,34 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
       },
     ],
   ]
+  // Fecha límite: «antes del viernes», «como muy tarde el 15», «a más tardar mañana»,
+  // «fecha límite el 3 de marzo». Se busca la fecha justo detrás de esas palabras.
+  const deadlineMark = text.match(new RegExp(`${B}(?:antes\\s+del?|como\\s+(?:muy\\s+)?tarde|a\\s+m[aá]s\\s+tardar|fecha\\s+l[ií]mite|vence|plazo\\s+hasta)(?=\\s)`, 'i'))
+  if (deadlineMark?.index !== undefined) {
+    const before = text.slice(0, deadlineMark.index)
+    const after = text.slice(deadlineMark.index + deadlineMark[0].length)
+    // «antes del 30» → se busca la fecha en «el 30»
+    text = /del$/i.test(deadlineMark[0]) ? ` el${after}` : ` ${after}`
+    target = 'deadline'
+    for (const [re, fn] of dateRules) {
+      if (take(re, fn)) break
+    }
+    // Sin fecha detrás («hacerlo antes de comer»), las palabras se quedan en el título
+    text = out.deadline ? `${before} ${text}` : `${before}${deadlineMark[0]}${after}`
+    target = 'dueDate'
+  }
   for (const [re, fn] of dateRules) {
     if (take(re, fn)) break
   }
 
   if (out.recurrence && !out.dueDate) out.dueDate = firstOccurrence(base, out.recurrence)
+
+  // ── Algún día ─────────────────────────────────────────────
+  // «Aprender a tocar el piano algún día»: sin fecha y fuera de la Bandeja
+  take(new RegExp(`${B}(?:alg[uú]n\\s+d[ií]a|en\\s+alg[uú]n\\s+momento|cuando\\s+pueda)${E}`, 'i'), () => {
+    if (out.dueDate) return false
+    out.someday = true
+  })
   // «mañana por la tarde» → 17:00; sin fecha, «por la tarde» no dice qué día y se deja en el título
   if (slot && !out.dueTime) {
     if (out.dueDate) out.dueTime = slot
@@ -532,7 +562,7 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
     .replace(/\s+/g, ' ')
     .replace(/\s+([,.;:])/g, '$1')
     .replace(/^[\s,;:-]+|[\s,;:-]+$/g, '')
-    .replace(/\s+(a|el|la|de|para|y|en)$/i, '')
+    .replace(/\s+(a|el|la|de|para|y|en|que)$/i, '')
     .trim()
   // «Enviar informe antes del viernes» → «Enviar informe»
   if (out.dueDate) out.title = out.title.replace(/\s+(?:antes\s+del?|hasta\s+el|para\s+el|como\s+muy\s+tarde\s+el)$/i, '').trim()

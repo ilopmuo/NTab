@@ -89,7 +89,7 @@ function Form({ routine, onClose }: { routine?: Routine; onClose: () => void }) 
           </div>
         </Field>
 
-        <Field label="Qué días">
+        <Field label="Qué días" group>
           <div className="flex flex-wrap items-center gap-1.5">
             {WEEK_ORDER.map((d) => {
               const on = days.includes(d)
@@ -113,7 +113,7 @@ function Form({ routine, onClose }: { routine?: Routine; onClose: () => void }) 
           </div>
         </Field>
 
-        <Field label="Aviso">
+        <Field label="Aviso" group>
           <div className="flex h-11 items-center gap-3 rounded-xl bg-fill-2 px-3.5">
             <Bell size={16} className="text-muted" />
             <span className="flex-1 text-[15px]">{remind ? 'Recordarme empezarla a las' : 'Sin aviso (la empiezo yo)'}</span>
@@ -130,7 +130,7 @@ function Form({ routine, onClose }: { routine?: Routine; onClose: () => void }) 
           </div>
         </Field>
 
-        <Field label="Icono">
+        <Field label="Icono" group>
           <div className="grid grid-cols-8 gap-1">
             {ROUTINE_ICONS.filter((k) => k in ICONS).map((k) => (
               <button

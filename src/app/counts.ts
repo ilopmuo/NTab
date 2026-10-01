@@ -5,7 +5,8 @@ import { useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, today, weekStart } from '@/lib/dates'
 import { doneDays, groupLogs, isDue } from '@/lib/habits'
 import { dueForContact } from '@/lib/people'
-import { isInbox } from '@/lib/tasks'
+import { isInbox, whenDue } from '@/lib/tasks'
+import { filterTasks, type SmartList } from '@/lib/smartLists'
 
 /** Números que se muestran en la barra lateral y en la barra inferior */
 export function useNavCounts() {
@@ -31,8 +32,8 @@ export function useNavCounts() {
       if (x.areaId) byArea.set(x.areaId, (byArea.get(x.areaId) ?? 0) + 1)
     }
     return {
-      today: tasks.filter((x) => x.dueDate && x.dueDate <= t).length,
-      overdue: tasks.filter((x) => x.dueDate && x.dueDate < t).length,
+      today: tasks.filter((x) => (whenDue(x) ?? '9') <= t).length,
+      overdue: tasks.filter((x) => (whenDue(x) ?? '9') < t).length,
       upcoming: tasks.filter((x) => x.dueDate && x.dueDate > t && x.dueDate <= week).length,
       inbox: tasks.filter(isInbox).length,
       calendar: tasks.filter((x) => x.dueDate === t && x.dueTime).length,
@@ -62,4 +63,11 @@ export function useProjectProgress(ids: string[]) {
     }
     return new Map([...m].map(([id, s]) => [id, s.total ? s.done / s.total : 0]))
   }, [tasks])
+}
+
+/** Cuántas tareas tiene ahora mismo cada lista inteligente */
+export function useSmartListCounts(lists: SmartList[]) {
+  const tasks = useOpenTasks()
+  const t = today()
+  return useMemo(() => new Map(lists.map((l) => [l.id, tasks ? filterTasks(l, tasks, t).length : 0])), [lists, tasks, t])
 }

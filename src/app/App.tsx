@@ -46,6 +46,10 @@ const loaders = {
   TagView: () => import('@/features/TagView').then((m) => ({ default: m.TagView })),
   TagsView: () => import('@/features/tags/TagsView').then((m) => ({ default: m.TagsView })),
   MoreView: () => import('@/features/more/MoreView').then((m) => ({ default: m.MoreView })),
+  SomedayView: () => import('@/features/someday/SomedayView').then((m) => ({ default: m.SomedayView })),
+  MatrixView: () => import('@/features/matrix/MatrixView').then((m) => ({ default: m.MatrixView })),
+  SmartListsView: () => import('@/features/lists/SmartListsView').then((m) => ({ default: m.SmartListsView })),
+  SmartListView: () => import('@/features/lists/SmartListsView').then((m) => ({ default: m.SmartListView })),
   UpcomingView: () => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView })),
   ThingsView: () => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView })),
   MenuView: () => import('@/features/menu/MenuView').then((m) => ({ default: m.MenuView })),
@@ -55,7 +59,7 @@ const loaders = {
   TrackersView: () => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView })),
   RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), MoreView = lazy(loaders.MoreView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), MoreView = lazy(loaders.MoreView), SomedayView = lazy(loaders.SomedayView), SmartListsView = lazy(loaders.SmartListsView), MatrixView = lazy(loaders.MatrixView), SmartListView = lazy(loaders.SmartListView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
@@ -95,10 +99,20 @@ function Screen() {
   const { parts } = useRoute()
   const [section, id] = parts
   const features = useFeatures()
-  if (section && !features.section(section)) return <FeatureOff id={section} />
+  // Una lista inteligente depende de la función «Listas inteligentes»
+  const gate = section === 'list' ? 'lists' : section
+  if (gate && !features.section(gate)) return <FeatureOff id={gate} />
   switch (section) {
     case 'more':
       return <MoreView />
+    case 'someday':
+      return <SomedayView />
+    case 'matrix':
+      return <MatrixView />
+    case 'lists':
+      return <SmartListsView />
+    case 'list':
+      return id ? <SmartListView id={id} /> : <SmartListsView />
     case 'inbox':
       return <InboxView />
     case 'upcoming':
@@ -175,6 +189,10 @@ const TITLES: Record<string, string> = {
   projects: 'Proyectos',
   tags: 'Etiquetas',
   more: 'Más',
+  someday: 'Algún día',
+  lists: 'Listas inteligentes',
+  matrix: 'Matriz',
+  list: 'Lista inteligente',
   tag: 'Etiqueta',
   goals: 'Objetivos',
   finance: 'Pagos',

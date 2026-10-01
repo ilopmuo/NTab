@@ -1,6 +1,8 @@
 import type { Goal, Project, Task } from '@/db/types'
 import { diffDays, today, ymd } from './dates'
 
+export { goalChange, logGoal, type GoalPoint } from '../../supabase/functions/_shared/goals.ts'
+
 export interface GoalProgress {
   /** 0…1 */
   value: number

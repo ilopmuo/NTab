@@ -43,7 +43,7 @@ function Form({ area, onClose, onSaved }: { area?: Area; onClose: () => void; on
           </span>
           <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del área (ej. Salud)" className="h-11 text-[15px]" />
         </div>
-        <Field label="Icono">
+        <Field label="Icono" group>
           <div className="grid grid-cols-10 gap-1">
             {Object.keys(ICONS).map((k) => (
               <button

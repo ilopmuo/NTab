@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Cake, CalendarRange, Check, Folder, Inbox, Minus, PartyPopper, Plus, Sparkles, Target } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Cake, CalendarRange, Check, Folder, Inbox, Minus, PartyPopper, Plus, Sparkles, Target, Telescope } from 'lucide-react'
 import { db } from '@/db/db'
-import { createTask, setSetting, updateTask } from '@/db/actions'
+import { createTask, markReviewed, setGoalCurrent, setSetting, updateTask } from '@/db/actions'
 import { useLookup, useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, dateLabel, today } from '@/lib/dates'
 import { completionRate } from '@/lib/habits'
 import { goalPace, goalProgress } from '@/lib/goals'
 import { dueForContact, upcomingBirthdays } from '@/lib/people'
-import { isInbox } from '@/lib/tasks'
+import { isInbox, isSomeday, whenDue } from '@/lib/tasks'
+import { useFeatures } from '@/app/features'
+import type { Project } from '@/db/types'
 import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { Icon } from '@/components/icons'
@@ -23,7 +25,8 @@ const STEPS = [
   { key: 'dump', title: 'Vacía tu cabeza', icon: Brain, hint: 'Escribe todo lo que te ronda: una cosa por línea. Irá a la Bandeja.' },
   { key: 'inbox', title: 'Procesa la bandeja', icon: Inbox, hint: 'Para cada cosa: ponle fecha, muévela a un proyecto o bórrala.' },
   { key: 'overdue', title: 'Lo atrasado', icon: AlertTriangle, hint: 'Sé honesto: ¿lo vas a hacer? Reprograma o elimina.' },
-  { key: 'projects', title: 'Tus proyectos', icon: Folder, hint: 'Cada proyecto activo necesita al menos un siguiente paso claro.' },
+  { key: 'projects', title: 'Tus proyectos', icon: Folder, hint: 'Cada proyecto activo necesita al menos un siguiente paso claro. Márcalos como revisados.' },
+  { key: 'someday', title: 'Algún día', icon: Telescope, hint: '¿Alguna ya toca? Ponle fecha. ¿Alguna ya no te interesa? Bórrala.' },
   { key: 'goals', title: 'Tus objetivos', icon: Target, hint: '¿Te acercas a lo que quieres? Actualiza la cifra o dale un siguiente paso.' },
   { key: 'week', title: 'La semana que viene', icon: CalendarRange, hint: 'Echa un vistazo a lo que viene y prepárate.' },
   { key: 'habits', title: 'Tus hábitos', icon: Sparkles, hint: 'Cómo ha ido la semana.' },
@@ -31,6 +34,9 @@ const STEPS = [
 ] as const
 
 export function ReviewView() {
+  // Sin los pasos de las funciones apagadas
+  const features = useFeatures()
+  const STEPS_ON = STEPS.filter((x) => (x.key !== 'goals' || features.on('goals')) && (x.key !== 'habits' || features.on('habits')))
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState(1)
   const go = (i: number) => {
@@ -38,14 +44,14 @@ export function ReviewView() {
     setStep(i)
     document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' })
   }
-  const s = STEPS[step]
-  const last = step === STEPS.length - 1
+  const s = STEPS_ON[step]
+  const last = step === STEPS_ON.length - 1
 
   const next = async () => {
-    if (step === STEPS.length - 2) {
+    if (step === STEPS_ON.length - 2) {
       await setSetting('lastReview', Date.now())
     }
-    go(Math.min(step + 1, STEPS.length - 1))
+    go(Math.min(step + 1, STEPS_ON.length - 1))
   }
 
   return (
@@ -54,11 +60,11 @@ export function ReviewView() {
         <SectionIcon def={section('review')} size={30} />
         <span className="text-[15px] font-semibold">Revisión semanal</span>
         <span className="font-num ml-auto text-[14px] font-semibold text-muted">
-          {Math.min(step + 1, STEPS.length - 1)} de {STEPS.length - 1}
+          {Math.min(step + 1, STEPS_ON.length - 1)} de {STEPS_ON.length - 1}
         </span>
       </div>
       <div className="mb-10 flex gap-1.5">
-        {STEPS.slice(0, -1).map((x, i) => (
+        {STEPS_ON.slice(0, -1).map((x, i) => (
           <button key={x.key} type="button" aria-label={x.title} onClick={() => go(i)} className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-fill">
             <motion.span
               className="absolute inset-0 origin-left rounded-full"
@@ -99,6 +105,7 @@ export function ReviewView() {
             {s.key === 'inbox' && <InboxStep />}
             {s.key === 'overdue' && <OverdueStep />}
             {s.key === 'projects' && <ProjectsStep />}
+            {s.key === 'someday' && <SomedayStep />}
             {s.key === 'goals' && <GoalsStep />}
             {s.key === 'week' && <WeekStep />}
             {s.key === 'habits' && <HabitsStep />}
@@ -120,7 +127,7 @@ export function ReviewView() {
           </Button>
         ) : (
           <Button variant="primary" size="lg" onClick={next}>
-            {step === STEPS.length - 2 ? 'Terminar revisión' : 'Siguiente'} <ArrowRight size={17} strokeWidth={2.4} />
+            {step === STEPS_ON.length - 2 ? 'Terminar revisión' : 'Siguiente'} <ArrowRight size={17} strokeWidth={2.4} />
           </Button>
         )}
       </div>
@@ -175,7 +182,7 @@ function InboxStep() {
 function OverdueStep() {
   const tasks = useOpenTasks() ?? []
   const t = today()
-  const overdue = tasks.filter((x) => x.dueDate && x.dueDate < t)
+  const overdue = tasks.filter((x) => (whenDue(x) ?? '9') < t)
   if (!overdue.length) return <Done text="Nada atrasado. Vas al día." />
   const moveAll = (dueDate: string | undefined) => overdue.forEach((x) => updateTask(x.id, { dueDate }))
   return (
@@ -228,6 +235,7 @@ function ProjectsStep() {
               <span className={cx('text-[13px] font-semibold', open.length ? 'text-muted' : 'text-orange')}>
                 {open.length ? `${open.length} pendientes` : 'Sin siguiente paso'}
               </span>
+              <ReviewedButton project={p} />
             </div>
             {!open.length && (
               <div className="mt-2">
@@ -239,6 +247,30 @@ function ProjectsStep() {
       })}
     </div>
   )
+}
+
+/** «Revisado» (como en OmniFocus): apunta cuándo se revisó por última vez */
+function ReviewedButton({ project }: { project: Project }) {
+  const fresh = !!project.reviewedAt && Date.now() - project.reviewedAt < 6 * 864e5
+  return (
+    <button
+      type="button"
+      aria-pressed={fresh}
+      onClick={() => void markReviewed(project.id, !fresh)}
+      className={cx(
+        'flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-semibold transition-colors active:scale-95',
+        fresh ? 'bg-green text-on-green' : 'bg-fill text-fg hover:bg-press',
+      )}
+    >
+      <Check size={14} strokeWidth={2.8} aria-hidden /> {fresh ? 'Revisado' : 'Revisar'}
+    </button>
+  )
+}
+
+function SomedayStep() {
+  const tasks = useLiveQuery(() => db.tasks.where('done').equals(0).toArray().then((l) => l.filter(isSomeday)), []) ?? []
+  if (!tasks.length) return <p className="text-[14px] text-muted">Nada en «Algún día». Cuando algo no sea para ahora, mándalo ahí en vez de dejarlo en la Bandeja.</p>
+  return <TaskList tasks={tasks} hideDate />
 }
 
 const PACE = { late: 'Fuera de plazo', behind: 'Vas con retraso', ok: 'Vas bien' } as const
@@ -281,11 +313,11 @@ function GoalsStep() {
             </div>
             {g.kind === 'number' && (
               <div className="flex items-center rounded-full bg-fill">
-                <IconButton label="Restar" onClick={() => db.goals.update(g.id, { current: Math.max(0, (g.current ?? 0) - 1) })} className="h-8 w-8">
+                <IconButton label="Restar" onClick={() => void setGoalCurrent(g.id, (g.current ?? 0) - 1)} className="h-8 w-8">
                   <Minus size={15} strokeWidth={2.6} />
                 </IconButton>
                 <span className="font-num min-w-7 text-center text-[14px] font-bold">{g.current ?? 0}</span>
-                <IconButton label="Sumar" onClick={() => db.goals.update(g.id, { current: (g.current ?? 0) + 1 })} className="h-8 w-8">
+                <IconButton label="Sumar" onClick={() => void setGoalCurrent(g.id, (g.current ?? 0) + 1)} className="h-8 w-8">
                   <Plus size={15} strokeWidth={2.6} />
                 </IconButton>
               </div>

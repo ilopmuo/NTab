@@ -155,9 +155,11 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
 export function Textarea({
   className,
   autoGrow = true,
+  ref: outer,
   ...rest
-}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { autoGrow?: boolean }) {
-  const ref = useRef<HTMLTextAreaElement>(null)
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { autoGrow?: boolean; ref?: React.RefObject<HTMLTextAreaElement | null> }) {
+  const inner = useRef<HTMLTextAreaElement>(null)
+  const ref = outer ?? inner
   useEffect(() => {
     if (!autoGrow || !ref.current) return
     ref.current.style.height = 'auto'
@@ -173,10 +175,26 @@ export function Textarea({
   )
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
+/**
+ * Campo con su título. Con un solo control (campo, desplegable) es un <label>;
+ * con varios botones (segmentado, iconos, días…) pasa `group`: así cada botón
+ * conserva su propio nombre y el título nombra el grupo.
+ */
+export function Field({ label, children, group }: { label: string; children: ReactNode; group?: boolean }) {
+  const id = useId()
+  const title = (
+    <span id={id} className="mb-1.5 block px-1 text-[12px] font-medium tracking-wide text-muted uppercase">
+      {label}
+    </span>
+  )
+  return group ? (
+    <div role="group" aria-labelledby={id}>
+      {title}
+      {children}
+    </div>
+  ) : (
     <label className="block">
-      <span className="mb-1.5 block px-1 text-[12px] font-medium tracking-wide text-muted uppercase">{label}</span>
+      {title}
       {children}
     </label>
   )

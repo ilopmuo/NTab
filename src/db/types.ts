@@ -47,6 +47,10 @@ export interface Project {
   goalId?: ID
   /** secciones, en su orden; las tareas apuntan a una con `sectionId` */
   sections?: ProjectSection[]
+  /** última vez que se revisó (revisión semanal, como en OmniFocus) */
+  reviewedAt?: number
+  /** cómo se ven sus tareas: en lista (por defecto) o en tablero, con una columna por sección */
+  view?: 'list' | 'board'
   order: number
   createdAt: number
 }
@@ -71,6 +75,8 @@ export interface Goal {
   unit?: string
   /** YYYY-MM-DD */
   deadline?: string
+  /** cifra de cada día en que cambió (para la gráfica de evolución) */
+  log?: { date: string; value: number }[]
   status: GoalStatus
   order: number
   createdAt: number
@@ -124,6 +130,10 @@ export interface Task {
   dueDate?: string
   /** HH:mm */
   dueTime?: string
+  /** YYYY-MM-DD: para cuándo tiene que estar hecha (aparte de cuándo hacerla) */
+  deadline?: string
+  /** «algún día»: sin fecha y fuera de la Bandeja (ideas, lo que no es para ahora) */
+  someday?: boolean
   projectId?: ID
   /** sección dentro de su proyecto (si ya no existe, la tarea va sin sección) */
   sectionId?: ID

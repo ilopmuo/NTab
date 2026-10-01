@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check } from 'lucide-react'
 import type { Goal } from '@/db/types'
 import { db } from '@/db/db'
-import { createGoal, deleteGoal, linkGoalProjects, setGoalStatus } from '@/db/actions'
+import { createGoal, deleteGoal, linkGoalProjects, setGoalCurrent, setGoalStatus } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import { toastTrashed } from '../trash/undo'
 import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, Textarea, cx } from '@/components/ui'
@@ -46,6 +46,8 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
       unit: kind === 'number' ? unit.trim() || undefined : undefined,
     }
     const id = goal ? (await db.goals.update(goal.id, data), goal.id) : (await createGoal({ ...data, title: data.title! })).id
+    // La cifra nueva (o la de partida) entra en el historial
+    if (kind === 'number' && (!goal || goal.current !== data.current)) await setGoalCurrent(id, data.current ?? 0)
     await linkGoalProjects(id, linked)
     onClose()
   }
@@ -67,7 +69,7 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
           rows={2}
           className="rounded-xl bg-fill-2 px-3.5 py-2.5"
         />
-        <Field label="Cómo se mide">
+        <Field label="Cómo se mide" group>
           <Segmented
             className="w-full"
             value={kind}
@@ -91,7 +93,7 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
             </Field>
           </div>
         ) : (
-          <Field label="Proyectos que lo hacen avanzar">
+          <Field label="Proyectos que lo hacen avanzar" group>
             {candidates.length === 0 ? (
               <p className="px-1 text-[14px] text-muted">Aún no tienes proyectos. Créalos en Proyectos y vincúlalos aquí.</p>
             ) : (

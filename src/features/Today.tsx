@@ -9,6 +9,7 @@ import { setSetting, updateTask } from '@/db/actions'
 import { useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, greeting, longDateLabel, today, weekStart } from '@/lib/dates'
 import { isDue } from '@/lib/habits'
+import { whenDue } from '@/lib/tasks'
 import { href } from '@/app/router'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
@@ -68,8 +69,9 @@ export function TodayView() {
     const list = open ?? []
     const sunday = addDaysYmd(monday, 6)
     return {
-      overdue: list.filter((x) => x.dueDate && x.dueDate < t),
-      todays: list.filter((x) => x.dueDate === t),
+      // Cuenta también la fecha límite: lo que vence hoy sale en Hoy aunque no tenga fecha
+      overdue: list.filter((x) => (whenDue(x) ?? '9') < t),
+      todays: list.filter((x) => whenDue(x) === t),
       weekOpen: list.filter((x) => x.dueDate && x.dueDate >= monday && x.dueDate <= sunday).length,
     }
   }, [open, t, monday])

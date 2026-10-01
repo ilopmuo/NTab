@@ -90,7 +90,7 @@ function Form({ thing, initialKind, onClose }: { thing?: Thing; initialKind?: Th
         </Field>
 
         {loan && (
-          <Field label={kind === 'lent' ? 'A quién se lo prestaste' : 'Quién te lo prestó'}>
+          <Field label={kind === 'lent' ? 'A quién se lo prestaste' : 'Quién te lo prestó'} group>
             <div className="flex gap-2">
               {people.length > 0 && (
                 <Select value={personId} onChange={(e) => setPersonId(e.target.value)} className="flex-1" aria-label="Persona">
@@ -139,7 +139,7 @@ function Form({ thing, initialKind, onClose }: { thing?: Thing; initialKind?: Th
           <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={kind === 'lent' ? 'Opcional' : 'Ej. Cajón de la entrada, altillo del armario…'} />
         </Field>
 
-        <Field label="Foto">
+        <Field label="Foto" group>
           <div className="flex items-center gap-3">
             {photo ? (
               <span className="relative">

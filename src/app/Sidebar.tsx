@@ -1,19 +1,21 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { ChevronRight, Hash, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
+import { ChevronRight, Hash, ListFilter, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
 import { AreaBadge } from '@/components/icons'
 import { Kbd, ProgressPie, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
 import { SyncBadge } from '@/sync/SyncBadge'
-import { useNavCounts, useProjectProgress } from './counts'
+import { useNavCounts, useProjectProgress, useSmartListCounts } from './counts'
 import { useNav } from './nav'
-import { href, useRoute } from './router'
+import { href, navigate, useRoute } from './router'
 import { SectionIcon, section, type SectionDef } from './sections'
 import { FIXED } from '@/lib/nav'
-import { ui, useUI } from './store'
+import { setUI, ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
 import { FEATURE_GROUPS } from '@/lib/features'
 import { usePins } from './pins'
 import { useCollapsed } from './navGroups'
+import { useSmartLists } from './smartLists'
+import { useFeatures } from './features'
 
 const FOOT = FIXED.map(section)
 
@@ -146,6 +148,9 @@ function SidebarContent() {
   const progress = useProjectProgress(activeProjects.map((p) => p.id))
   const pins = usePins()
   const pinProgress = useProjectProgress(pins.filter((p) => p.kind === 'project').map((p) => p.id))
+  const allSmart = useSmartLists()
+  const smart = useFeatures().on('lists') ? allSmart : []
+  const smartCounts = useSmartListCounts(smart)
   const is = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
 
   const tileCount: Record<string, number | string> = {
@@ -231,6 +236,40 @@ function SidebarContent() {
           <NavGroup id="pins" label="Fijados" active={pinRows.some((r) => r.active)} className={cx(nav.tiles.length > 0 && 'mt-4')}>
             {pinRows.map((r) => (
               <Row key={r.key} to={r.to} active={r.active} icon={r.icon} label={r.label} count={r.count} />
+            ))}
+          </NavGroup>
+        )}
+
+        {smart.length > 0 && (
+          <NavGroup
+            id="smart"
+            label="Mis listas"
+            active={smart.some((l) => path === `/list/${l.id}`)}
+            className={cx(nav.tiles.length > 0 && pinRows.length === 0 && 'mt-4')}
+            action={
+              <button
+                type="button"
+                aria-label="Nueva lista inteligente"
+                onClick={() => {
+                  ui.sidebar(false)
+                  navigate('/lists')
+                  setUI({ creating: 'smartList' })
+                }}
+                className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg"
+              >
+                <Plus size={15} />
+              </button>
+            }
+          >
+            {smart.map((l) => (
+              <Row
+                key={l.id}
+                to={`/list/${l.id}`}
+                active={path === `/list/${l.id}`}
+                icon={<span className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-fill text-fg"><ListFilter size={13} strokeWidth={2.6} /></span>}
+                label={l.name}
+                count={smartCounts.get(l.id)}
+              />
             ))}
           </NavGroup>
         )}

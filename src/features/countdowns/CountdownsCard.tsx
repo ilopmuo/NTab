@@ -96,7 +96,7 @@ function Fields({ countdown, onClose }: { countdown?: Countdown; onClose: () => 
         <Field label="¿Cuándo?">
           <Input type="date" value={date} min={today()} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Field label="Icono">
+        <Field label="Icono" group>
           <div className="grid grid-cols-6 gap-1">
             {COUNT_ICONS.map((k) => (
               <button key={k} type="button" aria-label={k} onClick={() => setIcon(k)} className={cx('flex h-10 items-center justify-center rounded-full transition-all active:scale-90', icon === k ? 'bg-accent-fill text-white' : 'text-muted hover:bg-hover hover:text-fg')}>

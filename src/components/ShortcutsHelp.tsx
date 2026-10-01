@@ -48,6 +48,7 @@ const GROUPS: [string, [string[], string][]][] = [
       [['Espacio'], 'Completarla'],
       [['T'], 'Pasarla a hoy'],
       [['M'], 'Pasarla a mañana'],
+      [['S'], 'Mandarla a «Algún día»'],
       [['Supr'], 'Borrarla (a la papelera)'],
       [['⌘', 'Z'], 'Deshacer lo último'],
     ],

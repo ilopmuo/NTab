@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react'
-import { CalendarDays, Check, Folder, SkipForward, Sun, Sunrise, Trash2, X } from 'lucide-react'
+import { CalendarDays, Check, Folder, SkipForward, Sun, Sunrise, Telescope, Trash2, X } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { deleteTask, mutateTask, restoreTasks, toggleTask } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
@@ -11,7 +11,7 @@ import { Confetti } from '@/components/Celebrate'
 import { Button, cx, softSpring } from '@/components/ui'
 import { toastTrashed } from './trash/undo'
 
-type Act = 'today' | 'tomorrow' | 'skip' | 'done' | 'delete' | { date: string } | { list: string }
+type Act = 'today' | 'tomorrow' | 'skip' | 'someday' | 'done' | 'delete' | { date: string } | { list: string }
 
 const since = (ms: number) => {
   const d = Math.floor((Date.now() - ms) / 864e5)
@@ -53,6 +53,9 @@ export function InboxProcess({ tasks, order, onClose }: { tasks: Task[]; order?:
     if (a === 'done') {
       await toggleTask(task)
       toast(`Hecho: ${task.title}`, undo)
+    } else if (a === 'someday') {
+      await mutateTask(task.id, (x) => void (x.someday = true))
+      toast(`${task.title} → algún día`, undo)
     } else if (a === 'delete') {
       await deleteTask(task.id)
       toastTrashed(`${task.title}: en la papelera`, 'tasks', task.id)
@@ -82,6 +85,7 @@ export function InboxProcess({ tasks, order, onClose }: { tasks: Task[]; order?:
       else if (k === 'm') void act('tomorrow')
       else if (k === 'l' || k === 's') void act('skip')
       else if (k === 'd') void act('done')
+      else if (k === 'a') void act('someday')
       else if (k === 'backspace' || k === 'delete') void act('delete')
     }
     window.addEventListener('keydown', onKey)
@@ -194,8 +198,9 @@ export function InboxProcess({ tasks, order, onClose }: { tasks: Task[]; order?:
               </select>
             </Big>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <Big icon={<Check size={20} strokeWidth={2.8} />} label="Ya está hecha" hint="D" onClick={() => void act('done')} lime />
+            <Big icon={<Telescope size={19} />} label="Algún día" hint="A" onClick={() => void act('someday')} />
             <Big icon={<Trash2 size={19} />} label="Borrar" onClick={() => void act('delete')} />
             <Big icon={<SkipForward size={19} />} label="Luego" hint="L" onClick={() => void act('skip')} />
           </div>

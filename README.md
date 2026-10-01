@@ -14,11 +14,16 @@
 | **Próximo** y **Calendario** | Vista de dos semanas (los días libres, en una línea), mes y semana; doble clic en un día para añadir |
 | **Áreas y proyectos** | Trabajo, Salud, Finanzas… con proyectos, progreso, fecha límite y su siguiente paso a la vista |
 | **Secciones** | Divide un proyecto en bloques («Diseño», «Contenido», «Lanzamiento»), cada uno con su orden; las plantillas y Claude también las usan |
+| **Tablero** | Cualquier proyecto se ve en lista o en tablero (como Trello o Asana): cada sección es una columna y las tarjetas se arrastran de una a otra (o «Mover a…» sin ratón). Se recuerda por proyecto |
+| **Fecha límite** | Además de *cuándo* hacerla, *para cuándo* tiene que estar (como en Things y Todoist): «antes del viernes», «como muy tarde el 3». Sale en Hoy cuando llega y avisa en rojo si se pasa |
+| **Algún día** | Lo que no es para ahora pero no quieres olvidar (como en Things y GTD): fuera de la Bandeja y de Hoy, con su propia lista y paso en la revisión semanal. `S` en una lista, «algún día» al escribir |
+| **Listas inteligentes** | Búsquedas guardadas que se actualizan solas (como los filtros de Todoist o TickTick): por fecha, prioridad, etiquetas, proyecto o área, persona y duración. Salen en la barra lateral, en «Mis listas» |
+| **Matriz de Eisenhower** | Lo pendiente en cuatro cuadrantes (urgente/importante, como en TickTick); arrastrar a otro cuadrante cambia la prioridad o la fecha |
 | **Tareas completas** | Prioridad, fecha, hora, repetición, subtareas, etiquetas y notas |
 | **Hábitos** | Seguimiento diario, rachas 🔥 y mapa de calor de 18 semanas. Con cantidad («8 vasos de agua», con botón +1) o «3 veces por semana», el día que quieras |
-| **Notas** | Autoguardado, agrupadas como en Notas de Apple (fijadas, hoy, ayer, 7 y 30 días, por mes); las líneas `- [ ] algo` se convierten en tareas con un clic |
+| **Notas** | Autoguardado, agrupadas como en Notas de Apple (fijadas, hoy, ayer, 7 y 30 días, por mes); las líneas `- [ ] algo` se convierten en tareas con un clic. **Enlazadas** como en Bear u Obsidian: `[[Otra nota]]` (con sugerencias al escribir), «Mencionada en» y `#etiquetas` para filtrar |
 | **Personas** (mini-CRM) | Cumpleaños, historial de contactos y aviso de "hace mucho que no hablas con…" |
-| **Revisión semanal** | Asistente de 6 pasos para vaciar la cabeza y planificar la semana |
+| **Revisión semanal** | Asistente paso a paso para vaciar la cabeza y planificar la semana, con «Algún día» y proyectos marcados como revisados (como en OmniFocus) |
 | **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada. Botones «Hecho» y «Posponer 15 min» |
 | **Resumen de la mañana** | Una notificación diaria, a la hora que elijas, con lo que tienes hoy |
 | **Planificar el día** | Un minuto por la mañana: lo atrasado, la bandeja y lo que viene, a hoy o a otro día |
@@ -55,7 +60,7 @@
 | **Arrastrar** | En Calendario y Próximo, arrastra una tarea a otro día; en «Hora a hora», a otra hora (en el móvil, pulsación larga) |
 | **Claude** | Conector para usar NTab desde Claude con tu suscripción: «¿qué tengo esta semana?», «planifícame el día», «apunta lo de este email» |
 | **Calendario** | Suscríbete desde Calendario del iPhone, Google u Outlook y verás tus tareas, pagos y cumpleaños |
-| **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo |
+| **Objetivos** | Metas medidas con una cifra (12 libros) o con sus proyectos, y si vas bien de tiempo. Los de cifra guardan su evolución y la enseñan en una gráfica con el ritmo que haría falta (como en Strides) |
 | **Pagos** | Suscripciones y recibos: cuánto pagas al mes y al año, y aviso antes de cada cargo |
 | **Paleta** (`⌘K`) | Busca cualquier cosa y ejecuta cualquier acción |
 | **Funciones activables** | Ajustes → Funciones: apaga lo que no uses (Menú, Gastos, Pagos, Cosas, Diario…). Desaparece de la barra lateral, las pestañas, ⌘K y Hoy, y deja de avisar; tus datos se quedan |
@@ -97,7 +102,9 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 | Escribes | Entiende |
 |---|---|
-| `hoy`, `mañana`, `pasado mañana`, `el viernes`, `el 15`, `15/10`, `3 de marzo`, `en 2 semanas`, `la semana que viene`, `a finales de mes`, `antes del viernes` | Fecha |
+| `hoy`, `mañana`, `pasado mañana`, `el viernes`, `el 15`, `15/10`, `3 de marzo`, `en 2 semanas`, `la semana que viene`, `a finales de mes` | Fecha |
+| `antes del viernes`, `como muy tarde el 3`, `a más tardar el 30`, `fecha límite 15/11`, `vence el 5` | Fecha límite |
+| `algún día`, `cuando pueda` | Algún día |
 | `a las 10`, `17:30`, `9am`, `a las 7 de la tarde`, `a las 5 y media`, `a las 8 menos cuarto`, `al mediodía`, `esta tarde`, `mañana a primera hora`, `el viernes por la tarde` | Hora (de 1 a 6 sin más, por la tarde) |
 | `dentro de 2 horas`, `en 30 minutos`, `en media hora` | Fecha y hora desde ahora |
 | `!alta` `!media` `!baja`, `!1` `!2` `!3`, `!!!` | Prioridad |
@@ -112,7 +119,7 @@ Minimalista y monocromo, con los patrones de Recordatorios, Fitness y Ajustes de
 
 ## Atajos
 
-`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`Y`/`T`/`F`/`R`/`S` ir a sección · `Tab` en la captura completa `#`/`+`/`@` · `⌘`/`Ctrl` + `\` oculta o muestra la barra lateral · en una lista, `j`/`k` (o `↑`/`↓`) entre tareas, `T` a hoy, `M` a mañana, `Supr` a la papelera · `⌘Z` deshace lo último · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
+`N` nueva tarea · `⌘K` / `Ctrl K` buscar · `G` + `H`/`I`/`U`/`C`/`B`/`E`/`K`/`V`/`A`/`Z`/`D`/`W`/`O`/`P`/`J`/`Y`/`T`/`F`/`R`/`S` ir a sección · `Tab` en la captura completa `#`/`+`/`@` · `⌘`/`Ctrl` + `\` oculta o muestra la barra lateral · en una lista, `j`/`k` (o `↑`/`↓`) entre tareas, `T` a hoy, `M` a mañana, `S` a «Algún día», `Supr` a la papelera · `⌘Z` deshace lo último · `?` ayuda · `Esc` cerrar · `⌘`/`Ctrl` + clic seleccionar varias · `↑`/`↓` sobre el asa de una tarea (orden a mano) la sube o la baja · en «Hora a hora», `↑`/`↓` mueve 15 min y `⇧` + `↑`/`↓` cambia la duración
 
 ## En el iPhone o el iPad
 

@@ -469,13 +469,16 @@
 }
 
 /* Tarea recién creada: su fila se ilumina con el acento y se apaga despacio */
+/* Suave a propósito: el texto de la fila (y sus enlaces de color) se tiene que seguir leyendo bien */
 @keyframes just-added {
   0%,
   25% {
-    background-color: color-mix(in srgb, var(--c-blue) 22%, transparent);
+    background-color: color-mix(in srgb, var(--c-blue) 8%, transparent);
+    box-shadow: inset 3px 0 0 var(--c-blue);
   }
   100% {
     background-color: transparent;
+    box-shadow: inset 3px 0 0 transparent;
   }
 }
 .just-added {

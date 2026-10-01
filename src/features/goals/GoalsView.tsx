@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { motion } from 'motion/react'
 import { Check, Minus, Plus, Target } from 'lucide-react'
 import { db } from '@/db/db'
-import { setGoalStatus } from '@/db/actions'
+import { setGoalCurrent, setGoalStatus } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import type { Goal, Project, Task } from '@/db/types'
 import { dateLabel } from '@/lib/dates'
@@ -14,6 +14,7 @@ import { SectionIcon, section } from '@/app/sections'
 import { Button, Empty, IconButton, PageHeader, ProgressBar, ProgressRing, Section, Segmented, cx } from '@/components/ui'
 import { Page } from '../Page'
 import { GoalForm } from './GoalForm'
+import { GoalChart } from './GoalChart'
 
 const PACE = { late: 'Fuera de plazo', behind: 'Vas con retraso', ok: 'Vas bien' } as const
 
@@ -108,7 +109,7 @@ function GoalCard({
   const pace = goalPace(goal, p.value)
   const done = goal.status === 'done'
   const step = goal.target && goal.target >= 50 ? Math.round(goal.target / 20) : 1
-  const bump = (d: number) => db.goals.update(goal.id, { current: Math.max(0, (goal.current ?? 0) + d) })
+  const bump = (d: number) => setGoalCurrent(goal.id, (goal.current ?? 0) + d)
 
   return (
     <motion.div
@@ -149,6 +150,8 @@ function GoalCard({
       </button>
 
       {goal.why && <p className="line-clamp-2 text-[13px] leading-snug text-muted italic">«{goal.why}»</p>}
+
+      {goal.kind === 'number' && <GoalChart goal={goal} />}
 
       {p.projects.length > 0 && (
         <div className="space-y-2.5 rounded-[14px] bg-fill-2 px-3 py-2.5">

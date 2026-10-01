@@ -110,6 +110,8 @@ export function InlineAdd({
     }
     if (parsed.dueDate) data.dueDate = parsed.dueDate
     if (parsed.dueTime) data.dueTime = parsed.dueTime
+    if (parsed.deadline) data.deadline = parsed.deadline
+    if (parsed.someday) data.someday = true
     if (parsed.recurrence) data.recurrence = parsed.recurrence
     if (parsed.reminder) data.reminder = parsed.reminder
     if (parsed.estimate) data.estimate = parsed.estimate

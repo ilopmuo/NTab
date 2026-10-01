@@ -51,7 +51,9 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Arranque | El logo aparece con un muelle y el contenido entra escalonado |
 | Cambio de vista | Con View Transitions (Chrome, Edge, Safari 18): el contenido sale fundido y el nuevo sube 10 px; la barra lateral y la de pestañas no se mueven; el título viaja al nuevo título, y el nombre y el anillo de un proyecto viajan de su tarjeta a su página (igual con las etiquetas). Sin ellas: fundido con desplazamiento de 8 px y desenfoque |
 | Completar tarea | El círculo se rellena con un muelle, el ✓ se dibuja, el tachado cruza el título de izquierda a derecha y la fila se pliega |
-| Tarea nueva | Su fila se ilumina con el acento y se apaga despacio (1,8 s), para ver dónde ha caído |
+| Tarea nueva | Su fila se tiñe muy suave del acento, con una barra a la izquierda, y se apaga despacio (1,8 s), para ver dónde ha caído; suave a propósito, para que su texto se siga leyendo |
+| Tableros (proyecto, matriz) | Las tarjetas se arrastran (en táctil, con pulsación larga) y la columna o el cuadrante de destino se marca con el acento; al moverse, las demás se recolocan con un muelle |
+| Evolución de un objetivo | La línea se dibuja de izquierda a derecha y el área de debajo aparece después |
 | Selección en la barra lateral | La píldora se desliza al nuevo elemento (*shared layout*) |
 | Hojas y modales | Suben o crecen con muelle; en móvil se cierran arrastrando hacia abajo |
 | Anillos y números | Se llenan y cuentan desde cero al aparecer; los contadores ruedan al cambiar (el número viejo sale, el nuevo entra en la dirección del cambio). Al cerrarse un anillo, una onda sale de él |
@@ -86,5 +88,6 @@ La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el int
 - **Más contraste** (`[data-contrast='more']`): grises de texto y bordes más marcados, materiales opacos y sin halo de fondo. **Menos movimiento** (`[data-motion='reduce']`): sin animaciones de CSS ni de Motion, sin confeti ni revelados. Ambos siguen al sistema o se fuerzan en Ajustes → Accesibilidad.
 - **Lector de pantalla**: los avisos y los cambios de pantalla se anuncian (`#announcer`, `aria-live`); «Saltar al contenido» es lo primero al tabular; al navegar desde la barra lateral el foco pasa al contenido. Títulos: un `h1` por pantalla y `h2` para los bloques.
 - **Táctil**: los botones de icono pequeños y las casillas tienen al menos 44 px de zona de toque (`pointer: coarse`), sin cambiar cómo se ven.
-- **Teclado**: `j`/`k` o `↑`/`↓` entre tareas, `Intro` abre, `Espacio` completa, `T` hoy, `M` mañana, `Supr` papelera, `⌘Z` deshace. Los menús, el selector de color y el de fecha se manejan con flechas.
+- **Teclado**: `j`/`k` o `↑`/`↓` entre tareas, `Intro` abre, `Espacio` completa, `T` hoy, `M` mañana, `S` algún día, `Supr` papelera, `⌘Z` deshace. Los menús, el selector de color y el de fecha se manejan con flechas. Todo lo que se arrastra (tableros, matriz, días) tiene también «Mover a…» en su menú.
+- **Campos**: `Field` es un `<label>` cuando lleva un solo control; con varios botones (segmentados, iconos, días) se usa `group`, para que cada botón conserve su nombre y el título nombre al grupo.
 - **Comprobación**: axe (WCAG 2.1 AA) en todas las secciones y en los diálogos principales, en tema claro y oscuro, con otros acentos y con más contraste (`e2e/accesibilidad.e2e.ts`).

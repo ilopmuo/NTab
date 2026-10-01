@@ -8,16 +8,19 @@ import {
   CalendarDays,
   ClipboardList,
   Flame,
+  Grid2x2,
   History,
   Inbox,
   Layers,
   ListChecks,
+  ListFilter,
   type LucideIcon,
   RefreshCcw,
   Settings,
   ShoppingCart,
   StickyNote,
   Tags,
+  Telescope,
   Target,
   Trash2,
   Users,
@@ -39,7 +42,7 @@ export interface SectionDef {
   short: string
   icon: LucideIcon | 'today'
   tint: Tint
-  /** tecla tras "G" */
+  /** tecla tras "G" (vacía: sin atajo) */
   key: string
   /** grupo en la barra lateral y en «Más»; las esenciales no llevan */
   group?: FeatureGroup
@@ -61,6 +64,9 @@ export const SECTIONS: SectionDef[] = [
   { id: 'people', path: '/people', label: 'Personas', short: 'Personas', icon: Users, tint: 'blue', key: 'P', group: 'life' },
   { id: 'projects', path: '/projects', label: 'Proyectos', short: 'Proyectos', icon: Layers, tint: 'blue', key: 'J', group: 'organize' },
   { id: 'tags', path: '/tags', label: 'Etiquetas', short: 'Etiquetas', icon: Tags, tint: 'blue', key: 'Y', group: 'organize' },
+  { id: 'lists', path: '/lists', label: 'Listas inteligentes', short: 'Listas', icon: ListFilter, tint: 'blue', key: '', group: 'organize' },
+  { id: 'matrix', path: '/matrix', label: 'Matriz de Eisenhower', short: 'Matriz', icon: Grid2x2, tint: 'blue', key: '', group: 'organize' },
+  { id: 'someday', path: '/someday', label: 'Algún día', short: 'Algún día', icon: Telescope, tint: 'blue', key: '', group: 'organize' },
   { id: 'templates', path: '/templates', label: 'Plantillas', short: 'Plantillas', icon: ClipboardList, tint: 'blue', key: 'M', group: 'organize' },
   { id: 'goals', path: '/goals', label: 'Objetivos', short: 'Objetivos', icon: Target, tint: 'blue', key: 'T', group: 'organize' },
   { id: 'expenses', path: '/expenses', label: 'Gastos', short: 'Gastos', icon: Receipt, tint: 'blue', key: 'W', group: 'money' },

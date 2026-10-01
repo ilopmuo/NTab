@@ -139,7 +139,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
             </div>
           )}
         </Box>
-        <Field label="Recordatorio">
+        <Field label="Recordatorio" group>
           <div className="flex h-11 items-center gap-3 rounded-xl bg-fill-2 px-3.5">
             <Bell size={16} className="text-muted" />
             <span className="flex-1 text-[15px]">{remind ? 'Avisarme si no lo he hecho a las' : 'Sin recordatorio'}</span>
@@ -155,7 +155,7 @@ function Form({ habit, onClose }: { habit?: Habit; onClose: () => void }) {
             <Switch label="Recordatorio" checked={remind} onChange={setRemind} />
           </div>
         </Field>
-        <Field label="Icono">
+        <Field label="Icono" group>
           <div className="grid grid-cols-10 gap-1">
             {Object.keys(ICONS).map((k) => (
               <button

@@ -23,6 +23,8 @@ export interface FeatureDef {
 
 export const FEATURES: FeatureDef[] = [
   { id: 'notes', label: 'Notas', hint: 'Apuntes, ideas y listas que se convierten en tareas', group: 'organize', sections: ['notes'], cards: [] },
+  { id: 'lists', label: 'Listas inteligentes', hint: 'Búsquedas guardadas por fecha, prioridad, etiqueta o persona', group: 'organize', sections: ['lists'], cards: [] },
+  { id: 'matrix', label: 'Matriz de Eisenhower', hint: 'Lo urgente y lo importante, en cuatro cuadrantes', group: 'organize', sections: ['matrix'], cards: [] },
   { id: 'templates', label: 'Plantillas', hint: 'Listas que repites: la maleta, el cierre de mes…', group: 'organize', sections: ['templates'], cards: [] },
   { id: 'goals', label: 'Objetivos', hint: 'Metas con una cifra o con sus proyectos', group: 'organize', sections: ['goals'], cards: [] },
   { id: 'review', label: 'Revisión semanal', hint: 'Seis pasos para vaciar la cabeza y planificar la semana', group: 'organize', sections: ['review'], cards: [] },

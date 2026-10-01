@@ -73,6 +73,8 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   const final: Partial<Task> = { ...defaults }
   if (parsed.dueDate) final.dueDate = parsed.dueDate
   if (parsed.dueTime) final.dueTime = parsed.dueTime
+  if (parsed.deadline) final.deadline = parsed.deadline
+  if (parsed.someday) final.someday = true
   if (parsed.recurrence) final.recurrence = parsed.recurrence
   if (parsed.reminder) final.reminder = parsed.reminder
   if (parsed.estimate) final.estimate = parsed.estimate
@@ -86,7 +88,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
     final.projectId = undefined
   }
   const destination = project(final.projectId)?.name ?? area(final.areaId)?.name
-  const toInbox = !final.projectId && !final.areaId && !final.dueDate
+  const toInbox = !final.projectId && !final.areaId && !final.dueDate && !final.deadline && !final.someday
 
   // Dictado: lo dicho se añade tras lo que ya hubiera escrito
   const base = useRef('')
@@ -111,7 +113,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
       priority: parsed.priority || defaults?.priority || 0,
       tags: [...new Set([...(defaults?.tags ?? []), ...parsed.tags])],
     })
-    const where = toInbox ? 'la Bandeja' : final.dueDate ? dateLabel(final.dueDate) : destination
+    const where = toInbox ? 'la Bandeja' : final.dueDate ? dateLabel(final.dueDate) : final.someday ? 'Algún día' : destination
     toast(`Tarea añadida${where ? ` · ${where}` : ''}`)
     setValue('')
     setNotes('')

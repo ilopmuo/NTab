@@ -156,6 +156,7 @@ describe('conector MCP', () => {
     expect((await call(store, 'crear_proyecto', { nombre: 'web nueva' })).isError).toBe(true)
 
     expect((await call(store, 'actualizar_objetivo', { objetivo: 'leer', sumar: 1 })).text).toBe('«Leer 12 libros»: 4 de 12 libros.')
+    expect(store.rows.get('goals:g1')!.data.log).toEqual([{ date: '2026-09-24', value: 4 }])
     expect((await call(store, 'actualizar_objetivo', { objetivo: 'maraton', cifra: 3 })).isError).toBe(true)
     await call(store, 'actualizar_objetivo', { objetivo: 'maraton', conseguido: true })
     expect(store.rows.get('goals:g2')!.data).toMatchObject({ status: 'done', completedAt: NOW })

@@ -13,6 +13,7 @@ import { suggest, type Energy } from '../_shared/suggest.ts'
 import { CATEGORIES, categoryFor, money, monthSummary, parseExpense } from '../_shared/expenses.ts'
 import { parseQuickAdd } from '../_shared/parse.ts'
 import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
+import { logGoal, type GoalPoint } from '../_shared/goals.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -31,6 +32,10 @@ export interface Task {
   priority: number
   dueDate?: string
   dueTime?: string
+  /** fecha límite (para cuándo tiene que estar) */
+  deadline?: string
+  /** «algún día»: sin fecha, fuera de la Bandeja */
+  someday?: boolean
   projectId?: string
   sectionId?: string
   areaId?: string
@@ -192,7 +197,8 @@ function taskLine(t: Task, ix: Index, today: string) {
   const where = t.projectId ? ix.projectName(t.projectId) : ix.areaName(t.areaId)
   return [
     `- [${t.id}] ${t.title}`,
-    t.dueDate ? ` · ${relDay(t.dueDate, today)} (${t.dueDate})${t.dueTime ? ` a las ${t.dueTime}` : ''}` : ' · sin fecha',
+    t.dueDate ? ` · ${relDay(t.dueDate, today)} (${t.dueDate})${t.dueTime ? ` a las ${t.dueTime}` : ''}` : t.someday ? ' · algún día' : ' · sin fecha',
+    t.deadline ? ` · FECHA LÍMITE ${relDay(t.deadline, today)} (${t.deadline})` : '',
     PRIO[t.priority] ?? '',
     where ? ` · ${where}` : '',
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
@@ -245,9 +251,12 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   const today = ymdIn(env.now, env.tz)
   const ix = new Index(rows)
   const open = ix.tasks.filter((t) => !t.done)
-  const overdue = open.filter((t) => t.dueDate && t.dueDate < today).sort(byDate)
-  const dated = open.filter((t) => t.dueDate && t.dueDate >= today).sort(byDate)
-  const undated = open.filter((t) => !t.dueDate).sort((a, b) => b.priority - a.priority || a.order - b.order)
+  // Manda la fecha que llegue antes: la de hacerla o la límite
+  const due = (t: Task) => (t.deadline && (!t.dueDate || t.deadline < t.dueDate) ? t.deadline : t.dueDate)
+  const overdue = open.filter((t) => (due(t) ?? '9') < today).sort(byDate)
+  const dated = open.filter((t) => (due(t) ?? '') >= today).sort(byDate)
+  const undated = open.filter((t) => !due(t) && !t.someday).sort((a, b) => b.priority - a.priority || a.order - b.order)
+  const someday = open.filter((t) => !due(t) && t.someday)
   const doneWeek = ix.tasks.filter((t) => t.done && num(t.completedAt) >= env.now - 7 * 864e5)
   const limit = (list: Task[], n: number) => [...list.slice(0, n).map((t) => taskLine(t, ix, today)), ...(list.length > n ? [`(y ${list.length - n} más: usa buscar_tareas)`] : [])]
 
@@ -261,6 +270,7 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     ...limit(dated, 120),
     `\nSIN FECHA (${undated.length}):`,
     ...limit(undated, 60),
+    ...(someday.length ? [`\nALGÚN DÍA (${someday.length}) — sin prisa, no proponerlas para hoy salvo que lo pida:`, ...limit(someday, 30)] : []),
     `\nCompletadas en los últimos 7 días: ${doneWeek.length}`,
   ]
 
@@ -420,6 +430,8 @@ export interface NewTask {
   titulo: string
   fecha?: string
   hora?: string
+  fecha_limite?: string
+  algun_dia?: boolean
   prioridad?: number
   notas?: string
   proyecto?: string
@@ -436,6 +448,8 @@ export interface Change {
   titulo?: string
   fecha?: string | null
   hora?: string | null
+  fecha_limite?: string | null
+  algun_dia?: boolean
   prioridad?: number
   notas?: string
   proyecto?: string | null
@@ -480,6 +494,8 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
     }
     if (dueDate) task.dueDate = dueDate
     if (dueDate && isHhmm(n.hora)) task.dueTime = normTime(n.hora)
+    if (isYmd(n.fecha_limite)) task.deadline = n.fecha_limite
+    if (n.algun_dia === true && !dueDate) task.someday = true
     if (project) {
       task.projectId = String(project.id)
       if (project.areaId) task.areaId = String(project.areaId)
@@ -543,6 +559,14 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
       delete t.dueDate
       delete t.dueTime
     } else if (isYmd(c.fecha)) t.dueDate = c.fecha
+    if (c.fecha_limite === null) delete t.deadline
+    else if (isYmd(c.fecha_limite)) t.deadline = c.fecha_limite
+    if (c.algun_dia === true) {
+      t.someday = true
+      delete t.dueDate
+      delete t.dueTime
+    } else if (c.algun_dia === false) delete t.someday
+    else if (t.dueDate) delete t.someday
     if (c.hora === null) delete t.dueTime
     else if (isHhmm(c.hora) && t.dueDate) t.dueTime = normTime(c.hora)
     if (c.proyecto === null) {
@@ -675,6 +699,7 @@ export function updateGoal(rows: Row[], args: { objetivo?: string; cifra?: numbe
   if (typeof args.cifra === 'number' || typeof args.sumar === 'number') {
     if (g.kind !== 'number') return { writes: [], report: [`«${str(g.title)}» se mide con sus proyectos, no con una cifra.`] }
     next.current = Math.max(0, typeof args.cifra === 'number' ? args.cifra : num(g.current) + (args.sumar ?? 0))
+    next.log = logGoal(g.log as GoalPoint[] | undefined, ymdIn(env.now, env.tz), next.current as number)
     out.push(`«${str(g.title)}»: ${num(next.current)} de ${num(g.target)}${g.unit ? ` ${str(g.unit)}` : ''}.`)
   }
   if (args.conseguido === true) {

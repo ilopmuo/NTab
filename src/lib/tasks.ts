@@ -2,14 +2,27 @@ import type { Task } from '@/db/types'
 import { today } from './dates'
 
 export function isInbox(t: Task) {
-  return !t.areaId && !t.projectId && !t.dueDate
+  return !t.areaId && !t.projectId && !t.dueDate && !t.deadline && !t.someday
 }
+
+/** En «Algún día»: marcada así y sin fecha */
+export const isSomeday = (t: Pick<Task, 'someday' | 'dueDate'>) => !!t.someday && !t.dueDate
 
 /** Recién creada (hace menos de 3 s): su fila se ilumina un momento para ver dónde ha caído */
 export const isFresh = (t: Pick<Task, 'createdAt'>) => Date.now() - t.createdAt < 3000
 
+/**
+ * El día que manda para Hoy, Próximo y los contadores: el de hacerla o, si la
+ * fecha límite llega antes (o no tiene otra), el de la fecha límite.
+ */
+export function whenDue(t: Pick<Task, 'dueDate' | 'deadline'>): string | undefined {
+  if (t.deadline && (!t.dueDate || t.deadline < t.dueDate)) return t.deadline
+  return t.dueDate
+}
+
 export function isOverdue(t: Task, ref = today()) {
-  return !t.done && !!t.dueDate && t.dueDate < ref
+  const d = whenDue(t)
+  return !t.done && !!d && d < ref
 }
 
 /** Hora primero, luego prioridad, luego orden manual */

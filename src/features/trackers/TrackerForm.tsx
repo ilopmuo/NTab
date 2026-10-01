@@ -89,7 +89,7 @@ function Form({ tracker, onClose }: { tracker?: Tracker; onClose: () => void }) 
             </div>
           </div>
         </Field>
-        <Field label="Icono">
+        <Field label="Icono" group>
           <div className="grid grid-cols-8 gap-1">
             {TRACKER_ICONS.map((k) => (
               <button

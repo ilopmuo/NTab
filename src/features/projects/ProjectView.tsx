@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, CheckCircle2, ChevronRight, ClipboardList, FileText, MoreHorizontal, Pause, Pencil, Pin, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
+import { Check, CheckCircle2, ChevronRight, ClipboardList, Columns3, FileText, List, MoreHorizontal, Pause, Pencil, Pin, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
-import { createNote, deleteProject } from '@/db/actions'
+import { createNote, deleteProject, markReviewed } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
 import type { ProjectStatus } from '@/db/types'
 import { dateLabel, relativeDays, today } from '@/lib/dates'
@@ -14,12 +14,19 @@ import { AreaBadge } from '@/components/icons'
 import { TaskList } from '@/components/TaskList'
 import { Menu } from '@/components/Menu'
 import { ProjectTasks } from './ProjectTasks'
-import { Button, Empty, Group, Modal, ModalHeader, ProgressRing, Section, cx, softSpring } from '@/components/ui'
+import { ProjectBoard } from './ProjectBoard'
+import { Button, Empty, Group, Modal, ModalHeader, ProgressRing, Section, Segmented, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectForm } from './ProjectForm'
 import { toastTrashed } from '../trash/undo'
 import { templateFromProject } from '@/lib/templates'
 import { SelectButton } from '@/features/select/SelectButton'
+
+/** «hoy», «ayer», «hace 5 días» */
+function reviewedLabel(at: number) {
+  const days = Math.floor((Date.now() - at) / 864e5)
+  return days <= 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`
+}
 
 export function ProjectView({ id }: { id: string }) {
   const project = useLiveQuery(() => db.projects.get(id), [id])
@@ -40,6 +47,7 @@ export function ProjectView({ id }: { id: string }) {
   const done = tasks.filter((t) => t.done)
   const progress = tasks.length ? done.length / tasks.length : 0
   const late = project.deadline && project.deadline < today() && project.status !== 'done'
+  const board = project.view === 'board'
 
   const setStatus = async (status: ProjectStatus) => {
     await db.projects.update(id, { status })
@@ -47,7 +55,7 @@ export function ProjectView({ id }: { id: string }) {
   }
 
   return (
-    <Page>
+    <Page wide={board}>
       <header className="mb-8">
         {(area || goal) && (
           <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -84,6 +92,7 @@ export function ProjectView({ id }: { id: string }) {
             </motion.h1>
             <p className="mt-0.5 text-[14px] text-muted">
               {done.length} de {tasks.length} completadas
+              {project.reviewedAt ? ` · revisado ${reviewedLabel(project.reviewedAt)}` : ''}
               {project.deadline && (
                 <span className={cx('ml-2 font-semibold', late ? 'text-fg' : 'text-muted')}>
                   · límite {dateLabel(project.deadline).toLowerCase()} ({relativeDays(project.deadline)})
@@ -107,6 +116,14 @@ export function ProjectView({ id }: { id: string }) {
             <Pencil size={13} strokeWidth={2.4} /> Editar
           </Button>
           <SelectButton small />
+          <Segmented
+            value={board ? 'board' : 'list'}
+            onChange={(v) => void db.projects.update(id, { view: v === 'board' ? 'board' : undefined })}
+            options={[
+              { value: 'list', label: <List size={15} strokeWidth={2.4} />, title: 'Ver en lista' },
+              { value: 'board', label: <Columns3 size={15} strokeWidth={2.4} />, title: 'Ver en tablero' },
+            ]}
+          />
           <Menu
             label="Más acciones del proyecto"
             align="start"
@@ -114,6 +131,11 @@ export function ProjectView({ id }: { id: string }) {
             items={[
               project.status === 'active' && { label: 'Pausar', icon: <Pause size={14} />, onSelect: () => void setStatus('paused') },
               project.status === 'paused' && { label: 'Terminar', icon: <CheckCircle2 size={14} />, onSelect: () => void setStatus('done') },
+              {
+                label: 'Marcar como revisado',
+                icon: <Check size={14} />,
+                onSelect: () => void markReviewed(project.id).then(() => toast('Proyecto revisado')),
+              },
               {
                 label: isPinned(pins, 'project', project.id) ? 'Quitar de Fijados' : 'Fijar en la barra lateral',
                 icon: <Pin size={14} />,
@@ -133,7 +155,7 @@ export function ProjectView({ id }: { id: string }) {
         </div>
       </header>
 
-      <ProjectTasks project={project} open={open} />
+      {board ? <ProjectBoard project={project} open={open} /> : <ProjectTasks project={project} open={open} />}
 
       {done.length > 0 && (
         <section className="mb-8">

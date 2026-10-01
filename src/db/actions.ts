@@ -8,6 +8,7 @@ import { putInTrash } from './trash'
 import { withDate } from '@/lib/trackers'
 import { aisleFor, itemKey, type ParsedItem } from '@/lib/shopping'
 import { cleanTag, replaceTag } from '@/lib/tags'
+import { logGoal } from '@/lib/goals'
 
 // ── Tareas ────────────────────────────────────────────────────
 
@@ -336,6 +337,15 @@ export async function createGoal(data: Partial<Goal> & { title: string }): Promi
   return goal
 }
 
+/** Cambia la cifra de un objetivo y la apunta en su historial (para la gráfica) */
+export async function setGoalCurrent(id: string, value: number) {
+  const v = Math.max(0, value)
+  await db.goals.where('id').equals(id).modify((g) => {
+    g.current = v
+    g.log = logGoal(g.log, today(), v)
+  })
+}
+
 export async function setGoalStatus(id: string, status: Goal['status']) {
   await db.goals.update(id, { status, completedAt: status === 'done' ? Date.now() : undefined })
 }
@@ -405,6 +415,13 @@ export async function renameTag(from: string, to: string) {
 /** Quita una etiqueta de todas las tareas */
 export async function deleteTag(tag: string) {
   return db.tasks.where('tags').equals(tag).modify((t) => void (t.tags = t.tags.filter((x) => x !== tag)))
+}
+
+// ── Revisión de proyectos ─────────────────────────────────────
+
+/** Marca un proyecto como revisado ahora (o quita la marca) */
+export async function markReviewed(projectId: string, reviewed = true) {
+  await db.projects.update(projectId, { reviewedAt: reviewed ? Date.now() : undefined })
 }
 
 // ── Secciones de proyecto ─────────────────────────────────────
