@@ -257,6 +257,13 @@ export interface Thing {
   returned?: 0 | 1
   /** momento del aviso ya calculado (ms): caducidad o devolución */
   remindAt?: number
+  /** estancia de la casa (Cocina, Salón…) */
+  room?: string
+  /** compra y garantía (como Sortly o Encircle): fecha, precio, hasta cuándo cubre y foto del ticket */
+  bought?: string
+  price?: number
+  warranty?: string
+  receipt?: string
   createdAt: number
   updatedAt: number
 }
@@ -272,6 +279,8 @@ export interface Tracker {
   every?: number
   /** algo que quiero dejar («Días sin…»): el historial son las recaídas */
   avoid?: boolean
+  /** estancia de la casa (limpieza por estancias, como en Tody) */
+  room?: string
   /** lo que cuesta cada día que se hace (para el ahorro), en la moneda de los gastos */
   costPerDay?: number
   /** momento del aviso ya calculado (ms) */
@@ -287,6 +296,10 @@ export interface ShoppingItem {
   name: string
   /** cantidad tal cual («2», «1 kg», «una docena») */
   qty?: string
+  /** precio estimado de la línea (para el total) */
+  price?: number
+  /** lista a la que va (ajuste `shoppingLists`); sin ella, la principal */
+  list?: ID
   /** pasillo: fruta, lacteos, limpieza… (ver src/lib/shopping.ts) */
   aisle: string
   /** 1 = ya en el carro */
@@ -300,6 +313,8 @@ export interface PantryItem {
   id: ID
   name: string
   aisle: string
+  /** último precio apuntado */
+  price?: number
   count: number
   lastAt: number
 }
@@ -334,6 +349,14 @@ export interface Recipe {
   id: ID
   name: string
   ingredients: string[]
+  /** pasos, en orden (para el modo cocina) */
+  steps?: string[]
+  /** para cuántas personas son los ingredientes */
+  servings?: number
+  /** minutos en total */
+  minutes?: number
+  /** de dónde se importó */
+  source?: string
   notes?: string
   createdAt: number
 }

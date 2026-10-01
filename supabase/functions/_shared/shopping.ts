@@ -83,6 +83,8 @@ const UNITS = 'kg|kilos?|g|gr|gramos?|l|litros?|ml|docenas?|paquetes?|packs?|lat
 export interface ParsedItem {
   name: string
   qty?: string
+  /** precio estimado de esa línea («leche 1,20 €») */
+  price?: number
 }
 
 /** «2 barras de pan», «leche x3», «medio kilo de fresas», «una docena de huevos» */
@@ -90,6 +92,13 @@ export function parseItem(raw: string): ParsedItem | null {
   let s = raw.trim().replace(/^[-•*·]\s*/, '')
   if (!s) return null
   let qty: string | undefined
+  let price: number | undefined
+  // «leche 1,20 €» / «pan 0.80€» / «aceite 6 euros»
+  const money = s.match(/\s+(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur|euros?)$/i)
+  if (money) {
+    price = Number(money[1].replace(',', '.'))
+    s = s.slice(0, money.index).trim()
+  }
   // «leche x3» / «leche (3)»
   const tail = s.match(/\s*(?:x\s*(\d+)|\((\d+[^)]*)\))$/i)
   if (tail) {
@@ -107,13 +116,19 @@ export function parseItem(raw: string): ParsedItem | null {
   }
   s = s.trim()
   if (!s) return null
-  return { name: s.charAt(0).toUpperCase() + s.slice(1), qty }
+  const item: ParsedItem = { name: s.charAt(0).toUpperCase() + s.slice(1), qty }
+  if (price !== undefined && price > 0) item.price = price
+  return item
 }
+
+/** 23.4 → «23,40 €» */
+export const euros = (n: number) => `${n.toFixed(2).replace('.', ',')} €`
 
 /** Varias cosas de golpe: separadas por comas, «y», punto y coma o líneas */
 export function parseItems(text: string): ParsedItem[] {
   return text
-    .split(/\n|,|;|\s+y\s+|\s+e\s+(?=[aeiou])/i)
+    // La coma decimal de un precio («1,20 €») no separa cosas
+    .split(/\n|,(?!\d{1,2}\s*(?:€|eur))|;|\s+y\s+|\s+e\s+(?=[aeiou])/i)
     .map(parseItem)
     .filter((x): x is ParsedItem => !!x)
 }

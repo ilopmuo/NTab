@@ -44,13 +44,13 @@
 | **Selección múltiple** | «Seleccionar» en las listas (o `⌘`/`Ctrl` + clic): mueve a hoy, mañana o una fecha, cambia lista o prioridad, completa o borra varias a la vez |
 | **Avisos insistentes** | «insísteme» o «hasta que lo haga»: el aviso se repite cada 10 minutos (o lo que elijas) hasta que la marcas, también con la app cerrada |
 | **Rutinas** | Listas de pasos que haces siempre igual («Antes de salir de casa»: llaves, cartera, móvil…). Te avisa a su hora y te guía paso a paso a pantalla completa; con **minutos por paso** (como Routinery), cuenta atrás que suena al acabar y la hora a la que terminas |
-| **Cosas** | Dónde guardaste algo (con foto), qué has prestado y a quién, qué te han prestado y qué caduca (DNI, ITV, garantías), con avisos. Búsqueda «¿Dónde está…?» |
-| **Compra** | Escribe o dicta todo de golpe («leche, 2 barras de pan y detergente»): cada cosa va a su pasillo, con cantidades, «lo de siempre» y «Terminar compra» |
-| **Última vez** | ¿Cuándo cambiaste las sábanas o fuiste al dentista? Un toque para apuntarlo; si le pones «cada N días», te avisa cuando toca. Y **«Días sin…»** para lo que quieres dejar (como Quitzilla): días seguidos, récord, siguiente meta y dinero ahorrado |
+| **Cosas** | Dónde guardaste algo (con foto), qué has prestado y a quién, qué te han prestado y qué caduca (DNI, ITV…), con avisos. Búsqueda «¿Dónde está…?». **Inventario de casa** (como Sortly o Encircle): estancia, fecha y precio de compra, foto del ticket y **garantía** («2 o 3 años desde la compra» en un toque) con aviso un mes antes de que acabe; vista «Por estancia» y lo que vale todo lo apuntado |
+| **Compra** | Escribe o dicta todo de golpe («leche, 2 barras de pan y detergente»): cada cosa va a su pasillo, con cantidades, «lo de siempre» y «Terminar compra». **Varias listas** (Súper, Farmacia, Ferretería…) y **precio estimado** (como AnyList): «leche 1,20 €» o un toque en «€»; LUNO recuerda lo que costó y suma lo que llevas y lo que falta |
+| **Última vez** | ¿Cuándo cambiaste las sábanas o fuiste al dentista? Un toque para apuntarlo; si le pones «cada N días», te avisa cuando toca. Y **«Días sin…»** para lo que quieres dejar (como Quitzilla): días seguidos, récord, siguiente meta y dinero ahorrado. **Limpieza por estancias** (como Tody o Sweepy): cada tarea con una barra que se ensucia según pasan los días, agrupadas por estancia, con «Lo típico de cocina, baño…» para empezar y «Hecho hoy» en un toque |
 | **Diario** | Un minuto al día: ánimo, unas líneas y tres cosas buenas; lo que hiciste se apunta solo. Racha, tendencia y mapa de ánimo; **«Tal día como hoy»** (como Day One), **año en píxeles** y **«Lo que te sienta bien»**: el ánimo de los días que haces cada hábito frente a los que no (como Daylio) |
 | **¿Qué hago ahora?** | Dices cuánto tiempo tienes y cómo vas de energía, y LUNO te propone la tarea que mejor encaja (con «Empezar» en modo foco) |
 | **Gastos** | «12,50 café», «súper 63»: categoría automática, total del mes, proyección, presupuesto con aviso al 80 % y reparto por categorías |
-| **Menú** | Comida y cena de la semana con tus recetas; los ingredientes van a la lista de la compra en un toque |
+| **Menú** | Comida y cena de la semana con tus recetas; los ingredientes van a la lista de la compra en un toque. **Recetas como Paprika**: pega el enlace de una web de recetas (o el texto) y se rellena sola; cambia las raciones y las cantidades se recalculan («1,5 kg», «1½ pepino»); **modo cocina** paso a paso con la pantalla siempre encendida y temporizadores sacados de los pasos («hornea 20 minutos») |
 | **Cuenta atrás** | Días que faltan para lo que esperas, en Hoy |
 | **Personalizar Hoy** | Elige qué tarjetas ves en Hoy y en qué orden |
 | **Hora a hora** | En «Planifica tu día», el día con reuniones y tareas; «Colocar en huecos» da hora a lo que no la tiene, entre reuniones y lo importante primero. Arrastra un bloque para cambiarle la hora o tira de su borde para cambiar la duración (avisa si choca con una reunión) |
@@ -149,7 +149,7 @@ Minimalista, casi monocromo y tranquilo. La marca (símbolo, logotipo, paleta y 
 - Además de las tareas y los pagos, el servidor avisa de:
   - repeticiones de los avisos insistentes (`due_nags`, cada `nag` minutos hasta 12 veces);
   - rutinas a su hora si no están hechas (`due_routine_reminders`);
-  - cosas: reclamar o devolver un préstamo y lo que caduca (`due_reminders` incluye la tabla `things`);
+  - cosas: reclamar o devolver un préstamo, lo que caduca y las garantías un mes antes de acabar (`due_reminders` incluye la tabla `things`);
   - «Última vez» cuando vuelve a tocar (`due_reminders` incluye `trackers`);
   - el diario por la noche si aún no se ha escrito (`due_journal_reminders`, hora en `settings/journalReminder`);
   - las fechas límite, la víspera y el mismo día (`due_deadline_reminders`, hora en `settings/deadlineAlerts`, a las 9 si no se cambia);
@@ -166,6 +166,7 @@ Minimalista, casi monocromo y tranquilo. La marca (símbolo, logotipo, paleta y 
   - El lenguaje natural (`supabase/functions/_shared/parse.ts`) y los hábitos (`_shared/habits.ts`) son el mismo código en la app y en el servidor, sin dependencias.
 - **Calendario** (`supabase/functions/calendar`): enlace privado por usuario (`calendar_feeds.token`) que sirve un `.ics` con tareas con fecha, pagos y cumpleaños. Se crea y se cambia en Ajustes → Calendario.
   - Google Calendar tarda horas en refrescar los calendarios suscritos. Para tenerlo al día (también lo que se borra), Ajustes → Calendario → Google Calendar da un script de Google Apps Script (`src/features/settings/googleScript.ts`). Se pega en script.google.com y cada 5 minutos lee `?format=json` y crea, cambia o borra los eventos del calendario «LUNO».
+- **Recetas de la web** (`supabase/functions/recipe`): recibe un enlace (con la sesión del usuario), descarga la página en el servidor (el navegador no puede por CORS) y saca la receta de sus datos `schema.org/Recipe` (`_shared/recipe.ts`, el mismo código que escala las cantidades en la app). Solo páginas públicas: rechaza IPs privadas y de la red interna también tras redirecciones (`_shared/safeUrl.ts`), con 10 s y 3 MB como mucho.
 - **Tus calendarios** (`supabase/functions/events`): la tabla `calendar_sources` guarda las direcciones .ics privadas de cada usuario (RLS). La Edge Function las lee en el servidor (el navegador no puede por CORS), expande repeticiones, excepciones y zonas horarias con `ical.js` y devuelve los eventos del rango pedido. La app los guarda 10 minutos y conserva una copia para verlos sin conexión. El conector de Claude los usa en `ver_resumen` (próximos 7 días y carga de hoy) y `ver_eventos`.
 - **Resumen de la mañana**: `due_digests()` + `send-reminders`, con la hora guardada en el ajuste `dailyDigest`.
 

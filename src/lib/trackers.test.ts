@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { averageEvery, cleanDays, cleanRecord, computeTrackerRemindAt, everyLabel, milestoneLabel, nextMilestone, savedSince, sinceLabel, sortTrackers, trackerState, withDate } from './trackers'
+import type { Tracker } from '@/db/types'
+import { averageEvery, byRoom, dirtiness, dirtinessLabel, cleanDays, cleanRecord, computeTrackerRemindAt, everyLabel, milestoneLabel, nextMilestone, savedSince, sinceLabel, sortTrackers, trackerState, withDate } from './trackers'
 
 describe('última vez', () => {
   it('historial sin repetir y ordenado', () => {
@@ -55,5 +56,36 @@ describe('«Días sin…»', () => {
     expect(computeTrackerRemindAt({ log: ['2026-09-01'], every: 14, archived: 0, avoid: true })).toBeUndefined()
     const sheets = { ...base, id: 's', name: 'Sábanas', avoid: undefined, log: ['2026-09-30'], every: 14 }
     expect(sortTrackers([{ ...base, log: [] }, sheets], T).map((t) => t.id)).toEqual(['s', 'f'])
+  })
+})
+
+describe('limpieza por estancias', () => {
+  const T = '2026-10-01'
+  const tr = (id: string, extra: Partial<Tracker>) => ({ id, name: id, icon: 'home', log: [], archived: 0 as const, order: 0, createdAt: 0, ...extra }) as Tracker
+  it('la suciedad sube con los días hasta que toca (y algo más si se pasa)', () => {
+    expect(dirtiness(tr('a', { every: 10, log: ['2026-09-26'] }), T)).toBe(0.5)
+    expect(dirtiness(tr('a', { every: 7, log: ['2026-09-01'] }), T)).toBe(1.5)
+    expect(dirtiness(tr('a', { every: 7 }), T)).toBe(1)
+    expect(dirtiness(tr('a', { log: ['2026-09-01'] }), T)).toBeUndefined()
+    expect(dirtinessLabel(0.2)).toBe('Limpio')
+    expect(dirtinessLabel(0.8)).toBe('Toca pronto')
+    expect(dirtinessLabel(1.2)).toBe('Toca')
+  })
+  it('agrupa por estancia, de la más sucia a la más limpia', () => {
+    const rooms = byRoom(
+      [
+        tr('vitro', { room: 'Cocina', every: 2, log: ['2026-09-30'] }),
+        tr('suelo', { room: 'Cocina', every: 7, log: ['2026-09-24'] }),
+        tr('baño', { room: 'Baño', every: 7, log: ['2026-09-20'] }),
+        tr('sin', { every: 7 }),
+        tr('fumar', { room: 'Salón', avoid: true }),
+      ],
+      T,
+    )
+    expect(rooms.map((r) => [r.room, Math.round(r.level * 100)])).toEqual([
+      ['Baño', 150],
+      ['Cocina', 75],
+    ])
+    expect(rooms[1].items.map((t) => t.id)).toEqual(['suelo', 'vitro'])
   })
 })

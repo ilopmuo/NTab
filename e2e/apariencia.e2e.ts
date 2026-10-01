@@ -40,7 +40,7 @@ test('selector de fecha propio: atajos y calendario con teclado', async ({ page 
   })
   await expect.poll(() => dueDate(page, 'Renovar el pasaporte')).toBe(expected)
   await expect(panel.locator('[aria-current="date"]')).toHaveCount(0)
-  await expect(panel.getByRole('button', { name: /^[A-Z][a-zé]+\.? \d+/ })).toHaveAttribute('aria-expanded', 'false')
+  await expect(panel.getByRole('button', { name: /^[A-ZÁÉ][a-záéíóú]+\.? \d+/ })).toHaveAttribute('aria-expanded', 'false')
 })
 
 function dueDate(page: import('@playwright/test').Page, title: string) {

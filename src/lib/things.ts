@@ -26,20 +26,44 @@ function at(date: string, hh: number) {
  * avisa 30 antes), se avisa a las 9:00 siguientes, mientras no haya caducado.
  * Lo que ya pasó no se avisa (no se reenvía lo antiguo).
  */
-export function computeThingRemindAt(t: Pick<Thing, 'kind' | 'expires' | 'notifyDays' | 'returnBy' | 'returned'>, now = Date.now()): number | undefined {
-  let when: number | undefined
-  if (t.kind === 'document' && t.expires) {
-    when = at(addDaysYmd(t.expires, -(t.notifyDays ?? DEFAULT_NOTIFY_DAYS)), 9)
+export function computeThingRemindAt(t: Pick<Thing, 'kind' | 'expires' | 'notifyDays' | 'returnBy' | 'returned' | 'warranty'>, now = Date.now()): number | undefined {
+  /** `days` antes de `date`, a las 9; ya dentro del margen, a las 9 siguientes (si no ha pasado) */
+  const before = (date: string, days: number) => {
+    let when: number | undefined = at(addDaysYmd(date, -days), 9)
     if (when <= now) {
       const next = new Date(now)
       if (next.getHours() >= 9) next.setDate(next.getDate() + 1)
       next.setHours(9, 0, 0, 0)
-      when = next.getTime() <= at(t.expires, 9) ? next.getTime() : undefined
+      when = next.getTime() <= at(date, 9) ? next.getTime() : undefined
     }
+    return when
   }
+  let when: number | undefined
+  if (t.kind === 'document' && t.expires) when = before(t.expires, t.notifyDays ?? DEFAULT_NOTIFY_DAYS)
   else if (t.kind === 'lent' && t.returnBy && !t.returned) when = at(t.returnBy, 10)
   else if (t.kind === 'borrowed' && t.returnBy && !t.returned) when = at(addDaysYmd(t.returnBy, -1), 9)
+  // Lo que no tiene otro aviso: el fin de la garantía, un mes antes
+  if ((when === undefined || when <= now) && t.warranty && !t.returned) when = before(t.warranty, DEFAULT_NOTIFY_DAYS)
   return when !== undefined && when > now ? when : undefined
+}
+
+/** ¿Cómo va la garantía? (como la caducidad, con un mes de margen) */
+export function warrantyStatus(t: Pick<Thing, 'warranty'>, today = todayYmd()): { level: 'expired' | 'soon' | 'ok'; days: number } | null {
+  if (!t.warranty) return null
+  const days = daysUntil(t.warranty, today)
+  return { days, level: days < 0 ? 'expired' : days <= DEFAULT_NOTIFY_DAYS ? 'soon' : 'ok' }
+}
+
+/** Fecha de compra + N años (para «garantía de 2 o 3 años») */
+export function addYears(date: string, years: number) {
+  const [y, m, d] = date.split('-').map(Number)
+  const last = new Date(y + years, m, 0).getDate()
+  return `${y + years}-${String(m).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`
+}
+
+/** Lo que vale lo apuntado (para el seguro, como en Encircle): solo lo que sigue en casa */
+export function inventoryValue(things: Pick<Thing, 'price' | 'kind' | 'returned'>[]) {
+  return things.filter((t) => t.price && t.kind !== 'borrowed' && !t.returned).reduce((n, t) => n + t.price!, 0)
 }
 
 /** Días hasta una fecha (negativo si ya pasó) */
@@ -68,7 +92,8 @@ export function needsAttention(t: Thing, today = todayYmd()) {
   if (t.kind === 'document') return expiryStatus(t, today)?.level !== 'ok'
   if (t.kind === 'lent') return t.returnBy ? t.returnBy <= today : !!t.since && daysUntil(t.since, today) <= -30
   if (t.kind === 'borrowed') return !!t.returnBy && t.returnBy <= addDaysYmd(today, 2)
-  return false
+  // La garantía, cuando está a punto de acabar (la caducada ya no pide nada)
+  return warrantyStatus(t, today)?.level === 'soon'
 }
 
 const fold = (s: string) =>
@@ -82,7 +107,7 @@ export function searchThings(things: Thing[], q: string): Thing[] {
   const words = fold(q).split(/\s+/).filter(Boolean)
   if (!words.length) return things
   return things.filter((t) => {
-    const hay = fold([t.name, t.location, t.personName, t.notes].filter(Boolean).join(' '))
+    const hay = fold([t.name, t.location, t.room, t.personName, t.notes].filter(Boolean).join(' '))
     return words.every((w) => hay.includes(w))
   })
 }

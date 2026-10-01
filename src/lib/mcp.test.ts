@@ -154,6 +154,15 @@ describe('conector MCP', () => {
     expect(computeRemindAt({ reminder: { before: 15 }, dueDate: '2026-12-01' }, 'Europe/Madrid')).toBe(Date.parse('2026-12-01T07:45:00Z'))
   })
 
+  it('cosas: garantía, precio y estancia', async () => {
+    const store = memoryStore(base())
+    const r = await call(store, 'guardar_cosa', { nombre: 'Lavadora', donde: 'cocina, junto a la nevera', estancia: 'Cocina', comprado: '2026-03-01', precio: 499, garantia: '2029-03-01' })
+    expect(r.text).toContain('Lavadora · está en: cocina, junto a la nevera, Cocina · garantía hasta 2029-03-01 · costó 499 € el 2026-03-01')
+    expect(r.text).toContain('te avisaré el 2029-01-30')
+    const d = [...store.rows.values()].find((x) => x.tbl === 'things')!.data
+    expect(d).toMatchObject({ kind: 'stored', room: 'Cocina', warranty: '2029-03-01', price: 499 })
+  })
+
   it('proyectos, objetivos, personas y pagos', async () => {
     const store = memoryStore([
       ...base(),
@@ -298,7 +307,16 @@ describe('conector MCP', () => {
     r = await call(store, 'anadir_compra', { cosas: ['leche', 'plátanos'] })
     expect(r.text).toBe('Añadido a la compra: Plátanos.\nYa estaba: Leche.')
     expect((await call(store, 'ver_compra')).text).toBe('Fruta y verdura: Plátanos\nPanadería: Pan (2 barras)\nLácteos y huevos: Leche\nLimpieza y hogar: Detergente')
-    expect((await call(store, 'ver_resumen')).text).toContain('LISTA DE LA COMPRA (4)')
+
+    // Varias listas y precios
+    store.rows.set('settings:shoppingLists', { tbl: 'settings', id: 'shoppingLists', data: { id: 'shoppingLists', value: [{ id: 'far', name: 'Farmacia' }] } })
+    r = await call(store, 'anadir_compra', { cosas: 'ibuprofeno 3,50 €', lista: 'farmacia' })
+    expect(r.text).toBe('Añadido a la compra (Farmacia): Ibuprofeno.')
+    expect((await call(store, 'anadir_compra', { cosas: 'tiritas', lista: 'ferretería' })).text).toContain('No tiene ninguna lista «ferretería»')
+    const listed = (await call(store, 'ver_compra')).text
+    expect(listed).toContain('LISTA SÚPER:')
+    expect(listed).toContain('LISTA FARMACIA:\nHigiene y farmacia: Ibuprofeno 3,50 €\nTotal estimado: 3,50 €')
+    expect((await call(store, 'ver_resumen')).text).toContain('LISTA DE LA COMPRA (6)')
   })
 
   it('diario: escribir, añadir y leer; ánimo en el resumen', async () => {

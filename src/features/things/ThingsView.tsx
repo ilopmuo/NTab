@@ -4,7 +4,8 @@ import { AnimatePresence } from 'motion/react'
 import { Box, Plus, Search, X } from 'lucide-react'
 import { db } from '@/db/db'
 import type { Thing, ThingKind } from '@/db/types'
-import { searchThings } from '@/lib/things'
+import { inventoryValue, searchThings } from '@/lib/things'
+import { ROOMS } from '@/lib/rooms'
 import { navigate } from '@/app/router'
 import { setUI, useUI } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
@@ -30,6 +31,7 @@ export function ThingsView({ id }: { id?: string }) {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [showReturned, setShowReturned] = useState(false)
+  const [by, setBy] = useState<'kind' | 'room'>('kind')
   const editing = id ? things?.find((t) => t.id === id) : undefined
   // Enlace a una cosa que ya no existe
   useEffect(() => {
@@ -41,12 +43,22 @@ export function ThingsView({ id }: { id?: string }) {
 
   const list = found.filter((t) => filter === 'all' || t.kind === filter)
   const active = list.filter((t) => !t.returned)
-  const groups: { title: string; items: Thing[] }[] = [
-    { title: 'Prestado', items: active.filter((t) => t.kind === 'lent') },
-    { title: 'Me han prestado', items: active.filter((t) => t.kind === 'borrowed') },
-    { title: 'Caducan', items: active.filter((t) => t.kind === 'document').sort((a, b) => (a.expires ?? '').localeCompare(b.expires ?? '')) },
-    { title: 'Guardado', items: active.filter((t) => t.kind === 'stored').sort((a, b) => a.name.localeCompare(b.name, 'es')) },
-  ].filter((g) => g.items.length)
+  const byName = (a: Thing, b: Thing) => a.name.localeCompare(b.name, 'es')
+  // Por estancia (como Encircle): primero las de siempre en su orden, luego las demás
+  const roomNames = [...new Set(active.map((t) => t.room?.trim()).filter((r): r is string => !!r))].sort(
+    (a, b) => (ROOMS.indexOf(a as (typeof ROOMS)[number]) + 1 || 99) - (ROOMS.indexOf(b as (typeof ROOMS)[number]) + 1 || 99) || a.localeCompare(b, 'es'),
+  )
+  const groups: { title: string; items: Thing[] }[] = (
+    by === 'room'
+      ? [...roomNames.map((r) => ({ title: r, items: active.filter((t) => t.room?.trim() === r).sort(byName) })), { title: 'Sin estancia', items: active.filter((t) => !t.room?.trim()).sort(byName) }]
+      : [
+          { title: 'Prestado', items: active.filter((t) => t.kind === 'lent') },
+          { title: 'Me han prestado', items: active.filter((t) => t.kind === 'borrowed') },
+          { title: 'Caducan', items: active.filter((t) => t.kind === 'document').sort((a, b) => (a.expires ?? '').localeCompare(b.expires ?? '')) },
+          { title: 'Guardado', items: active.filter((t) => t.kind === 'stored').sort(byName) },
+        ]
+  ).filter((g) => g.items.length)
+  const value = inventoryValue(things)
   const returned = list.filter((t) => t.returned)
   const open = (t: Thing) => navigate(`/things/${t.id}`)
   const create = (kind: ThingKind) => {
@@ -59,7 +71,7 @@ export function ThingsView({ id }: { id?: string }) {
       <PageHeader
         icon={<SectionIcon def={section('things')} size={40} />}
         title="Cosas"
-        subtitle="Dónde está cada cosa, qué has prestado y qué caduca."
+        subtitle={value ? `Dónde está cada cosa, qué has prestado y qué caduca. Lo apuntado vale unos ${Math.round(value).toLocaleString('es-ES')} €.` : 'Dónde está cada cosa, qué has prestado y qué caduca.'}
         actions={
           <Button variant="primary" onClick={() => create(filter === 'all' ? 'stored' : filter)}>
             <Plus size={16} strokeWidth={2.6} /> Apuntar
@@ -97,7 +109,7 @@ export function ThingsView({ id }: { id?: string }) {
             )}
           </label>
           {/* En el móvil, si no cabe, se desliza de lado */}
-          <div className="-mx-4 mb-6 overflow-x-auto px-4 [scrollbar-width:none]">
+          <div className="-mx-4 mb-6 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
             <Segmented
               value={filter}
               onChange={setFilter}
@@ -108,6 +120,15 @@ export function ThingsView({ id }: { id?: string }) {
                 { value: 'lent', label: 'Presté' },
                 { value: 'borrowed', label: 'Me dejaron' },
                 { value: 'document', label: 'Caduca' },
+              ]}
+            />
+            <Segmented
+              value={by}
+              onChange={setBy}
+              className="ml-auto min-w-max"
+              options={[
+                { value: 'kind', label: 'Por tipo' },
+                { value: 'room', label: 'Por estancia' },
               ]}
             />
           </div>

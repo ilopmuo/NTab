@@ -7,12 +7,12 @@ import { db } from '@/db/db'
 import { createTracker } from '@/db/actions'
 import { markDone, markSlip } from './markDone'
 import { today } from '@/lib/dates'
-import { AVOID_PRESETS, TRACKER_PRESETS, cleanDays, cleanRecord, everyLabel, inLabel, milestoneLabel, nextMilestone, savedSince, sinceLabel, sortTrackers, trackerState } from '@/lib/trackers'
+import { AVOID_PRESETS, CLEANING_PRESETS, TRACKER_PRESETS, byRoom, dirtiness, dirtinessLabel, cleanDays, cleanRecord, everyLabel, inLabel, milestoneLabel, nextMilestone, savedSince, sinceLabel, sortTrackers, trackerState } from '@/lib/trackers'
 import { money } from '@/lib/finance'
-import { setUI, useUI } from '@/app/store'
+import { setUI, toast, useUI } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Icon } from '@/components/icons'
-import { Button, Empty, Group, PageHeader, cx, spring } from '@/components/ui'
+import { Button, Empty, Group, PageHeader, Section, Segmented, cx, spring } from '@/components/ui'
 import { Page } from '../Page'
 import { TrackerForm } from './TrackerForm'
 
@@ -125,12 +125,95 @@ export function TrackerCard({ tracker, onEdit, index = 0 }: { tracker: Tracker; 
   )
 }
 
+/** Barra de suciedad (como en Tody): se llena con los días y se marca con el acento cuando toca */
+function DirtBar({ level, label }: { level: number; label: string }) {
+  const due = level >= 1
+  return (
+    <span className="flex items-center gap-2" role="img" aria-label={`${label}: ${dirtinessLabel(level).toLowerCase()}`}>
+      <span className="relative h-1.5 w-full min-w-16 overflow-hidden rounded-full bg-fill">
+        <span className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500" style={{ width: `${Math.min(100, (level / 1.5) * 100)}%`, background: due ? 'var(--c-blue)' : 'var(--c-muted)' }} />
+      </span>
+      <span className={cx('w-[84px] shrink-0 text-right text-[12.5px] font-semibold', due ? 'text-blue' : 'text-muted')}>{dirtinessLabel(level)}</span>
+    </span>
+  )
+}
+
+/** Limpieza por estancias (como Tody): cada estancia con lo suyo, de lo más sucio a lo más limpio */
+function Rooms({ list, onEdit, onAdd }: { list: Tracker[]; onEdit: (t: Tracker) => void; onAdd: (room: string) => void }) {
+  const t = today()
+  const rooms = byRoom(list, t)
+  const presetRooms = [...new Set(CLEANING_PRESETS.map((p) => p.room))]
+  return (
+    <>
+      {rooms.length === 0 && (
+        <p className="mb-4 px-1 text-[14px] text-muted">Pon una estancia a lo que haces en casa (al editarlo) o empieza con lo típico de cada estancia:</p>
+      )}
+      {rooms.map((r) => (
+        <Section key={r.room} title={r.room} count={r.items.length} action={<span className="w-40"><DirtBar level={r.level} label={r.room} /></span>}>
+          <Group>
+            {r.items.map((x) => {
+              const level = dirtiness(x, t)
+              const doneToday = x.log[0] === t
+              return (
+                <div key={x.id} className="flex items-center gap-3 px-4 py-2.5 shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
+                  <button type="button" onClick={() => onEdit(x)} className="min-w-0 flex-1 text-left">
+                    <span className="block truncate text-[15px] font-medium">{x.name}</span>
+                    {level !== undefined ? <DirtBar level={level} label={x.name} /> : <span className="text-[12.5px] text-muted">Sin frecuencia</span>}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={doneToday}
+                    onClick={() => void markDone(x)}
+                    aria-label={doneToday ? `${x.name}: hecho hoy` : `${x.name}: lo he hecho hoy`}
+                    className={cx('flex h-9 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-semibold transition-transform active:scale-95', doneToday ? 'bg-green text-on-green' : 'bg-fill text-fg hover:bg-press')}
+                  >
+                    <Check size={14} strokeWidth={2.8} /> {doneToday ? 'Hecho' : 'Hecho hoy'}
+                  </button>
+                </div>
+              )
+            })}
+          </Group>
+        </Section>
+      ))}
+      <div className="mb-8 flex flex-wrap gap-2">
+        {presetRooms
+          .filter((room) => CLEANING_PRESETS.some((p) => p.room === room && !list.some((x) => x.name === p.name)))
+          .map((room) => (
+            <button key={room} type="button" onClick={() => onAdd(room)} className="glass flex h-10 items-center gap-1.5 rounded-full px-4 text-[14px] font-medium transition-transform active:scale-95">
+              <Plus size={14} strokeWidth={2.6} aria-hidden /> Lo típico de {room.toLowerCase()}
+            </button>
+          ))}
+      </div>
+    </>
+  )
+}
+
 /** «Última vez»: cosas que se hacen de vez en cuando y cuánto hace de la última */
 export function TrackersView() {
   const trackers = useLiveQuery(() => db.trackers.where('archived').equals(0).toArray(), [])
   const creating = useUI((s) => s.creating === 'tracker')
   const [editing, setEditing] = useState<Tracker | undefined>()
+  const [view, setView] = useState<'all' | 'rooms'>(() => {
+    try {
+      return localStorage.getItem('ntab-trackers-view') === 'rooms' ? 'rooms' : 'all'
+    } catch {
+      return 'all'
+    }
+  })
+  const chooseView = (v: 'all' | 'rooms') => {
+    setView(v)
+    try {
+      localStorage.setItem('ntab-trackers-view', v)
+    } catch {
+      /* solo en memoria */
+    }
+  }
   if (!trackers) return null
+  const addRoomPresets = async (room: string) => {
+    const missing = CLEANING_PRESETS.filter((p) => p.room === room && !trackers.some((x) => x.name === p.name))
+    for (const p of missing) await createTracker({ name: p.name, icon: p.icon, every: p.every, room: p.room })
+    toast(`${missing.length} ${missing.length === 1 ? 'tarea' : 'tareas'} de ${room.toLowerCase()}. Toca «Hecho hoy» en lo que hayas hecho hace poco.`)
+  }
   const list = sortTrackers(trackers)
   const due = list.filter((t) => trackerState(t).kind === 'due').length
   const ideas = [...TRACKER_PRESETS, ...AVOID_PRESETS].filter((p) => !trackers.some((t) => t.name === p.name))
@@ -167,7 +250,18 @@ export function TrackersView() {
           </Button>
         }
       />
-      {list.length === 0 ? (
+      <Segmented
+        value={view}
+        onChange={chooseView}
+        className="mb-5"
+        options={[
+          { value: 'all', label: 'Todo' },
+          { value: 'rooms', label: 'Por estancia' },
+        ]}
+      />
+      {view === 'rooms' ? (
+        <Rooms list={list} onEdit={setEditing} onAdd={(room) => void addRoomPresets(room)} />
+      ) : list.length === 0 ? (
         <Group>
           <Empty icon={<History size={28} strokeWidth={2.2} />} color="var(--c-blue)" title="¿Hace cuánto que…?" hint="Para lo que haces de vez en cuando y nunca recuerdas cuándo fue la última vez. Toca una idea:">
             {presets}
@@ -180,7 +274,7 @@ export function TrackersView() {
           ))}
         </div>
       )}
-      {list.length > 0 && ideas.length > 0 && list.length < 8 && (
+      {view === 'all' && list.length > 0 && ideas.length > 0 && list.length < 8 && (
         <div className="mt-8">
           <p className="mb-3 px-1 text-[17px] font-bold text-muted">Ideas</p>
           <div className="[&>div]:justify-start">{presets}</div>

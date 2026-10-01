@@ -80,7 +80,9 @@ export function buildPayload(r: DueReminder, tz = 'Europe/Madrid', now = new Dat
     const who = r.currency || 'alguien'
     const date = r.due_date ? dayLabel(r.due_date, now, tz) : null
     const body =
-      r.due_time === 'lent'
+      r.due_time === 'warranty'
+        ? `La garantía acaba ${date ?? 'pronto'}. Si falla algo, reclámalo antes.`
+        : r.due_time === 'lent'
         ? `Se lo prestaste a ${who}. ¿Te lo ha devuelto?`
         : r.due_time === 'borrowed'
           ? `Tienes que devolvérselo a ${who}${date ? ` (${date})` : ''}.`

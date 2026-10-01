@@ -28,7 +28,13 @@ test('«Días sin…»: lo que quieres dejar, con récord y ahorro', async ({ pa
   await page.getByRole('button', { name: 'Lo quiero dejar' }).click()
   await page.getByLabel('Nombre').fill('Fumar')
   await page.getByPlaceholder('Ej. 5,50 €').fill('5')
-  await page.getByLabel('Otra fecha').fill('2026-09-21')
+  // Hace 10 días, en la zona horaria del navegador
+  const tenDaysAgo = await page.evaluate(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 10)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
+  await page.getByLabel('Otra fecha').fill(tenDaysAgo)
   await page.getByRole('button', { name: 'Añadir' }).click()
   await page.getByRole('button', { name: 'Crear' }).click()
   const card = page.locator('#main .glass', { hasText: 'Fumar' }).first()

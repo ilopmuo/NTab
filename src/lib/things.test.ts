@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Thing } from '@/db/types'
-import { computeThingRemindAt, expiryStatus, needsAttention, searchThings } from './things'
+import { addYears, computeThingRemindAt, expiryStatus, inventoryValue, needsAttention, searchThings, warrantyStatus } from './things'
+import { roomsIn } from './rooms'
 
 const base: Thing = { id: 't', name: 'x', kind: 'stored', createdAt: 0, updatedAt: 0 }
 const now = new Date(2026, 8, 24, 12, 0).getTime()
@@ -32,5 +33,25 @@ describe('cosas', () => {
     expect(searchThings(list, 'cajon').map((t) => t.id)).toEqual(['a'])
     expect(searchThings(list, 'garcia').map((t) => t.id)).toEqual(['b'])
     expect(searchThings(list, 'pasaporte escritorio').map((t) => t.id)).toEqual(['a'])
+  })
+})
+
+describe('garantías y estancias', () => {
+  const now = new Date(2026, 9, 1, 12, 0).getTime()
+  it('avisa un mes antes de que acabe la garantía (si no hay otro aviso)', () => {
+    expect(computeThingRemindAt({ kind: 'stored', warranty: '2027-03-15' }, now)).toBe(new Date(2027, 1, 13, 9, 0).getTime())
+    // Ya dentro del mes: mañana a las 9
+    expect(computeThingRemindAt({ kind: 'stored', warranty: '2026-10-20' }, now)).toBe(new Date(2026, 9, 2, 9, 0).getTime())
+    expect(computeThingRemindAt({ kind: 'stored', warranty: '2026-09-20' }, now)).toBeUndefined()
+    // Un préstamo con fecha manda antes que la garantía
+    expect(computeThingRemindAt({ kind: 'lent', returnBy: '2026-10-05', warranty: '2027-03-15' }, now)).toBe(new Date(2026, 9, 5, 10, 0).getTime())
+  })
+  it('estado, años desde la compra y valor de lo apuntado', () => {
+    expect(warrantyStatus({ warranty: '2026-10-20' }, '2026-10-01')).toEqual({ level: 'soon', days: 19 })
+    expect(warrantyStatus({ warranty: '2026-09-01' }, '2026-10-01')?.level).toBe('expired')
+    expect(addYears('2024-02-29', 3)).toBe('2027-02-28')
+    expect(addYears('2026-10-01', 2)).toBe('2028-10-01')
+    expect(inventoryValue([{ kind: 'stored', price: 499 }, { kind: 'document', price: 20 }, { kind: 'borrowed', price: 50 }, { kind: 'lent', price: 30, returned: 1 }])).toBe(519)
+    expect(roomsIn(['Cocina', 'cocina', ' Buhardilla ', undefined]).slice(-1)).toEqual(['Buhardilla'])
   })
 })

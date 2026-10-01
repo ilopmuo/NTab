@@ -439,3 +439,8 @@ enabled = true
 # La función comprueba la sesión ella misma (auth.getUser).
 verify_jwt = false
 import_map = "./functions/events/deno.json"
+
+[functions.recipe]
+enabled = true
+# La función comprueba la sesión ella misma (auth.getUser).
+verify_jwt = false

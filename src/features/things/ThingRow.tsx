@@ -2,7 +2,7 @@ import { m as motion } from 'motion/react'
 import { ArrowDownLeft, ArrowUpRight, Box, FileClock, MapPin } from 'lucide-react'
 import type { Thing } from '@/db/types'
 import { updateThing } from '@/db/actions'
-import { daysUntil, expiryStatus, relativeLabel } from '@/lib/things'
+import { daysUntil, expiryStatus, relativeLabel, warrantyStatus } from '@/lib/things'
 import { toast } from '@/app/store'
 import { haptic } from '@/lib/haptics'
 import { cx, softSpring } from '@/components/ui'
@@ -26,7 +26,9 @@ export function thingLine(t: Thing): { text: string; strong?: boolean } {
     if (t.returnBy) return { text: `De ${who} · devolver ${relativeLabel(daysUntil(t.returnBy))}`, strong: daysUntil(t.returnBy) <= 2 }
     return { text: `De ${who}` }
   }
-  return { text: t.location ? '' : 'Sin sitio apuntado' }
+  const w = warrantyStatus(t)
+  if (w && w.level !== 'expired') return { text: `Garantía hasta ${relativeLabel(w.days)}`, strong: w.level === 'soon' }
+  return { text: t.location || t.room ? '' : 'Sin sitio apuntado' }
 }
 
 export function ThingRow({ thing, onOpen, index = 0 }: { thing: Thing; onOpen: () => void; index?: number }) {
@@ -52,10 +54,10 @@ export function ThingRow({ thing, onOpen, index = 0 }: { thing: Thing; onOpen: (
           )}
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[15px] font-medium">{thing.name}</span>
-            {thing.location && (
+            {(thing.location || thing.room) && (
               <span className="flex items-center gap-1 truncate text-[13px] text-muted">
                 <MapPin size={12} strokeWidth={2.4} className="shrink-0" />
-                <span className="truncate">{thing.location}</span>
+                <span className="truncate">{[thing.location, thing.room].filter(Boolean).join(' · ')}</span>
               </span>
             )}
             {line.text && <span className={cx('block truncate text-[13px]', line.strong ? 'font-semibold text-fg' : 'text-muted')}>{line.text}</span>}

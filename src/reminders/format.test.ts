@@ -123,4 +123,9 @@ describe('última vez y diario', () => {
     })
     expect(buildDeadlinePayload({ ...d, deadline: '2026-09-24' }).body).toBe('Hoy es la fecha límite.')
   })
+
+  it('fin de la garantía de una cosa', () => {
+    const r = { ...base, tbl: 'things', item_id: 'l', title: 'Lavadora', due_date: '2026-10-24', due_time: 'warranty' }
+    expect(buildPayload(r, 'Europe/Madrid', now)).toMatchObject({ title: 'Lavadora', body: 'La garantía acaba el sábado 24. Si falla algo, reclámalo antes.', url: './#/things' })
+  })
 })

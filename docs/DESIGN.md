@@ -77,6 +77,8 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | ¿Qué hago ahora? | La propuesta entra desde abajo; «Otra» la cambia con un fundido |
 | Gastos | La cifra del mes aparece al apuntar; barras de presupuesto y categorías crecen con muelle (una sola serie, un solo color: el acento) |
 | Compra | Lo que vas a añadir aparece en píldoras con su pasillo mientras escribes; al marcar, la fila baja al carro |
+| Modo cocina | Un paso en grande que entra de lado, como las rutinas; los tiempos del paso son botones que abren una cuenta atrás (suena y vibra al acabar) |
+| Limpieza por estancias | Cada tarea y cada estancia llevan una barra fina que se llena según se ensucia (gris mientras va bien, el acento cuando toca); al marcar «Hecho hoy» se vacía deslizándose |
 
 Con «Reducir movimiento» (sistema o Ajustes) no hay transiciones entre pantallas, ni animaciones de CSS o de Motion, ni confeti.
 

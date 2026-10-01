@@ -5,6 +5,8 @@ import { db } from '@/db/db'
 import { createTracker, deleteTracker, setTrackerLog } from '@/db/actions'
 import { fmt, today } from '@/lib/dates'
 import { averageEvery, everyLabel, withDate } from '@/lib/trackers'
+import { roomsIn } from '@/lib/rooms'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { ICONS, Icon } from '@/components/icons'
 import { toastTrashed } from '../trash/undo'
 import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, cx } from '@/components/ui'
@@ -26,6 +28,8 @@ function Form({ tracker, onClose }: { tracker?: Tracker; onClose: () => void }) 
   const [every, setEvery] = useState(tracker?.every ?? 0)
   const [avoid, setAvoid] = useState(!!tracker?.avoid)
   const [cost, setCost] = useState(tracker?.costPerDay ? String(tracker.costPerDay).replace('.', ',') : '')
+  const [room, setRoom] = useState(tracker?.room ?? '')
+  const rooms = roomsIn((useLiveQuery(() => db.trackers.toArray(), []) ?? []).map((t) => t.room))
   const [log, setLog] = useState<string[]>(tracker?.log ?? [])
   const [past, setPast] = useState('')
   const avg = averageEvery({ log })
@@ -33,7 +37,7 @@ function Form({ tracker, onClose }: { tracker?: Tracker; onClose: () => void }) 
   const save = async () => {
     if (!name.trim()) return
     const perDay = Number(cost.replace(',', '.'))
-    const data = { name: name.trim(), icon, every: avoid ? undefined : every || undefined, avoid: avoid || undefined, costPerDay: avoid && perDay > 0 ? perDay : undefined }
+    const data = { name: name.trim(), icon, every: avoid ? undefined : every || undefined, avoid: avoid || undefined, costPerDay: avoid && perDay > 0 ? perDay : undefined, room: avoid ? undefined : room.trim() || undefined }
     if (tracker) {
       await db.trackers.update(tracker.id, data)
       if (log.join() !== tracker.log.join()) await setTrackerLog(tracker.id, log)
@@ -81,6 +85,16 @@ function Form({ tracker, onClose }: { tracker?: Tracker; onClose: () => void }) 
           </Select>
           {avg && <p className="mt-1.5 px-1 text-[12.5px] text-muted">De media lo haces {everyLabel(avg)}.</p>}
         </Field>
+        )}
+        {!avoid && (
+          <Field label="Estancia (para la limpieza por estancias)">
+            <Input list="tracker-rooms" value={room} onChange={(e) => setRoom(e.target.value)} placeholder="Opcional: Cocina, Baño…" />
+            <datalist id="tracker-rooms">
+              {rooms.map((r) => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
+          </Field>
         )}
         <Field label={avoid ? 'Las veces que has caído (la última, desde cuándo cuenta)' : 'Veces que lo has hecho'} group>
           <div className="space-y-1.5">

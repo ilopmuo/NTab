@@ -653,13 +653,17 @@ export async function deleteTracker(id: string) {
 
 // ── Compra ────────────────────────────────────────────────────
 
-/** Añade cosas a la lista (sin repetir lo que ya está pendiente). Devuelve lo añadido. */
-export async function addShoppingItems(items: ParsedItem[]): Promise<ShoppingItem[]> {
+/**
+ * Añade cosas a una lista (sin repetir lo que ya está pendiente en ella). Lo
+ * que no trae precio toma el último que se apuntó. Devuelve lo añadido.
+ */
+export async function addShoppingItems(items: ParsedItem[], list?: string): Promise<ShoppingItem[]> {
   const { aisleFor, itemKey } = await shoppingLib()
   return db.transaction('rw', db.shopping, db.pantry, async () => {
     const pantry = await db.pantry.toArray()
     const known = Object.fromEntries(pantry.map((p) => [p.id, p.aisle]))
-    const pending = (await db.shopping.where('checked').equals(0).toArray()).map((x) => ({ x, key: itemKey(x.name) }))
+    const prices = new Map(pantry.filter((p) => p.price).map((p) => [p.id, p.price!]))
+    const pending = (await db.shopping.where('checked').equals(0).toArray()).filter((x) => (x.list ?? undefined) === list).map((x) => ({ x, key: itemKey(x.name) }))
     const added: ShoppingItem[] = []
     let order = Date.now()
     for (const it of items) {
@@ -667,9 +671,21 @@ export async function addShoppingItems(items: ParsedItem[]): Promise<ShoppingIte
       const same = pending.find((p) => p.key === key)
       if (same) {
         if (it.qty && it.qty !== same.x.qty) await db.shopping.update(same.x.id, { qty: it.qty })
+        if (it.price && it.price !== same.x.price) await db.shopping.update(same.x.id, { price: it.price })
         continue
       }
-      const item: ShoppingItem = { id: uid(), name: it.name, aisle: aisleFor(it.name, known), checked: 0, order: order++, createdAt: Date.now(), ...(it.qty ? { qty: it.qty } : {}) }
+      const price = it.price ?? prices.get(key)
+      const item: ShoppingItem = {
+        id: uid(),
+        name: it.name,
+        aisle: aisleFor(it.name, known),
+        checked: 0,
+        order: order++,
+        createdAt: Date.now(),
+        ...(it.qty ? { qty: it.qty } : {}),
+        ...(price ? { price } : {}),
+        ...(list ? { list } : {}),
+      }
       await db.shopping.add(item)
       pending.push({ x: item, key })
       added.push(item)
@@ -697,18 +713,31 @@ export async function setShoppingAisle(id: string, aisle: string) {
 }
 
 /** Terminar la compra: lo del carro sale de la lista y cuenta para «lo de siempre» */
-export async function finishShopping(): Promise<ShoppingItem[]> {
+export async function finishShopping(list?: string): Promise<ShoppingItem[]> {
   const { itemKey } = await shoppingLib()
   return db.transaction('rw', db.shopping, db.pantry, async () => {
-    const bought = await db.shopping.where('checked').equals(1).toArray()
+    const bought = (await db.shopping.where('checked').equals(1).toArray()).filter((x) => (x.list ?? undefined) === list)
     const now = Date.now()
     for (const it of bought) {
       const key = itemKey(it.name)
       const p = await db.pantry.get(key)
-      await db.pantry.put({ id: key, name: it.name, aisle: it.aisle, count: (p?.count ?? 0) + 1, lastAt: now })
+      await db.pantry.put({ id: key, name: it.name, aisle: it.aisle, count: (p?.count ?? 0) + 1, lastAt: now, ...((it.price ?? p?.price) ? { price: it.price ?? p?.price } : {}) })
     }
     await db.shopping.bulkDelete(bought.map((b) => b.id))
     return bought
+  })
+}
+
+/** Precio estimado de una cosa (vacío = sin precio); se recuerda para la próxima vez */
+export async function setShoppingPrice(id: string, price: number | undefined) {
+  const { itemKey } = await shoppingLib()
+  await db.transaction('rw', db.shopping, db.pantry, async () => {
+    const it = await db.shopping.get(id)
+    if (!it) return
+    await db.shopping.update(id, { price })
+    const key = itemKey(it.name)
+    const p = await db.pantry.get(key)
+    if (p) await db.pantry.update(key, { price })
   })
 }
 

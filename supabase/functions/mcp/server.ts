@@ -199,7 +199,7 @@ export const TOOLS = [
     name: 'guardar_cosa',
     title: 'Apuntar una cosa',
     description:
-      'Apunta o actualiza (por nombre) una cosa: dónde la guardó, a quién se la prestó (tipo "prestado" + persona), quién se la prestó ("me lo prestaron") o cuándo caduca un documento o garantía ("caduca" + fecha). LUNO avisa de las caducidades y de reclamar o devolver préstamos.',
+      'Apunta o actualiza (por nombre) una cosa: dónde la guardó, a quién se la prestó (tipo "prestado" + persona), quién se la prestó ("me lo prestaron") o cuándo caduca un documento ("caduca" + fecha). Para lo que compra: fecha, precio y hasta cuándo dura la garantía. LUNO avisa de las caducidades, del fin de la garantía y de reclamar o devolver préstamos.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -210,6 +210,10 @@ export const TOOLS = [
         desde: DATE,
         devolver: { ...DATE, description: 'YYYY-MM-DD: cuándo reclamarlo o devolverlo' },
         caduca: { ...DATE, description: 'YYYY-MM-DD: fecha de caducidad' },
+        garantia: { ...DATE, description: 'YYYY-MM-DD: hasta cuándo dura la garantía (avisa un mes antes). En España, 3 años desde la compra para lo nuevo' },
+        comprado: { ...DATE, description: 'YYYY-MM-DD: cuándo se compró' },
+        precio: { type: 'number', description: 'Lo que costó, en euros' },
+        estancia: { type: 'string', description: 'Estancia de la casa: Cocina, Salón, Dormitorio…' },
         avisar_dias: { type: 'integer', minimum: 1, description: 'Días antes de caducar para avisar (por defecto 30)' },
         notas: { type: 'string' },
       },
@@ -273,10 +277,17 @@ export const TOOLS = [
   {
     name: 'crear_receta',
     title: 'Guardar una receta',
-    description: 'Guarda (o actualiza por nombre) una receta con sus ingredientes, uno por elemento, con cantidad («6 huevos», «200 g de harina»).',
+    description: 'Guarda (o actualiza por nombre) una receta con sus ingredientes, uno por elemento, con cantidad («6 huevos», «200 g de harina»), y si los tienes, sus pasos y para cuántas personas es.',
     inputSchema: {
       type: 'object',
-      properties: { nombre: { type: 'string' }, ingredientes: { type: 'array', items: { type: 'string' } }, notas: { type: 'string' } },
+      properties: {
+        nombre: { type: 'string' },
+        ingredientes: { type: 'array', items: { type: 'string' } },
+        pasos: { type: 'array', items: { type: 'string' }, description: 'Pasos en orden; los tiempos («20 minutos») salen como temporizadores en el modo cocina' },
+        raciones: { type: 'integer', minimum: 1, description: 'Para cuántas personas son las cantidades' },
+        minutos: { type: 'integer', minimum: 1, description: 'Tiempo total' },
+        notas: { type: 'string' },
+      },
       required: ['nombre', 'ingredientes'],
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -326,7 +337,7 @@ export const TOOLS = [
   {
     name: 'ver_compra',
     title: 'Ver la lista de la compra',
-    description: 'La lista de la compra pendiente, ordenada por pasillos.',
+    description: 'La lista de la compra pendiente, ordenada por pasillos (y por listas, si tiene varias: súper, farmacia…), con el total estimado si hay precios.',
     inputSchema: { type: 'object', properties: {} },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
@@ -336,7 +347,10 @@ export const TOOLS = [
     description: 'Añade cosas a la lista de la compra. Acepta texto libre con cantidades («leche, 2 barras de pan y detergente») o una lista. LUNO las ordena por pasillos y no repite lo que ya está.',
     inputSchema: {
       type: 'object',
-      properties: { cosas: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Lo que hay que comprar' } },
+      properties: {
+        cosas: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Lo que hay que comprar; con precio si lo sabes («leche 1,20 €»)' },
+        lista: { type: 'string', description: 'A qué lista (farmacia, ferretería…), si tiene varias. Sin ella, a la principal (súper).' },
+      },
       required: ['cosas'],
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },

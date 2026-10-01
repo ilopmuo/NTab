@@ -183,7 +183,14 @@ export function startLocalReminders() {
     const things = (await db.things.toArray()).filter((x) => !x.returned && x.remindAt !== undefined && x.remindAt > last0 && x.remindAt <= now && !seen.has(`${x.id}:${x.remindAt}`))
     for (const x of things) {
       seen.add(`${x.id}:${x.remindAt}`)
-      const body = x.kind === 'lent' ? `Se lo prestaste a ${x.personName ?? 'alguien'}. ¿Te lo ha devuelto?` : x.kind === 'borrowed' ? `Tienes que devolvérselo a ${x.personName ?? 'alguien'}.` : 'Caduca pronto. Toca renovarlo.'
+      const warrantyOnly = x.warranty && !x.expires && !x.returnBy
+      const body = warrantyOnly
+        ? 'La garantía acaba pronto. Si falla algo, reclámalo antes.'
+        : x.kind === 'lent'
+          ? `Se lo prestaste a ${x.personName ?? 'alguien'}. ¿Te lo ha devuelto?`
+          : x.kind === 'borrowed'
+            ? `Tienes que devolvérselo a ${x.personName ?? 'alguien'}.`
+            : 'Caduca pronto. Toca renovarlo.'
       toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate(`/things/${x.id}`) }, 15_000, { icon: 'bell' })
       void showSystemNotification(`things-${x.id}`, x.name, body, './#/things', `things-${x.id}-${x.remindAt}`)
     }

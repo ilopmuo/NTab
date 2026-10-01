@@ -906,7 +906,12 @@ function thingLine(d: Data, today: string) {
     const n = diffDays(d.expires as string, today)
     parts.push(n < 0 ? `CADUCÓ el ${d.expires}` : `caduca ${relDay(d.expires as string, today)} (${d.expires})`)
   }
-  if (d.location) parts.push(`está en: ${str(d.location)}`)
+  if (d.location || d.room) parts.push(`está en: ${[str(d.location), str(d.room)].filter(Boolean).join(', ')}`)
+  if (isYmd(d.warranty)) {
+    const n = diffDays(d.warranty as string, today)
+    parts.push(n < 0 ? `garantía acabada el ${d.warranty}` : `garantía hasta ${d.warranty}`)
+  }
+  if (num(d.price)) parts.push(`costó ${num(d.price)} €${isYmd(d.bought) ? ` el ${d.bought}` : ''}`)
   if (d.notes) parts.push(`nota: ${str(d.notes)}`)
   if (d.returned) parts.push('ya devuelto')
   return parts.join(' · ')
@@ -927,6 +932,16 @@ function thingRemindAt(d: Data, env: Env): number | undefined {
   }
   else if (d.kind === 'lent' && isYmd(d.returnBy) && !d.returned) when = zonedToUtc(d.returnBy as string, '10:00', env.tz)
   else if (d.kind === 'borrowed' && isYmd(d.returnBy) && !d.returned) when = zonedToUtc(addDays(d.returnBy as string, -1), '09:00', env.tz)
+  // Sin otro aviso: un mes antes de que acabe la garantía
+  if ((when === undefined || when <= env.now) && isYmd(d.warranty) && !d.returned) {
+    when = zonedToUtc(addDays(d.warranty as string, -30), '09:00', env.tz)
+    if (when <= env.now) {
+      const today = ymdIn(env.now, env.tz)
+      const nine = zonedToUtc(today, '09:00', env.tz)
+      const next = nine > env.now ? nine : zonedToUtc(addDays(today, 1), '09:00', env.tz)
+      when = next <= zonedToUtc(d.warranty as string, '09:00', env.tz) ? next : undefined
+    }
+  }
   return when !== undefined && when > env.now ? when : undefined
 }
 
@@ -947,7 +962,7 @@ export function whereIs(rows: Row[], args: { busqueda?: string }, env: Env): str
 
 export function saveThing(
   rows: Row[],
-  args: { nombre?: string; tipo?: string; donde?: string; persona?: string; desde?: string; devolver?: string; caduca?: string; avisar_dias?: number; notas?: string },
+  args: { nombre?: string; tipo?: string; donde?: string; estancia?: string; persona?: string; desde?: string; devolver?: string; caduca?: string; avisar_dias?: number; garantia?: string; comprado?: string; precio?: number; notas?: string },
   env: Env,
 ): WriteResult {
   const name = str(args.nombre).trim()
@@ -961,6 +976,10 @@ export function saveThing(
   d.kind = kind
   if (args.donde !== undefined) d.location = str(args.donde).trim() || undefined
   if (args.notas !== undefined) d.notes = str(args.notas).trim() || undefined
+  if (args.estancia !== undefined) d.room = str(args.estancia).trim() || undefined
+  if (isYmd(args.garantia)) d.warranty = args.garantia
+  if (isYmd(args.comprado)) d.bought = args.comprado
+  if (typeof args.precio === 'number' && args.precio > 0) d.price = Math.round(args.precio * 100) / 100
   if (args.persona) {
     const p = findByName(ix.people, str(args.persona).replace(/^@/, ''))
     d.personName = p ? str(p.name) : str(args.persona)
@@ -1059,23 +1078,43 @@ export function logLastTime(rows: Row[], args: { cosa?: string; fecha?: string; 
 
 // ── Compra ────────────────────────────────────────────────────
 
+/** Otras listas de la compra además de la principal (ajuste `shoppingLists`) */
+function shoppingLists(rows: Row[]): { id: string; name: string }[] {
+  const v = rows.find((r) => r.tbl === 'settings' && r.id === 'shoppingLists')?.data.value
+  return Array.isArray(v) ? (v as { id: string; name: string }[]).filter((l) => l && l.id && l.name) : []
+}
+
+const euros = (n: number) => `${n.toFixed(2).replace('.', ',')} €`
+
 export function listShopping(rows: Row[]): string {
   const items = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
   if (!items.length) return 'La lista de la compra está vacía.'
+  const lists = shoppingLists(rows)
+  const groups = [{ id: '', name: 'Súper' }, ...lists].map((l) => ({ ...l, items: items.filter((r) => (str(r.data.list) || '') === l.id || (!l.id && !lists.some((x) => x.id === r.data.list))) }))
   const out: string[] = []
-  for (const a of AISLES) {
-    const list = items.filter((r) => (r.data.aisle ?? 'otros') === a.id)
-    if (list.length) out.push(`${a.label}: ${list.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}`).join(', ')}`)
+  for (const g of groups.filter((x) => x.items.length)) {
+    if (lists.length) out.push(`${out.length ? '\n' : ''}LISTA ${g.name.toUpperCase()}:`)
+    for (const a of AISLES) {
+      const list = g.items.filter((r) => (r.data.aisle ?? 'otros') === a.id)
+      if (list.length) out.push(`${a.label}: ${list.map((r) => `${str(r.data.name)}${r.data.qty ? ` (${str(r.data.qty)})` : ''}${num(r.data.price) ? ` ${euros(num(r.data.price))}` : ''}`).join(', ')}`)
+    }
+    const total = g.items.reduce((n, r) => n + num(r.data.price), 0)
+    if (total) out.push(`Total estimado: ${euros(total)}${g.items.some((r) => !num(r.data.price)) ? ' (sin contar lo que no tiene precio)' : ''}`)
   }
   return out.join('\n')
 }
 
-export function addShopping(rows: Row[], args: { cosas?: unknown }, env: Env): WriteResult {
+export function addShopping(rows: Row[], args: { cosas?: unknown; lista?: string }, env: Env): WriteResult {
   const text = Array.isArray(args.cosas) ? args.cosas.map(String).join('\n') : str(args.cosas)
   const parsed = parseItems(text)
   if (!parsed.length) return { writes: [], report: ['No he entendido qué añadir.'] }
-  const known = Object.fromEntries(rows.filter((r) => r.tbl === 'pantry').map((r) => [r.id, str(r.data.aisle)]))
-  const pending = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked).map((r) => ({ r, key: itemKey(str(r.data.name)) }))
+  const lists = shoppingLists(rows)
+  const wanted = str(args.lista).trim()
+  const list = wanted ? lists.find((l) => fold(l.name) === fold(wanted)) ?? lists.find((l) => fold(l.name).includes(fold(wanted))) : undefined
+  const pantry = rows.filter((r) => r.tbl === 'pantry')
+  const known = Object.fromEntries(pantry.map((r) => [r.id, str(r.data.aisle)]))
+  const prices = new Map(pantry.filter((r) => num(r.data.price)).map((r) => [r.id, num(r.data.price)]))
+  const pending = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked && (str(r.data.list) || undefined) === list?.id).map((r) => ({ r, key: itemKey(str(r.data.name)) }))
   const writes: Row[] = []
   const added: string[] = []
   const already: string[] = []
@@ -1084,18 +1123,26 @@ export function addShopping(rows: Row[], args: { cosas?: unknown }, env: Env): W
     const same = pending.find((p) => p.key === key)
     if (same) {
       already.push(it.name)
-      if (it.qty && it.qty !== same.r.data.qty) writes.push({ tbl: 'shopping', id: same.r.id, data: { ...same.r.data, qty: it.qty } })
+      const data = { ...same.r.data }
+      if (it.qty) data.qty = it.qty
+      if (it.price) data.price = it.price
+      if ((it.qty && it.qty !== same.r.data.qty) || (it.price && it.price !== same.r.data.price)) writes.push({ tbl: 'shopping', id: same.r.id, data })
       return
     }
     const id = env.newId()
     const data: Data = { id, name: it.name, aisle: aisleFor(it.name, known), checked: 0, order: env.now + i, createdAt: env.now }
     if (it.qty) data.qty = it.qty
+    const price = it.price ?? prices.get(key)
+    if (price) data.price = price
+    if (list) data.list = list.id
     writes.push({ tbl: 'shopping', id, data })
     pending.push({ r: { tbl: 'shopping', id, data }, key })
     added.push(`${it.name}${it.qty ? ` (${it.qty})` : ''}`)
   })
-  const report = [added.length ? `Añadido a la compra: ${added.join(', ')}.` : 'No había nada nuevo que añadir.']
+  const where = list ? ` (${list.name})` : ''
+  const report = [added.length ? `Añadido a la compra${where}: ${added.join(', ')}.` : 'No había nada nuevo que añadir.']
   if (already.length) report.push(`Ya estaba: ${already.join(', ')}.`)
+  if (wanted && !list) report.push(`No tiene ninguna lista «${wanted}»: lo he puesto en la principal${lists.length ? ` (sus listas: Súper, ${lists.map((l) => l.name).join(', ')})` : ''}.`)
   return { writes, report }
 }
 
@@ -1252,7 +1299,7 @@ export function planMenu(rows: Row[], args: { comidas?: unknown }, _env: Env): W
   return { writes, report: ['Menú actualizado:', ...report, 'Con recetas guardadas, en LUNO → Menú puede añadir sus ingredientes a la compra en un toque.'] }
 }
 
-export function createRecipe(rows: Row[], args: { nombre?: string; ingredientes?: unknown; notas?: string }, env: Env): WriteResult {
+export function createRecipe(rows: Row[], args: { nombre?: string; ingredientes?: unknown; pasos?: unknown; raciones?: number; minutos?: number; notas?: string }, env: Env): WriteResult {
   const name = str(args.nombre).trim()
   const ingredients = Array.isArray(args.ingredientes) ? args.ingredientes.map((x) => String(x).trim()).filter(Boolean) : []
   if (!name) return { writes: [], report: ['Falta el nombre de la receta.'] }
@@ -1260,7 +1307,12 @@ export function createRecipe(rows: Row[], args: { nombre?: string; ingredientes?
   const id = existing?.id ?? env.newId()
   const data: Data = { ...(existing?.data ?? { createdAt: env.now }), id, name, ingredients }
   if (args.notas) data.notes = str(args.notas)
-  return { writes: [{ tbl: 'recipes', id, data }], report: [`Receta ${existing ? 'actualizada' : 'guardada'}: ${name} (${ingredients.length} ingredientes).`] }
+  const steps = Array.isArray(args.pasos) ? args.pasos.map((x) => String(x).trim()).filter(Boolean) : []
+  if (steps.length) data.steps = steps
+  if (typeof args.raciones === 'number' && args.raciones > 0) data.servings = Math.round(args.raciones)
+  if (typeof args.minutos === 'number' && args.minutos > 0) data.minutes = Math.round(args.minutos)
+  const extra = [steps.length && `${steps.length} pasos`, data.servings && `para ${data.servings}`].filter(Boolean).join(', ')
+  return { writes: [{ tbl: 'recipes', id, data }], report: [`Receta ${existing ? 'actualizada' : 'guardada'}: ${name} (${ingredients.length} ingredientes${extra ? `, ${extra}` : ''}).`] }
 }
 
 // ── Cuentas atrás ─────────────────────────────────────────────

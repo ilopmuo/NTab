@@ -133,3 +133,51 @@ export function milestoneLabel(days: number) {
 
 /** Lo ahorrado en la racha actual */
 export const savedSince = (t: Pick<Tracker, 'log' | 'createdAt' | 'costPerDay'>, today = todayYmd()) => (t.costPerDay ? cleanDays(t, today) * t.costPerDay : 0)
+
+// ── Limpieza por estancias (como Tody o Sweepy) ──
+
+/** Lo típico de cada estancia, con cada cuántos días */
+export const CLEANING_PRESETS: { room: string; name: string; icon: string; every: number }[] = [
+  { room: 'Cocina', name: 'Limpiar la encimera y la vitro', icon: 'food', every: 2 },
+  { room: 'Cocina', name: 'Fregar el suelo de la cocina', icon: 'home', every: 7 },
+  { room: 'Cocina', name: 'Limpiar la nevera', icon: 'home', every: 30 },
+  { room: 'Baño', name: 'Limpiar el baño', icon: 'droplet', every: 7 },
+  { room: 'Baño', name: 'Cambiar las toallas', icon: 'droplet', every: 5 },
+  { room: 'Dormitorio', name: 'Cambiar las sábanas', icon: 'bed', every: 14 },
+  { room: 'Dormitorio', name: 'Aspirar el dormitorio', icon: 'home', every: 7 },
+  { room: 'Salón', name: 'Aspirar el salón', icon: 'home', every: 7 },
+  { room: 'Salón', name: 'Quitar el polvo', icon: 'sparkles', every: 14 },
+  { room: 'Entrada', name: 'Barrer la entrada', icon: 'door', every: 7 },
+]
+
+/**
+ * Suciedad (como en Tody): 0 recién hecho, 1 justo cuando toca, más si se pasa
+ * (hasta 1,5). Sin frecuencia o lo que se quiere dejar: no aplica.
+ */
+export function dirtiness(t: Pick<Tracker, 'log' | 'every' | 'avoid'>, today = todayYmd()): number | undefined {
+  if (t.avoid || !t.every) return undefined
+  if (!t.log[0]) return 1
+  return Math.min(1.5, Math.max(0, daysBetween(t.log[0], today) / t.every))
+}
+
+/** Estancias con lo suyo, de la más sucia a la más limpia (la suciedad es la media) */
+export function byRoom<T extends Tracker>(list: T[], today = todayYmd()): { room: string; level: number; items: T[] }[] {
+  const rooms = new Map<string, T[]>()
+  for (const t of list) {
+    const r = t.room?.trim()
+    if (!r || t.avoid) continue
+    rooms.set(r, [...(rooms.get(r) ?? []), t])
+  }
+  return [...rooms]
+    .map(([room, items]) => {
+      const levels = items.map((t) => dirtiness(t, today)).filter((n): n is number => n !== undefined)
+      const sorted = [...items].sort((a, b) => (dirtiness(b, today) ?? -1) - (dirtiness(a, today) ?? -1))
+      return { room, level: levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 0, items: sorted }
+    })
+    .sort((a, b) => b.level - a.level || a.room.localeCompare(b.room, 'es'))
+}
+
+/** «Limpio», «Bien», «Toca pronto», «Toca» */
+export function dirtinessLabel(level: number) {
+  return level >= 1 ? 'Toca' : level >= 0.75 ? 'Toca pronto' : level >= 0.35 ? 'Bien' : 'Limpio'
+}

@@ -206,7 +206,7 @@ export function installThingHooks(target: NTabDB) {
   })
   target.things.hook('updating', (mods, _pk, obj) => {
     const m = mods as Record<string, unknown>
-    if (!['kind', 'expires', 'notifyDays', 'returnBy', 'returned'].some((k) => k in m)) return
+    if (!['kind', 'expires', 'notifyDays', 'returnBy', 'returned', 'warranty'].some((k) => k in m)) return
     const at = computeThingRemindAt({ ...obj, ...m } as Thing)
     return at !== obj.remindAt ? { remindAt: at } : undefined
   })

@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
-import { Camera, Trash2, X } from 'lucide-react'
+import { Camera, Receipt, Trash2, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Thing, ThingKind } from '@/db/types'
 import { db } from '@/db/db'
 import { createThing, deleteThing, updateThing } from '@/db/actions'
 import { today } from '@/lib/dates'
-import { DEFAULT_NOTIFY_DAYS, KIND_LABEL, compressPhoto } from '@/lib/things'
+import { DEFAULT_NOTIFY_DAYS, KIND_LABEL, addYears, compressPhoto } from '@/lib/things'
+import { roomsIn } from '@/lib/rooms'
 import { toast } from '@/app/store'
 import { toastTrashed } from '../trash/undo'
 import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, Textarea, cx } from '@/components/ui'
@@ -39,7 +40,16 @@ function Form({ thing, initialKind, onClose }: { thing?: Thing; initialKind?: Th
   const [notifyDays, setNotifyDays] = useState(thing?.notifyDays ?? DEFAULT_NOTIFY_DAYS)
   const [notes, setNotes] = useState(thing?.notes ?? '')
   const [photo, setPhoto] = useState(thing?.photo)
+  const [room, setRoom] = useState(thing?.room ?? '')
+  const [bought, setBought] = useState(thing?.bought ?? '')
+  const [price, setPrice] = useState(thing?.price ? String(thing.price).replace('.', ',') : '')
+  const [warranty, setWarranty] = useState(thing?.warranty ?? '')
+  const [receipt, setReceipt] = useState(thing?.receipt)
+  const rooms = roomsIn((useLiveQuery(() => db.things.toArray(), []) ?? []).map((t) => t.room))
   const fileRef = useRef<HTMLInputElement>(null)
+  const receiptRef = useRef<HTMLInputElement>(null)
+  // La garantía, para lo que se tiene (no para lo prestado por otros)
+  const owned = kind !== 'borrowed'
   const loan = kind === 'lent' || kind === 'borrowed'
   const who = personId ? (people.find((p) => p.id === personId)?.name ?? personName) : personName.trim()
   const valid = name.trim() && (!loan || who) && (kind !== 'document' || expires)
@@ -59,6 +69,11 @@ function Form({ thing, initialKind, onClose }: { thing?: Thing; initialKind?: Th
       returnBy: loan ? returnBy || undefined : undefined,
       expires: kind === 'document' ? expires || undefined : undefined,
       notifyDays: kind === 'document' ? notifyDays : undefined,
+      room: room.trim() || undefined,
+      bought: owned ? bought || undefined : undefined,
+      price: owned && Number(price.replace(',', '.')) > 0 ? Math.round(Number(price.replace(',', '.')) * 100) / 100 : undefined,
+      warranty: owned ? warranty || undefined : undefined,
+      receipt: owned ? receipt : undefined,
     }
     if (thing) await updateThing(thing.id, data)
     else await createThing(data as Thing)
@@ -66,10 +81,11 @@ function Form({ thing, initialKind, onClose }: { thing?: Thing; initialKind?: Th
     onClose()
   }
 
-  const pickPhoto = async (f?: File) => {
+  const pickPhoto = async (f?: File, set = setPhoto) => {
     if (!f) return
     try {
-      setPhoto(await compressPhoto(f))
+      // El ticket, algo más grande para que se lea
+      set(set === setReceipt ? await compressPhoto(f, 1100, 0.7) : await compressPhoto(f))
     } catch {
       toast('No se pudo leer la foto')
     }
@@ -135,9 +151,70 @@ function Form({ thing, initialKind, onClose }: { thing?: Thing; initialKind?: Th
           </div>
         )}
 
-        <Field label="Dónde está">
-          <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={kind === 'lent' ? 'Opcional' : 'Ej. Cajón de la entrada, altillo del armario…'} />
-        </Field>
+        <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3">
+          <Field label="Dónde está">
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={kind === 'lent' ? 'Opcional' : 'Ej. Cajón de la entrada…'} />
+          </Field>
+          <Field label="Estancia">
+            <Input list="thing-rooms" value={room} onChange={(e) => setRoom(e.target.value)} placeholder="Salón…" />
+            <datalist id="thing-rooms">
+              {rooms.map((r) => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
+          </Field>
+        </div>
+
+        {owned && (
+          <fieldset className="space-y-3 rounded-[16px] bg-fill-2 p-3">
+            <legend className="sr-only">Compra y garantía</legend>
+            <p className="flex items-center gap-1.5 text-[13px] font-semibold" aria-hidden>
+              <Receipt size={14} strokeWidth={2.4} /> Compra y garantía <span className="font-normal text-muted">(opcional)</span>
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Comprado el">
+                <Input type="date" value={bought} max={today()} onChange={(e) => setBought(e.target.value)} />
+              </Field>
+              <Field label="Precio">
+                <Input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="€" />
+              </Field>
+            </div>
+            <Field label="Garantía hasta">
+              <Input type="date" value={warranty} onChange={(e) => setWarranty(e.target.value)} />
+            </Field>
+            {bought && (
+              <div className="-mt-1 flex flex-wrap gap-1.5">
+                {[2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setWarranty(addYears(bought, n))}
+                    className={cx('h-8 rounded-full px-3 text-[13px] font-semibold', warranty === addYears(bought, n) ? 'bg-accent-fill text-white' : 'bg-[var(--c-material)] text-fg hover:bg-hover')}
+                  >
+                    {n} años desde la compra
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              {receipt && (
+                <span className="relative">
+                  <a href={receipt} target="_blank" rel="noreferrer" aria-label="Ver el ticket">
+                    <img src={receipt} alt="" className="h-16 w-16 rounded-xl object-cover" />
+                  </a>
+                  <button type="button" aria-label="Quitar el ticket" onClick={() => setReceipt(undefined)} className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-fg text-bg">
+                    <X size={13} strokeWidth={2.6} />
+                  </button>
+                </span>
+              )}
+              <Button type="button" size="sm" onClick={() => receiptRef.current?.click()}>
+                <Camera size={14} /> {receipt ? 'Cambiar el ticket' : 'Foto del ticket o la factura'}
+              </Button>
+              <input ref={receiptRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void pickPhoto(e.target.files?.[0], setReceipt)} />
+            </div>
+            {warranty && <p className="text-[12.5px] text-muted">Te avisaré un mes antes de que acabe la garantía.</p>}
+          </fieldset>
+        )}
 
         <Field label="Foto" group>
           <div className="flex items-center gap-3">

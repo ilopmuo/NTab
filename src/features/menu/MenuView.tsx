@@ -1,18 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { m as motion } from 'motion/react'
-import { ChevronLeft, ChevronRight, CookingPot, Plus, ShoppingCart, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, CookingPot, Plus, ShoppingCart, Users, X } from 'lucide-react'
 import { db } from '@/db/db'
 import type { MenuSlot, Recipe } from '@/db/types'
-import { addShoppingItems, deleteRecipe, saveRecipe, setMenuSlot } from '@/db/actions'
+import { addShoppingItems, saveRecipe, setMenuSlot } from '@/db/actions'
 import { addDaysYmd, fmt, today, weekStart } from '@/lib/dates'
 import { MEALS, RECIPE_PRESETS, ingredientsFor, slotId } from '@/lib/menu'
 import { haptic } from '@/lib/haptics'
 import { navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
-import { toastTrashed } from '../trash/undo'
-import { Button, Empty, Field, Group, Input, Modal, ModalHeader, PageHeader, Segmented, Textarea, cx, spring } from '@/components/ui'
+import { Button, Empty, Group, Input, Modal, ModalHeader, PageHeader, Segmented, cx, spring } from '@/components/ui'
+import { RecipeForm, RecipeSheet } from './RecipeViews'
 import { Page } from '../Page'
 
 type Tab = 'week' | 'recipes'
@@ -24,6 +24,7 @@ export function MenuView() {
   const [monday, setMonday] = useState(weekStart(t))
   const [picking, setPicking] = useState<{ date: string; meal: MenuSlot['meal'] } | null>(null)
   const [editing, setEditing] = useState<Recipe | 'new' | null>(null)
+  const [viewing, setViewing] = useState<string | null>(null)
   const recipes = useLiveQuery(() => db.recipes.orderBy('name').toArray(), [])
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDaysYmd(monday, i)), [monday])
   const slots = useLiveQuery(() => db.menu.where('date').between(days[0], days[6], true, true).toArray(), [days[0]])
@@ -131,10 +132,25 @@ export function MenuView() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...spring, delay: Math.min(i, 8) * 0.03 }}
-              onClick={() => setEditing(r)}
+              onClick={() => setViewing(r.id)}
               className="glass rounded-[18px] p-4 text-left"
             >
               <p className="text-[16px] font-semibold">{r.name}</p>
+              {(r.servings || r.minutes || r.steps?.length) && (
+                <p className="mt-0.5 flex flex-wrap gap-x-2.5 text-[12.5px] font-medium text-muted">
+                  {r.servings && (
+                    <span className="inline-flex items-center gap-1">
+                      <Users size={12} strokeWidth={2.4} aria-hidden /> {r.servings}
+                    </span>
+                  )}
+                  {r.minutes && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock size={12} strokeWidth={2.4} aria-hidden /> {r.minutes} min
+                    </span>
+                  )}
+                  {!!r.steps?.length && <span>{r.steps.length} pasos</span>}
+                </p>
+              )}
               <p className="mt-1 line-clamp-2 text-[13px] text-muted">{r.ingredients.join(' · ') || 'Sin ingredientes'}</p>
             </motion.button>
           ))}
@@ -154,6 +170,7 @@ export function MenuView() {
       )}
 
       <SlotPicker slot={picking} recipes={recipes} current={picking ? slot(picking.date, picking.meal) : undefined} onClose={() => setPicking(null)} onNewRecipe={() => (setPicking(null), setTab('recipes'), setEditing('new'))} />
+      <RecipeSheet recipe={recipes.find((r) => r.id === viewing) ?? null} onClose={() => setViewing(null)} onEdit={(r) => (setViewing(null), setEditing(r))} />
       <RecipeForm recipe={editing} onClose={() => setEditing(null)} />
     </Page>
   )
@@ -229,57 +246,5 @@ function SlotPicker({
         </div>
       )}
     </Modal>
-  )
-}
-
-function RecipeForm({ recipe, onClose }: { recipe: Recipe | 'new' | null; onClose: () => void }) {
-  return (
-    <Modal open={!!recipe} onClose={onClose} position="center">
-      {recipe && <RecipeFields key={recipe === 'new' ? 'new' : recipe.id} recipe={recipe === 'new' ? undefined : recipe} onClose={onClose} />}
-    </Modal>
-  )
-}
-
-function RecipeFields({ recipe, onClose }: { recipe?: Recipe; onClose: () => void }) {
-  const [name, setName] = useState(recipe?.name ?? '')
-  const [ingredients, setIngredients] = useState((recipe?.ingredients ?? []).join('\n'))
-  const [notes, setNotes] = useState(recipe?.notes ?? '')
-  const lines = ingredients.split('\n').map((l) => l.trim()).filter(Boolean)
-  return (
-    <form
-      onSubmit={async (e) => {
-        e.preventDefault()
-        if (!name.trim()) return
-        await saveRecipe({ name: name.trim(), ingredients: lines, notes: notes.trim() || undefined }, recipe?.id)
-        onClose()
-      }}
-    >
-      <ModalHeader title={recipe ? 'Receta' : 'Nueva receta'} onClose={onClose} />
-      <div className="max-h-[70vh] space-y-4 overflow-y-auto p-5">
-        <Field label="Nombre">
-          <Input autoFocus={!recipe} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Tortilla de patatas" />
-        </Field>
-        <Field label={`Ingredientes (uno por línea)${lines.length ? ` · ${lines.length}` : ''}`}>
-          <Textarea value={ingredients} onChange={(e) => setIngredients(e.target.value)} rows={5} placeholder={'6 huevos\n1 kg de patatas\n1 cebolla'} className="min-h-[120px] rounded-xl bg-fill-2 px-3.5 py-3 text-[15px]" />
-        </Field>
-        <Field label="Notas">
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Pasos, trucos, de dónde es…" className="min-h-[72px] rounded-xl bg-fill-2 px-3.5 py-2.5 text-[15px]" />
-        </Field>
-      </div>
-      <div className="flex items-center gap-2 px-5 pt-1 pb-5">
-        {recipe && (
-          <Button type="button" variant="danger" onClick={async () => (await deleteRecipe(recipe.id), onClose(), toastTrashed('Receta en la papelera', 'recipes', recipe.id))}>
-            <Trash2 size={15} /> Eliminar
-          </Button>
-        )}
-        <div className="flex-1" />
-        <Button type="button" variant="ghost" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button type="submit" variant="primary" disabled={!name.trim()}>
-          Guardar
-        </Button>
-      </div>
-    </form>
   )
 }
