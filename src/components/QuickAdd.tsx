@@ -213,7 +213,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
               <Inbox size={14} strokeWidth={2.3} /> Bandeja de entrada
             </>
           ) : (
-            <span className="truncate">{[final.dueDate && dateLabel(final.dueDate), destination].filter(Boolean).join(' · ')}</span>
+            <span className="truncate">{[final.dueDate && `${dateLabel(final.dueDate)}${final.dueTime ? ` a las ${final.dueTime}` : ''}`, destination].filter(Boolean).join(' · ')}</span>
           )}
           <span className="ml-auto hidden items-center gap-1 text-muted md:flex">
             <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>@</Kbd>persona <Kbd>!</Kbd>prioridad <Kbd>~</Kbd>duración

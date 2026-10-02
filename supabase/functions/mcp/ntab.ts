@@ -15,6 +15,7 @@ import { parseQuickAdd } from '../_shared/parse.ts'
 import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
 import { logGoal, type GoalPoint } from '../_shared/goals.ts'
 import { appendToNote, checklistStats } from '../_shared/notes.ts'
+import { ceilTo, freeSlots, slotsLabel, toMin, type Block } from '../_shared/schedule.ts'
 import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
@@ -254,6 +255,26 @@ function loadLine(todays: Task[], meetings: EventLike[]) {
   return `Carga de hoy: ${total ? minutesLabel(total) : 'nada estimado'} (${parts.join(', ')}). Jornada de referencia: 6 h${total > 360 ? ' — HOY ESTÁ SOBRECARGADO, propón mover algo' : ''}.`
 }
 
+/**
+ * Huecos libres de un día entre las 9 y las 20 h (como el «tiempo libre» de
+ * Reclaim o Motion): sin reuniones ni tareas con hora. Para que Claude sepa
+ * dónde cabe algo antes de proponer una hora.
+ */
+function freeLine(label: string, day: string, open: Task[], events: EventLike[], env: Env, from: number) {
+  const busy: Block[] = [
+    ...events
+      .filter((e) => !e.allDay && ymdIn(Date.parse(e.start), env.tz) === day)
+      .map((e) => {
+        const start = toMin(hhmmIn(Date.parse(e.start), env.tz))
+        return { start, end: start + Math.max(15, Math.round((Date.parse(e.end) - Date.parse(e.start)) / 60_000)) }
+      }),
+    ...open.filter((t) => t.dueDate === day && t.dueTime).map((t) => ({ start: toMin(t.dueTime!), end: toMin(t.dueTime!) + (t.estimate ?? 30) })),
+  ]
+  const start = Math.max(9 * 60, ceilTo(from, 15))
+  if (start >= 20 * 60) return []
+  return [`HUECOS LIBRES ${label} (9–20 h, sin reuniones ni tareas con hora): ${slotsLabel(freeSlots(busy, start, 20 * 60)) || 'ninguno de media hora o más'}.`]
+}
+
 /** Lo importante de hoy (hasta tres), lo primero que mirar */
 function importantLines(open: Task[], today: string) {
   const list = open.filter((t) => t.important === today)
@@ -289,6 +310,8 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   const s: string[] = [
     `HOY: ${longDate(today)} (${today}), son las ${hhmmIn(env.now, env.tz)} (${env.tz}). Semana: del ${weekStart(today)} al ${addDays(weekStart(today), 6)}.`,
     loadLine(open.filter((t) => t.dueDate === today), (calendar?.events ?? []).filter((e) => !e.allDay && ymdIn(Date.parse(e.start), env.tz) === today)),
+    ...freeLine('HOY', today, open, calendar?.events ?? [], env, toMin(hhmmIn(env.now, env.tz))),
+    ...freeLine('MAÑANA', addDays(today, 1), open, calendar?.events ?? [], env, 0),
     ...importantLines(open, today),
     ...goalLines(rows, ix.tasks, env, today),
     ...(calendar ? [`\nEVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (${calendar.events.length}) — solo lectura:`, ...eventLines(calendar.events, calendar.names, env)] : []),

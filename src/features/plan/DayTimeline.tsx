@@ -4,10 +4,11 @@ import { Wand2 } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { mutateTasks, restoreTasks, setTaskTimes } from '@/db/actions'
 import { eventMinutes, eventTime, type CalEvent } from '@/lib/calendarEvents'
-import { autoSchedule, firstOverlap, snapMove, snapResize, toHHMM, toMin, type Block } from '@/lib/schedule'
+import { autoSchedule, firstOverlap, layoutColumns, snapMove, snapResize, toHHMM, toMin, type Block } from '@/lib/schedule'
 import { swallowNextClick } from '@/components/dayDrag'
 import { durationLabel } from '@/lib/duration'
 import { haptic } from '@/lib/haptics'
+import { today } from '@/lib/dates'
 import { toast, ui } from '@/app/store'
 import { Button, Section, cx, softSpring } from '@/components/ui'
 
@@ -31,35 +32,14 @@ const nowMin = () => {
   return d.getHours() * 60 + d.getMinutes()
 }
 
-/** Reparte en columnas lo que se solapa */
-function layout(items: Item[]) {
-  const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end)
-  const out: (Item & { col: number; cols: number })[] = []
-  let group: (Item & { col: number; cols: number })[] = []
-  let groupEnd = -1
-  const flush = () => {
-    const cols = Math.max(1, ...group.map((g) => g.col + 1))
-    for (const g of group) g.cols = cols
-    out.push(...group)
-    group = []
-  }
-  for (const it of sorted) {
-    if (it.start >= groupEnd && group.length) flush()
-    const used = new Set(group.filter((g) => g.end > it.start).map((g) => g.col))
-    let col = 0
-    while (used.has(col)) col++
-    group.push({ ...it, col, cols: 1 })
-    groupEnd = Math.max(groupEnd, it.end)
-  }
-  if (group.length) flush()
-  return out
-}
-
 /**
  * El día hora a hora: reuniones (gris) y tareas con hora (azul). «Colocar en
- * huecos» da hora a las tareas de hoy que no la tienen, en los huecos libres.
+ * huecos» da hora a las tareas del día que no la tienen, en los huecos libres.
+ * Tocar un hueco vacío crea una tarea a esa hora (como en Google Calendar).
  */
-export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent[] }) {
+export function DayTimeline({ tasks, events, day = today(), title = 'Hora a hora' }: { tasks: Task[]; events: CalEvent[]; day?: string; title?: string }) {
+  const isToday = day === today()
+  const past = day < today()
   const [now, setNow] = useState(nowMin)
   useEffect(() => {
     const t = setInterval(() => setNow(nowMin()), 60_000)
@@ -200,19 +180,19 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
     }
   }
   const shown = drag ? items.map((i) => (i.key === drag.key ? { ...i, start: drag.start, end: drag.end } : i)) : items
-  const startHour = Math.max(0, Math.min(8, ...shown.map((i) => Math.floor(i.start / 60)), Math.floor(now / 60)))
+  const startHour = Math.max(0, Math.min(8, ...shown.map((i) => Math.floor(i.start / 60)), isToday ? Math.floor(now / 60) : 8))
   const endHour = Math.min(24, Math.max(21, ...shown.map((i) => Math.ceil(i.end / 60))))
   const px = (min: number) => ((min - startHour * 60) / 60) * HOUR
 
   const place = async () => {
     const busy: Block[] = items.map((i) => ({ start: i.start, end: i.end }))
-    const from = Math.max(now, 8 * 60)
+    const from = isToday ? Math.max(now, 8 * 60) : 8 * 60
     const { placed, unplaced } = autoSchedule(
       untimed.map((t) => ({ id: t.id, priority: t.priority, estimate: t.estimate })),
       busy,
       { from, dayEnd: Math.max(21 * 60, from + 60), fallback: FALLBACK },
     )
-    if (!placed.length) return void toast('No quedan huecos hoy para esas tareas. Pasa alguna a mañana.')
+    if (!placed.length) return void toast(isToday ? 'No quedan huecos hoy para esas tareas. Pasa alguna a mañana.' : 'No quedan huecos ese día para esas tareas.')
     haptic('success')
     const before = await setTaskTimes(placed.map((p) => ({ id: p.id, time: toHHMM(p.start) })))
     toast(
@@ -224,9 +204,10 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
 
   return (
     <Section
-      title="Hora a hora"
+      title={title}
       action={
-        untimed.length > 0 && (
+        untimed.length > 0 &&
+        !past && (
           <Button size="sm" variant="tinted" onClick={() => void place()}>
             <Wand2 size={14} strokeWidth={2.4} /> Colocar en huecos
           </Button>
@@ -240,9 +221,19 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
             <span className="h-px flex-1 bg-line" />
           </div>
         ))}
-        <div className="absolute top-2 right-2 bottom-2 left-[60px]">
+        <div
+          className="absolute top-2 right-2 bottom-2 left-[60px]"
+          title="Toca un hueco para añadir una tarea a esa hora"
+          onClick={(e) => {
+            // Un hueco vacío (no un bloque): tarea nueva a esa hora, en medias horas
+            if (e.target !== e.currentTarget) return
+            const y = e.clientY - e.currentTarget.getBoundingClientRect().top
+            const min = Math.max(0, Math.min(23 * 60 + 30, startHour * 60 + Math.floor(((y / HOUR) * 60) / 30) * 30))
+            ui.quickAdd({ dueDate: day, dueTime: toHHMM(min) })
+          }}
+        >
           <AnimatePresence>
-            {layout(shown).map((it) => {
+            {layoutColumns(shown).map((it) => {
               const top = px(it.start)
               const height = Math.max(22, px(it.end) - top - 2)
               const Tag = it.kind === 'task' ? motion.button : motion.div
@@ -268,12 +259,13 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
                       }
                     : {})}
                   className={cx(
-                    'absolute overflow-hidden rounded-[10px] px-2.5 py-1 text-left',
+                    // En columna, para que el título vaya arriba (un botón centra lo de dentro)
+                    'absolute flex flex-col overflow-hidden rounded-[10px] px-2.5 py-1 text-left',
                     it.kind === 'task'
                       ? cx(
                           'group/block cursor-grab border-l-[3px] active:cursor-grabbing',
                           // Lo que ya pasó, en gris (sin transparencias, para que se siga leyendo)
-                          it.end <= now && !dragging ? 'border-line-strong bg-fill text-muted' : 'border-blue bg-accent-soft text-fg',
+                          (past || (isToday && it.end <= now)) && !dragging ? 'border-line-strong bg-fill text-muted' : 'border-blue bg-accent-soft text-fg',
                         )
                       : 'bg-fill text-muted',
                     dragging && 'z-10 shadow-[var(--c-shadow-lg)] ring-2 ring-blue',
@@ -308,7 +300,7 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
               )
             })}
           </AnimatePresence>
-          {now >= startHour * 60 && now <= endHour * 60 && (
+          {isToday && now >= startHour * 60 && now <= endHour * 60 && (
             <div className="pointer-events-none absolute right-0 left-[-8px] flex items-center" style={{ top: px(now) - 4 }}>
               <span className="h-2 w-2 rounded-full bg-blue" />
               <span className="h-[1.5px] flex-1 bg-blue" />
@@ -318,7 +310,7 @@ export function DayTimeline({ tasks, events }: { tasks: Task[]; events: CalEvent
       </div>
       {untimed.length > 0 && (
         <p className="mt-2 px-1 text-[13px] text-muted">
-          {untimed.length} {untimed.length === 1 ? 'tarea' : 'tareas'} de hoy sin hora
+          {untimed.length} {untimed.length === 1 ? 'tarea' : 'tareas'} {isToday ? 'de hoy' : 'de ese día'} sin hora
           {untimed.some((t) => !t.estimate) ? ` (las que no tienen duración cuentan ${FALLBACK} min)` : ''}. «Colocar en huecos» les da hora entre tus reuniones, lo importante primero.
         </p>
       )}

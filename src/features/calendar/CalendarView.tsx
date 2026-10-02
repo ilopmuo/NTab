@@ -11,13 +11,16 @@ import { sortTasks } from '@/lib/tasks'
 import { SectionIcon, section } from '@/app/sections'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
-import { Button, Card, IconButton, PageHeader, Segmented, cx, spring, useIsMobile } from '@/components/ui'
+import { Button, Card, IconButton, PageHeader, Section, Segmented, cx, spring, useIsMobile, useMediaQuery } from '@/components/ui'
 import { dragToDay, useDropOver } from '@/components/dayDrag'
 import { eventTime, eventsByDay, useEvents, type CalEvent } from '@/lib/calendarEvents'
 import type { Person } from '@/db/types'
 import { Page } from '../Page'
+import { DayTimeline } from '../plan/DayTimeline'
+import { LoadMeter } from './LoadMeter'
+import { WeekGrid } from './WeekGrid'
 
-type Mode = 'month' | 'week'
+type Mode = 'month' | 'week' | 'day'
 const HEAD = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 export function CalendarView() {
@@ -28,6 +31,7 @@ export function CalendarView() {
   const [dir, setDir] = useState(0)
 
   const range = useMemo(() => {
+    if (mode === 'day') return { start: cursor, days: [cursor] }
     if (mode === 'week') {
       const s = weekStart(cursor)
       return { start: s, days: Array.from({ length: 7 }, (_, i) => addDaysYmd(s, i)) }
@@ -56,12 +60,16 @@ export function CalendarView() {
 
   const move = (d: number) => {
     setDir(d)
-    setCursor(mode === 'week' ? addDaysYmd(cursor, d * 7) : ymd(addMonths(fromYmd(cursor), d)))
+    setCursor(mode === 'day' ? addDaysYmd(cursor, d) : mode === 'week' ? addDaysYmd(cursor, d * 7) : ymd(addMonths(fromYmd(cursor), d)))
   }
   const mobile = useIsMobile()
-  const weekEnd = range.days[6]
+  // La semana por horas necesita sitio; en pantallas estrechas, la semana en lista
+  const wide = useMediaQuery('(min-width: 1100px)')
+  const weekEnd = range.days[6] ?? cursor
   const title =
-    mode === 'month'
+    mode === 'day'
+      ? capitalize(fmt(cursor, mobile ? "EEE d MMM" : "EEEE, d 'de' MMMM"))
+      : mode === 'month'
       ? capitalize(fmt(cursor, 'MMMM'))
       : range.start.slice(0, 7) === weekEnd.slice(0, 7)
         ? `${fmt(range.start, 'd')} – ${fmt(weekEnd, 'd MMM')}`
@@ -76,6 +84,7 @@ export function CalendarView() {
         options={[
           { value: 'month', label: 'Mes' },
           { value: 'week', label: 'Semana' },
+          { value: 'day', label: 'Día' },
         ]}
       />
       <Button
@@ -115,7 +124,9 @@ export function CalendarView() {
       {/* En el móvil los controles van debajo, para que el título quepa entero */}
       {mobile && <div className="-mt-3 mb-5 flex items-center gap-1.5">{controls}</div>}
 
-      {mode === 'month' ? (
+      {mode === 'day' ? (
+        <DayView day={cursor} tasks={byDay.get(cursor) ?? []} events={evByDay.get(cursor) ?? []} birthdays={birthdays.filter((b) => b.date === cursor).map((b) => b.person)} names={cal.names} />
+      ) : mode === 'month' ? (
         <div className="grid gap-6 @[1100px]:grid-cols-[minmax(0,1fr)_340px]">
           <Card className="overflow-hidden p-2">
             <div className="grid grid-cols-7 pb-1">
@@ -154,7 +165,19 @@ export function CalendarView() {
           </Card>
 
           <div>
-            <h2 className="px-1 text-[20px] font-bold tracking-tight">{longDateLabel(selected)}</h2>
+            <div className="flex items-center gap-2 px-1">
+              <h2 className="flex-1 text-[20px] font-bold tracking-tight">{longDateLabel(selected)}</h2>
+              <Button
+                size="sm"
+                variant="tinted"
+                onClick={() => {
+                  setCursor(selected)
+                  setMode('day')
+                }}
+              >
+                Hora a hora
+              </Button>
+            </div>
             <p className="mb-3 px-1 text-[13px] text-muted">
               {selectedTasks.length ? `${selectedTasks.length} ${selectedTasks.length === 1 ? 'tarea' : 'tareas'}` : 'Sin tareas'} · doble clic en un día para añadir
             </p>
@@ -174,6 +197,8 @@ export function CalendarView() {
             <TaskList key={selected} tasks={selectedTasks} hideDate add={{ defaults: { dueDate: selected } }} />
           </div>
         </div>
+      ) : wide ? (
+        <WeekGrid days={range.days} byDay={byDay} evByDay={evByDay} birthdays={birthdays} />
       ) : (
         <div className="grid gap-3 @[560px]:grid-cols-2 @[820px]:grid-cols-4 @[1180px]:grid-cols-7">
           {range.days.map((d, i) => (
@@ -280,6 +305,7 @@ function MonthCell({
         ))}
         {hidden > 0 && <span className="px-1 text-[11px] font-semibold text-muted">+{hidden} más</span>}
       </span>
+      <LoadMeter tasks={list} events={events} className="mt-auto hidden px-0.5 sm:block" />
       {list.length + events.length > 0 && (
         <span className="flex justify-center gap-0.5 sm:hidden">
           {events.slice(0, 2).map((e) => (
@@ -313,6 +339,7 @@ function WeekDay({ day, index, list, events, birthdays, isToday }: { day: string
         <span className={cx('font-num text-[22px] font-bold', isToday ? 'text-blue' : past && 'text-muted')}>{fromYmd(day).getDate()}</span>
         <span className="text-[13px] font-semibold text-muted">{capitalize(fmt(day, 'EEEE'))}</span>
         {empty && <span className="text-[13px] text-muted @[560px]:hidden">· libre</span>}
+        <LoadMeter tasks={list} events={events} className="w-10" />
         <button
           type="button"
           onClick={() => ui.quickAdd({ dueDate: day })}
@@ -340,5 +367,34 @@ function WeekDay({ day, index, list, events, birthdays, isToday }: { day: string
         </div>
       )}
     </motion.div>
+  )
+}
+
+/** Un día hora a hora (como la vista de día de Fantastical): reuniones, tareas con hora, lo de todo el día y lo que no tiene hora */
+function DayView({ day, tasks, events, birthdays, names }: { day: string; tasks: Task[]; events: CalEvent[]; birthdays: Person[]; names: Record<string, string> }) {
+  const allDay = events.filter((e) => e.allDay)
+  const untimed = tasks.filter((x) => !x.dueTime)
+  return (
+    <div className="grid gap-x-8 gap-y-2 @[1000px]:grid-cols-[minmax(0,1fr)_340px]">
+      <DayTimeline day={day} tasks={tasks.filter((x) => !x.done)} events={events} />
+      <div>
+        <LoadMeter tasks={tasks} events={events} className="mb-4 px-1" />
+        {birthdays.map((p) => (
+          <a key={p.id} href={`#/people/${p.id}`} className="glass mb-3 flex items-center gap-3 rounded-[16px] px-4 py-3 text-[15px]">
+            <Cake size={18} className="text-pink" strokeWidth={2.3} /> Cumpleaños de <b className="font-semibold">{p.name}</b>
+          </a>
+        ))}
+        {allDay.length > 0 && (
+          <div className="glass mb-3 overflow-hidden rounded-[16px]">
+            {allDay.map((e) => (
+              <EventRow key={e.id} event={e} source={names[e.sourceId]} />
+            ))}
+          </div>
+        )}
+        <Section title="Sin hora" count={untimed.length}>
+          <TaskList key={day} tasks={untimed} hideDate add={{ defaults: { dueDate: day } }} />
+        </Section>
+      </div>
+    </div>
   )
 }
