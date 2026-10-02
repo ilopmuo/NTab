@@ -443,6 +443,11 @@
   background: var(--c-material-thin);
   backdrop-filter: blur(30px) saturate(180%);
 }
+/* Borde de desplazamiento suave (iOS 26): la barra se desvanece hacia abajo
+   en vez de cortarse con una línea */
+@utility edge-soft {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+}
 @utility hairline-b {
   box-shadow: inset 0 -1px 0 var(--c-border);
 }

@@ -674,7 +674,7 @@ export function PageHeader({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18 }}
-                className="glass-bar hairline-b pointer-events-auto flex h-13 items-center justify-center px-14"
+                className="glass-bar edge-soft pointer-events-auto flex h-13 items-center justify-center px-14"
               >
                 <motion.span
                   initial={{ y: 6 }}

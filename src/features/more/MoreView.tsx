@@ -1,5 +1,6 @@
 import { m as motion } from 'motion/react'
-import { ChevronRight, Hash, LayoutGrid, PanelBottom, Search } from 'lucide-react'
+import { BookOpen, ChevronRight, Hash, LayoutGrid, type LucideIcon, PanelBottom, Plus, Receipt, Search, Timer } from 'lucide-react'
+import { hue, type Hue } from '@/lib/hues'
 import { FEATURE_GROUPS } from '@/lib/features'
 import { useLookup } from '@/db/hooks'
 import { useNavCounts, useProjectProgress } from '@/app/counts'
@@ -71,6 +72,8 @@ export function MoreView() {
         }
       />
 
+      <QuickActions />
+
       {pinned.length > 0 && (
         <Block title="Fijados">
           <Group>
@@ -118,6 +121,50 @@ export function MoreView() {
         </Group>
       </Block>
     </Page>
+  )
+}
+
+/**
+ * Acciones rápidas como las baldosas de Atajos: degradado del color del módulo,
+ * glifo arriba y nombre abajo en blanco (sobre la parte más oscura, para que se lea)
+ */
+function QuickActions() {
+  const features = useFeatures()
+  const actions: { id: string; label: string; icon: LucideIcon; c: Hue; to?: string; run?: () => void }[] = [
+    { id: 'task', label: 'Nueva tarea', icon: Plus, c: 'blue', run: () => ui.quickAdd() },
+    { id: 'focus', label: 'Empezar foco', icon: Timer, c: 'indigo', to: '/focus' },
+    { id: 'expenses', label: 'Apuntar gasto', icon: Receipt, c: 'teal', to: '/expenses' },
+    { id: 'journal', label: 'Escribir el diario', icon: BookOpen, c: 'purple', to: '/journal' },
+  ]
+  const shown = actions.filter((a) => a.id === 'task' || features.section(a.id))
+  return (
+    <Block title="Acciones rápidas">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {shown.map((a, i) => {
+          const body = (
+            <>
+              <a.icon size={22} strokeWidth={2.3} aria-hidden />
+              <span className="text-[15px] leading-tight font-semibold">{a.label}</span>
+            </>
+          )
+          const cls = 'flex h-[92px] flex-col justify-between rounded-[18px] p-3.5 text-left text-white shadow-[0_8px_22px_-14px_rgb(0_0_0/0.6)] transition-transform active:scale-95'
+          const style = { background: `linear-gradient(155deg, color-mix(in srgb, ${hue(a.c)} 88%, white) 0%, color-mix(in srgb, ${hue(a.c)} 62%, black) 100%)` }
+          return (
+            <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...softSpring, delay: i * 0.03 }}>
+              {a.to ? (
+                <a href={href(a.to)} className={cls} style={style}>
+                  {body}
+                </a>
+              ) : (
+                <button type="button" onClick={a.run} className={cx(cls, 'w-full')} style={style}>
+                  {body}
+                </button>
+              )}
+            </motion.div>
+          )
+        })}
+      </div>
+    </Block>
   )
 }
 

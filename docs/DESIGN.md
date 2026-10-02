@@ -68,7 +68,10 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Deslizar una tarea (táctil) | → hecha (lima), ← a mañana (acento). La franja se colorea al pasar el umbral, con toque háptico; si no llega, vuelve con muelle |
 | Cambio de tema | El tema nuevo se revela en un círculo que crece desde el botón (*View Transitions*) |
 | Avisos | Cápsula con una barra del tiempo que queda para deshacer; se aparta deslizándola |
-| Barra de pestañas | Se encoge (sin textos) al bajar por una pantalla y vuelve al subir, como en iOS 26 |
+| Barra de pestañas | Al bajar por una pantalla se recoge en un círculo con la pestaña en la que estás (y el botón de crear al otro lado); al subir vuelve entera, como en iOS 26. La pestaña activa lleva el color de su módulo sobre un fondo suave del mismo color |
+| Foco minimizado | Accesorio inferior, como el mini reproductor de Música: una cápsula sobre la barra de pestañas (en la esquina en el ordenador) con un anillo índigo que se llena, el título, el tiempo y un botón de pausa |
+| Barra superior compacta | Sin línea: se desvanece hacia abajo (borde de desplazamiento suave de iOS 26) |
+| Acciones rápidas | En «Más», baldosas como las de Atajos: degradado del color del módulo y glifo y nombre en blanco |
 | Estados vacíos | El icono, en su baldosa y dentro de una órbita tenue, flota muy suavemente |
 | Rutina paso a paso | Un paso en grande que entra de lado; la barra de pasos se llena en lima; confeti al terminar |
 | Procesar la bandeja | Mazo de cartas: la de arriba se arrastra y gira con el dedo (→ hoy, ← luego) y sale volando; las de detrás suben |

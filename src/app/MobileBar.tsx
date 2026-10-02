@@ -5,7 +5,7 @@ import { RollingNumber, cx, spring } from '@/components/ui'
 import { useNavCounts } from './counts'
 import { useNav } from './nav'
 import { href, useRoute } from './router'
-import { section, tintInk } from './sections'
+import { section, soft, tintInk } from './sections'
 import { ui } from './store'
 
 /** Al bajar por una pantalla la barra se encoge (sin textos); al subir, vuelve */
@@ -32,7 +32,11 @@ function useMinimized(path: string) {
 
 const barSpring = { type: 'spring', stiffness: 420, damping: 34 } as const
 
-/** Barra de pestañas flotante de iOS 26: cápsula de cristal + botón de crear aparte */
+/**
+ * Barra de pestañas flotante de iOS 26: cápsula de cristal + botón de crear
+ * aparte. Al bajar por una pantalla se recoge en un círculo con la pestaña en
+ * la que estás; al subir (o al tocarlo) vuelve entera.
+ */
 export function MobileBar() {
   const { path } = useRoute()
   const mini = useMinimized(path)
@@ -41,39 +45,57 @@ export function MobileBar() {
   const isOn = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
   const moreOn = path === '/more' || !tabs.some((t) => isOn(t.path))
   const badge: Record<string, number> = { today: c.today, habits: c.habitsLeft, inbox: c.inbox, shopping: c.shopping, people: c.peopleDue }
+  const items = [
+    ...tabs.map((t) => ({ id: t.id, path: t.path, label: t.short, on: isOn(t.path), color: tintInk(t.tint), pill: soft(t.tint, 16), icon: t.icon })),
+    { id: 'more', path: '/more', label: 'Más', on: moreOn, color: 'var(--c-blue)', pill: 'var(--c-fill)', icon: LayoutGrid },
+  ]
   return (
     <div
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),10px)] lg:hidden"
       style={{ viewTransitionName: 'tabbar' }}
     >
-      <motion.nav initial={false} animate={{ height: mini ? 50 : 62 }} transition={barSpring} className="glass-thick pointer-events-auto flex flex-1 items-center rounded-full px-1.5">
-        {tabs.map((t) => {
-          const on = isOn(t.path)
+      <motion.nav
+        initial={false}
+        animate={{ height: mini ? 50 : 62 }}
+        transition={barSpring}
+        className={cx('glass-thick pointer-events-auto flex items-center rounded-full', mini ? 'flex-none px-[5px]' : 'flex-1 px-1.5')}
+      >
+        {items.map((t) => {
+          const hidden = mini && !t.on
           return (
-            <a
+            <motion.a
               key={t.id}
               href={href(t.path)}
-              aria-current={on ? 'page' : undefined}
-              className={cx('relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full transition-[height] duration-300 active:scale-95', mini ? 'h-[40px]' : 'h-[52px]')}
-              style={{ color: on ? tintInk(t.tint) : 'var(--c-text)' }}
+              aria-current={t.on ? 'page' : undefined}
+              aria-hidden={hidden || undefined}
+              tabIndex={hidden ? -1 : undefined}
+              initial={false}
+              animate={{ opacity: hidden ? 0 : 1, maxWidth: hidden ? 0 : mini ? 40 : 160, minWidth: hidden ? 0 : 40 }}
+              transition={barSpring}
+              className={cx(
+                'relative flex flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-full transition-[height] duration-300 active:scale-95',
+                mini ? 'h-[40px]' : 'h-[52px]',
+                hidden && 'pointer-events-none',
+              )}
+              style={{ color: t.on ? t.color : 'var(--c-text)' }}
             >
-              {on && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
+              {t.on && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full" style={{ background: t.pill }} />}
               {/* Al elegirla, el icono da un saltito (como los SF Symbols) */}
               <motion.span
                 className="relative"
-                key={on ? 'on' : 'off'}
-                animate={on ? { y: [0, -5, 0], scale: [1, 1.12, 1] } : { y: 0, scale: 1 }}
+                key={t.on ? 'on' : 'off'}
+                animate={t.on ? { y: [0, -5, 0], scale: [1, 1.12, 1] } : { y: 0, scale: 1 }}
                 transition={{ duration: 0.42, ease: [0.3, 1.4, 0.5, 1] }}
               >
                 {t.icon === 'today' ? (
                   <span
-                    className={cx('font-num flex h-[22px] w-[22px] items-center justify-center rounded-[6px] border-[1.8px] text-[11px] font-bold', on ? '' : 'opacity-90')}
+                    className={cx('font-num flex h-[22px] w-[22px] items-center justify-center rounded-[6px] border-[1.8px] text-[11px] font-bold', t.on ? '' : 'opacity-90')}
                     style={{ borderColor: 'currentColor' }}
                   >
                     {new Date().getDate()}
                   </span>
                 ) : (
-                  <t.icon size={22} strokeWidth={on ? 2.3 : 1.9} />
+                  <t.icon size={22} strokeWidth={t.on ? 2.3 : 1.9} />
                 )}
                 {!!badge[t.id] && (
                   <span
@@ -84,29 +106,12 @@ export function MobileBar() {
                   </span>
                 )}
               </motion.span>
-              <Label mini={mini}>{t.short}</Label>
-            </a>
+              <Label mini={mini}>{t.label}</Label>
+            </motion.a>
           )
         })}
-        {/* «Más»: todo lo demás, por grupos (y activa si lo que ves no está en las pestañas) */}
-        <a
-          href={href('/more')}
-          aria-current={moreOn ? 'page' : undefined}
-          className={cx('relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full transition-[height] duration-300 active:scale-95', mini ? 'h-[40px]' : 'h-[52px]')}
-          style={{ color: moreOn ? 'var(--c-blue)' : 'var(--c-text)' }}
-        >
-          {moreOn && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
-          <motion.span
-            className="relative"
-            key={moreOn ? 'on' : 'off'}
-            animate={moreOn ? { y: [0, -5, 0], scale: [1, 1.12, 1] } : { y: 0, scale: 1 }}
-            transition={{ duration: 0.42, ease: [0.3, 1.4, 0.5, 1] }}
-          >
-            <LayoutGrid size={22} strokeWidth={moreOn ? 2.3 : 1.9} />
-          </motion.span>
-          <Label mini={mini}>Más</Label>
-        </a>
       </motion.nav>
+      {mini && <span className="flex-1" />}
       <motion.button
         type="button"
         aria-label="Nueva tarea"

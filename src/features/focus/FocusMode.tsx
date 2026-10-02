@@ -11,7 +11,8 @@ import { parseQuickAdd } from '@/lib/parse'
 import { dateLabel } from '@/lib/dates'
 import { LONG_EVERY, RATINGS, breakAfter } from '@/lib/focusStats'
 import { Checkbox } from '@/components/TaskItem'
-import { Button, Segmented, cx, softSpring, spring } from '@/components/ui'
+import { Button, ProgressRing, Segmented, cx, softSpring, spring } from '@/components/ui'
+import { tint } from '@/app/sections'
 import { DURATIONS, clock, focus, isBreak, logFocus, rateFocus, remaining, useFocus } from './focus'
 import { NOISES, loadNoise, playNoise, saveNoise, stopNoise, unlockAudio, type NoisePrefs } from './noise'
 
@@ -182,24 +183,46 @@ export function FocusMode() {
   return (
     <AnimatePresence>
       {s.minimized ? (
-        <motion.button
+        // Accesorio inferior, como el mini reproductor de Música: sobre la barra
+        // de pestañas en el móvil y en la esquina en el ordenador
+        <motion.div
           key="pill"
-          type="button"
-          initial={{ opacity: 0, y: 20, scale: 0.9 }}
+          initial={{ opacity: 0, y: 20, scale: 0.94 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.9 }}
+          exit={{ opacity: 0, y: 20, scale: 0.94 }}
           transition={spring}
-          onClick={() => focus.minimize(false)}
-          className="glass-thick fixed right-4 bottom-[calc(max(env(safe-area-inset-bottom),10px)+80px)] z-[55] flex max-w-[70vw] items-center gap-2.5 rounded-full py-2 pr-4 pl-2 text-left lg:right-6 lg:bottom-6"
+          className="glass-thick fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),10px)+72px)] z-[55] flex h-[54px] items-center gap-1 overflow-hidden rounded-full pr-1.5 pl-1.5 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[340px]"
         >
-          <span className={cx('flex h-8 w-8 items-center justify-center rounded-full', s.finished || brk ? 'bg-green text-on-green' : 'bg-accent-fill text-white')}>
-            {s.finished ? <Check size={16} strokeWidth={3} /> : brk ? <Coffee size={16} strokeWidth={2.4} /> : <Timer size={16} strokeWidth={2.4} />}
-          </span>
-          <span className="min-w-0">
-            <span className="font-num block text-[15px] leading-tight font-bold">{s.finished ? (brk ? 'Descanso hecho' : 'Terminado') : clock(left)}</span>
-            <span className="block truncate text-[12px] text-muted">{brk ? phaseLabel : title}</span>
-          </span>
-        </motion.button>
+          <button type="button" onClick={() => focus.minimize(false)} aria-label="Abrir el modo foco" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-1 pr-2 text-left">
+            <span className="relative flex h-[42px] w-[42px] shrink-0 items-center justify-center">
+              <span className="absolute inset-0">
+                <ProgressRing value={s.finished ? 1 : 1 - left / total} size={42} stroke={3.5} color={s.finished || brk ? 'var(--c-green)' : tint('indigo')} />
+              </span>
+              <span
+                className="flex h-[30px] w-[30px] items-center justify-center rounded-full"
+                style={s.finished || brk ? { background: 'var(--c-green)', color: 'var(--c-on-green)' } : { background: tint('indigo'), color: '#fff' }}
+              >
+                {s.finished ? <Check size={15} strokeWidth={3} /> : brk ? <Coffee size={15} strokeWidth={2.4} /> : <Timer size={15} strokeWidth={2.4} />}
+              </span>
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[14px] leading-tight font-semibold">{brk ? phaseLabel : title}</span>
+              <span className="font-num block text-[13px] leading-tight text-muted">
+                {s.finished ? (brk ? 'Descanso hecho' : 'Terminado') : `${clock(left)}${running ? '' : ' · en pausa'}`}
+              </span>
+            </span>
+          </button>
+          {!s.finished && (
+            <button
+              type="button"
+              onClick={() => (running ? focus.pause() : focus.start())}
+              aria-label={running ? 'Pausar' : 'Seguir'}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-hover active:scale-90"
+            >
+              {running ? <Pause size={19} strokeWidth={2.4} fill="currentColor" /> : <Play size={19} strokeWidth={2.4} fill="currentColor" />}
+            </button>
+          )}
+        </motion.div>
       ) : (
         <motion.div
           key="full"
