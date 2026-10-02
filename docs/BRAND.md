@@ -85,6 +85,7 @@ En la interfaz se usan los tokens de cada tema (`src/index.css`):
 
 - El acento (`--c-blue`, nombre heredado) es para lo que actúa: elementos activos, el botón principal, la selección, el foco del teclado y pequeños detalles de marca. Nunca para fondos grandes.
 - Todo cumple el contraste AA; lo comprueba `src/lib/accents.test.ts` (también para los otros acentos que se eligen en Ajustes → Apariencia).
+- Cada módulo tiene su color de sistema (`--m-*`) para iconos, cabeceras y gráficos; las superficies no se tiñen.
 - Sin degradados llamativos, sin neones y sin sombras de color: las sombras son neutras y suaves.
 
 ## 5. Tipografía
@@ -105,7 +106,7 @@ En la interfaz se usan los tokens de cada tema (`src/index.css`):
 ## 6. Iconografía
 
 - **Lucide** para todo lo funcional: trazo de 2–2,4 px, esquinas redondeadas, alineado a la retícula de 24.
-- Glifos sobre baldosas de relleno gris; el acento solo en lo activo.
+- Glifos blancos sobre baldosas del color de su módulo (ver [DESIGN.md](DESIGN.md#1-principios)); el acento solo en lo activo.
 - Nada de emojis para funciones. El símbolo de LUNO no se usa como icono de una función.
 
 ## 7. Voz

@@ -42,7 +42,8 @@ import { deleteArea, setSetting } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
 import { downloadBackup, importData, isBackup, wipeData } from '@/db/backup'
 import { seedIfEmpty } from '@/db/seed'
-import { SectionIcon, section, type Tint } from '@/app/sections'
+import { SectionIcon, section, tint, type Tint } from '@/app/sections'
+import { onHue } from '@/lib/hues'
 import { setUI, toast, ui, useUI } from '@/app/store'
 import { a11yPrefs, setContrastPref, setMotionPref, setTheme, useA11yPrefs, useTheme } from '@/app/theme'
 import { AccentPicker } from './AccentPicker'
@@ -65,7 +66,7 @@ import { DEADLINE_ALERT_TIME, type DeadlineAlertPrefs } from '@/lib/deadlines'
 /** Icono cuadrado de color, como en la app Ajustes */
 function Glyph({ c, children }: { c: Tint; children: React.ReactNode }) {
   return (
-    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[8px] bg-fill text-fg" data-tint={c}>
+    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[8px]" style={{ background: tint(c), color: onHue(c) }}>
       {children}
     </span>
   )
@@ -163,7 +164,7 @@ function AccountCard() {
         <div className="shadow-[inset_0_1px_0_var(--c-border)]">
           <Row
             glyph={
-              <Glyph c="blue">
+              <Glyph c="green">
                 <RefreshCw size={15} strokeWidth={2.4} />
               </Glyph>
             }
@@ -261,7 +262,7 @@ function NotificationsBlock() {
     <Block title="Avisos" footer={footer} alert={!!error}>
       <Row
         glyph={
-          <Glyph c="blue">
+          <Glyph c="red">
             <BellRing size={15} strokeWidth={2.4} />
           </Glyph>
         }
@@ -276,7 +277,7 @@ function NotificationsBlock() {
       />
       <Row
         glyph={
-          <Glyph c="gray">
+          <Glyph c="orange">
             <Clock size={15} strokeWidth={2.4} />
           </Glyph>
         }
@@ -292,7 +293,7 @@ function NotificationsBlock() {
       />
       <Row
         glyph={
-          <Glyph c="gray">
+          <Glyph c="orange">
             <Sunrise size={15} strokeWidth={2.4} />
           </Glyph>
         }
@@ -315,7 +316,7 @@ function NotificationsBlock() {
       />
       <Row
         glyph={
-          <Glyph c="gray">
+          <Glyph c="red">
             <CalendarClock size={15} strokeWidth={2.4} />
           </Glyph>
         }
@@ -338,7 +339,7 @@ function NotificationsBlock() {
       />
       <Row
         glyph={
-          <Glyph c="gray">
+          <Glyph c="pink">
             <Volume2 size={15} strokeWidth={2.4} />
           </Glyph>
         }
@@ -347,7 +348,7 @@ function NotificationsBlock() {
       />
       <Row
         glyph={
-          <Glyph c="gray">
+          <Glyph c="blue">
             <MonitorSmartphone size={15} strokeWidth={2.4} />
           </Glyph>
         }
@@ -358,7 +359,7 @@ function NotificationsBlock() {
       {state === 'on' && (
         <Row
           glyph={
-            <Glyph c="gray">
+            <Glyph c="blue">
               {testing ? <Loader2 size={15} strokeWidth={2.4} className="animate-spin" /> : <Send size={15} strokeWidth={2.4} />}
             </Glyph>
           }
@@ -407,7 +408,7 @@ export function SettingsView() {
       <Block title="Funciones" footer="Apaga lo que no uses: la barra lateral, ⌘K y Hoy se quedan con lo tuyo.">
         <Row
           glyph={
-            <Glyph c="blue">
+            <Glyph c="indigo">
               <LayoutGrid size={15} strokeWidth={2.4} />
             </Glyph>
           }
@@ -420,7 +421,7 @@ export function SettingsView() {
       <Block title="Accesibilidad" footer="«Automático» sigue a lo que tengas en el sistema. Con «Sí», en este dispositivo siempre.">
         <Row
           glyph={
-            <Glyph c="blue">
+            <Glyph c="gray">
               <Contrast size={15} strokeWidth={2.4} />
             </Glyph>
           }
@@ -461,7 +462,7 @@ export function SettingsView() {
       <Block title="Apariencia">
         <Row
           glyph={
-            <Glyph c="indigo">
+            <Glyph c="purple">
               <Palette size={15} strokeWidth={2.4} />
             </Glyph>
           }
@@ -480,7 +481,7 @@ export function SettingsView() {
         />
         <Row
           glyph={
-            <Glyph c="blue">
+            <Glyph c="pink">
               <Droplet size={15} strokeWidth={2.4} />
             </Glyph>
           }
@@ -489,7 +490,7 @@ export function SettingsView() {
         />
         <Row
           glyph={
-            <Glyph c="blue">
+            <Glyph c="gray">
               <SlidersHorizontal size={15} strokeWidth={2.4} />
             </Glyph>
           }
@@ -509,7 +510,7 @@ export function SettingsView() {
         />
         <Row
           glyph={
-            <Glyph c="blue">
+            <Glyph c="teal">
               <Smartphone size={15} strokeWidth={2.4} />
             </Glyph>
           }
@@ -560,7 +561,7 @@ export function SettingsView() {
       >
         <Row
           glyph={
-            <Glyph c="teal">
+            <Glyph c="sky">
               <Cloud size={15} strokeWidth={2.4} />
             </Glyph>
           }

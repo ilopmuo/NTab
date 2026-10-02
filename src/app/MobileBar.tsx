@@ -5,7 +5,7 @@ import { RollingNumber, cx, spring } from '@/components/ui'
 import { useNavCounts } from './counts'
 import { useNav } from './nav'
 import { href, useRoute } from './router'
-import { section, tint } from './sections'
+import { section, tintInk } from './sections'
 import { ui } from './store'
 
 /** Al bajar por una pantalla la barra se encoge (sin textos); al subir, vuelve */
@@ -55,7 +55,7 @@ export function MobileBar() {
               href={href(t.path)}
               aria-current={on ? 'page' : undefined}
               className={cx('relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full transition-[height] duration-300 active:scale-95', mini ? 'h-[40px]' : 'h-[52px]')}
-              style={{ color: on ? tint(t.tint) : 'var(--c-text)' }}
+              style={{ color: on ? tintInk(t.tint) : 'var(--c-text)' }}
             >
               {on && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
               {/* Al elegirla, el icono da un saltito (como los SF Symbols) */}

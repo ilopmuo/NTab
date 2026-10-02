@@ -144,7 +144,7 @@ function Tiles({ title, items, count, index = 0 }: { title: string; items: Secti
             transition={{ ...softSpring, delay: index * 0.04 + i * 0.02 }}
             className="glass relative flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-[18px] px-2 py-3 text-center transition-transform active:scale-95"
           >
-            <SectionIcon def={s} size={36} />
+            <SectionIcon def={s} size={44} square />
             <span className="text-[13px] leading-tight font-medium">{s.short}</span>
             {!!count[s.id] && (
               <span className="font-num absolute top-2 right-2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold text-white" style={{ background: 'var(--c-accent-fill)' }}>
