@@ -7,7 +7,8 @@ import { setGoalCurrent, setGoalStatus } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import type { Goal, Project, Task } from '@/db/types'
 import { dateLabel } from '@/lib/dates'
-import { goalPace, goalProgress } from '@/lib/goals'
+import { goalPace, goalProgress, isMoneyGoal, monthlyToSave } from '@/lib/goals'
+import { money } from '@/lib/expenses'
 import { href } from '@/app/router'
 import { setUI, useUI } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
@@ -107,6 +108,7 @@ function GoalCard({
 }) {
   const p = goalProgress(goal, projects, tasks)
   const pace = goalPace(goal, p.value)
+  const save = isMoneyGoal(goal) && goal.status === 'active' ? monthlyToSave(goal) : undefined
   const done = goal.status === 'done'
   const step = goal.target && goal.target >= 50 ? Math.round(goal.target / 20) : 1
   const bump = (d: number) => setGoalCurrent(goal.id, (goal.current ?? 0) + d)
@@ -135,6 +137,7 @@ function GoalCard({
         <div className="min-w-0 flex-1 pt-0.5">
           <p className="line-clamp-2 text-[17px] leading-snug font-semibold">{goal.title}</p>
           <p className="mt-0.5 text-[13px] text-muted">{p.label}</p>
+          {save !== undefined && save > 0 && <p className="mt-1 text-[12.5px] font-semibold text-blue">Aparta {money(save)} al mes</p>}
           {(goal.deadline || pace) && (
             <p className="mt-1 text-[12px] font-semibold">
               {goal.deadline && <span className={pace === 'late' ? 'text-fg' : 'text-muted'}>{dateLabel(goal.deadline)}</span>}

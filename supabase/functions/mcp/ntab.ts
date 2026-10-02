@@ -10,7 +10,7 @@ import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, we
 import { expandTemplate, planSections, type TemplateItemLike } from '../_shared/templates.ts'
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
-import { CATEGORIES, categoryFor, money, monthSummary, parseExpense } from '../_shared/expenses.ts'
+import { CATEGORIES, budgetAlert, categoryBudgets, categoryFor, money, monthSummary, monthlyTotals, normTag, parseExpense, searchExpenses, tagTotals, type Budget, type ExpenseRules } from '../_shared/expenses.ts'
 import { parseQuickAdd } from '../_shared/parse.ts'
 import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
 import { logGoal, type GoalPoint } from '../_shared/goals.ts'
@@ -327,7 +327,10 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     .sort((a, b) => str(a.data.nextDate).localeCompare(str(b.data.nextDate)))
   if (payments.length) {
     s.push(`\nPAGOS PRÓXIMOS 30 DÍAS:`)
-    for (const p of payments) s.push(`- ${relDay(str(p.data.nextDate), today)}: ${str(p.data.name)} ${num(p.data.amount)} ${str(p.data.currency) || 'EUR'}${p.data.kind === 'bill' ? ' (recibo, hay que pagarlo)' : ''}`)
+    for (const p of payments)
+      s.push(
+        `- ${relDay(str(p.data.nextDate), today)}: ${str(p.data.name)} ${num(p.data.amount)} ${str(p.data.currency) || 'EUR'}${p.data.kind === 'bill' ? ' (recibo, hay que pagarlo)' : ''}${p.data.trialEnds && p.data.trialEnds === p.data.nextDate ? ' (ACABA LA PRUEBA GRATIS: si no la quiere, que la cancele antes)' : ''}`,
+      )
   }
 
   const people: string[] = []
@@ -770,11 +773,72 @@ export function markPaid(rows: Row[], args: { pago?: string }, env: Env): WriteR
   if (!s) return { writes: [], report: [`No hay ningún pago activo que se llame «${str(args.pago)}».`] }
   if (!isYmd(s.nextDate)) return { writes: [], report: ['Ese pago no tiene fecha.'] }
   const nextDate = advanceCharge(s.nextDate as string, str(s.cycle) || 'month', num(s.anchorDay) || undefined)
-  const next: Data = { ...s, nextDate }
+  const paidLog = [{ date: ymdIn(env.now, env.tz), amount: num(s.amount) }, ...(Array.isArray(s.paidLog) ? (s.paidLog as Data[]) : [])].slice(0, 24)
+  const next: Data = { ...s, nextDate, paidLog }
   const days = typeof s.notifyDays === 'number' ? s.notifyDays : null
   if (days === null) delete next.remindAt
   else next.remindAt = zonedToUtc(addDays(nextDate, -days), '09:00', env.tz)
   return { writes: [{ tbl: 'subscriptions', id: String(s.id), data: next }], report: [`«${str(s.name)}» pagado. Próximo cargo: ${nextDate}.`] }
+}
+
+const CYCLE_WORDS: Record<string, string> = { semana: 'week', semanal: 'week', week: 'week', mes: 'month', mensual: 'month', month: 'month', trimestre: 'quarter', trimestral: 'quarter', quarter: 'quarter', ano: 'year', anual: 'year', year: 'year' }
+const PER: Record<string, string> = { week: 'semana', month: 'mes', quarter: 'trimestre', year: 'año' }
+
+/**
+ * Apunta o cambia (por nombre) un pago que se repite: una suscripción, un
+ * recibo o una prueba gratis (el primer cargo es cuando acaba). Si cambia el
+ * precio, el anterior queda en su historial, como en la app.
+ */
+export function savePayment(
+  rows: Row[],
+  args: { nombre?: string; importe?: number; cada?: string; proximo?: string; tipo?: string; prueba_hasta?: string; categoria?: string; aviso_dias?: number; baja?: string; activo?: boolean; notas?: string },
+  env: Env,
+): WriteResult {
+  const today = ymdIn(env.now, env.tz)
+  const name = str(args.nombre).trim()
+  if (!name) return { writes: [], report: ['Falta el nombre del pago.'] }
+  const subs: Data[] = rows.filter((r) => r.tbl === 'subscriptions').map((r) => ({ ...r.data, id: r.id }))
+  const old = findByName(subs, name)
+  const amount = typeof args.importe === 'number' && args.importe > 0 ? Math.round(args.importe * 100) / 100 : num(old?.amount)
+  if (!amount) return { writes: [], report: [`¿Cuánto cuesta «${name}»?`] }
+  const cycle = CYCLE_WORDS[fold(str(args.cada))] ?? (str(old?.cycle) || 'month')
+  const kind = args.tipo === 'recibo' ? 'bill' : args.tipo === 'suscripcion' || isYmd(args.prueba_hasta) ? 'sub' : str(old?.kind) || 'sub'
+  const trial = isYmd(args.prueba_hasta) ? args.prueba_hasta : undefined
+  const newDate = trial ?? (isYmd(args.proximo) ? args.proximo : undefined)
+  let nextDate = newDate ?? (isYmd(old?.nextDate) ? (old.nextDate as string) : undefined)
+  if (!nextDate) return { writes: [], report: [`¿Cuándo es el próximo cargo de «${name}»? (YYYY-MM-DD)`] }
+  const anchorDay = newDate ? Number(newDate.slice(8, 10)) : num(old?.anchorDay) || Number(nextDate.slice(8, 10))
+  // Una suscripción con fecha pasada ya se cobró: el siguiente cargo
+  for (let i = 0; kind === 'sub' && nextDate < today && i < 1000; i++) nextDate = advanceCharge(nextDate, cycle, anchorDay)
+  const notifyDays = typeof args.aviso_dias === 'number' ? Math.max(0, Math.round(args.aviso_dias)) : typeof old?.notifyDays === 'number' ? old.notifyDays : trial ? 2 : 1
+  const before = num(old?.amount)
+  const priceHistory = old && before && before !== amount ? [...(Array.isArray(old.priceHistory) ? (old.priceHistory as Data[]) : []), { date: today, amount: before }].slice(-12) : old?.priceHistory
+  const active = typeof args.activo === 'boolean' ? args.activo : old?.active !== false
+  const id = old ? String(old.id) : env.newId()
+  const data: Data = {
+    ...(old ?? { createdAt: env.now, notes: '', category: '', currency: 'EUR' }),
+    id,
+    name: old ? str(old.name) : name.charAt(0).toUpperCase() + name.slice(1),
+    kind,
+    amount,
+    cycle,
+    nextDate,
+    anchorDay,
+    active,
+    notifyDays,
+    ...(args.categoria ? { category: args.categoria } : {}),
+    ...(args.notas ? { notes: args.notas } : {}),
+    ...(trial ? { trialEnds: trial } : {}),
+    ...(args.baja ? { cancelUrl: args.baja } : {}),
+    ...(priceHistory ? { priceHistory } : {}),
+  }
+  if (active) data.remindAt = zonedToUtc(addDays(nextDate, -notifyDays), '09:00', env.tz)
+  else delete data.remindAt
+  const currency = str(data.currency) || 'EUR'
+  const report = [`«${str(data.name)}» ${old ? 'actualizado' : 'guardado'}: ${money(amount, currency)} cada ${PER[cycle] ?? 'mes'}, próximo cargo ${relDay(nextDate, today)} (${nextDate})${active ? '' : ' — en pausa'}.`]
+  if (trial) report.push(`Es una prueba gratis hasta ${trial}: avisaré ${notifyDays === 0 ? 'ese mismo día' : `${notifyDays} ${notifyDays === 1 ? 'día' : 'días'} antes`} para que decida si la cancela.`)
+  if (old && before && before !== amount) report.push(`${amount > before ? 'Sube' : 'Baja'} de ${money(before, currency)} a ${money(amount, currency)} (${amount > before ? '+' : '−'}${Math.abs(Math.round(((amount - before) / before) * 100))} %).`)
+  return { writes: [{ tbl: 'subscriptions', id, data }], report }
 }
 
 // ── Plantillas ────────────────────────────────────────────────
@@ -1204,54 +1268,99 @@ export function whatNow(rows: Row[], args: { minutos?: number; energia?: string 
 // ── Gastos ────────────────────────────────────────────────────
 
 function expenseRows(rows: Row[]) {
-  return rows.filter((r) => r.tbl === 'expenses' && typeof r.data.amount === 'number' && isYmd(r.data.date)).map((r) => ({ amount: r.data.amount as number, category: str(r.data.category) || 'otros', date: r.data.date as string, note: str(r.data.note) }))
+  return rows
+    .filter((r) => r.tbl === 'expenses' && typeof r.data.amount === 'number' && isYmd(r.data.date))
+    .map((r) => ({ amount: r.data.amount as number, category: str(r.data.category) || 'otros', date: r.data.date as string, note: str(r.data.note), tags: Array.isArray(r.data.tags) ? (r.data.tags as unknown[]).map(str).filter(Boolean) : undefined }))
 }
 const catLabel = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Otros'
+const setting = (rows: Row[], id: string) => rows.find((r) => r.tbl === 'settings' && r.id === id)?.data.value as Data | undefined
+function budgetOf(rows: Row[]): Budget {
+  const b = setting(rows, 'budget')
+  const cats = b?.categories && typeof b.categories === 'object' ? (b.categories as Record<string, unknown>) : {}
+  return { monthly: num(b?.monthly), categories: Object.fromEntries(Object.entries(cats).filter(([, v]) => typeof v === 'number' && v > 0)) as Record<string, number> }
+}
+const rulesOf = (rows: Row[]) => (setting(rows, 'expenseRules') ?? {}) as ExpenseRules
 
-export function addExpenseTool(rows: Row[], args: { texto?: string; importe?: number; concepto?: string; categoria?: string; fecha?: string }, env: Env): WriteResult {
+export function addExpenseTool(rows: Row[], args: { texto?: string; importe?: number; concepto?: string; categoria?: string; fecha?: string; etiquetas?: string[] | string }, env: Env): WriteResult {
   const today = ymdIn(env.now, env.tz)
+  const rules = rulesOf(rows)
   let amount: number | undefined
   let note = str(args.concepto).trim()
   let date = isYmd(args.fecha) && args.fecha <= today ? args.fecha : today
+  const tags = new Set((Array.isArray(args.etiquetas) ? args.etiquetas : str(args.etiquetas).split(/[,\s]+/)).map((t) => normTag(str(t))).filter(Boolean))
   if (args.texto) {
-    const p = parseExpense(str(args.texto))
+    const p = parseExpense(str(args.texto), rules)
     if (p) {
       amount = p.amount
       note = note || p.note
+      p.tags?.forEach((t) => tags.add(t))
       if (!isYmd(args.fecha)) date = addDays(today, -p.daysAgo)
     }
   }
   if (typeof args.importe === 'number' && args.importe > 0) amount = Math.round(args.importe * 100) / 100
   if (!amount) return { writes: [], report: ['Falta el importe del gasto.'] }
   note = note || 'Gasto'
-  const category = CATEGORIES.some((c) => c.id === args.categoria) ? args.categoria! : categoryFor(note)
+  // La que diga el usuario; si no, la que aprendió la app al recategorizar; si no, la de las palabras
+  const category = CATEGORIES.some((c) => c.id === args.categoria) ? args.categoria! : categoryFor(note, rules)
   const id = env.newId()
-  const monthBefore = monthSummary(expenseRows(rows), date.slice(0, 7), today).total
-  const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
-  const total = monthBefore + amount
+  const before = monthSummary(expenseRows(rows), date.slice(0, 7), today)
+  const budget = budgetOf(rows)
+  const total = before.total + amount
+  const limit = budget.categories?.[category]
+  const catTotal = (before.byCategory.find((c) => c.id === category)?.amount ?? 0) + amount
+  const current = date.slice(0, 7) === today.slice(0, 7)
+  const alerts = [
+    current && budget.monthly && total > budget.monthly && 'SE HA PASADO DEL PRESUPUESTO DEL MES',
+    current && limit && budgetAlert(catTotal - amount, amount, limit) === 'over' && `se ha pasado del límite de ${catLabel(category).toLowerCase()} (${money(catTotal)} de ${money(limit)})`,
+    current && limit && budgetAlert(catTotal - amount, amount, limit) === 'near' && `lleva el ${Math.round((catTotal / limit) * 100)} % del límite de ${catLabel(category).toLowerCase()}`,
+  ].filter(Boolean)
+  const t = [...tags]
   return {
-    writes: [{ tbl: 'expenses', id, data: { id, amount, note: note.charAt(0).toUpperCase() + note.slice(1), category, date, createdAt: env.now } }],
-    report: [`Apuntado: ${money(amount)} · ${note} (${catLabel(category)}, ${relDay(date, today)}). Este mes: ${money(total)}${budget ? ` de ${money(budget)}${total > budget ? ' — SE HA PASADO DEL PRESUPUESTO' : ''}` : ''}.`],
+    writes: [{ tbl: 'expenses', id, data: { id, amount, note: note.charAt(0).toUpperCase() + note.slice(1), category, date, ...(t.length ? { tags: t } : {}), createdAt: env.now } }],
+    report: [
+      `Apuntado: ${money(amount)} · ${note} (${catLabel(category)}${t.length ? `, ${t.map((x) => `#${x}`).join(' ')}` : ''}, ${relDay(date, today)}). Este mes: ${money(total)}${budget.monthly ? ` de ${money(budget.monthly)}` : ''}${alerts.length ? ` — ${alerts.join('; ')}` : ''}.`,
+    ],
   }
 }
 
-export function listExpenses(rows: Row[], args: { mes?: string }, env: Env): string {
+export function listExpenses(rows: Row[], args: { mes?: string; buscar?: string }, env: Env): string {
   const today = ymdIn(env.now, env.tz)
-  const month = /^\d{4}-\d{2}$/.test(str(args.mes)) ? str(args.mes) : today.slice(0, 7)
   const all = expenseRows(rows)
+  // Buscar en todos los meses: «mercadona», «comer», «#roma»
+  if (str(args.buscar).trim()) {
+    const q = str(args.buscar).trim()
+    const r = searchExpenses(all, q)
+    if (!r.items.length) return `No hay gastos con «${q}».`
+    const sorted = [...r.items].sort((a, b) => b.date.localeCompare(a.date))
+    return [
+      `«${q}»: ${r.items.length} gastos, ${money(r.total)} en total (del ${sorted.at(-1)!.date} al ${sorted[0].date}).`,
+      ...sorted.slice(0, 15).map((e) => `- ${e.date} ${money(e.amount)} ${e.note} (${catLabel(e.category)})`),
+      ...(sorted.length > 15 ? [`… y ${sorted.length - 15} más.`] : []),
+    ].join('\n')
+  }
+  const month = /^\d{4}-\d{2}$/.test(str(args.mes)) ? str(args.mes) : today.slice(0, 7)
   const s = monthSummary(all, month, today)
-  if (!s.count) return `No hay gastos apuntados en ${month}.`
-  const budget = num((rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Data | undefined)?.monthly)
+  const budget = budgetOf(rows)
+  const limits = categoryBudgets(s.byCategory, budget)
+  if (!s.count && !limits.length) return `No hay gastos apuntados en ${month}.`
+  const inMonth = all.filter((e) => e.date.startsWith(month))
+  const tags = tagTotals(all).filter((g) => inMonth.some((e) => e.tags?.includes(g.tag)))
+  const trend = monthlyTotals(all, month, 6)
   const lines = [
-    `Gastos de ${month}: ${money(s.total)} en ${s.count} gastos${budget ? `, presupuesto ${money(budget)}` : ''}${s.projection > s.total ? `; a este ritmo, ${money(s.projection)} a fin de mes` : ''}.`,
+    `Gastos de ${month}: ${money(s.total)} en ${s.count} gastos${budget.monthly ? `, presupuesto ${money(budget.monthly)}` : ''}${s.projection > s.total ? `; a este ritmo, ${money(s.projection)} a fin de mes` : ''}.`,
     'Por categoría:',
-    ...s.byCategory.map((c) => `- ${catLabel(c.id)}: ${money(c.amount)} (${Math.round((c.amount / s.total) * 100)} %)`),
+    ...s.byCategory.map((c) => {
+      const l = limits.find((x) => x.id === c.id)
+      return `- ${catLabel(c.id)}: ${money(c.amount)} (${Math.round((c.amount / s.total) * 100)} %)${l ? ` de un límite de ${money(l.limit)}${l.left < 0 ? ` — SE HA PASADO ${money(-l.left)}` : `, quedan ${money(l.left)}`}` : ''}`
+    }),
+    ...limits.filter((l) => !l.spent).map((l) => `- ${catLabel(l.id)}: nada aún, límite ${money(l.limit)}`),
+    ...(tags.length ? ['Etiquetas (total de todos los meses):', ...tags.map((g) => `- #${g.tag}: ${money(g.total)} (${g.from} a ${g.to})`)] : []),
+    `Últimos 6 meses: ${trend.map((m) => `${m.month} ${money(m.total)}`).join(' · ')}.`,
     'Últimos:',
-    ...all
-      .filter((e) => e.date.startsWith(month))
+    ...inMonth
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 10)
-      .map((e) => `- ${e.date} ${money(e.amount)} ${e.note}`),
+      .map((e) => `- ${e.date} ${money(e.amount)} ${e.note}${e.tags?.length ? ` ${e.tags.map((t) => `#${t}`).join(' ')}` : ''}`),
   ]
   return lines.join('\n')
 }

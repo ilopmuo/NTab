@@ -55,3 +55,21 @@ export function goalPace(goal: Goal, value: number, ref = today()): 'late' | 'be
   const elapsed = Math.max(0, diffDays(ref, startYmd)) / total
   return value + 0.15 < elapsed ? 'behind' : 'ok'
 }
+
+/** ¿Es una hucha? Un objetivo con cifra en euros */
+export const isMoneyGoal = (g: Pick<Goal, 'kind' | 'unit'>) => g.kind === 'number' && /^(€|eur|euros?)$/i.test((g.unit ?? '').trim())
+
+/**
+ * Cuánto apartar cada mes para llegar a la cifra en la fecha (como los
+ * objetivos «para una fecha» de YNAB), contando el mes en curso. Sin fecha o
+ * sin cifra, undefined; si ya está, 0.
+ */
+export function monthlyToSave(goal: Pick<Goal, 'target' | 'current' | 'deadline'>, ref = today()): number | undefined {
+  if (!goal.deadline || !goal.target) return undefined
+  const left = goal.target - (goal.current ?? 0)
+  if (left <= 0) return 0
+  const [y1, m1] = ref.split('-').map(Number)
+  const [y2, m2] = goal.deadline.split('-').map(Number)
+  const months = Math.max(1, (y2 - y1) * 12 + (m2 - m1) + 1)
+  return Math.ceil(left / months)
+}

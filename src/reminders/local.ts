@@ -3,7 +3,7 @@ import { completeHabit, rollSubscriptions, toggleTask, updateTask } from '@/db/a
 import { addDaysYmd, today, weekStart } from '@/lib/dates'
 import { DEADLINE_ALERT_TIME, deadlineAlert, deadlineMessage, type DeadlineAlertPrefs } from '@/lib/deadlines'
 import { doneDays, groupLogs, isDue } from '@/lib/habits'
-import { chargeWhen, money } from '@/lib/finance'
+import { chargeWhen, inTrial, money } from '@/lib/finance'
 import { toast, ui } from '@/app/store'
 import { navigate } from '@/app/router'
 import { prefs } from '@/lib/prefs'
@@ -175,9 +175,11 @@ export function startLocalReminders() {
     )
     for (const x of subs) {
       seen.add(`${x.id}:${x.remindAt}`)
-      const body = `${money(x.amount, x.currency)} · ${chargeWhen(x.nextDate).toLowerCase()}`
+      const when = chargeWhen(x.nextDate).toLowerCase()
+      // Prueba gratis: lo importante es decidir antes de que empiece a cobrar
+      const body = inTrial(x) ? `La prueba gratis acaba ${/^\d/.test(when) ? `el ${when}` : when}: si no la cancelas, te cobrarán ${money(x.amount, x.currency)}` : `${money(x.amount, x.currency)} · ${when}`
       toast(`${x.name}: ${body}`, { label: 'Ver', run: () => navigate('/finance') }, 15_000, { icon: 'bell' })
-      void showSystemNotification(`subscriptions-${x.id}`, x.name, `Cargo de ${body}`, './#/finance', `subscriptions-${x.id}-${x.remindAt}`)
+      void showSystemNotification(`subscriptions-${x.id}`, x.name, inTrial(x) ? body : `Cargo de ${body}`, './#/finance', `subscriptions-${x.id}-${x.remindAt}`)
     }
     // Cosas: caducidades y préstamos
     const things = (await db.things.toArray()).filter((x) => !x.returned && x.remindAt !== undefined && x.remindAt > last0 && x.remindAt <= now && !seen.has(`${x.id}:${x.remindAt}`))

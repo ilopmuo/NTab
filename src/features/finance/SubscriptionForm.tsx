@@ -4,8 +4,8 @@ import type { BillingCycle, Subscription } from '@/db/types'
 import { db } from '@/db/db'
 import { createSubscription, deleteSubscription } from '@/db/actions'
 import { toastTrashed } from '../trash/undo'
-import { CYCLES, NOTIFY_OPTIONS, rollForward } from '@/lib/finance'
-import { addDaysYmd, today } from '@/lib/dates'
+import { CYCLES, NOTIFY_OPTIONS, inTrial, money, rollForward, withNewPrice } from '@/lib/finance'
+import { addDaysYmd, fmt, today } from '@/lib/dates'
 import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, Switch, Textarea } from '@/components/ui'
 
 export function SubscriptionForm({ sub, open, onClose }: { sub?: Subscription; open: boolean; onClose: () => void }) {
@@ -33,15 +33,20 @@ function Form({ sub, onClose }: { sub?: Subscription; onClose: () => void }) {
   const [notify, setNotify] = useState(sub ? (sub.notifyDays == null ? 'none' : String(sub.notifyDays)) : '1')
   const [active, setActive] = useState(sub?.active ?? true)
   const [notes, setNotes] = useState(sub?.notes ?? '')
+  const [trial, setTrial] = useState(sub ? inTrial(sub) : false)
+  const [cancelUrl, setCancelUrl] = useState(sub?.cancelUrl ?? '')
   const value = Number(amount.replace(/\s/g, '').replace(',', '.'))
   const valid = name.trim() && Number.isFinite(value) && value > 0 && !!nextDate
 
   const save = async () => {
     if (!valid) return
     const anchorDay = Number(nextDate.slice(8, 10))
+    const amount = Math.round(value * 100) / 100
+    const isTrial = trial && kind === 'sub'
     const data = {
       name: name.trim(),
-      amount: Math.round(value * 100) / 100,
+      // Si cambia el precio, el anterior queda en el historial (para ver las subidas)
+      ...(sub ? withNewPrice(sub, amount) : { amount }),
       currency,
       cycle,
       kind,
@@ -52,6 +57,9 @@ function Form({ sub, onClose }: { sub?: Subscription; onClose: () => void }) {
       notifyDays: NOTIFY_OPTIONS.find((o) => o.value === notify)?.days ?? null,
       active,
       notes,
+      // La prueba gratis acaba el día del primer cargo
+      trialEnds: isTrial ? nextDate : sub?.trialEnds && !inTrial(sub) ? sub.trialEnds : undefined,
+      cancelUrl: cancelUrl.trim() || undefined,
     }
     if (sub) await db.subscriptions.update(sub.id, data)
     else await createSubscription(data)
@@ -94,8 +102,24 @@ function Form({ sub, onClose }: { sub?: Subscription; onClose: () => void }) {
             ]}
           />
         </Field>
+        {kind === 'sub' && (
+          <div className="flex items-center gap-3 rounded-xl bg-fill-2 px-3.5 py-2.5">
+            <span className="flex-1">
+              <span className="block text-[15px]">Es una prueba gratis</span>
+              <span className="block text-[12.5px] text-muted">Te aviso antes de que empiece a cobrar, para que decidas</span>
+            </span>
+            <Switch
+              checked={trial}
+              onChange={(v) => {
+                setTrial(v)
+                if (v && notify === '1') setNotify('2')
+              }}
+              label="Es una prueba gratis"
+            />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Próximo cargo">
+          <Field label={trial && kind === 'sub' ? 'Acaba la prueba' : 'Próximo cargo'}>
             <Input type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
           </Field>
           <Field label="Aviso">
@@ -116,7 +140,11 @@ function Form({ sub, onClose }: { sub?: Subscription; onClose: () => void }) {
             ))}
           </datalist>
         </Field>
+        <Field label="Para darse de baja">
+          <Input type="url" inputMode="url" value={cancelUrl} onChange={(e) => setCancelUrl(e.target.value)} placeholder="https://… (la página de tu cuenta)" />
+        </Field>
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas (cuenta, cómo darse de baja…)" rows={2} className="rounded-xl bg-fill-2 px-3.5 py-2.5" />
+        {sub && <History sub={sub} />}
         {sub && (
           <div className="flex items-center gap-3 rounded-xl bg-fill-2 px-3.5 py-2.5">
             <span className="flex-1 text-[15px]">Activo</span>
@@ -139,5 +167,29 @@ function Form({ sub, onClose }: { sub?: Subscription; onClose: () => void }) {
         </Button>
       </div>
     </form>
+  )
+}
+
+/** Lo que costaba antes y los recibos pagados (como el historial de Chronicle) */
+function History({ sub }: { sub: Subscription }) {
+  const prices = [...(sub.priceHistory ?? [])].reverse().slice(0, 3)
+  const paid = (sub.paidLog ?? []).slice(0, 6)
+  if (!prices.length && !paid.length) return null
+  return (
+    <div className="space-y-1.5 rounded-xl bg-fill-2 px-3.5 py-3 text-[13.5px]">
+      <p className="text-[12px] font-semibold tracking-wide text-muted uppercase">Historial</p>
+      {prices.map((p) => (
+        <p key={`p-${p.date}`} className="flex justify-between gap-3">
+          <span className="text-muted">Costaba hasta el {fmt(p.date, "d 'de' MMM yyyy")}</span>
+          <span className="font-num font-semibold">{money(p.amount, sub.currency)}</span>
+        </p>
+      ))}
+      {paid.map((p, i) => (
+        <p key={`${p.date}-${i}`} className="flex justify-between gap-3">
+          <span className="text-muted">Pagado el {fmt(p.date, "d 'de' MMM yyyy")}</span>
+          <span className="font-num font-semibold">{money(p.amount, sub.currency)}</span>
+        </p>
+      ))}
+    </div>
   )
 }

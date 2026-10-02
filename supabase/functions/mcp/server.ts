@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, savePayment, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -20,7 +20,7 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Para lo que no puede olvidar (pastillas, llamadas importantes), crea la tarea con hora e insistir.
 - Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
 - Si te cuenta qué tal su día y quiere guardarlo, usa escribir_diario.
-- Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto. Ante «tengo un rato, ¿qué hago?», usa que_hago.
+- Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto (con etiqueta si es de un viaje). Si se apunta a algo que se cobra cada mes o a una prueba gratis, guárdalo con guardar_pago. Ante «tengo un rato, ¿qué hago?», usa que_hago.
 - Para comidas de la semana, planificar_menu (y crear_receta para guardar recetas con sus ingredientes).
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
 - Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
@@ -231,11 +231,12 @@ export const TOOLS = [
   {
     name: 'apuntar_gasto',
     title: 'Apuntar un gasto',
-    description: 'Apunta un gasto. Vale texto libre («12,50 café», «ayer 20 cena») o importe y concepto. La categoría se pone sola si no la das.',
+    description: 'Apunta un gasto. Vale texto libre («12,50 café», «ayer 20 cena», «30 museo #roma») o importe y concepto. La categoría se pone sola si no la das (usa la que el usuario le enseñó a la app). Las etiquetas juntan los gastos de un viaje o un plan. Avisa si se pasa del presupuesto o del límite de la categoría.',
     inputSchema: {
       type: 'object',
       properties: {
         texto: { type: 'string' },
+        etiquetas: { type: 'array', items: { type: 'string' }, description: 'Para juntar gastos de un viaje o plan («roma»)' },
         importe: { type: 'number', description: 'En euros' },
         concepto: { type: 'string' },
         categoria: { type: 'string', enum: ['super', 'comer', 'transporte', 'casa', 'ocio', 'salud', 'ropa', 'regalos', 'otros'] },
@@ -247,8 +248,8 @@ export const TOOLS = [
   {
     name: 'ver_gastos',
     title: 'Ver gastos',
-    description: 'Gastos de un mes (por defecto el actual): total, presupuesto, proyección, por categoría y los últimos.',
-    inputSchema: { type: 'object', properties: { mes: { type: 'string', description: 'YYYY-MM' } } },
+    description: 'Gastos de un mes (por defecto el actual): total, presupuesto, proyección, por categoría con sus límites, etiquetas, los últimos 6 meses y los últimos gastos. Con «buscar», busca en todos los meses (concepto, categoría o #etiqueta) y da el total: «¿cuánto llevo gastado en Mercadona?», «¿cuánto me costó el viaje a Roma?».',
+    inputSchema: { type: 'object', properties: { mes: { type: 'string', description: 'YYYY-MM' }, buscar: { type: 'string', description: 'Texto o #etiqueta' } } },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
@@ -426,6 +427,29 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'guardar_pago',
+    title: 'Apuntar un pago que se repite',
+    description:
+      'Apunta o cambia (por nombre) una suscripción, un recibo o una prueba gratis. En una prueba gratis, pon «prueba_hasta»: LUNO avisa antes de que empiece a cobrar. Si cambia el precio, se guarda el anterior para ver las subidas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string' },
+        importe: { type: 'number', description: 'Lo que cuesta cada vez' },
+        cada: { type: 'string', enum: ['semana', 'mes', 'trimestre', 'año'] },
+        proximo: { ...DATE, description: 'Próximo cargo' },
+        tipo: { type: 'string', enum: ['suscripcion', 'recibo'], description: 'suscripcion: se cobra sola; recibo: hay que pagarlo' },
+        prueba_hasta: { ...DATE, description: 'Si es una prueba gratis: el día que acaba (primer cargo)' },
+        categoria: { type: 'string', description: 'Streaming, casa, software…' },
+        aviso_dias: { type: 'number', description: 'Días antes del cargo para avisar' },
+        baja: { type: 'string', description: 'Enlace para darse de baja' },
+        activo: { type: 'boolean', description: 'false para pausarlo' },
+      },
+      required: ['nombre'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'marcar_pago',
     title: 'Marcar pago como pagado',
     description: 'Marca un recibo o pago recurrente como pagado: pasa al siguiente cargo.',
@@ -555,8 +579,9 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'crear_rutina':
     case 'actualizar_objetivo':
     case 'registrar_contacto':
+    case 'guardar_pago':
     case 'marcar_pago': {
-      const fn = { crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

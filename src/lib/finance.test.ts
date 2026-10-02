@@ -2,8 +2,8 @@ import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { installReminderHooks, openDatabase } from '@/db/db'
 import type { Goal, Project, Subscription, Task } from '@/db/types'
-import { advanceCharge, computeSubRemindAt, monthly, rollForward, yearly } from './finance'
-import { goalPace, goalProgress } from './goals'
+import { advanceCharge, computeSubRemindAt, forecast, inTrial, monthly, priceChange, rollForward, withNewPrice, yearly, yearlyIncrease } from './finance'
+import { goalPace, goalProgress, isMoneyGoal, monthlyToSave } from './goals'
 import { dueMoment } from './reminders'
 
 describe('cargos', () => {
@@ -73,5 +73,50 @@ describe('objetivos', () => {
     expect(goalPace(g, 0.1, '2026-09-24')).toBe('behind')
     expect(goalPace(g, 0.8, '2026-09-24')).toBe('ok')
     expect(goalPace(g, 0.8, '2027-01-02')).toBe('late')
+  })
+})
+
+describe('pagos como los mejores', () => {
+  const base: Subscription = { id: 's', name: 'Netflix', kind: 'sub', amount: 13.99, currency: 'EUR', cycle: 'month', nextDate: '2026-10-15', anchorDay: 15, active: true, category: '', notifyDays: 2, notes: '', createdAt: 0 }
+  it('prueba gratis: solo mientras el próximo cargo es el primero', () => {
+    expect(inTrial({ ...base, trialEnds: '2026-10-15' }, '2026-10-01')).toBe(true)
+    expect(inTrial({ ...base, trialEnds: '2026-09-15' }, '2026-10-01')).toBe(false)
+    expect(inTrial(base, '2026-10-01')).toBe(false)
+  })
+  it('subidas de precio: la última, en los últimos 90 días, y lo que suman al año', () => {
+    const up = { ...base, ...withNewPrice(base, 15.99, '2026-09-20') }
+    expect(up.priceHistory).toEqual([{ date: '2026-09-20', amount: 13.99 }])
+    expect(priceChange(up, '2026-10-01')).toEqual({ from: 13.99, to: 15.99, diff: 2, pct: 14, date: '2026-09-20' })
+    expect(priceChange(up, '2027-01-01')).toBeUndefined()
+    expect(withNewPrice(base, 13.99, '2026-09-20')).toEqual({ amount: 13.99, priceHistory: undefined })
+    expect(yearlyIncrease([up, { ...base, cycle: 'year', amount: 60, priceHistory: [{ date: '2026-03-01', amount: 50 }] }, { ...up, active: false }], '2026-10-01')).toEqual({ count: 2, perYear: 34 })
+  })
+  it('previsión de 12 meses con lo anual en su mes y lo vencido en el primero', () => {
+    const f = forecast(
+      [
+        base,
+        { ...base, id: 'seguro', name: 'Seguro', cycle: 'year', amount: 300, nextDate: '2027-03-01', anchorDay: 1 },
+        { ...base, id: 'luz', name: 'Luz', kind: 'bill', amount: 50, nextDate: '2026-09-28', anchorDay: 28 },
+        { ...base, id: 'off', active: false },
+      ],
+      '2026-10-01',
+    )
+    expect(f).toHaveLength(12)
+    expect(f[0]).toMatchObject({ month: '2026-10', total: 113.99 })
+    expect(f[0].charges.map((c) => c.date)).toEqual(['2026-09-28', '2026-10-15', '2026-10-28'])
+    expect(f[5]).toMatchObject({ month: '2027-03', total: 363.99 })
+    expect(f[11].month).toBe('2027-09')
+  })
+})
+
+describe('huchas', () => {
+  it('cuánto apartar al mes para llegar a la fecha (como YNAB)', () => {
+    expect(isMoneyGoal({ kind: 'number', unit: '€' })).toBe(true)
+    expect(isMoneyGoal({ kind: 'number', unit: 'Euros' })).toBe(true)
+    expect(isMoneyGoal({ kind: 'number', unit: 'libros' })).toBe(false)
+    expect(monthlyToSave({ target: 3000, current: 600, deadline: '2026-12-31' }, '2026-10-01')).toBe(800)
+    expect(monthlyToSave({ target: 3000, current: 3000, deadline: '2026-12-31' }, '2026-10-01')).toBe(0)
+    expect(monthlyToSave({ target: 100, current: 0, deadline: '2026-01-01' }, '2026-10-01')).toBe(100)
+    expect(monthlyToSave({ target: 100, current: 0 }, '2026-10-01')).toBeUndefined()
   })
 })

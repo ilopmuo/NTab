@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'ver_menu', 'planificar_menu', 'crear_receta', 'cuenta_atras', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'ver_menu', 'planificar_menu', 'crear_receta', 'cuenta_atras', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'guardar_pago', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -190,6 +190,28 @@ describe('conector MCP', () => {
     expect(store.rows.get('subscriptions:rent')!.data.remindAt).toBe(zonedToUtc('2026-02-27', '09:00', 'Europe/Madrid'))
     await call(store, 'marcar_pago', { pago: 'alquiler' })
     expect(store.rows.get('subscriptions:rent')!.data.nextDate).toBe('2026-03-31')
+    expect(store.rows.get('subscriptions:rent')!.data.paidLog).toHaveLength(2)
+  })
+
+  it('pagos: guardar, pruebas gratis y subidas de precio', async () => {
+    const store = memoryStore(base())
+    const nb = (x: { text: string }) => x.text.replace(/\u00a0/g, ' ')
+    let r = nb(await call(store, 'guardar_pago', { nombre: 'disney+', importe: 9.99, prueba_hasta: '2026-10-08' }))
+    expect(r).toContain('«Disney+» guardado: 9,99 € cada mes, próximo cargo')
+    expect(r).toContain('Es una prueba gratis hasta 2026-10-08: avisaré 2 días antes')
+    const d = [...store.rows.values()].find((x) => x.data.name === 'Disney+')!.data
+    expect(d).toMatchObject({ kind: 'sub', cycle: 'month', nextDate: '2026-10-08', trialEnds: '2026-10-08', anchorDay: 8, notifyDays: 2, remindAt: zonedToUtc('2026-10-06', '09:00', 'Europe/Madrid') })
+    expect(nb(await call(store, 'ver_resumen'))).toContain('Disney+ 9.99 EUR (ACABA LA PRUEBA GRATIS')
+
+    r = nb(await call(store, 'guardar_pago', { nombre: 'netflix', importe: 13.99 }))
+    expect(r).toContain('«Netflix» actualizado: 13,99 € cada mes')
+    expect(r).toContain('Sube de 12,99 € a 13,99 € (+8 %).')
+    expect(store.rows.get('subscriptions:s1')!.data.priceHistory).toEqual([{ date: '2026-09-24', amount: 12.99 }])
+
+    r = nb(await call(store, 'guardar_pago', { nombre: 'Seguro del coche', importe: 300, cada: 'año', proximo: '2025-03-01' }))
+    expect(r).toContain('300 € cada año, próximo cargo')
+    expect([...store.rows.values()].find((x) => x.data.name === 'Seguro del coche')!.data.nextDate).toBe('2027-03-01')
+    expect((await call(store, 'guardar_pago', { nombre: 'Gimnasio' })).isError).toBe(true)
   })
 
   it('cargos por ciclos', () => {
@@ -355,6 +377,28 @@ describe('conector MCP', () => {
     expect(list).toContain('Gastos de 2026-09: 108,50 € en 2 gastos, presupuesto 100 €')
     expect(list).toContain('- Supermercado: 63 € (58 %)')
     expect(nb(await call(store, 'ver_resumen')).text).toContain('GASTOS DE ESTE MES: 108,50 € de un presupuesto de 100 €')
+  })
+
+  it('gastos: categorías aprendidas, etiquetas, límites y búsqueda', async () => {
+    const store = memoryStore(base())
+    await store.save([
+      { tbl: 'settings', id: 'budget', data: { key: 'budget', value: { monthly: 1000, categories: { comer: 50 } } } },
+      { tbl: 'settings', id: 'expenseRules', data: { key: 'expenseRules', value: { 'bizum ana': 'regalos' } } },
+    ])
+    const nb = (x: { text: string }) => x.text.replace(/\u00a0/g, ' ')
+    expect(nb(await call(store, 'apuntar_gasto', { texto: '20 bizum Ana' }))).toContain('Bizum Ana (Regalos, hoy)')
+    let r = nb(await call(store, 'apuntar_gasto', { texto: '42 cena #Roma' }))
+    expect(r).toContain('Cena (Comer fuera, #roma, hoy)')
+    expect(r).toContain('lleva el 84 % del límite de comer fuera')
+    r = nb(await call(store, 'apuntar_gasto', { texto: '15 museo', etiquetas: ['roma'] }))
+    expect(r).toContain('#roma')
+    expect(nb(await call(store, 'apuntar_gasto', { texto: '10 helado' }))).toContain('se ha pasado del límite de comer fuera (52 € de 50 €)')
+    const month = nb(await call(store, 'ver_gastos', {}))
+    expect(month).toContain('- Comer fuera: 52 € (60 %) de un límite de 50 € — SE HA PASADO 2 €')
+    expect(month).toContain('- #roma: 57 € (2026-09-24 a 2026-09-24)')
+    expect(month).toContain('Últimos 6 meses: 2026-04 0 € · 2026-05 0 € · 2026-06 0 € · 2026-07 0 € · 2026-08 0 € · 2026-09 87 €.')
+    expect(nb(await call(store, 'ver_gastos', { buscar: '#roma' }))).toContain('«#roma»: 2 gastos, 57 € en total')
+    expect(nb(await call(store, 'ver_gastos', { buscar: 'mercadona' }))).toBe('No hay gastos con «mercadona».')
   })
 
   it('menú: recetas, planificar y ver', async () => {

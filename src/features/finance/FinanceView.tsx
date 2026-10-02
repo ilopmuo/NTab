@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { m as motion } from 'motion/react'
-import { Bell, Check, Plus, Wallet } from 'lucide-react'
+import { Bell, Check, ExternalLink, Plus, TrendingUp, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { markPaid, rollSubscriptions } from '@/db/actions'
 import type { Subscription } from '@/db/types'
 import { addDaysYmd, today } from '@/lib/dates'
-import { CYCLES, chargeWhen, money, monthly, yearly } from '@/lib/finance'
+import { CYCLES, chargeWhen, inTrial, money, monthly, priceChange, yearly, yearlyIncrease } from '@/lib/finance'
 import { setUI, toast, useUI } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Button, CountUp, Empty, Group, PageHeader, ProgressBar, Section, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { SubscriptionForm } from './SubscriptionForm'
+import { Forecast } from './Forecast'
 
 /** Totales por moneda; la principal es la de mayor gasto */
 export function totalsByCurrency(subs: Subscription[]) {
@@ -32,7 +33,7 @@ export function FinanceView() {
   const t = today()
   useEffect(() => void rollSubscriptions(), [])
 
-  const { active, paused, upcoming, totals, categories } = useMemo(() => {
+  const { active, paused, upcoming, totals, categories, raised } = useMemo(() => {
     const list = subs ?? []
     const active = list.filter((s) => s.active)
     const totals = totalsByCurrency(active)
@@ -45,6 +46,7 @@ export function FinanceView() {
       upcoming: active.filter((s) => s.nextDate <= addDaysYmd(t, 30)),
       totals,
       categories: [...cat.entries()].sort((a, b) => b[1] - a[1]),
+      raised: yearlyIncrease(active, t),
     }
   }, [subs, t])
 
@@ -99,6 +101,13 @@ export function FinanceView() {
                   </p>
                 </div>
               </div>
+              {raised.count > 0 && (
+                // Lo que te han subido (como los avisos de Rocket Money)
+                <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold">
+                  <TrendingUp size={14} className="shrink-0 text-blue" />
+                  {raised.count === 1 ? 'Un pago ha subido' : `${raised.count} pagos han subido`} este año: +{money(raised.perYear, 'EUR', 0)} al año
+                </p>
+              )}
               {others.length > 0 && (
                 <p className="mt-3 text-[12px] text-muted">
                   Además {others.map((o) => `${money(o.month, o.currency, 2)}/mes`).join(' · ')}
@@ -132,6 +141,7 @@ export function FinanceView() {
                 <p className="px-1 text-[14px] text-muted">Ningún cargo en los próximos 30 días.</p>
               )}
             </Section>
+            <Forecast subs={active} onOpen={edit} />
             <Section title="Todos" count={active.length}>
               <Group>
                 {[...active]
@@ -170,6 +180,8 @@ function Monogram({ name }: { name: string }) {
 export function SubRow({ sub, onClick, upcoming, today: t }: { sub: Subscription; onClick: () => void; upcoming?: boolean; today: string }) {
   const due = sub.kind === 'bill' && sub.nextDate <= t
   const cycle = CYCLES.find((c) => c.value === sub.cycle)
+  const trial = inTrial(sub, t)
+  const change = priceChange(sub, t)
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
       <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left">
@@ -180,9 +192,20 @@ export function SubRow({ sub, onClick, upcoming, today: t }: { sub: Subscription
             {sub.notifyDays != null && sub.active && <Bell size={12} className="shrink-0 text-faint" />}
           </span>
           <span className="block truncate text-[13px] text-muted">
-            {upcoming
-              ? [sub.kind === 'bill' ? 'Recibo' : cycle?.label, sub.category].filter(Boolean).join(' · ')
-              : `${chargeWhen(sub.nextDate, t)} · ${[cycle?.label, sub.category].filter(Boolean).join(' · ')}`}
+            {trial ? (
+              <span className="font-semibold text-blue">Prueba gratis · cobra {/^\d/.test(chargeWhen(sub.nextDate, t)) ? `el ${chargeWhen(sub.nextDate, t)}` : chargeWhen(sub.nextDate, t).toLowerCase()}</span>
+            ) : upcoming ? (
+              [sub.kind === 'bill' ? 'Recibo' : cycle?.label, sub.category].filter(Boolean).join(' · ')
+            ) : (
+              `${chargeWhen(sub.nextDate, t)} · ${[cycle?.label, sub.category].filter(Boolean).join(' · ')}`
+            )}
+            {change && (
+              <span className="font-semibold text-fg">
+                {' · '}
+                {change.diff > 0 ? 'Subió' : 'Bajó'} {money(Math.abs(change.diff), sub.currency)} ({change.diff > 0 ? '+' : '−'}
+                {Math.abs(change.pct)} %)
+              </span>
+            )}
           </span>
         </span>
         <span className="shrink-0 text-right">
@@ -192,6 +215,11 @@ export function SubRow({ sub, onClick, upcoming, today: t }: { sub: Subscription
           </span>
         </span>
       </button>
+      {upcoming && trial && sub.cancelUrl && (
+        <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-fill px-3 text-[13px] font-semibold transition-colors hover:bg-hover" aria-label={`Darse de baja de ${sub.name}`}>
+          Baja <ExternalLink size={13} />
+        </a>
+      )}
       {upcoming && sub.kind === 'bill' && sub.nextDate <= addDaysYmd(t, 3) && (
         <Button
           size="sm"

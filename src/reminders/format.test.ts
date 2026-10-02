@@ -50,6 +50,11 @@ describe('texto de las notificaciones', () => {
     expect(p.body.replace(/\s/g, ' ')).toBe('Cargo de 12,99 € el sábado 26')
     expect(p.url).toBe('./#/finance')
   })
+
+  it('fin de una prueba gratis', () => {
+    const p = buildPayload({ ...base, tbl: 'subscriptions', item_id: 's2', title: 'Disney+', due_date: '2026-09-26', due_time: 'trial', amount: '9.99', currency: 'EUR' }, 'Europe/Madrid', now)
+    expect(p.body.replace(/\s/g, ' ')).toBe('La prueba gratis acaba el sábado 26: si no la cancelas, te cobrarán 9,99 €.')
+  })
 })
 
 describe('resumen de la mañana', () => {

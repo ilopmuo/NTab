@@ -95,7 +95,10 @@ export function buildPayload(r: DueReminder, tz = 'Europe/Madrid', now = new Dat
     const amount = r.amount != null ? money(r.amount, r.currency) : ''
     return {
       title: r.title,
-      body: [amount && `Cargo de ${amount}`, when].filter(Boolean).join(' ') || 'Próximo cargo',
+      body:
+        r.due_time === 'trial'
+          ? `La prueba gratis acaba ${when ?? 'pronto'}${amount ? `: si no la cancelas, te cobrarán ${amount}` : ''}.`
+          : [amount && `Cargo de ${amount}`, when].filter(Boolean).join(' ') || 'Próximo cargo',
       url: './#/finance',
       tag: `subscriptions-${r.item_id}`,
       key,

@@ -107,6 +107,14 @@ export interface Subscription {
   /** momento del aviso ya calculado (ms), como en las tareas */
   remindAt?: number
   notes: string
+  /** prueba gratis: el día que acaba (y empieza a cobrar), YYYY-MM-DD */
+  trialEnds?: string
+  /** precios anteriores: lo que costaba hasta `date` (para ver las subidas) */
+  priceHistory?: { date: string; amount: number }[]
+  /** recibos pagados, del más reciente al más antiguo */
+  paidLog?: { date: string; amount: number }[]
+  /** dónde se da de baja */
+  cancelUrl?: string
   createdAt: number
 }
 
@@ -341,6 +349,8 @@ export interface Expense {
   category: string
   /** YYYY-MM-DD */
   date: string
+  /** etiquetas con # para juntar los gastos de un viaje o un plan («roma») */
+  tags?: string[]
   createdAt: number
 }
 

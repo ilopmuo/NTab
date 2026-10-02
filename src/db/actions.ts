@@ -442,9 +442,12 @@ export async function createSubscription(data: Partial<Subscription> & { name: s
   return sub
 }
 
-/** Recibo pagado: pasa al siguiente cargo */
+/** Recibo pagado: pasa al siguiente cargo y queda en su historial (como en Chronicle) */
 export async function markPaid(s: Subscription) {
-  await db.subscriptions.update(s.id, { nextDate: advanceCharge(s.nextDate, s.cycle, s.anchorDay) })
+  await db.subscriptions.update(s.id, {
+    nextDate: advanceCharge(s.nextDate, s.cycle, s.anchorDay),
+    paidLog: [{ date: today(), amount: s.amount }, ...(s.paidLog ?? [])].slice(0, 24),
+  })
 }
 
 /** Las suscripciones se cobran solas: las fechas pasadas avanzan al siguiente cargo */

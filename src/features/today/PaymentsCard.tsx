@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { addDaysYmd, today } from '@/lib/dates'
-import { chargeWhen, money } from '@/lib/finance'
+import { chargeWhen, inTrial, money } from '@/lib/finance'
 import { href } from '@/app/router'
 import { Card } from '@/components/ui'
 
@@ -33,7 +33,10 @@ export function PaymentsCard() {
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-fill text-[13px] font-bold">
               {s.name.charAt(0).toUpperCase()}
             </span>
-            <span className="min-w-0 flex-1 truncate text-[14px]">{s.name}</span>
+            <span className="min-w-0 flex-1 truncate text-[14px]">
+              {s.name}
+              {inTrial(s, t) && <span className="ml-1.5 text-[12px] font-semibold text-blue">acaba la prueba</span>}
+            </span>
             <span className="font-num text-[13px] font-semibold">{money(s.amount, s.currency)}</span>
             <span className={s.nextDate <= t ? 'shrink-0 text-right text-[12px] font-semibold whitespace-nowrap text-accent' : 'shrink-0 text-right text-[12px] font-medium whitespace-nowrap text-muted'}>
               {s.kind === 'bill' && s.nextDate < t ? 'Vencido' : chargeWhen(s.nextDate, t)}
