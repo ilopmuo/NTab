@@ -324,7 +324,7 @@ export function Modal({
           key={`modal-${session.current}`}
           className={cx(
             'fixed inset-0 z-50 flex justify-center',
-            mobile ? 'items-end' : position === 'top' ? 'items-start px-4 pt-[14vh]' : 'items-center p-4',
+            mobile ? 'items-end' : position === 'top' ? 'items-start px-4 pt-[14vh] pb-4' : 'items-center p-4',
           )}
         >
           <motion.div
@@ -347,7 +347,15 @@ export function Modal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 4, transition: { duration: 0.15 } }}
               transition={spring}
-              className={cx('glass-thick relative w-full max-w-lg overflow-hidden rounded-[22px]', className)}
+              // Nunca más alto que la pantalla (p. ej. una tablet en horizontal): lo que no
+              // cabe se desplaza dentro. En columna flexible (también el <form> de los
+              // formularios), la zona que tiene su propio scroll se encoge antes y la
+              // cabecera y los botones de abajo siguen a la vista.
+              className={cx(
+                'glass-thick relative flex max-h-full w-full max-w-lg flex-col overflow-x-hidden overflow-y-auto overscroll-contain rounded-[22px]',
+                '[&>form]:flex [&>form]:min-h-0 [&>form]:flex-col',
+                className,
+              )}
             >
               {children}
             </motion.div>
@@ -382,7 +390,7 @@ function Sheet({ children, onClose, className }: { children: ReactNode; onClose:
       onDragEnd={onDragEnd}
       style={{ y, opacity, background: 'color-mix(in srgb, var(--c-elevated) 96%, transparent)' }}
       className={cx(
-        'glass-thick relative max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] pb-[max(env(safe-area-inset-bottom),12px)]',
+        'glass-thick relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-t-[28px] pb-[max(env(safe-area-inset-bottom),12px)]',
         className,
         '!max-w-none',
       )}
