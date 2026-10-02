@@ -2,18 +2,23 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowLeft, ListPlus, Pin, PinOff, Plus, Search, StickyNote, Trash2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, Image as ImageIcon, LayoutTemplate, ListChecks, ListPlus, PenLine, Pin, PinOff, Plus, Search, Share, StickyNote, Trash2 } from 'lucide-react'
 import { SectionIcon, section } from '@/app/sections'
 import { db } from '@/db/db'
 import { toastTrashed } from '../trash/undo'
 import type { Note } from '@/db/types'
-import { createNote, createTask, updateNote, deleteNote, renameNoteLinks, restoreNoteContents } from '@/db/actions'
+import { createNote, createTask, notesCreatedHere, updateNote, deleteNote, renameNoteLinks, restoreNoteContents, setSetting } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import { href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { Empty, IconButton, Select, Textarea, cx, useMediaQuery } from '@/components/ui'
 import { allNoteTags, groupNotes, noteTags, suggestLink } from '@/lib/notes'
 import { LinkSuggestions, NoteConnections } from './NoteLinks'
+import { NoteReader } from './NoteReader'
+import { ChecklistBar, FormatBar, MAX_PHOTOS, NotePhotos, type FormatAction } from './NoteTools'
+import { TemplatePicker } from './NoteTemplates'
+import { checklistStats, noteMarkdown, setAllChecks, sortChecked, toggleCheck } from '@/lib/noteFormat'
+import { continueList, toggleLinePrefix, wrapSelection, type Edit } from '@/lib/noteEdit'
 
 /** Cuándo se tocó: la hora si es de hoy; si no, hace cuánto */
 function noteWhen(t: number) {
@@ -53,6 +58,7 @@ export function NotesView({ id }: { id?: string }) {
     const n = await createNote()
     navigate(`/notes/${n.id}`)
   }
+  const [templates, setTemplates] = useState(false)
 
   if (!notes) return null
 
@@ -63,6 +69,9 @@ export function NotesView({ id }: { id?: string }) {
           <div className="mb-4 flex items-center gap-3">
             <SectionIcon def={section('notes')} size={36} />
             <h1 className="flex-1 text-[30px] font-bold tracking-[-0.025em]">Notas</h1>
+            <IconButton label="Plantillas de notas" onClick={() => setTemplates(true)} filled>
+              <LayoutTemplate size={16} />
+            </IconButton>
             <IconButton label="Nueva nota" onClick={newNote} className="!bg-accent-fill !text-white">
               <Plus size={17} />
             </IconButton>
@@ -122,9 +131,11 @@ export function NotesView({ id }: { id?: string }) {
                     {!!n.pinned && <Pin size={12} className="shrink-0 text-muted" strokeWidth={2.6} />}
                     <span className="truncate text-[15px] font-semibold">{n.title || 'Sin título'}</span>
                   </div>
-                  <p className="mt-0.5 truncate text-[13px] text-muted">
-                    <span className="font-medium text-fg/70">{noteWhen(n.updatedAt)}</span>
-                    {preview(n.content) && ` · ${preview(n.content)}`}
+                  <p className="mt-0.5 flex items-center gap-1 truncate text-[13px] text-muted">
+                    <span className="shrink-0 font-medium text-fg/70">{noteWhen(n.updatedAt)}</span>
+                    <ListProgress content={n.content} />
+                    {!!n.images?.length && <ImageIcon size={12} strokeWidth={2.4} className="shrink-0" aria-label="Con fotos" />}
+                    <span className="truncate">{preview(n.content) && ` · ${preview(n.content)}`}</span>
                   </p>
                 </a>
               ))}
@@ -133,6 +144,7 @@ export function NotesView({ id }: { id?: string }) {
         </div>
       </div>
 
+      <TemplatePicker open={templates} onClose={() => setTemplates(false)} />
       <div className={cx('min-w-0 flex-1', !id && 'hidden md:block')}>
         {current ? (
           <NoteEditor key={current.id} note={current} notes={notes} onTag={showTag} />
@@ -148,6 +160,18 @@ export function NotesView({ id }: { id?: string }) {
   )
 }
 
+/** «☑ 3/7» en la lista: cómo va la lista de casillas de la nota */
+function ListProgress({ content }: { content: string }) {
+  const { done, total } = checklistStats(content)
+  if (!total) return null
+  return (
+    <span className={cx('font-num inline-flex shrink-0 items-center gap-0.5 font-semibold', done === total ? 'text-blue' : 'text-fg/70')} aria-label={`${done} de ${total} marcadas`}>
+      <ListChecks size={12} strokeWidth={2.4} aria-hidden />
+      {done}/{total}
+    </span>
+  )
+}
+
 function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: (tag: string) => void }) {
   const { areas, projects } = useLookup()
   const [title, setTitle] = useState(note.title)
@@ -155,6 +179,55 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
   const titleRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement | null>(null)
   const dirty = useRef(false)
+  // Con texto, se abre para leer (con formato y casillas que se marcan); vacía o recién creada, para escribir
+  const [mode, setMode] = useState<'read' | 'edit'>(() => (note.content.trim() && !notesCreatedHere.has(note.id) ? 'read' : 'edit'))
+  const sortOn = useLiveQuery(() => db.settings.get('noteSortChecked').then((r) => !!r?.value), []) ?? false
+  const images = note.images ?? []
+  const stats = checklistStats(content)
+  const pendingSel = useRef<[number, number] | null>(null)
+  useLayoutEffect(() => {
+    const el = bodyRef.current
+    if (!pendingSel.current || !el) return
+    el.focus()
+    el.setSelectionRange(...pendingSel.current)
+    pendingSel.current = null
+  })
+  const change = (next: string) => {
+    dirty.current = true
+    setContent(next)
+  }
+  const applyEdit = (e: Edit) => {
+    change(e.value)
+    pendingSel.current = [e.start, e.end]
+    setCaret(e.start)
+  }
+  const format = (a: FormatAction) => {
+    const el = bodyRef.current
+    const start = el?.selectionStart ?? content.length
+    const end = el?.selectionEnd ?? content.length
+    applyEdit(a === 'bold' ? wrapSelection(content, start, end) : toggleLinePrefix(content, start, a === 'check' ? '- [ ] ' : a === 'list' ? '- ' : '## '))
+  }
+  const toggleLine = (line: number) => {
+    const next = toggleCheck(content, line)
+    change(sortOn ? sortChecked(next) : next)
+  }
+  const write = () => {
+    setMode('edit')
+    pendingSel.current = [content.length, content.length]
+  }
+  const share = async () => {
+    const md = noteMarkdown(title, content)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: title || 'Nota', text: md })
+      } catch {
+        /* cancelado */
+      }
+      return
+    }
+    await navigator.clipboard?.writeText(md)
+    toast('Nota copiada en Markdown')
+  }
 
   // Enlaces: al escribir «[[» salen los títulos de las demás notas
   const [caret, setCaret] = useState<number | null>(null)
@@ -279,6 +352,12 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
           Editada {formatDistanceToNow(note.updatedAt, { locale: es, addSuffix: true })}
         </span>
         <div className="ml-auto flex">
+          <IconButton label={mode === 'read' ? 'Escribir' : 'Leer con formato'} onClick={() => (mode === 'read' ? write() : setMode('read'))}>
+            {mode === 'read' ? <PenLine size={16} /> : <BookOpen size={16} />}
+          </IconButton>
+          <IconButton label="Compartir" onClick={() => void share()}>
+            <Share size={15} />
+          </IconButton>
           <IconButton label="Convertir [ ] en tareas" onClick={extractTasks}>
             <ListPlus size={16} />
           </IconButton>
@@ -312,39 +391,96 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
         placeholder="Título"
         className="mb-3 w-full bg-transparent text-[30px] font-bold tracking-[-0.02em] placeholder:text-faint"
       />
-      <Textarea
-        ref={bodyRef}
-        aria-label="Texto de la nota"
-        value={content}
-        onChange={(e) => {
-          dirty.current = true
-          setContent(e.target.value)
-          setCaret(e.target.selectionStart)
-          setActive(0)
+      {mode === 'read' ? (
+        <>
+          {stats.total > 0 && (
+            <ChecklistBar
+              done={stats.done}
+              total={stats.total}
+              sortOn={sortOn}
+              onSort={(v) => {
+                void setSetting('noteSortChecked', v)
+                if (v) change(sortChecked(content))
+              }}
+              onUncheckAll={() => {
+                const before = content
+                change(setAllChecks(content, false))
+                toast('Todo desmarcado', { label: 'Deshacer', run: () => change(before) })
+              }}
+            />
+          )}
+          {content.trim() ? (
+            <NoteReader content={content} note={note} notes={notes} onToggle={toggleLine} onEdit={write} onTag={onTag} />
+          ) : (
+            <button type="button" onClick={write} className="min-h-[30vh] text-left text-[17px] text-faint">
+              Empieza a escribir…
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <FormatBar
+            onFormat={format}
+            photos={images.length}
+            onPhoto={(url) => {
+              if (images.length >= MAX_PHOTOS) return toast(`Como mucho ${MAX_PHOTOS} fotos por nota`)
+              void updateNote(note.id, { images: [...images, url] })
+            }}
+          />
+          <Textarea
+            ref={bodyRef}
+            aria-label="Texto de la nota"
+            value={content}
+            onChange={(e) => {
+              dirty.current = true
+              setContent(e.target.value)
+              setCaret(e.target.selectionStart)
+              setActive(0)
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onBlur={() => setCaret(null)}
+            onKeyDown={(e) => {
+              if (!suggestions) {
+                // Intro en una lista: la siguiente línea sigue la lista (o la acaba si está vacía)
+                const el = e.currentTarget
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && el.selectionStart === el.selectionEnd) {
+                  const r = continueList(content, el.selectionStart)
+                  if (r) {
+                    e.preventDefault()
+                    applyEdit(r)
+                  }
+                }
+                return
+              }
+              const n = suggestions.items.length
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault()
+                setActive((a) => (a + (e.key === 'ArrowDown' ? 1 : n - 1)) % n)
+              } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault()
+                pick(suggestions.items[Math.min(active, n - 1)])
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                e.stopPropagation()
+                setDismissed(suggestions.start)
+              }
+            }}
+            aria-controls={suggestions ? 'note-link-suggestions' : undefined}
+            aria-activedescendant={suggestions ? `note-link-${Math.min(active, suggestions.items.length - 1)}` : undefined}
+            placeholder={'Empieza a escribir…\n\nTrucos: «- [ ] algo» se convierte en tarea con el botón de lista; [[Otra nota]] la enlaza; #etiqueta la clasifica.'}
+            className="min-h-[50vh] flex-1 text-[17px] leading-[1.65]"
+          />
+          {suggestions && <LinkSuggestions items={suggestions.items} active={Math.min(active, suggestions.items.length - 1)} onPick={pick} />}
+        </>
+      )}
+      <NotePhotos
+        images={images}
+        editing={mode === 'edit'}
+        onRemove={(i) => {
+          void updateNote(note.id, { images: images.filter((_, j) => j !== i) })
+          toast('Foto quitada', { label: 'Deshacer', run: () => void updateNote(note.id, { images }) })
         }}
-        onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
-        onBlur={() => setCaret(null)}
-        onKeyDown={(e) => {
-          if (!suggestions) return
-          const n = suggestions.items.length
-          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-            e.preventDefault()
-            setActive((a) => (a + (e.key === 'ArrowDown' ? 1 : n - 1)) % n)
-          } else if (e.key === 'Enter' || e.key === 'Tab') {
-            e.preventDefault()
-            pick(suggestions.items[Math.min(active, n - 1)])
-          } else if (e.key === 'Escape') {
-            e.preventDefault()
-            e.stopPropagation()
-            setDismissed(suggestions.start)
-          }
-        }}
-        aria-controls={suggestions ? 'note-link-suggestions' : undefined}
-        aria-activedescendant={suggestions ? `note-link-${Math.min(active, suggestions.items.length - 1)}` : undefined}
-        placeholder={'Empieza a escribir…\n\nTrucos: «- [ ] algo» se convierte en tarea con el botón de lista; [[Otra nota]] la enlaza; #etiqueta la clasifica.'}
-        className="min-h-[50vh] flex-1 text-[17px] leading-[1.65]"
       />
-      {suggestions && <LinkSuggestions items={suggestions.items} active={Math.min(active, suggestions.items.length - 1)} onPick={pick} />}
       <NoteConnections note={note} title={title} content={content} notes={notes} onTag={onTag} />
     </div>
   )

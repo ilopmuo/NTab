@@ -87,6 +87,15 @@ describe('captura con Siri', () => {
     expect(capture(rows, captureFields({ importe: 'gratis' }), env()).report[0]).toBe('No me ha llegado el importe del pago.')
   })
 
+  it('«a la nota X: …» añade a esa nota', () => {
+    const withNote: Row[] = [...rows, { tbl: 'notes', id: 'n1', data: { id: 'n1', title: 'Maleta', content: '- [ ] DNI', pinned: 0, createdAt: 0, updatedAt: 0 } }]
+    let r = capture(withNote, 'a la nota maleta: crema solar', env())
+    expect(r.writes[0]).toMatchObject({ tbl: 'notes', id: 'n1', data: { content: '- [ ] DNI\n- [ ] crema solar' } })
+    expect(r.report[0]).toBe('Añadido a «Maleta»: 1 cosa en la lista.')
+    r = capture(withNote, 'Añade a la nota de ideas, una bici plegable', env())
+    expect(r.writes[0].data).toMatchObject({ title: 'Ideas', content: 'una bici plegable' })
+  })
+
   it('importes de cualquier formato', () => {
     expect(readAmount('15,30 €')).toBe(15.3)
     expect(readAmount('€15.30')).toBe(15.3)

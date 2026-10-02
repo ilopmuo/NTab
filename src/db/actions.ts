@@ -208,6 +208,9 @@ export async function deleteProject(id: string, withTasks: boolean) {
 
 // ── Notas ─────────────────────────────────────────────────────
 
+/** Notas creadas en esta sesión: se abren para escribir (las demás, para leer) */
+export const notesCreatedHere = new Set<string>()
+
 export async function createNote(data: Partial<Note> = {}): Promise<Note> {
   const note: Note = {
     id: uid(),
@@ -218,6 +221,7 @@ export async function createNote(data: Partial<Note> = {}): Promise<Note> {
     updatedAt: Date.now(),
     ...data,
   }
+  notesCreatedHere.add(note.id)
   await db.notes.add(note)
   return note
 }

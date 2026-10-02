@@ -14,6 +14,7 @@ import { CATEGORIES, budgetAlert, categoryBudgets, categoryFor, money, monthSumm
 import { parseQuickAdd } from '../_shared/parse.ts'
 import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
 import { logGoal, type GoalPoint } from '../_shared/goals.ts'
+import { appendToNote, checklistStats } from '../_shared/notes.ts'
 import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
@@ -713,6 +714,69 @@ export function createNote(rows: Row[], args: { titulo?: string; contenido?: str
     if (project.areaId) note.areaId = project.areaId
   }
   return { writes: [{ tbl: 'notes', id: String(note.id), data: note }], report: [`Nota creada: «${note.title || 'Sin título'}»${project ? ` en ${str(project.name)}` : ''}.`] }
+}
+
+// ── Notas ─────────────────────────────────────────────────────
+
+const noteRows = (rows: Row[]): Data[] => rows.filter((r) => r.tbl === 'notes').map((r) => ({ ...r.data, id: r.id }))
+
+/** Una nota entera, para leerla */
+function noteFull(n: Data, env: Env) {
+  const content = str(n.content).trim()
+  const st = checklistStats(content)
+  const photos = Array.isArray(n.images) ? n.images.length : 0
+  return [
+    `«${str(n.title) || 'Sin título'}» (editada el ${ymdIn(num(n.updatedAt) || env.now, env.tz)}${st.total ? `; lista: ${st.done} de ${st.total} marcadas` : ''}${photos ? `; ${photos} ${photos === 1 ? 'foto' : 'fotos'}` : ''}):`,
+    content || '(vacía)',
+  ].join('\n')
+}
+
+/**
+ * Buscar en sus notas (título, texto o #etiqueta) o leer una por su título.
+ * Si solo hay una que encaje, se lee entera.
+ */
+export function searchNotes(rows: Row[], args: { buscar?: string; nota?: string }, env: Env): string {
+  const notes = noteRows(rows).sort((a, b) => num(b.updatedAt) - num(a.updatedAt))
+  if (str(args.nota).trim()) {
+    const n = findByName(notes, str(args.nota), 'title')
+    return n ? noteFull(n, env) : `No hay ninguna nota que se llame «${str(args.nota)}».`
+  }
+  const q = fold(str(args.buscar))
+  const hits = q ? notes.filter((n) => fold(`${str(n.title)} ${str(n.content)}`).includes(q)) : notes
+  if (!hits.length) return q ? `No hay notas con «${str(args.buscar)}».` : 'No hay notas.'
+  if (hits.length === 1) return noteFull(hits[0], env)
+  return [
+    `${hits.length} notas${q ? ` con «${str(args.buscar)}»` : ''} (de la más reciente; pide una por su título para leerla entera):`,
+    ...hits.slice(0, 15).map((n) => {
+      const st = checklistStats(str(n.content))
+      const first = str(n.content).split('\n').map((l) => l.replace(/^\s*(?:[-*]\s*)?(?:\[[ xX]\]\s*)?#*\s*/, '').trim()).find(Boolean) ?? ''
+      return `- «${str(n.title) || 'Sin título'}» (${ymdIn(num(n.updatedAt) || env.now, env.tz)})${st.total ? ` · lista ${st.done}/${st.total}` : ''}${first ? `: ${first.slice(0, 90)}` : ''}`
+    }),
+    ...(hits.length > 15 ? [`… y ${hits.length - 15} más.`] : []),
+  ].join('\n')
+}
+
+/**
+ * Añadir a una nota que ya existe (por su título): texto o, con `como_lista`,
+ * cada cosa como casilla. Si no existe, se crea.
+ */
+export function appendNoteTool(rows: Row[], args: { nota?: string; texto?: string; como_lista?: boolean }, env: Env): WriteResult {
+  const title = str(args.nota).trim()
+  const text = str(args.texto).trim()
+  if (!title) return { writes: [], report: ['¿A qué nota lo añado?'] }
+  if (!text) return { writes: [], report: ['¿Qué añado a la nota?'] }
+  const n = findByName(noteRows(rows), title, 'title')
+  // Si la nota ya es una lista de casillas, lo nuevo también
+  const asList = typeof args.como_lista === 'boolean' ? args.como_lista : !!n && checklistStats(str(n.content)).total > 0
+  const items = asList ? text.split(/\n|,|;/).map((x) => x.trim()).filter(Boolean).length : 0
+  if (n) {
+    const data: Data = { ...n, content: appendToNote(str(n.content), text, asList), updatedAt: env.now }
+    return { writes: [{ tbl: 'notes', id: String(n.id), data }], report: [`Añadido a «${str(n.title)}»${asList ? `: ${items} ${items === 1 ? 'cosa' : 'cosas'} en la lista` : ''}.`] }
+  }
+  const id = env.newId()
+  const nice = title.charAt(0).toUpperCase() + title.slice(1)
+  const data: Data = { id, title: nice, content: appendToNote('', text, asList), pinned: 0, createdAt: env.now, updatedAt: env.now }
+  return { writes: [{ tbl: 'notes', id, data }], report: [`No había una nota «${title}»: la he creado con eso.`] }
 }
 
 /** Hábitos activos con sus registros: cantidad por día y días cumplidos */
@@ -1512,6 +1576,8 @@ const SHOPPING_PREFIX = /^\s*(?:(?:(?:a[nñ]ade|apunta|pon)\s+)?(?:(?:a|en)\s+)?
 // «gasto 12 café», «mete un gasto de quince euros en Mercadona», «me he gastado 20 en la cena», «he pagado 30 de luz»
 const EXPENSE_PREFIX = /^\s*(?:(?:(?:mete|meter|apunta|anota|a[nñ]ade|pon|registra)(?:me)?\s+(?:un\s+)?)?gasto(?:\s+de)?|gast[eé]|(?:me\s+)?he\s+gastado|pagu[eé]|he\s+pagado)\s*[:,.-]?\s+/i
 const NOTE_PREFIX = /^\s*(?:nota|apunta\s+una\s+nota)\s*[:,.-]?\s+/i
+// «a la nota maleta: crema solar», «añade a la nota de ideas: una bici»
+const NOTE_APPEND = /^\s*(?:(?:a[nñ]ade|apunta|pon|mete)\s+)?(?:a|en)\s+la\s+nota\s+(?:de\s+(?:la\s+|los\s+|las\s+|el\s+)?)?(.+?)\s*[:,]\s+(.+)$/i
 // «hecho: cambiar las sábanas» → Última vez
 const DONE_PREFIX = /^\s*(?:lo\s+he\s+hecho|hecho|[uú]ltima\s+vez)\s*[:,.-]?\s+/i
 // «hábito: agua», «+1 agua», «+2 vasos de agua»
@@ -1618,6 +1684,8 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env): Wr
     const r = markHabit(rows, { habito: name, ...(habit?.[1] ? { cantidad: Number(habit[1]) } : {}) }, env)
     return { ...r, report: r.report.map(spoken) }
   }
+  const append = NOTE_APPEND.exec(text)
+  if (append) return appendNoteTool(rows, { nota: append[1], texto: append[2] }, env)
   if (NOTE_PREFIX.test(text)) {
     const body = text.replace(NOTE_PREFIX, '')
     // Título: la primera frase (como mucho 60 letras); el texto entero, en la nota

@@ -3,7 +3,7 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
-import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, savePayment, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   load(): Promise<Row[]>
@@ -20,6 +20,7 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Para lo que no puede olvidar (pastillas, llamadas importantes), crea la tarea con hora e insistir.
 - Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
 - Si te cuenta qué tal su día y quiere guardarlo, usa escribir_diario.
+- Para consultar lo que tiene apuntado en sus notas, buscar_notas; para añadir a una nota que ya tiene (ideas, la maleta…), anadir_a_nota.
 - Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto (con etiqueta si es de un viaje). Si se apunta a algo que se cobra cada mes o a una prueba gratis, guárdalo con guardar_pago. Ante «tengo un rato, ¿qué hago?», usa que_hago.
 - Para comidas de la semana, planificar_menu (y crear_receta para guardar recetas con sus ingredientes).
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
@@ -142,6 +143,24 @@ export const TOOLS = [
       required: ['cambios'],
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'buscar_notas',
+    title: 'Buscar en las notas',
+    description: 'Busca en sus notas (título, texto o #etiqueta) o lee una entera por su título («¿qué apunté en la nota de la reunión?», «¿qué me queda en la maleta?»). Si solo encaja una, la devuelve entera.',
+    inputSchema: { type: 'object', properties: { buscar: { type: 'string' }, nota: { type: 'string', description: 'Título de la nota a leer entera' } } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'anadir_a_nota',
+    title: 'Añadir a una nota',
+    description: 'Añade texto al final de una nota que ya existe (por su título); si no existe, la crea. Con como_lista, cada cosa (separada por comas o líneas) va como casilla «- [ ]»; si la nota ya es una lista, por defecto también.',
+    inputSchema: {
+      type: 'object',
+      properties: { nota: { type: 'string', description: 'Título de la nota' }, texto: { type: 'string' }, como_lista: { type: 'boolean' } },
+      required: ['nota', 'texto'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
     name: 'crear_nota',
@@ -564,6 +583,8 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(readMenu(await store.load(), args, env))
     case 'ver_gastos':
       return text(listExpenses(await store.load(), args, env))
+    case 'buscar_notas':
+      return text(searchNotes(await store.load(), args, env))
     case 'que_hago':
       return text(whatNow(await store.load(), args, env))
     case 'ver_diario':
@@ -581,9 +602,10 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'crear_rutina':
     case 'actualizar_objetivo':
     case 'registrar_contacto':
+    case 'anadir_a_nota':
     case 'guardar_pago':
     case 'marcar_pago': {
-      const fn = { guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+      const fn = { anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

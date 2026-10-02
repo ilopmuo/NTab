@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'ver_menu', 'planificar_menu', 'crear_receta', 'cuenta_atras', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'guardar_pago', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'buscar_notas', 'anadir_a_nota', 'crear_nota', 'marcar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'ver_menu', 'planificar_menu', 'crear_receta', 'cuenta_atras', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_compra', 'anadir_compra', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'guardar_pago', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -247,6 +247,28 @@ describe('conector MCP', () => {
     expect(store.rows.get('tasks:t3')!.data.postponed).toBeUndefined()
     await call(store, 'actualizar_tareas', { cambios: [{ id: 't3', importante: false }] })
     expect(store.rows.get('tasks:t3')!.data.important).toBeUndefined()
+  })
+
+  it('notas: buscar, leer y añadir (como lista si ya lo es)', async () => {
+    const store = memoryStore([
+      ...base(),
+      { tbl: 'notes', id: 'n1', data: { id: 'n1', title: 'Maleta', content: '- [x] DNI\n- [ ] Cargador', pinned: 0, createdAt: 0, updatedAt: Date.parse('2026-09-20T10:00:00Z') } },
+      { tbl: 'notes', id: 'n2', data: { id: 'n2', title: 'Ideas', content: 'Una bici plegable\n#proyectos', pinned: 0, createdAt: 0, updatedAt: Date.parse('2026-09-22T10:00:00Z') } },
+    ])
+    let r = (await call(store, 'buscar_notas', {})).text
+    expect(r).toContain('2 notas (de la más reciente')
+    expect(r).toContain('- «Maleta» (2026-09-20) · lista 1/2: DNI')
+    r = (await call(store, 'buscar_notas', { buscar: 'bici' })).text
+    expect(r).toBe('«Ideas» (editada el 2026-09-22):\nUna bici plegable\n#proyectos')
+    expect((await call(store, 'buscar_notas', { nota: 'maleta' })).text).toContain('lista: 1 de 2 marcadas')
+    expect((await call(store, 'buscar_notas', { buscar: 'pasaporte' })).text).toBe('No hay notas con «pasaporte».')
+
+    expect((await call(store, 'anadir_a_nota', { nota: 'maleta', texto: 'crema solar, gafas' })).text).toBe('Añadido a «Maleta»: 2 cosas en la lista.')
+    expect(store.rows.get('notes:n1')!.data).toMatchObject({ content: '- [x] DNI\n- [ ] Cargador\n- [ ] crema solar\n- [ ] gafas', updatedAt: NOW })
+    await call(store, 'anadir_a_nota', { nota: 'Ideas', texto: 'Un huerto en la terraza' })
+    expect(store.rows.get('notes:n2')!.data.content).toBe('Una bici plegable\n#proyectos\nUn huerto en la terraza')
+    expect((await call(store, 'anadir_a_nota', { nota: 'regalos', texto: 'libro, bufanda', como_lista: true })).text).toBe('No había una nota «regalos»: la he creado con eso.')
+    expect([...store.rows.values()].find((x) => x.data.title === 'Regalos')!.data.content).toBe('- [ ] libro\n- [ ] bufanda')
   })
 
   it('cargos por ciclos', () => {

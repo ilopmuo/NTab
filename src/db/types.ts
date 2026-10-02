@@ -176,6 +176,8 @@ export interface Note {
   areaId?: ID
   projectId?: ID
   pinned: 0 | 1
+  /** fotos (JPEG comprimido, como data URL) */
+  images?: string[]
   createdAt: number
   updatedAt: number
 }
