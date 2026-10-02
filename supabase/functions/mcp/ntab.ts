@@ -14,6 +14,7 @@ import { CATEGORIES, budgetAlert, categoryBudgets, categoryFor, money, monthSumm
 import { parseQuickAdd } from '../_shared/parse.ts'
 import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
 import { logGoal, type GoalPoint } from '../_shared/goals.ts'
+import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -49,6 +50,10 @@ export interface Task {
   nag?: number
   reminder?: Reminder | null
   remindAt?: number
+  /** YYYY-MM-DD: de lo importante de ese día */
+  important?: string
+  /** veces que se ha pasado a otro día cuando ya tocaba */
+  postponed?: number
   order: number
   createdAt: number
   completedAt?: number
@@ -197,6 +202,7 @@ function taskLine(t: Task, ix: Index, today: string) {
   const where = t.projectId ? ix.projectName(t.projectId) : ix.areaName(t.areaId)
   return [
     `- [${t.id}] ${t.title}`,
+    t.important === today && !t.done ? ' · ★ LO IMPORTANTE DE HOY' : '',
     t.dueDate ? ` · ${relDay(t.dueDate, today)} (${t.dueDate})${t.dueTime ? ` a las ${t.dueTime}` : ''}` : t.someday ? ' · algún día' : ' · sin fecha',
     t.deadline ? ` · FECHA LÍMITE ${relDay(t.deadline, today)} (${t.deadline})` : '',
     PRIO[t.priority] ?? '',
@@ -207,6 +213,7 @@ function taskLine(t: Task, ix: Index, today: string) {
     t.nag ? ` · insiste cada ${t.nag} min` : '',
     t.recurrence ? ' · se repite' : '',
     t.subtasks?.length ? ` · subtareas ${t.subtasks.filter((s) => s.done).length}/${t.subtasks.length}` : '',
+    !t.done && num(t.postponed) >= STUCK ? ` · ${postponedLabel(num(t.postponed)).toLowerCase()} (propón algún día o partirla)` : '',
     t.done ? ' · HECHA' : '',
   ].join('')
 }
@@ -246,6 +253,24 @@ function loadLine(todays: Task[], meetings: EventLike[]) {
   return `Carga de hoy: ${total ? minutesLabel(total) : 'nada estimado'} (${parts.join(', ')}). Jornada de referencia: 6 h${total > 360 ? ' — HOY ESTÁ SOBRECARGADO, propón mover algo' : ''}.`
 }
 
+/** Lo importante de hoy (hasta tres), lo primero que mirar */
+function importantLines(open: Task[], today: string) {
+  const list = open.filter((t) => t.important === today)
+  if (list.length) return [`LO IMPORTANTE DE HOY (lo que eligió; ayúdale a hacerlo antes que lo demás): ${list.map((t) => `${t.title} [${t.id}]`).join('; ')}`]
+  // Sin elegir: solo merece la pena decirlo si hay varias cosas para hoy
+  const forToday = open.filter((t) => t.dueDate && t.dueDate <= today).length
+  return forToday >= 3 ? ['LO IMPORTANTE DE HOY: sin elegir (si planificáis el día, propón hasta 3 y márcalas con actualizar_tareas importante=true).'] : []
+}
+
+/** Objetivo diario de tareas y su racha (como en Todoist) */
+function goalLines(rows: Row[], tasks: Task[], env: Env, today: string) {
+  const goal = rows.find((r) => r.tbl === 'settings' && r.id === 'dailyGoal')?.data.value as DailyGoal | null | undefined
+  if (!goal?.tasks) return []
+  const days = tasks.filter((t) => t.done && num(t.completedAt) > env.now - 400 * 864e5).map((t) => ymdIn(num(t.completedAt), env.tz))
+  const st = goalStreak(countByDay(days), goal, today)
+  return [`OBJETIVO DIARIO: ${goal.tasks} tareas; hoy lleva ${st.today}${st.dayOff ? ' (hoy es día libre)' : ''}. Racha: ${st.current} ${st.current === 1 ? 'día' : 'días'} (mejor ${st.best}).`]
+}
+
 /** Resumen de todo LUNO para que Claude responda y planifique */
 export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLike[]; names: Record<string, string> }): string {
   const today = ymdIn(env.now, env.tz)
@@ -263,6 +288,8 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   const s: string[] = [
     `HOY: ${longDate(today)} (${today}), son las ${hhmmIn(env.now, env.tz)} (${env.tz}). Semana: del ${weekStart(today)} al ${addDays(weekStart(today), 6)}.`,
     loadLine(open.filter((t) => t.dueDate === today), (calendar?.events ?? []).filter((e) => !e.allDay && ymdIn(Date.parse(e.start), env.tz) === today)),
+    ...importantLines(open, today),
+    ...goalLines(rows, ix.tasks, env, today),
     ...(calendar ? [`\nEVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (${calendar.events.length}) — solo lectura:`, ...eventLines(calendar.events, calendar.names, env)] : []),
     `\nATRASADAS (${overdue.length}):`,
     ...limit(overdue, 60),
@@ -462,6 +489,8 @@ export interface NewTask {
   personas?: string[]
   duracion?: number
   insistir?: number
+  /** de lo importante del día (de hoy si no tiene fecha) */
+  importante?: boolean
 }
 
 export interface Change {
@@ -477,6 +506,8 @@ export interface Change {
   hecha?: boolean
   duracion?: number | null
   insistir?: number | null
+  /** de lo importante de hoy (o del día que tenga, si es más tarde); false para quitarlo */
+  importante?: boolean
 }
 
 export interface WriteResult {
@@ -537,6 +568,14 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
       // Insistir necesita un aviso: a la hora de la tarea
       if (task.dueTime && task.reminder === undefined) task.reminder = { before: 0 }
     }
+    if (n.importante === true) {
+      const day = task.dueDate && task.dueDate > today ? task.dueDate : today
+      if (countImportant(ix.tasks, out.writes, day) >= MAX_IMPORTANT) out.report.push(`(Ya hay ${MAX_IMPORTANT} cosas importantes para ese día: «${title}» no se marca)`)
+      else {
+        task.important = day
+        if (!task.dueDate) task.dueDate = day
+      }
+    }
     task = withReminder(task, env)
     out.writes.push({ tbl: 'tasks', id: task.id, data: task as unknown as Data })
     out.report.push(
@@ -549,6 +588,19 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
   }
   if (!out.report.length) out.report.push('No se creó ninguna tarea (faltaban los títulos).')
   return out
+}
+
+/** Cuántas tareas pendientes son ya de lo importante de `day` (contando las de esta misma llamada) */
+function countImportant(tasks: Task[], writes: Row[], day: string, except?: string) {
+  const ids = new Set<string>()
+  for (const t of tasks) if (!t.done && t.important === day && t.id !== except) ids.add(t.id)
+  for (const w of writes) {
+    const d = w.data as unknown as Task
+    if (w.tbl !== 'tasks' || d.id === except) continue
+    if (!d.done && d.important === day) ids.add(d.id)
+    else ids.delete(d.id)
+  }
+  return ids.size
 }
 
 export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResult {
@@ -600,6 +652,20 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
       } else out.report.push(`No encontré el proyecto «${c.proyecto}».`)
     }
     if ('fecha' in c || 'hora' in c) t = withReminder(t, env)
+    // Pasarla a otro día cuando ya tocaba: se cuenta, como en la app
+    if (isPostpone(current, t.dueDate, today)) {
+      t.postponed = num(current.postponed) + 1
+      if (t.important && t.important < t.dueDate!) delete t.important
+    }
+    if (c.importante === false) delete t.important
+    else if (c.importante === true && !t.done) {
+      const day = t.dueDate && t.dueDate > today ? t.dueDate : today
+      if (t.important !== day && countImportant(ix.tasks, out.writes, day, t.id) >= MAX_IMPORTANT) out.report.push(`Ya hay ${MAX_IMPORTANT} cosas importantes para ${relDay(day, today)}: quita una antes de marcar «${t.title}».`)
+      else {
+        t.important = day
+        if (!t.dueDate || t.dueDate > day) t.dueDate = day
+      }
+    }
 
     if (c.hecha === true && !t.done) {
       t.done = 1

@@ -5,7 +5,7 @@ import { whatNow } from '@/features/whatnow/store'
 import { markDone, markSlip } from '@/features/trackers/markDone'
 import { cleanDays, sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
-import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, LayoutGrid, ListChecks, ListFilter, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
+import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, LayoutGrid, ListChecks, ListFilter, Moon, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import { createNote } from '@/db/actions'
@@ -240,6 +240,9 @@ function Palette() {
           )}
           <Item value="planificar el dia hoy organizar" icon={<G c="blue"><Sun size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/plan'))}>
             Planificar el día
+          </Item>
+          <Item value="cerrar el dia cierre terminar desconectar noche" icon={<G c="blue"><Moon size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/shutdown'))}>
+            Cerrar el día
           </Item>
           <Item value="conectar claude conector ia asistente" icon={<G c="gray"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/settings'))}>
             Conectar LUNO con Claude

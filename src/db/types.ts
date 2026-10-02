@@ -142,6 +142,10 @@ export interface Task {
   deadline?: string
   /** «algún día»: sin fecha y fuera de la Bandeja (ideas, lo que no es para ahora) */
   someday?: boolean
+  /** YYYY-MM-DD: es de lo importante de ese día (hasta tres, arriba en Hoy) */
+  important?: string
+  /** veces que se ha pasado a otro día cuando ya tocaba (ver src/lib/day.ts) */
+  postponed?: number
   projectId?: ID
   /** sección dentro de su proyecto (si ya no existe, la tarea va sin sección) */
   sectionId?: ID

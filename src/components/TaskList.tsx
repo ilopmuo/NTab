@@ -26,6 +26,7 @@ export function TaskList({
   tasks,
   hideDate,
   hideProject,
+  hideImportant,
   sort = true,
   add,
   bare,
@@ -38,6 +39,7 @@ export function TaskList({
   tasks: Task[]
   hideDate?: boolean
   hideProject?: boolean
+  hideImportant?: boolean
   sort?: boolean
   /** fila "Nueva tarea" al final, heredando estos valores */
   add?: { defaults?: Partial<Task>; placeholder?: string; color?: string }
@@ -75,7 +77,7 @@ export function TaskList({
               exit={{ opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
               className={cx(rowSeparator, isFresh(t) && 'just-added')}
             >
-              <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} compact={compact} draggable={draggable} />
+              <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} hideImportant={hideImportant} compact={compact} draggable={draggable} />
             </motion.div>
           ))}
         </AnimatePresence>

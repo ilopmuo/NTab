@@ -14,6 +14,8 @@ import { uid } from '@/lib/id'
 import { durationLabel, parseDuration } from '@/lib/duration'
 import { NAG_OPTIONS, REMINDER_OPTIONS, nagLabel, reminderLabel, reminderValue } from '@/lib/reminders'
 import { toast, ui, useUI } from '@/app/store'
+import { db } from '@/db/db'
+import { MAX_IMPORTANT, postponedLabel } from '@/lib/day'
 import { Checkbox, completeWithFeedback } from './TaskItem'
 import { DatePicker } from './DatePicker'
 import { Button, Group, IconButton, Modal, Segmented, Switch, Textarea, cx, spring, useMediaQuery } from './ui'
@@ -339,7 +341,13 @@ function TaskDetail({ task }: { task: Task }) {
             icon={<Calendar size={16} strokeWidth={2.4} />}
             color={task.done ? 'var(--c-gray)' : dateColor(task.dueDate)}
             label="Fecha"
-            value={task.dueDate ? (overdue ? `${longDateLabel(task.dueDate)} · atrasada` : `${dateLabel(task.dueDate)} · ${longDateLabel(task.dueDate)}`) : task.someday ? 'Algún día' : undefined}
+            value={
+              task.dueDate
+                ? `${overdue ? `${longDateLabel(task.dueDate)} · atrasada` : `${dateLabel(task.dueDate)} · ${longDateLabel(task.dueDate)}`}${!task.done && task.postponed ? ` · ${postponedLabel(task.postponed).toLowerCase()}` : ''}`
+                : task.someday
+                  ? 'Algún día'
+                  : undefined
+            }
             onClear={task.dueDate ? () => set({ dueDate: undefined, dueTime: undefined, recurrence: undefined }) : undefined}
           >
             <DateChoice value={task.dueDate} onChange={(dueDate) => set({ dueDate, someday: undefined })} />
@@ -350,6 +358,21 @@ function TaskDetail({ task }: { task: Task }) {
             >
               Algún día
             </Pill>
+            {!task.done && (
+              <Pill
+                tone="strong"
+                active={task.important === t}
+                onClick={async () => {
+                  if (task.important === t) return void set({ important: undefined })
+                  // Como mucho tres: lo importante deja de serlo si es todo
+                  const already = await db.tasks.filter((x) => x.important === t && !x.done && x.id !== task.id).count()
+                  if (already >= MAX_IMPORTANT) return void toast(`Ya tienes ${MAX_IMPORTANT} cosas importantes hoy: quita una antes`)
+                  void set({ important: t, ...(!task.dueDate || task.dueDate > t ? { dueDate: t, someday: undefined } : {}) })
+                }}
+              >
+                ★ Importante hoy
+              </Pill>
+            )}
           </Row>
           <Row
             icon={<CalendarClock size={16} strokeWidth={2.4} />}

@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
-import { AnimatePresence, m as motion } from 'motion/react'
-import { ArrowRight, CalendarCheck, CalendarRange, Check, Inbox, Sun, X } from 'lucide-react'
-import { mutateTask, setSetting, toggleTask } from '@/db/actions'
+import { useMemo, useState } from 'react'
+import { AnimatePresence } from 'motion/react'
+import { ArrowRight, CalendarCheck, CalendarRange, Check, Inbox, Star, Sun, Telescope, X } from 'lucide-react'
+import { mutateTask, setSetting } from '@/db/actions'
 import { useLookup, useOpenTasks } from '@/db/hooks'
 import type { Task } from '@/db/types'
 import { addDaysYmd, longDateLabel, relativeDays, today } from '@/lib/dates'
@@ -9,59 +9,14 @@ import { isInbox, sortTasks, whenDue } from '@/lib/tasks'
 import { dayLoad, durationLabel } from '@/lib/duration'
 import { eventMinutes, eventsByDay, useEvents } from '@/lib/calendarEvents'
 import { navigate } from '@/app/router'
-import { toast, ui } from '@/app/store'
-import { Checkbox } from '@/components/TaskItem'
-import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/components/ui'
+import { toast } from '@/app/store'
+import { Button, Empty, Group, PageHeader, Section } from '@/components/ui'
 import { Page } from '../Page'
 import { LOAD_HINT, LoadBar } from './LoadBar'
 import { DayTimeline } from './DayTimeline'
-
-const PRIO = ['', '!', '!!', '!!!']
-
-type Action = { label: string; icon?: React.ReactNode; run: (t: Task) => void; primary?: boolean }
-
-function Row({ task, meta, actions }: { task: Task; meta?: string; actions: Action[] }) {
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
-      transition={softSpring}
-      className="overflow-hidden"
-    >
-      <div className="flex items-center gap-3 px-4 py-2.5 shadow-[inset_0_-1px_0_var(--c-border)]">
-        <Checkbox checked={false} priority={task.priority} onChange={() => void toggleTask(task)} />
-        <button type="button" onClick={() => ui.openTask(task.id)} className="min-w-0 flex-1 text-left">
-          <span className="block truncate text-[15px]">
-            {task.priority > 0 && <b className="mr-1 font-bold text-blue">{PRIO[task.priority]}</b>}
-            {task.title}
-          </span>
-          {meta && <span className="block truncate text-[12.5px] text-muted">{meta}</span>}
-        </button>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {actions.map((a) => (
-            <button
-              key={a.label}
-              type="button"
-              aria-label={a.label}
-              title={a.label}
-              onClick={() => a.run(task)}
-              className={cx(
-                'flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-semibold transition-transform active:scale-95',
-                a.primary ? 'bg-accent-fill text-white' : 'bg-fill text-fg',
-                !!a.icon && !a.primary && 'w-8 justify-center px-0',
-              )}
-            >
-              {a.icon ?? a.label}
-              {a.icon && a.primary && a.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  )
-}
+import { Row, type Action } from './PlanRow'
+import ImportantPicker from '../today/ImportantPicker'
+import { isStuck, postponedLabel } from '@/lib/day'
 
 /**
  * Planificar el día: lo atrasado, la bandeja y lo que viene pronto, con un
@@ -83,6 +38,7 @@ export function PlanView() {
     }
   }, [open, t])
 
+  const [picking, setPicking] = useState(false)
   const cal = useEvents(t, t)
   const events = eventsByDay(cal.events).get(t) ?? []
   const meetings = events.filter((e) => !e.allDay).sort((a, b) => a.start.localeCompare(b.start))
@@ -113,6 +69,20 @@ export function PlanView() {
   const toToday: Action = { label: 'Hoy', icon: <Sun size={14} strokeWidth={2.6} />, run: move(t, 'hoy'), primary: true }
   const toTomorrow: Action = { label: 'Mañana', run: move(tomorrow, 'mañana') }
   const noDate: Action = { label: 'Quitar la fecha', icon: <X size={15} strokeWidth={2.6} />, run: move(undefined, 'sin fecha') }
+  // La que se arrastra: mejor a «Algún día» que pasarla otra vez
+  const toSomeday: Action = {
+    label: 'Algún día',
+    icon: <Telescope size={14} strokeWidth={2.4} />,
+    run: (x) => {
+      void mutateTask(x.id, (task) => {
+        delete task.dueDate
+        delete task.dueTime
+        task.someday = true
+      })
+      toast(`${x.title} → algún día`, { label: 'Deshacer', run: () => void mutateTask(x.id, (task) => void ((task.dueDate = x.dueDate), (task.someday = x.someday))) })
+    },
+  }
+  const importantCount = todays.filter((x) => x.important === t).length + overdue.filter((x) => x.important === t).length
 
   const finish = async () => {
     await setSetting('lastPlan', t)
@@ -132,6 +102,11 @@ export function PlanView() {
       <Section
         title="Para hoy"
         count={todays.length}
+        action={
+          <Button size="sm" variant="ghost" onClick={() => setPicking(true)}>
+            <Star size={14} strokeWidth={2.4} className="text-blue" fill={importantCount ? 'currentColor' : 'none'} /> {importantCount ? `Lo importante (${importantCount})` : 'Elegir lo importante'}
+          </Button>
+        }
       >
         {(load.total > 0 || todays.length > 0) && <LoadBar load={load} hint={LOAD_HINT[level]} className="mb-3 px-1" />}
         {allDay.length > 0 && (
@@ -149,7 +124,7 @@ export function PlanView() {
         <Group>
           <AnimatePresence initial={false}>
             {todays.map((x) => (
-              <Row key={x.id} task={x} meta={[x.dueTime, x.estimate && durationLabel(x.estimate), where(x)].filter(Boolean).join(' · ') || undefined} actions={[toTomorrow]} />
+              <Row key={x.id} task={x} meta={[x.important === t && '★ Importante', x.dueTime, x.estimate && durationLabel(x.estimate), where(x)].filter(Boolean).join(' · ') || undefined} actions={[toTomorrow]} />
             ))}
           </AnimatePresence>
           {!todays.length && <p className="px-4 py-3 text-[14px] text-muted">Trae aquí lo que quieras hacer hoy.</p>}
@@ -169,7 +144,12 @@ export function PlanView() {
               <Group>
                 <AnimatePresence initial={false}>
                   {overdue.map((x) => (
-                    <Row key={x.id} task={x} meta={[relativeDays(x.dueDate!, t), where(x)].filter(Boolean).join(' · ')} actions={[toToday, toTomorrow, noDate]} />
+                    <Row
+                      key={x.id}
+                      task={x}
+                      meta={[relativeDays(x.dueDate!, t), isStuck(x) && postponedLabel(x.postponed!).toLowerCase(), where(x)].filter(Boolean).join(' · ')}
+                      actions={isStuck(x) ? [toToday, toSomeday, noDate] : [toToday, toTomorrow, noDate]}
+                    />
                   ))}
                 </AnimatePresence>
               </Group>
@@ -200,6 +180,7 @@ export function PlanView() {
         </>
       )}
 
+      <ImportantPicker open={picking} day={t} onClose={() => setPicking(false)} />
       <div className="sticky bottom-[calc(max(env(safe-area-inset-bottom),10px)+80px)] z-10 flex justify-center lg:bottom-6">
         <Button variant="primary" size="lg" onClick={() => void finish()} className="shadow-[0_10px_28px_-12px_rgb(0_0_0/0.4)]">
           <Check size={18} strokeWidth={2.6} /> Listo, a por el día <ArrowRight size={17} strokeWidth={2.4} />

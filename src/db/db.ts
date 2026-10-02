@@ -6,6 +6,8 @@ import { computeSubRemindAt } from '@/lib/finance'
 import { computeThingRemindAt } from '@/lib/things'
 import { computeTrackerRemindAt } from '@/lib/trackers'
 import { prefs } from '@/lib/prefs'
+import { isPostpone } from '@/lib/day'
+import { today } from '@/lib/dates'
 
 /** Estado interno de la sincronización (solo de este dispositivo, nunca se sube) */
 export interface LocalMeta {
@@ -176,6 +178,11 @@ export function installReminderHooks(target: NTabDB) {
     for (const [k, v] of Object.entries(m)) Dexie.setByKeyPath(next, k, v)
     const merged = withDefaultReminder(next as unknown as Task, prefs.autoRemind)
     const changes: Partial<Task> = {}
+    // Pasar a otro día lo que ya tocaba: se cuenta (y deja de ser lo importante de hoy)
+    if ('dueDate' in m && !('done' in m) && isPostpone(obj, m.dueDate as string | undefined, today())) {
+      changes.postponed = (obj.postponed ?? 0) + 1
+      if (obj.important && obj.important < (m.dueDate as string)) changes.important = undefined
+    }
     if (merged.reminder !== next.reminder) changes.reminder = merged.reminder
     const at = computeRemindAt(merged)
     if (at !== obj.remindAt) changes.remindAt = at

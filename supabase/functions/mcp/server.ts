@@ -24,7 +24,7 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Para comidas de la semana, planificar_menu (y crear_receta para guardar recetas con sus ingredientes).
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
 - Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
-- Al planificar, ten en cuenta sus reuniones y la carga del día (duración estimada de las tareas); si un día pasa de 6 h, propón mover algo.
+- Al planificar, ten en cuenta sus reuniones y la carga del día (duración estimada de las tareas); si un día pasa de 6 h, propón mover algo. Ayúdale a elegir lo importante del día (hasta 3) y márcalo con importante=true. Si una tarea lleva muchas veces pospuesta, propón dejarla para algún día o partirla en algo más pequeño.
 - Títulos de tarea cortos y que empiecen por un verbo. Fechas en formato YYYY-MM-DD y horas HH:MM, en su zona horaria.
 - Responde en español.`
 
@@ -98,6 +98,7 @@ export const TOOLS = [
               personas: { type: 'array', items: { type: 'string' }, description: 'Personas relacionadas (por nombre): la tarea aparece en su ficha' },
               duracion: DURATION,
               insistir: NAG,
+              importante: { type: 'boolean', description: 'De lo importante del día (hasta 3; de hoy si no tiene fecha)' },
             },
             required: ['titulo'],
           },
@@ -132,6 +133,7 @@ export const TOOLS = [
               hecha: { type: 'boolean' },
               duracion: { type: ['integer', 'null'], minimum: 1, description: 'Minutos estimados, o null para quitarla' },
               insistir: { type: ['integer', 'null'], minimum: 5, description: 'Repetir el aviso cada N minutos hasta que la haga, o null para dejar de insistir' },
+              importante: { type: 'boolean', description: 'true: de lo importante de hoy (hasta 3, arriba en su Hoy); false: quitarlo' },
             },
             required: ['id'],
           },

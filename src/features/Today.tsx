@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, m as motion } from 'motion/react'
-import { ArrowRight, CalendarCheck, ChevronRight, RefreshCcw, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
+import { ArrowRight, CalendarCheck, ChevronRight, Moon, RefreshCcw, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
 import { whatNow } from './whatnow/store'
 import { db } from '@/db/db'
 import { setSetting, updateTask } from '@/db/actions'
@@ -30,10 +30,14 @@ import { DayRings } from './today/DayRings'
 import { PaymentsCard } from './today/PaymentsCard'
 import { PeopleCard } from './today/PeopleCard'
 import { WeekStrip } from './today/WeekStrip'
+import { ImportantPrompt, ImportantSection } from './today/Important'
+import { GoalFooter } from './today/DailyGoal'
 import { Page } from './Page'
 import { SelectButton } from '@/features/select/SelectButton'
 
 // El anillo y el confeti de «día completado», solo cuando hace falta
+// Elegir lo importante, solo al abrirlo
+const ImportantPicker = lazy(() => import('./today/ImportantPicker'))
 const DayComplete = lazy(() => import('@/components/Celebrate').then((m) => ({ default: m.DayComplete })))
 
 const PARTS = [
@@ -54,12 +58,14 @@ export function TodayView() {
   const lastReview = useLiveQuery(() => db.settings.get('lastReview'), [])
   // null = nunca se ha planificado; undefined = aún cargando
   const lastPlan = useLiveQuery(() => db.settings.get('lastPlan').then((r) => r ?? null), [])
+  const lastShutdown = useLiveQuery(() => db.settings.get('lastShutdown').then((r) => r?.value ?? null), [])
   // Una vez: presentar Ajustes → Funciones (null = aún no se ha visto)
   const featuresIntro = useLiveQuery(() => db.settings.get('featuresIntro').then((r) => r ?? null), [])
   const { habits, byHabit } = useHabits(7)
   const cal = useEvents(t, t)
   const todayEvents = cal.events.filter((e) => (e.allDay ? e.start <= t && e.end > t : new Date(e.start).toDateString() === new Date().toDateString()))
   const [showDone, setShowDone] = useState(false)
+  const [picking, setPicking] = useState(false)
   const cards = useTodayCards()
   const features = useFeatures()
   const [customizing, setCustomizing] = useState(false)
@@ -67,19 +73,23 @@ export function TodayView() {
   const lastPending = useRef<number | null>(null)
   const [justFinished, setJustFinished] = useState(false)
 
-  const { overdue, todays, weekOpen } = useMemo(() => {
+  const { overdue, todays, weekOpen, important } = useMemo(() => {
     const list = open ?? []
     const sunday = addDaysYmd(monday, 6)
+    // Lo importante de hoy va arriba y no se repite más abajo
+    const important = list.filter((x) => x.important === t)
+    const rest = list.filter((x) => x.important !== t)
     return {
+      important,
       // Cuenta también la fecha límite: lo que vence hoy sale en Hoy aunque no tenga fecha
-      overdue: list.filter((x) => (whenDue(x) ?? '9') < t),
-      todays: list.filter((x) => whenDue(x) === t),
+      overdue: rest.filter((x) => (whenDue(x) ?? '9') < t),
+      todays: rest.filter((x) => whenDue(x) === t),
       weekOpen: list.filter((x) => x.dueDate && x.dueDate >= monday && x.dueDate <= sunday).length,
     }
   }, [open, t, monday])
 
   const done = doneToday?.filter((x) => x.done) ?? []
-  const pending = todays.length + overdue.length
+  const pending = todays.length + overdue.length + important.length
   const ready = !!open && !!doneToday
   useEffect(() => {
     if (!ready) return
@@ -96,6 +106,8 @@ export function TodayView() {
   const inboxCount = (open ?? []).filter((x) => !x.areaId && !x.projectId && !x.dueDate).length
   // Planificar el día: si aún no se ha hecho hoy y hay algo que decidir
   const needsPlan = lastPlan !== undefined && lastPlan?.value !== t && (overdue.length > 0 || inboxCount > 0)
+  // Por la tarde, cerrar el día (como Sunsama): si aún no se ha cerrado y hay algo que repasar
+  const needsShutdown = lastShutdown !== undefined && lastShutdown !== t && new Date().getHours() >= 18 && (pending > 0 || done.length > 0)
 
   const summary =
     total === 0
@@ -152,6 +164,7 @@ export function TodayView() {
                 ...(features.on('habits') ? [{ label: 'Hábitos', done: habitsDone, total: scheduledHabits.length, color: 'var(--c-green)' }] : []),
                 { label: 'Esta semana', done: doneWeek, total: doneWeek + weekOpen, color: 'var(--c-text)' },
               ]}
+              footer={<GoalFooter />}
             />
           </div>
         )}
@@ -216,6 +229,29 @@ export function TodayView() {
             )}
           </AnimatePresence>
           <AnimatePresence>
+            {needsShutdown && (
+              <motion.a
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={softSpring}
+                href={href('/shutdown')}
+                className="glass mb-4 flex items-center gap-3 rounded-[18px] px-4 py-3 text-[14px] transition-transform active:scale-[0.99]"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-fill text-white">
+                  <Moon size={16} strokeWidth={2.4} />
+                </span>
+                <span className="flex-1">
+                  <b className="font-semibold">Cierra el día</b>
+                  <span className="block text-[13px] text-muted">
+                    {[done.length ? `${done.length} ${done.length === 1 ? 'hecha' : 'hechas'}` : '', pending ? `${pending} por decidir` : ''].filter(Boolean).join(' · ')} · 2 minutos
+                  </span>
+                </span>
+                <ArrowRight size={17} className="text-muted" />
+              </motion.a>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
             {needsReview && (
               <motion.a
                 initial={{ opacity: 0, y: -8 }}
@@ -237,6 +273,12 @@ export function TodayView() {
               </motion.a>
             )}
           </AnimatePresence>
+
+          {important.length > 0 ? (
+            <ImportantSection tasks={important} onPick={() => setPicking(true)} />
+          ) : (
+            todays.length + overdue.length >= 3 && <ImportantPrompt onPick={() => setPicking(true)} />
+          )}
 
           {overdue.length > 0 && (
             <Section
@@ -341,6 +383,11 @@ export function TodayView() {
         </aside>
       </div>
       <TodayCardsEditor open={customizing} onClose={() => setCustomizing(false)} />
+      {picking && (
+        <Suspense fallback={null}>
+          <ImportantPicker open day={t} onClose={() => setPicking(false)} />
+        </Suspense>
+      )}
     </Page>
   )
 }

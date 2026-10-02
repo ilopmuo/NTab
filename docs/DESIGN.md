@@ -78,6 +78,7 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Gastos | La cifra del mes aparece al apuntar; barras de presupuesto y categorías crecen con muelle (una sola serie, un solo color: el acento) |
 | Compra | Lo que vas a añadir aparece en píldoras con su pasillo mientras escribes; al marcar, la fila baja al carro |
 | Modo cocina | Un paso en grande que entra de lado, como las rutinas; los tiempos del paso son botones que abren una cuenta atrás (suena y vibra al acabar) |
+| Lo importante | Sección propia arriba en Hoy con una estrella en el acento; en el resto de listas, «★ Importante» en la línea de detalles. Como mucho tres: al llegar a tres, las demás se apagan en el selector |
 | Gastos y pagos | Las barras de los últimos meses y de la previsión crecen desde abajo una tras otra (30 ms); la elegida va en el acento; en Gastos la media es una línea discontinua y en la previsión los meses que pesan más de lo normal van en gris oscuro. Las de cada categoría con límite se llenan hasta lo gastado y pasan al color del texto si te pasas |
 | Limpieza por estancias | Cada tarea y cada estancia llevan una barra fina que se llena según se ensucia (gris mientras va bien, el acento cuando toca); al marcar «Hecho hoy» se vacía deslizándose |
 

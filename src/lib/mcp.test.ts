@@ -214,6 +214,41 @@ describe('conector MCP', () => {
     expect((await call(store, 'guardar_pago', { nombre: 'Gimnasio' })).isError).toBe(true)
   })
 
+  it('el día: lo importante, las pospuestas y el objetivo diario', async () => {
+    const store = memoryStore([
+      ...base(),
+      task('t5', { title: 'Renovar el DNI', dueDate: '2026-09-20', postponed: 3 }),
+      { tbl: 'settings', id: 'dailyGoal', data: { key: 'dailyGoal', value: { tasks: 1, daysOff: [0, 6] } } },
+      task('d1', { title: 'Ayer', done: 1, completedAt: Date.parse('2026-09-23T10:00:00Z') }),
+      task('d2', { title: 'Anteayer', done: 1, completedAt: Date.parse('2026-09-22T10:00:00Z') }),
+    ])
+    const rows = () => [...store.rows.values()]
+    let r = await call(store, 'actualizar_tareas', { cambios: [{ id: 't2', importante: true }, { id: 't3', importante: true }] })
+    expect(store.rows.get('tasks:t2')!.data.important).toBe('2026-09-24')
+    let sum = (await call(store, 'ver_resumen')).text
+    expect(sum).toContain('LO IMPORTANTE DE HOY (lo que eligió; ayúdale a hacerlo antes que lo demás): Llamar al banco [t2]; Regar las plantas [t3]')
+    expect(sum).toContain('[t5] Renovar el DNI · domingo 20/9 (hace 4 días) (2026-09-20) · pospuesta 3 veces (propón algún día o partirla)')
+    // Comprar pan se completó hoy: objetivo de 1 cumplido, con ayer y anteayer
+    expect(sum).toContain('OBJETIVO DIARIO: 1 tareas; hoy lleva 1. Racha: 3 días (mejor 3).')
+
+    // Como mucho tres
+    await call(store, 'crear_tareas', { tareas: [{ titulo: 'Preparar la reunión', importante: true }] })
+    expect(rows().find((x) => x.data.title === 'Preparar la reunión')!.data).toMatchObject({ important: '2026-09-24', dueDate: '2026-09-24' })
+    r = await call(store, 'actualizar_tareas', { cambios: [{ id: 't1', importante: true }] })
+    expect(r.text).toContain('Ya hay 3 cosas importantes para hoy')
+    expect(store.rows.get('tasks:t1')!.data.important).toBeUndefined()
+
+    // Pasarla a mañana cuenta como pospuesta y deja de ser lo importante de hoy
+    await call(store, 'actualizar_tareas', { cambios: [{ id: 't2', fecha: '2026-09-25' }] })
+    expect(store.rows.get('tasks:t2')!.data).toMatchObject({ postponed: 1, dueDate: '2026-09-25' })
+    expect(store.rows.get('tasks:t2')!.data.important).toBeUndefined()
+    // Las que se repiten no cuentan
+    await call(store, 'actualizar_tareas', { cambios: [{ id: 't3', fecha: '2026-09-28' }] })
+    expect(store.rows.get('tasks:t3')!.data.postponed).toBeUndefined()
+    await call(store, 'actualizar_tareas', { cambios: [{ id: 't3', importante: false }] })
+    expect(store.rows.get('tasks:t3')!.data.important).toBeUndefined()
+  })
+
   it('cargos por ciclos', () => {
     expect(advanceCharge('2026-09-24', 'week')).toBe('2026-10-01')
     expect(advanceCharge('2026-11-30', 'quarter')).toBe('2027-02-28')

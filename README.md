@@ -13,7 +13,7 @@
 
 | | |
 |---|---|
-| **Hoy** | Saludo, progreso del día, atrasadas, hábitos de hoy, personas a contactar y próximos 7 días |
+| **Hoy** | Saludo, progreso del día, atrasadas, hábitos de hoy, personas a contactar y próximos 7 días. **Lo importante** (como los objetivos del día de Sunsama): hasta 3 tareas arriba del todo, elegidas en Hoy, en Planificar, en el cierre del día o con «★ Importante hoy» en el detalle. **Objetivo diario y racha** (como Todoist): cuántas tareas al día, días seguidos cumpliéndolo y días libres que no la rompen. Las tareas que se arrastran dicen «Pospuesta 4 veces» |
 | **Captura rápida** (`N`) | Escribe en español natural: `Llamar al dentista mañana a las 10 !alta #salud +Salud` |
 | **Bandeja de entrada** | Todo lo capturado sin fecha ni proyecto, para procesarlo luego |
 | **Próximo** y **Calendario** | Vista de dos semanas (los días libres, en una línea), mes y semana; doble clic en un día para añadir |
@@ -31,7 +31,8 @@
 | **Revisión semanal** | Asistente paso a paso para vaciar la cabeza y planificar la semana, con «Algún día» y proyectos marcados como revisados (como en OmniFocus) |
 | **Avisos** | Cada tarea puede avisarte (a la hora, minutos antes o cuando quieras), también con la app cerrada. Botones «Hecho» y «Posponer 15 min» |
 | **Resumen de la mañana** | Una notificación diaria, a la hora que elijas, con lo que tienes hoy |
-| **Planificar el día** | Un minuto por la mañana: lo atrasado, la bandeja y lo que viene, a hoy o a otro día |
+| **Planificar el día** | Un minuto por la mañana: lo atrasado, la bandeja y lo que viene, a hoy o a otro día, y elegir lo importante. A lo que lleva 3 veces pospuesto se le propone «Algún día» |
+| **Cerrar el día** | Por la tarde (como el cierre de Sunsama): lo que has hecho, qué pasa con lo que queda (mañana, algún día o hecha, sin arrastrarlo sin pensar), qué tal el día para el diario y un vistazo a mañana con lo importante ya elegido. Hoy lo propone a partir de las 18:00 |
 | **Modo foco** | Temporizador a pantalla completa con la tarea y sus subtareas; avisa al terminar |
 | **Plantillas** | Listas que repites (maleta, cierre de mes…): se crean las tareas con sus fechas, como proyecto o sueltas |
 | **Papelera** | Lo que borras se guarda 30 días y se puede recuperar |

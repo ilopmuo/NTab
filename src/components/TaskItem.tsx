@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { m as motion, useTransform, type MotionValue } from 'motion/react'
-import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, ListChecks, Repeat, RotateCcw, StickyNote, Sunrise, Telescope } from 'lucide-react'
+import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, ListChecks, Repeat, RotateCcw, Star, StickyNote, Sunrise, Telescope } from 'lucide-react'
 import { durationLabel } from '@/lib/duration'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
@@ -11,6 +11,7 @@ import { haptic } from '@/lib/haptics'
 import { useSwipe } from './swipe'
 import { PRIORITY_COLOR, dateColor } from '@/lib/tasks'
 import { recurrenceLabel } from '@/lib/recurrence'
+import { isStuck, postponedLabel } from '@/lib/day'
 import { toast, ui, useUI } from '@/app/store'
 import { bouncy, cx } from './ui'
 import { dragToDay } from './dayDrag'
@@ -190,6 +191,7 @@ export const TaskItem = memo(function TaskItem({
   lookup,
   hideDate,
   hideProject,
+  hideImportant,
   compact,
   draggable,
 }: {
@@ -197,6 +199,8 @@ export const TaskItem = memo(function TaskItem({
   lookup: Lookup
   hideDate?: boolean
   hideProject?: boolean
+  /** en la sección «Lo importante» no hace falta la estrella */
+  hideImportant?: boolean
   compact?: boolean
   /** se puede arrastrar a otro día (Calendario, Próximo) */
   draggable?: boolean
@@ -252,6 +256,14 @@ export const TaskItem = memo(function TaskItem({
   }
 
   const meta: React.ReactNode[] = []
+  if (task.important === t && !task.done && !hideImportant) {
+    meta.push(
+      <span key="imp" className="inline-flex items-center gap-1 font-semibold text-blue">
+        <Star size={11} strokeWidth={2.6} fill="currentColor" aria-hidden />
+        Importante
+      </span>,
+    )
+  }
   if (task.dueDate && !hideDate) {
     meta.push(
       <span key="d" className="font-medium" style={{ color: task.done ? undefined : dateColor(task.dueDate, t) }}>
@@ -273,6 +285,15 @@ export const TaskItem = memo(function TaskItem({
         <CalendarClock size={11} strokeWidth={2.4} aria-hidden />
         <span className="sr-only">Fecha límite: </span>
         {dateLabel(task.deadline, t)}
+      </span>,
+    )
+  }
+  // La que se arrastra día tras día (como el contador de Sunsama)
+  if (!task.done && isStuck(task)) {
+    meta.push(
+      <span key="pp" className="inline-flex items-center gap-1 font-semibold text-fg" title="Veces que la has pasado a otro día">
+        <RotateCcw size={11} strokeWidth={2.6} aria-hidden />
+        {postponedLabel(task.postponed!)}
       </span>,
     )
   }
