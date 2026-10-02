@@ -58,6 +58,10 @@ export function SiriBlock() {
               </li>
             </ol>
             <p className="mt-1">Solo llegan los pagos con el iPhone o el reloj; lo que pagues con la tarjeta de plástico o por domiciliación, díselo a Siri. Las devoluciones no se apuntan.</p>
+            <p className="mt-1">
+              Lanzada a mano no apunta nada, porque no hay ningún pago detrás. Para probarla sin pagar, cambia un momento las variables por un importe fijo (1,50) y un comercio
+              (Prueba), dale a ▶︎ y mira Gastos; luego vuelve a poner las variables.
+            </p>
             <p className="mt-2">Es la misma URL privada que la del conector de Claude: si la cambias, cambia en los dos sitios.</p>
           </>
         ) : (

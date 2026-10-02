@@ -80,7 +80,10 @@ describe('captura con Siri', () => {
     expect(nb(r.report[0])).toBe('Apuntado: 15,30 € · Mercadona S.A. (Supermercado, hoy).')
     expect(capture(rows, captureFields({ amount: 4.5, merchant: 'Starbucks' }), env()).writes[0].data).toMatchObject({ amount: 4.5, note: 'Starbucks' })
     expect(capture(rows, captureFields({ importe: '-4,99 €', comercio: 'Amazon' }), env())).toEqual({ writes: [], report: ['Es una devolución: no la apunto como gasto.'] })
-    expect(capture(rows, captureFields({ importe: '', comercio: 'Amazon', texto: '' }), env()).report[0]).toBe('No he oído nada que apuntar.')
+    // Lanzada a mano: los campos llegan vacíos, y lo dice claro
+    expect(capture(rows, captureFields({ importe: '', comercio: '' }), env()).report[0]).toContain('La automatización llega bien a LUNO, pero sin ningún pago')
+    expect(capture(rows, captureFields({ importe: { tipo: 'transacción' }, comercio: 'Amazon' }), env()).report[0]).toContain('Ha llegado el comercio (Amazon) pero no el importe')
+    expect(capture(rows, captureFields({ texto: 'llamar a mamá' }), env()).writes[0].tbl).toBe('tasks')
     expect(capture(rows, captureFields({ importe: 'gratis' }), env()).report[0]).toBe('No me ha llegado el importe del pago.')
   })
 

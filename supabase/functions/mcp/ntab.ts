@@ -1459,6 +1459,8 @@ export interface CaptureInput {
   /** de la automatización de Apple Pay: «15,30 €», «€15.30» o un número */
   importe?: string | number
   comercio?: string
+  /** viene de la automatización de Apple Pay (trae los campos, aunque vengan vacíos) */
+  pago?: boolean
 }
 
 /** Los campos de un JSON o formulario, con los nombres en español o en inglés */
@@ -1472,7 +1474,9 @@ export function captureFields(b: Record<string, unknown> | null | undefined): Ca
     return undefined
   }
   const importe = pick('importe', 'amount', 'cantidad')
+  const PAYMENT_KEYS = ['importe', 'amount', 'cantidad', 'comercio', 'merchant']
   return {
+    pago: !!b && typeof b === 'object' && PAYMENT_KEYS.some((k) => k in b),
     texto: pick('texto', 'text', 'input') as string | undefined,
     gasto: pick('gasto', 'expense') as string | undefined,
     importe,
@@ -1522,6 +1526,16 @@ export function captureCardPayment(rows: Row[], input: CaptureInput, env: Env): 
 export function capture(rows: Row[], input: string | CaptureInput, env: Env): WriteResult & { deletes?: Row[] } {
   const fields = typeof input === 'string' ? { texto: input } : input
   if (fields.importe !== undefined) return captureCardPayment(rows, fields, env)
+  // La automatización lanzada a mano (o con el importe sin elegir): no hay pago que apuntar
+  if (fields.pago && !fields.texto && !fields.gasto)
+    return {
+      writes: [],
+      report: [
+        fields.comercio
+          ? `Ha llegado el comercio (${fields.comercio}) pero no el importe: en «Obtener contenido de URL», el campo importe tiene que ser la variable Importe de la transacción.`
+          : 'La automatización llega bien a LUNO, pero sin ningún pago: se apunta sola cuando pagas con Apple Pay. Para probarla sin pagar, pon un importe fijo (como 1,50) y un comercio.',
+      ],
+    }
   // El atajo de gastos manda solo lo dictado: «quince euros en el súper»
   const raw = fields.gasto ? `gasto ${fields.gasto}` : (fields.texto ?? '')
   const text = raw.replace(/\s+/g, ' ').trim().slice(0, 500)
