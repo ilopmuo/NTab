@@ -482,10 +482,17 @@ export interface Template {
 /** Sesión de foco terminada (para las estadísticas) */
 export interface FocusLog {
   id: ID
-  taskId: ID
+  /** vacío en el foco libre (sin tarea, con su intención como título) */
+  taskId?: ID
   title: string
   /** YYYY-MM-DD */
   date: string
   minutes: number
   endedAt: number
+  /** el temporizador llegó al final: un pomodoro completo */
+  pomodoro?: boolean
+  /** cómo ha ido: 1 me ha costado · 2 normal · 3 muy concentrado */
+  rating?: 1 | 2 | 3
+  /** cosas apuntadas para luego durante la sesión */
+  distractions?: number
 }

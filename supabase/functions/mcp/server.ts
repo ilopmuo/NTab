@@ -25,7 +25,7 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Para comidas de la semana, planificar_menu (y crear_receta para guardar recetas con sus ingredientes).
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
 - Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
-- Al planificar, ten en cuenta sus reuniones y la carga del día (duración estimada de las tareas); si un día pasa de 6 h, propón mover algo. Para poner hora a algo, elige uno de los HUECOS LIBRES del resumen. Ayúdale a elegir lo importante del día (hasta 3) y márcalo con importante=true. Si una tarea lleva muchas veces pospuesta, propón dejarla para algún día o partirla en algo más pequeño.
+- Al planificar, ten en cuenta sus reuniones y la carga del día (duración estimada de las tareas); si un día pasa de 6 h, propón mover algo. Para poner hora a algo, elige uno de los HUECOS LIBRES del resumen (y para lo que exige concentración, mejor en sus horas de FOCO). Ayúdale a elegir lo importante del día (hasta 3) y márcalo con importante=true. Si una tarea lleva muchas veces pospuesta, propón dejarla para algún día o partirla en algo más pequeño.
 - Títulos de tarea cortos y que empiecen por un verbo. Fechas en formato YYYY-MM-DD y horas HH:MM, en su zona horaria.
 - Responde en español.`
 
@@ -40,7 +40,7 @@ export const TOOLS = [
     name: 'ver_resumen',
     title: 'Ver resumen de LUNO',
     description:
-      'Resumen completo: fecha y hora actuales, tareas atrasadas, con fecha y sin fecha (con sus id), proyectos, objetivos, hábitos de hoy, pagos próximos, personas (cumpleaños y a quién llamar) y los huecos libres de hoy y mañana. Úsalo antes de responder sobre la agenda o planificar.',
+      'Resumen completo: fecha y hora actuales, tareas atrasadas, con fecha y sin fecha (con sus id), proyectos, objetivos, hábitos de hoy, pagos próximos, personas (cumpleaños y a quién llamar), los huecos libres de hoy y mañana y su foco (hoy, la semana, la racha y sus mejores horas). Úsalo antes de responder sobre la agenda o planificar.',
     inputSchema: { type: 'object', properties: {} },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },

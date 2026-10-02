@@ -33,7 +33,7 @@
 | **Resumen de la mañana** | Una notificación diaria, a la hora que elijas, con lo que tienes hoy |
 | **Planificar el día** | Un minuto por la mañana: lo atrasado, la bandeja y lo que viene, a hoy o a otro día, y elegir lo importante. A lo que lleva 3 veces pospuesto se le propone «Algún día» |
 | **Cerrar el día** | Por la tarde (como el cierre de Sunsama): lo que has hecho, qué pasa con lo que queda (mañana, algún día o hecha, sin arrastrarlo sin pensar), qué tal el día para el diario y un vistazo a mañana con lo importante ya elegido. Hoy lo propone a partir de las 18:00 |
-| **Modo foco** | Temporizador a pantalla completa con la tarea y sus subtareas; avisa al terminar |
+| **Foco** | Temporizador a pantalla completa con la tarea y sus subtareas, o con lo que vayas a hacer (foco libre). **Pomodoros con descansos** (5 min tras cada uno y 15 cada cuatro, como Focus To-Do) con qué hacer en el descanso; **apuntar algo para luego** sin dejar el foco (va a la Bandeja, como la lista de imprevistos de la técnica Pomodoro); **sonido de fondo** (ruido marrón, rosa, blanco u olas, generado al momento, como Noisli o Endel); y al acabar, **¿qué tal ha ido?** (como Session). La página Foco (`G` `Q`) tiene el **objetivo diario con racha** (Forest), los últimos 14 días, **tus mejores horas** (Rize) y en qué se va el tiempo; cada tarea dice cuánto foco lleva frente a lo estimado (Toggl) |
 | **Plantillas** | Listas que repites (maleta, cierre de mes…): se crean las tareas con sus fechas, como proyecto o sueltas |
 | **Papelera** | Lo que borras se guarda 30 días y se puede recuperar |
 | **Tu semana** | En Completadas: tareas por día, tiempo de foco, hábitos y racha |

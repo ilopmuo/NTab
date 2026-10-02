@@ -31,6 +31,7 @@ const loaders = {
   AreaView: () => import('@/features/areas/AreaView').then((m) => ({ default: m.AreaView })),
   CalendarView: () => import('@/features/calendar/CalendarView').then((m) => ({ default: m.CalendarView })),
   FinanceView: () => import('@/features/finance/FinanceView').then((m) => ({ default: m.FinanceView })),
+  FocusView: () => import('@/features/focus/FocusView').then((m) => ({ default: m.FocusView })),
   GoalsView: () => import('@/features/goals/GoalsView').then((m) => ({ default: m.GoalsView })),
   HabitsView: () => import('@/features/habits/HabitsView').then((m) => ({ default: m.HabitsView })),
   InboxView: () => import('@/features/Inbox').then((m) => ({ default: m.InboxView })),
@@ -62,7 +63,7 @@ const loaders = {
   TrackersView: () => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView })),
   RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), ShutdownView = lazy(loaders.ShutdownView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), MoreView = lazy(loaders.MoreView), SomedayView = lazy(loaders.SomedayView), SmartListsView = lazy(loaders.SmartListsView), MatrixView = lazy(loaders.MatrixView), SmartListView = lazy(loaders.SmartListView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), FocusView = lazy(loaders.FocusView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), ShutdownView = lazy(loaders.ShutdownView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), MoreView = lazy(loaders.MoreView), SomedayView = lazy(loaders.SomedayView), SmartListsView = lazy(loaders.SmartListsView), MatrixView = lazy(loaders.MatrixView), SmartListView = lazy(loaders.SmartListView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
@@ -127,6 +128,8 @@ function Screen() {
       return <HabitsView />
     case 'routines':
       return <RoutinesView />
+    case 'focus':
+      return <FocusView />
     case 'things':
       return <ThingsView id={id} />
     case 'trackers':
@@ -184,6 +187,7 @@ const TITLES: Record<string, string> = {
   calendar: 'Calendario',
   habits: 'Hábitos',
   routines: 'Rutinas',
+  focus: 'Foco',
   things: 'Cosas',
   trackers: 'Última vez',
   shopping: 'Compra',

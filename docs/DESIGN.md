@@ -61,7 +61,7 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Anillos y números | Se llenan y cuentan desde cero al aparecer; los contadores ruedan al cambiar (el número viejo sale, el nuevo entra en la dirección del cambio). Al cerrarse un anillo, una onda sale de él |
 | Hábitos en Hoy | Al marcarlo, el lima crece en círculo desde donde tocas; la llama de la racha da un respingo y el número rueda; en los de cantidad, cada toque suelta un «+1» que sube y se desvanece |
 | Pestañas | La pestaña elegida da un saltito, como los SF Symbols |
-| Modo foco | Mientras corre el tiempo, un halo respira detrás del anillo (8 s por respiración); al acabar, ondas verdes |
+| Modo foco | Mientras corre el tiempo, un halo respira detrás del anillo (8 s por respiración); al acabar, ondas verdes. El descanso es verde (anillo, halo y título) con una sugerencia para levantarse; el sonido de fondo entra y sale con un fundido de casi un segundo y solo suena mientras corre el foco |
 | Completar | Chispas lima e índigo salen de la casilla, con toque háptico |
 | Día completado | El anillo lima se cierra, se dibuja el ✓ y cae confeti (solo si acaba de pasar, no al volver a Hoy) |
 | Deslizar una tarea (táctil) | → hecha (lima), ← a mañana (acento). La franja se colorea al pasar el umbral, con toque háptico; si no llega, vuelve con muelle |

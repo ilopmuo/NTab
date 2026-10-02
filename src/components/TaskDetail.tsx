@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, Reorder, m as motion, useDragControls } from 'motion/react'
 import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
@@ -16,9 +17,10 @@ import { NAG_OPTIONS, REMINDER_OPTIONS, nagLabel, reminderLabel, reminderValue }
 import { toast, ui, useUI } from '@/app/store'
 import { db } from '@/db/db'
 import { MAX_IMPORTANT, postponedLabel } from '@/lib/day'
+import { taskFocus } from '@/lib/focusStats'
 import { Checkbox, completeWithFeedback } from './TaskItem'
 import { DatePicker } from './DatePicker'
-import { Button, Group, IconButton, Modal, Segmented, Switch, Textarea, cx, spring, useMediaQuery } from './ui'
+import { Button, Group, IconButton, Modal, ProgressBar, Segmented, Switch, Textarea, cx, spring, useMediaQuery } from './ui'
 import { focus } from '@/features/focus/focus'
 import { toastTrashed } from '@/features/trash/undo'
 
@@ -412,6 +414,7 @@ function TaskDetail({ task }: { task: Task }) {
             />
           </Row>
           <EstimateRow value={task.estimate} onChange={(estimate) => set({ estimate })} />
+          <FocusRow taskId={task.id} estimate={task.estimate} />
           <Row icon={<Repeat size={16} strokeWidth={2.4} />} color="var(--c-gray)" label="Repetir" value={task.recurrence ? recurrenceLabel(task.recurrence) : undefined}>
             <select aria-label="Repetir" value={kind} onChange={(e) => setRepeat(e.target.value as RepeatKind)} className={cx(fieldCls, 'appearance-none pr-3')}>
               <option value="none">No se repite</option>
@@ -713,6 +716,24 @@ function RecurrenceEditor({ value, onChange }: { value: Recurrence; onChange: (r
 }
 
 /** Fila "Aviso": cuándo te avisa LUNO (notificación en el móvil u ordenador) */
+/** Lo enfocado en la tarea frente a lo estimado (como Toggl o Focus To-Do) */
+function FocusRow({ taskId, estimate }: { taskId: string; estimate?: number }) {
+  const logs = useLiveQuery(() => db.focusLogs.where('taskId').equals(taskId).toArray(), [taskId])
+  if (!logs?.length) return null
+  const { minutes, pomodoros } = taskFocus(logs, taskId)
+  if (!minutes) return null
+  const parts = [durationLabel(minutes), pomodoros && (pomodoros === 1 ? '1 pomodoro' : `${pomodoros} pomodoros`), estimate && `estimada en ${durationLabel(estimate)}`]
+  return (
+    <Row icon={<Timer size={15} strokeWidth={2.4} />} color="var(--c-text)" label="Foco" value={parts.filter(Boolean).join(' · ')}>
+      {estimate ? (
+        <div className="w-full max-w-[240px]">
+          <ProgressBar value={minutes / estimate} />
+        </div>
+      ) : undefined}
+    </Row>
+  )
+}
+
 function EstimateRow({ value, onChange }: { value?: number; onChange: (v: number | undefined) => void }) {
   const [custom, setCustom] = useState('')
   const quick = [15, 30, 60, 120]

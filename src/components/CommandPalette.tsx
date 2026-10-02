@@ -5,7 +5,7 @@ import { whatNow } from '@/features/whatnow/store'
 import { markDone, markSlip } from '@/features/trackers/markDone'
 import { cleanDays, sinceLabel } from '@/lib/trackers'
 import { useMemo, useState } from 'react'
-import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, LayoutGrid, ListChecks, ListFilter, Moon, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, User, UserPlus, Wallet } from 'lucide-react'
+import { BookOpen, Box, CheckCircle2, ClipboardList, Download, FileText, FolderPlus, Hash, History, Keyboard, LayoutGrid, ListChecks, ListFilter, Moon, PanelLeft, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, SunMoon, Target, Timer, User, UserPlus, Wallet } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import { createNote } from '@/db/actions'
@@ -211,6 +211,11 @@ function Palette() {
           {on('routines') && (
             <Item value="nueva rutina crear checklist lista de pasos" icon={<G c="blue"><ListChecks size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/routines'), ui.create('routine')))}>
               Nueva rutina
+            </Item>
+          )}
+          {on('focus') && (
+            <Item value="empezar foco pomodoro concentrarme temporizador concentracion" icon={<G c="blue"><Timer size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/focus'))}>
+              Empezar foco
             </Item>
           )}
           {on('people') && (

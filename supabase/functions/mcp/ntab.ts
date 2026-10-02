@@ -16,6 +16,7 @@ import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type Ha
 import { logGoal, type GoalPoint } from '../_shared/goals.ts'
 import { appendToNote, checklistStats } from '../_shared/notes.ts'
 import { ceilTo, freeSlots, slotsLabel, toMin, type Block } from '../_shared/schedule.ts'
+import { bestWindow, focusStreak, lastDays, minutesByDay, minutesByHour, windowLabel, type FocusGoal, type FocusLogLike } from '../_shared/focus.ts'
 import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
@@ -293,6 +294,26 @@ function goalLines(rows: Row[], tasks: Task[], env: Env, today: string) {
   return [`OBJETIVO DIARIO: ${goal.tasks} tareas; hoy lleva ${st.today}${st.dayOff ? ' (hoy es día libre)' : ''}. Racha: ${st.current} ${st.current === 1 ? 'día' : 'días'} (mejor ${st.best}).`]
 }
 
+/** Foco: hoy frente al objetivo, la semana, la racha y sus mejores horas (como Rize) */
+function focusLines(rows: Row[], env: Env, today: string) {
+  const logs = rows.filter((r) => r.tbl === 'focusLogs' && isYmd(r.data.date)).map((r) => r.data as unknown as FocusLogLike)
+  const goal = num((rows.find((r) => r.tbl === 'settings' && r.id === 'focusGoal')?.data.value as FocusGoal | null | undefined)?.minutes)
+  const recent = logs.filter((l) => l.date >= addDays(today, -59))
+  if (!recent.length && !goal) return []
+  const byDay = minutesByDay(logs)
+  const week = lastDays(byDay, today, 7).reduce((s, d) => s + d.minutes, 0)
+  const pomodoros = logs.filter((l) => l.date === today && l.pomodoro).length
+  const streak = focusStreak(byDay, goal, today).current
+  const best = bestWindow(minutesByHour(recent, (ms) => toMin(hhmmIn(ms, env.tz))))
+  const parts = [
+    `hoy ${minutesLabel(byDay.get(today) ?? 0)}${goal ? ` de ${minutesLabel(goal)} de objetivo` : ''}${pomodoros ? ` (${pomodoros} ${pomodoros === 1 ? 'pomodoro' : 'pomodoros'})` : ''}`,
+    `últimos 7 días ${minutesLabel(week)}`,
+  ]
+  if (streak) parts.push(`racha de ${streak} ${streak === 1 ? 'día' : 'días'}`)
+  if (best) parts.push(`se concentra mejor ${windowLabel(best)}: reserva esas horas para lo que exige pensar`)
+  return [`FOCO: ${parts.join('; ')}.`]
+}
+
 /** Resumen de todo LUNO para que Claude responda y planifique */
 export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLike[]; names: Record<string, string> }): string {
   const today = ymdIn(env.now, env.tz)
@@ -314,6 +335,7 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     ...freeLine('MAÑANA', addDays(today, 1), open, calendar?.events ?? [], env, 0),
     ...importantLines(open, today),
     ...goalLines(rows, ix.tasks, env, today),
+    ...focusLines(rows, env, today),
     ...(calendar ? [`\nEVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (${calendar.events.length}) — solo lectura:`, ...eventLines(calendar.events, calendar.names, env)] : []),
     `\nATRASADAS (${overdue.length}):`,
     ...limit(overdue, 60),

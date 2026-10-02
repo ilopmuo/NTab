@@ -28,6 +28,7 @@ export const FEATURES: FeatureDef[] = [
   { id: 'templates', label: 'Plantillas', hint: 'Listas que repites: la maleta, el cierre de mes…', group: 'organize', sections: ['templates'], cards: [] },
   { id: 'goals', label: 'Objetivos', hint: 'Metas con una cifra o con sus proyectos', group: 'organize', sections: ['goals'], cards: [] },
   { id: 'review', label: 'Revisión semanal', hint: 'Seis pasos para vaciar la cabeza y planificar la semana', group: 'organize', sections: ['review'], cards: [] },
+  { id: 'focus', label: 'Foco', hint: 'Pomodoros con descansos, sonido de fondo y tus mejores horas', group: 'organize', sections: ['focus'], cards: [] },
   { id: 'countdowns', label: 'Cuenta atrás', hint: 'Los días que faltan para lo que esperas, en Hoy', group: 'organize', sections: [], cards: ['countdowns'] },
   { id: 'habits', label: 'Hábitos', hint: 'Seguimiento diario, rachas y recordatorios', group: 'life', sections: ['habits'], cards: ['habits'] },
   { id: 'routines', label: 'Rutinas', hint: 'Pasos que haces siempre igual, guiados', group: 'life', sections: ['routines'], cards: ['routines'] },
