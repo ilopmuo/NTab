@@ -16,6 +16,7 @@ import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type Ha
 import { logGoal, type GoalPoint } from '../_shared/goals.ts'
 import { appendToNote, checklistStats } from '../_shared/notes.ts'
 import { ceilTo, freeSlots, slotsLabel, toMin, type Block } from '../_shared/schedule.ts'
+import { houseSummary, type HouseCtx } from './casa.ts'
 import { bestWindow, focusStreak, lastDays, minutesByDay, minutesByHour, windowLabel, type FocusGoal, type FocusLogLike } from '../_shared/focus.ts'
 import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
 
@@ -315,7 +316,7 @@ function focusLines(rows: Row[], env: Env, today: string) {
 }
 
 /** Resumen de todo LUNO para que Claude responda y planifique */
-export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLike[]; names: Record<string, string> }): string {
+export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLike[]; names: Record<string, string> }, house?: HouseCtx): string {
   const today = ymdIn(env.now, env.tz)
   const ix = new Index(rows)
   const open = ix.tasks.filter((t) => !t.done)
@@ -336,6 +337,7 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     ...importantLines(open, today),
     ...goalLines(rows, ix.tasks, env, today),
     ...focusLines(rows, env, today),
+    ...(house ? houseSummary(house, today) : []),
     ...(calendar ? [`\nEVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (${calendar.events.length}) — solo lectura:`, ...eventLines(calendar.events, calendar.names, env)] : []),
     `\nATRASADAS (${overdue.length}):`,
     ...limit(overdue, 60),

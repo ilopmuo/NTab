@@ -14,6 +14,9 @@ import { toast } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Button, Empty, Group, PageHeader, bouncy, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
+import { PISO_LIST, useHouse, useMyHouse } from '../house/store'
+import { SharedShopping } from '../house/parts'
+import { shopItems } from '@/lib/house'
 
 const EXAMPLE = 'leche, 2 barras de pan, plátanos y detergente'
 
@@ -44,8 +47,11 @@ export function ShoppingView() {
   const dictation = useDictation((t) => setText(`${base.current}${base.current && t ? ', ' : ''}${t}`))
   const preview = useMemo(() => parseItems(text), [text])
   const known = useMemo(() => Object.fromEntries((pantry ?? []).map((p) => [p.id, p.aisle])), [pantry])
+  // La lista del piso compartido (si tienes piso): la ven y la tocan tus compañeros
+  const house = useMyHouse()
+  const shared = useHouse(house?.token)
   if (!all || !pantry || !lists) return null
-  const listId = lists.some((l) => l.id === current) ? current : ''
+  const listId = current === PISO_LIST && house ? PISO_LIST : lists.some((l) => l.id === current) ? current : ''
   const choose = (id: string) => {
     setCurrent(id)
     try {
@@ -55,7 +61,21 @@ export function ShoppingView() {
     }
   }
   const items = all.filter((i) => (i.list ?? '') === listId)
-  const countOf = (id: string) => all.filter((i) => (i.list ?? '') === id && !i.checked).length
+  const sharedPending = shared ? shopItems(shared.items).filter((i) => !i.data.done).length : 0
+  const countOf = (id: string) => (id === PISO_LIST ? sharedPending : all.filter((i) => (i.list ?? '') === id && !i.checked).length)
+
+  if (listId === PISO_LIST && house && shared)
+    return (
+      <Page>
+        <PageHeader
+          icon={<SectionIcon def={section('shopping')} size={40} />}
+          title="Compra"
+          subtitle={sharedPending ? `${sharedPending} ${sharedPending === 1 ? 'cosa' : 'cosas'} para el piso · lo ve todo el piso` : 'La lista del piso: la ve y la toca todo el piso.'}
+        />
+        <ListTabs lists={lists} current={listId} countOf={countOf} onChoose={choose} piso />
+        <SharedShopping token={house.token} me={house.me} items={shared.items} />
+      </Page>
+    )
   const listName = lists.find((l) => l.id === listId)?.name ?? MAIN
 
   const pending = items.filter((i) => !i.checked)
@@ -89,7 +109,7 @@ export function ShoppingView() {
         subtitle={pending.length ? `${pending.length} ${pending.length === 1 ? 'cosa' : 'cosas'} por comprar${inCart.length ? ` · ${inCart.length} en el carro` : ''}` : 'Escribe o dicta todo de golpe; LUNO lo ordena por pasillos.'}
       />
 
-      <ListTabs lists={lists} current={listId} countOf={countOf} onChoose={choose} />
+      <ListTabs lists={lists} current={listId} countOf={countOf} onChoose={choose} piso={!!house} />
 
       <form
         onSubmit={(e) => {
@@ -226,8 +246,8 @@ function Total({ items }: { items: ShoppingItem[] }) {
   )
 }
 
-/** Pestañas de las listas: la principal, las demás y «Nueva lista» */
-function ListTabs({ lists, current, countOf, onChoose }: { lists: ShoppingList[]; current: string; countOf: (id: string) => number; onChoose: (id: string) => void }) {
+/** Pestañas de las listas: la principal, la del piso (si hay), las demás y «Nueva lista» */
+function ListTabs({ lists, current, countOf, onChoose, piso }: { lists: ShoppingList[]; current: string; countOf: (id: string) => number; onChoose: (id: string) => void; piso?: boolean }) {
   const [adding, setAdding] = useState(false)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -270,6 +290,7 @@ function ListTabs({ lists, current, countOf, onChoose }: { lists: ShoppingList[]
     <div className="mb-3 flex items-center gap-2">
       <div className="no-scrollbar -mx-1 flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto px-1 py-0.5" role="group" aria-label="Listas de la compra">
         {tab('', MAIN)}
+        {piso && tab(PISO_LIST, 'Piso')}
         {lists.map((l) =>
           renaming === l.id ? (
             <input

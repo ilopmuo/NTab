@@ -39,6 +39,8 @@ import { SelectButton } from '@/features/select/SelectButton'
 // El anillo y el confeti de «día completado», solo cuando hace falta
 // Elegir lo importante, solo al abrirlo
 const ImportantPicker = lazy(() => import('./today/ImportantPicker'))
+// Solo si tienes piso: se carga aparte para no pesar en el arranque
+const HouseCard = lazy(() => import('./today/HouseCard'))
 const DayComplete = lazy(() => import('@/components/Celebrate').then((m) => ({ default: m.DayComplete })))
 
 const PARTS = [
@@ -365,6 +367,12 @@ export function TodayView() {
                 return <RoutinesCard key={id} />
               case 'trackers':
                 return <TrackersDue key={id} />
+              case 'house':
+                return (
+                  <Suspense key={id} fallback={null}>
+                    <HouseCard />
+                  </Suspense>
+                )
               case 'things':
                 return <ThingsAttention key={id} />
               case 'habits':

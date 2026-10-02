@@ -20,6 +20,7 @@ import {
   RefreshCcw,
   Settings,
   ShoppingCart,
+  SprayCan,
   StickyNote,
   Sun,
   Tags,
@@ -59,6 +60,7 @@ export const SECTIONS: SectionDef[] = [
   { id: 'focus', path: '/focus', label: 'Foco', short: 'Foco', icon: Timer, tint: 'blue', key: 'Q' },
   { id: 'notes', path: '/notes', label: 'Notas', short: 'Notas', icon: StickyNote, tint: 'blue', key: 'O' },
   { id: 'journal', path: '/journal', label: 'Diario', short: 'Diario', icon: BookOpen, tint: 'blue', key: 'D' },
+  { id: 'house', path: '/house', label: 'Tareas de casa', short: 'Tareas', icon: SprayCan, tint: 'blue', key: '' },
   { id: 'menu', path: '/menu', label: 'Menú', short: 'Menú', icon: CookingPot, tint: 'blue', key: 'Z' },
   { id: 'shopping', path: '/shopping', label: 'Compra', short: 'Compra', icon: ShoppingCart, tint: 'blue', key: 'A' },
   { id: 'trackers', path: '/trackers', label: 'Última vez', short: 'Última vez', icon: History, tint: 'blue', key: 'V' },
@@ -117,7 +119,7 @@ export const HUBS: HubDef[] = [
   hubDef('notes', 'Notas', 'Notas', StickyNote, [['notes', 'Notas'], ['journal', 'Diario']]),
   hubDef('habits', 'Hábitos', 'Hábitos', Flame, [['habits', 'Hábitos'], ['routines', 'Rutinas'], ['trackers', 'Última vez']]),
   hubDef('people', 'Personas', 'Personas', Users, [['people', 'Personas']]),
-  hubDef('home', 'Casa', 'Casa', House, [['shopping', 'Compra'], ['menu', 'Menú'], ['things', 'Cosas']]),
+  hubDef('home', 'Casa', 'Casa', House, [['house', 'Tareas'], ['shopping', 'Compra'], ['menu', 'Menú'], ['things', 'Cosas']]),
   hubDef('money', 'Dinero', 'Dinero', Wallet, [['expenses', 'Gastos'], ['finance', 'Pagos']]),
 ]
 

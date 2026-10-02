@@ -3,6 +3,9 @@
  * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
+import { houseAdd, houseDone, houseView, type HouseCtx } from './casa.ts'
+import type { HouseOp } from '../_shared/house.ts'
+import { ymdIn } from '../_shared/time.ts'
 import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
@@ -10,6 +13,9 @@ export interface Store {
   save(rows: Row[], deletes?: Row[]): Promise<void>
   /** eventos de los calendarios externos entre dos instantes (ms) */
   events?(from: number, to: number): Promise<{ events: EventLike[]; names: Record<string, string> }>
+  /** su casa compartida (si tiene) y guardar cambios en ella */
+  house?(): Promise<HouseCtx | null>
+  houseOps?(ops: HouseOp[]): Promise<void>
 }
 
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
@@ -21,6 +27,7 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
 - Si te cuenta qué tal su día y quiere guardarlo, usa escribir_diario.
 - Para consultar lo que tiene apuntado en sus notas, buscar_notas; para añadir a una nota que ya tiene (ideas, la maleta…), anadir_a_nota.
+- Si vive con compañeros (CASA COMPARTIDA en el resumen), lo común va al piso con anadir_a_casa: la compra de casa, las tareas de casa (por turnos: sacar la basura, limpiar el baño) y los gastos que se reparten; «he sacado la basura» va a hecho_en_casa. Lo suyo personal, como siempre.
 - Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto (con etiqueta si es de un viaje). Si se apunta a algo que se cobra cada mes o a una prueba gratis, guárdalo con guardar_pago. Ante «tengo un rato, ¿qué hago?», usa que_hago.
 - Para comidas de la semana, planificar_menu (y crear_receta para guardar recetas con sus ingredientes).
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
@@ -357,6 +364,48 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'ver_casa',
+    title: 'Ver la casa compartida',
+    description: 'Su piso compartido: las tareas de casa con a quién le toca cada una (por turnos), la lista de la compra común, quién debe a quién y el reparto de tareas del último mes.',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'anadir_a_casa',
+    title: 'Añadir a la casa compartida',
+    description:
+      'Apunta algo en el piso compartido, que ven al momento sus compañeros: tipo «compra» (cosas para casa: «papel higiénico y lavavajillas»), «tarea» (una tarea de casa; con cada_dias se repite por turnos entre todos) o «gasto» (algo pagado para el piso, que se reparte a partes iguales).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tipo: { type: 'string', enum: ['compra', 'tarea', 'gasto'] },
+        texto: { type: 'string', description: 'Lo que hay que comprar, el nombre de la tarea o el concepto del gasto' },
+        cada_dias: { type: 'number', description: 'Tarea: cada cuántos días se repite (2 la basura, 7 el baño)' },
+        para: { type: 'string', description: 'Tarea: a quién le toca (o por quién empiezan los turnos)' },
+        fecha: { type: 'string', description: 'Tarea: desde cuándo (YYYY-MM-DD)' },
+        importe: { type: 'number', description: 'Gasto: cuánto (en euros)' },
+        pago: { type: 'string', description: 'Gasto: quién pagó (sin él, el usuario)' },
+        entre: { type: 'array', items: { type: 'string' }, description: 'Gasto: entre quiénes se reparte (sin él, entre todos)' },
+      },
+      required: ['tipo', 'texto'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'hecho_en_casa',
+    title: 'Tarea de casa hecha',
+    description: 'Marca una tarea de casa del piso como hecha («he sacado la basura»): pasa el turno al siguiente y, si se repite, pone la próxima fecha.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tarea: { type: 'string', description: 'La tarea (por su nombre)' },
+        quien: { type: 'string', description: 'Quién la ha hecho, si no ha sido el usuario' },
+      },
+      required: ['tarea'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
     name: 'ver_compra',
     title: 'Ver la lista de la compra',
     description: 'La lista de la compra pendiente, ordenada por pasillos (y por listas, si tiene varias: súper, farmacia…), con el total estimado si hay precios.',
@@ -524,11 +573,23 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
   switch (name) {
     case 'ver_resumen': {
       const cal = store.events ? await store.events(env.now - 864e5, env.now + 8 * 864e5).catch(() => undefined) : undefined
+      const house = store.house ? ((await store.house().catch(() => null)) ?? undefined) : undefined
       if (cal) {
         const soon = cal.events.filter((e) => Date.parse(e.allDay ? `${e.end}T00:00:00Z` : e.end) > env.now)
-        return text(buildSummary(rows, env, { events: soon, names: cal.names }))
+        return text(buildSummary(rows, env, { events: soon, names: cal.names }, house))
       }
-      return text(buildSummary(rows, env))
+      return text(buildSummary(rows, env, undefined, house))
+    }
+    case 'ver_casa':
+    case 'anadir_a_casa':
+    case 'hecho_en_casa': {
+      const house = store.house ? await store.house() : null
+      if (!house) return text('No tiene casa compartida en LUNO: se crea en Casa → Tareas.')
+      const today = ymdIn(env.now, env.tz)
+      if (name === 'ver_casa') return text(houseView(house, today, env.now))
+      const r = name === 'anadir_a_casa' ? houseAdd(house, args, { now: env.now, today, newId: env.newId }) : houseDone(house, args, { now: env.now, today })
+      if (r.ops.length) await store.houseOps!(r.ops)
+      return text(r.report)
     }
     case 'ver_eventos': {
       if (!store.events) return text('No hay calendarios conectados.')

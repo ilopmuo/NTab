@@ -12,6 +12,7 @@ export const TODAY_CARDS = [
   { id: 'countdowns', label: 'Cuenta atrás' },
   { id: 'routines', label: 'Rutinas' },
   { id: 'trackers', label: 'Toca hacer (última vez)' },
+  { id: 'house', label: 'Te toca en casa' },
   { id: 'things', label: 'Cosas (caducidades y préstamos)' },
   { id: 'habits', label: 'Hábitos' },
   { id: 'week', label: 'Próximos días' },

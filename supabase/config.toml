@@ -434,6 +434,12 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/mcp/deno.json"
 
+[functions.casa]
+enabled = true
+# Los compañeros de piso entran con el enlace (token en la ruta), sin cuenta;
+# crear el piso o cambiar su enlace lo comprueba la función con la sesión.
+verify_jwt = false
+
 [functions.events]
 enabled = true
 # La función comprueba la sesión ella misma (auth.getUser).

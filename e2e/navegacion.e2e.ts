@@ -44,7 +44,8 @@ test.describe('en el móvil', () => {
     const tabs = page.locator('nav.glass-thick a:not([href$="/more"])')
     await expect(tabs).toHaveCount(4)
     await expect(page.locator('nav.glass-thick a[href$="/more"]')).toHaveCount(1)
-    await expect(tabs.nth(1)).toHaveAttribute('href', /#\/shopping$/)
+    // Casa abre en sus tareas
+    await expect(tabs.nth(1)).toHaveAttribute('href', /#\/house$/)
   })
 })
 
@@ -88,12 +89,12 @@ test('funciones: apagar Menú lo quita de las pestañas de Casa, ⌘K y su pági
 test('espacios: pestañas arriba, se recuerda la última y fijados en la barra lateral', async ({ page }) => {
   await openApp(page, '/today')
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
-  // Compra, Menú y Cosas no van sueltas: están dentro de Casa
+  // Tareas de casa, Compra, Menú y Cosas no van sueltas: están dentro de Casa
   await expect(nav.getByRole('link', { name: 'Compra' })).toHaveCount(0)
   await nav.getByRole('link', { name: 'Casa' }).click()
-  await expect(page.locator('#main h1')).toHaveText('Compra')
+  await expect(page.locator('#main h1')).toHaveText('Tareas de casa')
   const casa = page.getByRole('navigation', { name: 'Casa' })
-  await expect(casa.getByRole('link', { name: 'Compra' })).toHaveAttribute('aria-current', 'page')
+  await expect(casa.getByRole('link', { name: 'Tareas' })).toHaveAttribute('aria-current', 'page')
   await casa.getByRole('link', { name: 'Menú' }).click()
   await expect(page.locator('#main h1')).toHaveText('Menú')
   await expect(nav.getByRole('link', { name: 'Casa' })).toHaveAttribute('aria-current', 'page')

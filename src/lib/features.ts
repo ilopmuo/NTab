@@ -35,6 +35,7 @@ export const FEATURES: FeatureDef[] = [
   { id: 'trackers', label: 'Última vez', hint: '¿Cuándo cambiaste las sábanas? Y aviso cuando toca', group: 'life', sections: ['trackers'], cards: ['trackers'] },
   { id: 'journal', label: 'Diario', hint: 'Ánimo, unas líneas y tres cosas buenas cada día', group: 'life', sections: ['journal'], cards: ['journal'] },
   { id: 'people', label: 'Personas', hint: 'Cumpleaños y a quién hace tiempo que no llamas', group: 'life', sections: ['people'], cards: ['people'] },
+  { id: 'house', label: 'Tareas de casa', hint: 'Turnos de limpieza, compra y cuentas con tus compañeros de piso', group: 'home', sections: ['house'], cards: ['house'] },
   { id: 'shopping', label: 'Compra', hint: 'Lista de la compra por pasillos', group: 'home', sections: ['shopping'], cards: [] },
   { id: 'menu', label: 'Menú', hint: 'Comidas de la semana con tus recetas', group: 'home', sections: ['menu'], cards: ['meals'] },
   { id: 'things', label: 'Cosas', hint: 'Dónde está algo, préstamos y caducidades', group: 'home', sections: ['things'], cards: ['things'] },

@@ -13,6 +13,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { handleMessage, type Store } from './server.ts'
 import { capture, captureFields, type CaptureInput, type Env, type Row } from './ntab.ts'
 import { loadEvents } from '../_shared/loadEvents.ts'
+import { applyHouseOps, findHouse, houseItems } from '../_shared/houseStore.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -100,6 +101,18 @@ Deno.serve(async (req) => {
     async events(from, to) {
       const r = await loadEvents(admin, userId, from, to)
       return { events: r.events, names: r.names }
+    },
+    // La casa compartida (ajuste `household`: el enlace del piso y quién es en él)
+    async house() {
+      const mine = (await store.load()).find((r) => r.tbl === 'settings' && r.id === 'household')?.data.value as { token?: string; me?: string } | null | undefined
+      if (!mine?.token || !mine.me) return null
+      const h = await findHouse(admin, mine.token)
+      return h ? { name: h.name, items: await houseItems(admin, h.id), me: mine.me } : null
+    },
+    async houseOps(ops) {
+      const mine = (await store.load()).find((r) => r.tbl === 'settings' && r.id === 'household')?.data.value as { token?: string } | null | undefined
+      const h = mine?.token ? await findHouse(admin, mine.token) : null
+      if (h) await applyHouseOps(admin, h, ops)
     },
     async save(writes, deletes = []) {
       const upserts = [
