@@ -16,7 +16,6 @@ import { reducedMotion, useA11yPrefs } from './theme'
 import { useFeatures } from './features'
 import { FeatureOff } from '@/features/FeatureOff'
 import { MobileBar } from './MobileBar'
-import { routeTint, tint } from './sections'
 import { Splash } from './Splash'
 import { ui, useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
@@ -333,15 +332,13 @@ function Workspace() {
         tabIndex={-1}
         aria-label={TITLES[parts[0]] ?? 'LUNO'}
         className={cx(
-          '@container relative h-full overflow-y-auto overscroll-contain transition-[padding] duration-300',
+          '@container h-full overflow-y-auto overscroll-contain transition-[padding] duration-300',
           !sidebarHidden && 'lg:pl-[272px]',
           panelOpen && 'xl:pr-[420px]',
         )}
       >
         <div id="topbar" className="pointer-events-none sticky top-0 z-30 h-0 safe-top" />
         <ReauthBanner />
-        {/* Halo del color del módulo arriba de la pantalla; se va con el scroll */}
-        <div aria-hidden className="page-halo" style={{ '--halo': tint(routeTint(parts[0])) } as React.CSSProperties} />
         <motion.div
           key={screenKey}
           // Con View Transition, la transición ya la hace el navegador

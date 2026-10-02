@@ -25,6 +25,7 @@ import { ThingsAttention } from './things/ThingsAttention'
 import { TrackersDue } from './trackers/TrackersDue'
 import { useHabits } from './habits/useHabits'
 import { Agenda } from './today/Agenda'
+import { NowCard } from './today/NowCard'
 import { useEvents } from '@/lib/calendarEvents'
 import { DayRings } from './today/DayRings'
 import { PaymentsCard } from './today/PaymentsCard'
@@ -170,6 +171,7 @@ export function TodayView() {
         )}
 
         <div className="min-w-0 [grid-area:tasks]">
+          <NowCard tasks={todays} events={todayEvents} />
           <AnimatePresence>
             {featuresIntro === null && (
               <motion.section

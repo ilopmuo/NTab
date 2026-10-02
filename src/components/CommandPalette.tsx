@@ -16,8 +16,7 @@ import { ui, useUI } from '@/app/store'
 import { toggleTheme } from '@/app/theme'
 import { AreaBadge } from './icons'
 import { Kbd, Modal } from './ui'
-import { SECTIONS, SectionIcon, tint, tintInk, type Tint } from '@/app/sections'
-import { onHue } from '@/lib/hues'
+import { SECTIONS, SectionIcon, tint, type Tint } from '@/app/sections'
 import { useFeatures } from '@/app/features'
 import { useSmartLists } from '@/app/smartLists'
 
@@ -55,7 +54,7 @@ function Item({
 /** Icono cuadrado de color para las acciones */
 function G({ c, children }: { c: Tint; children: React.ReactNode }) {
   return (
-    <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px]" style={{ background: tint(c), color: onHue(c) }}>
+    <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-fill text-fg" data-tint={c}>
       {children}
     </span>
   )
@@ -182,55 +181,55 @@ function Palette() {
             Nuevo proyecto
           </Item>
           {on('habits') && (
-            <Item value="nuevo hábito crear" icon={<G c="orange"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/habits'), ui.create('habit')))}>
+            <Item value="nuevo hábito crear" icon={<G c="green"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/habits'), ui.create('habit')))}>
               Nuevo hábito
             </Item>
           )}
           {on('things') && (
-            <Item value="apuntar cosa donde esta guardado prestar prestamo caduca documento" icon={<G c="teal"><Box size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/things'), ui.create('thing')))}>
+            <Item value="apuntar cosa donde esta guardado prestar prestamo caduca documento" icon={<G c="blue"><Box size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/things'), ui.create('thing')))}>
               Apuntar una cosa (dónde está, préstamo, caducidad)
             </Item>
           )}
-          <Item value="que hago ahora sugerencia tiempo libre tengo minutos" icon={<G c="indigo"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(whatNow.open)}>
+          <Item value="que hago ahora sugerencia tiempo libre tengo minutos" icon={<G c="blue"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(whatNow.open)}>
             ¿Qué hago ahora?
           </Item>
           {on('expenses') && (
-            <Item value="gasto apuntar gastos dinero presupuesto" icon={<G c="mint"><Receipt size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/expenses'))}>
+            <Item value="gasto apuntar gastos dinero presupuesto" icon={<G c="blue"><Receipt size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/expenses'))}>
               Apuntar un gasto
             </Item>
           )}
           {on('journal') && (
-            <Item value="diario escribir como ha ido el dia animo" icon={<G c="purple"><BookOpen size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/journal'))}>
+            <Item value="diario escribir como ha ido el dia animo" icon={<G c="blue"><BookOpen size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/journal'))}>
               Escribir en el diario
             </Item>
           )}
           {on('shopping') && (
-            <Item value="compra añadir lista de la compra supermercado" icon={<G c="green"><ShoppingCart size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/shopping'))}>
+            <Item value="compra añadir lista de la compra supermercado" icon={<G c="blue"><ShoppingCart size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/shopping'))}>
               Lista de la compra
             </Item>
           )}
           {on('routines') && (
-            <Item value="nueva rutina crear checklist lista de pasos" icon={<G c="teal"><ListChecks size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/routines'), ui.create('routine')))}>
+            <Item value="nueva rutina crear checklist lista de pasos" icon={<G c="blue"><ListChecks size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/routines'), ui.create('routine')))}>
               Nueva rutina
             </Item>
           )}
           {on('focus') && (
-            <Item value="empezar foco pomodoro concentrarme temporizador concentracion" icon={<G c="indigo"><Timer size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/focus'))}>
+            <Item value="empezar foco pomodoro concentrarme temporizador concentracion" icon={<G c="blue"><Timer size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/focus'))}>
               Empezar foco
             </Item>
           )}
           {on('people') && (
-            <Item value="nueva persona contacto crear" icon={<G c="green"><UserPlus size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/people'), ui.create('person')))}>
+            <Item value="nueva persona contacto crear" icon={<G c="purple"><UserPlus size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/people'), ui.create('person')))}>
               Nueva persona
             </Item>
           )}
           {on('goals') && (
-            <Item value="nuevo objetivo meta crear" icon={<G c="red"><Target size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/goals'), ui.create('goal')))}>
+            <Item value="nuevo objetivo meta crear" icon={<G c="blue"><Target size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/goals'), ui.create('goal')))}>
               Nuevo objetivo
             </Item>
           )}
           {on('finance') && (
-            <Item value="nuevo pago suscripción recibo gasto crear" icon={<G c="blue"><Wallet size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/finance'), ui.create('subscription')))}>
+            <Item value="nuevo pago suscripción recibo gasto crear" icon={<G c="gray"><Wallet size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/finance'), ui.create('subscription')))}>
               Nuevo pago o suscripción
             </Item>
           )}
@@ -240,14 +239,14 @@ function Palette() {
             </Item>
           )}
           {on('lists') && (
-            <Item value="nueva lista inteligente filtro busqueda guardada crear" icon={<G c="teal"><ListFilter size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/lists'), ui.create('smartList')))}>
+            <Item value="nueva lista inteligente filtro busqueda guardada crear" icon={<G c="blue"><ListFilter size={14} strokeWidth={2.4} /></G>} onSelect={run(() => (navigate('/lists'), ui.create('smartList')))}>
               Nueva lista inteligente
             </Item>
           )}
-          <Item value="planificar el dia hoy organizar" icon={<G c="orange"><Sun size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/plan'))}>
+          <Item value="planificar el dia hoy organizar" icon={<G c="blue"><Sun size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/plan'))}>
             Planificar el día
           </Item>
-          <Item value="cerrar el dia cierre terminar desconectar noche" icon={<G c="indigo"><Moon size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/shutdown'))}>
+          <Item value="cerrar el dia cierre terminar desconectar noche" icon={<G c="blue"><Moon size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/shutdown'))}>
             Cerrar el día
           </Item>
           <Item value="conectar claude conector ia asistente" icon={<G c="gray"><Sparkles size={14} strokeWidth={2.4} /></G>} onSelect={run(() => navigate('/settings'))}>
@@ -259,7 +258,7 @@ function Palette() {
           <Item value="personalizar barra lateral secciones ocultar pestañas movil navegacion menu" icon={<G c="gray"><PanelLeft size={14} strokeWidth={2.4} /></G>} onSelect={() => ui.navEditor('sidebar')}>
             Personalizar la barra lateral
           </Item>
-          <Item value="cambiar tema oscuro claro" icon={<G c="indigo"><SunMoon size={14} strokeWidth={2.4} /></G>} onSelect={run(toggleTheme)}>
+          <Item value="cambiar tema oscuro claro" icon={<G c="gray"><SunMoon size={14} strokeWidth={2.4} /></G>} onSelect={run(toggleTheme)}>
             Cambiar tema claro / oscuro
           </Item>
           <Item value="exportar copia de seguridad backup" icon={<G c="gray"><Download size={14} strokeWidth={2.4} /></G>} onSelect={run(() => void downloadBackup())}>
@@ -306,7 +305,7 @@ function Palette() {
                   key={t.id}
                   value={`t:${t.id}`}
                   keywords={[t.title, ...t.tags]}
-                  icon={t.done ? <CheckCircle2 size={18} style={{ color: 'var(--c-green)' }} /> : <span className="h-[18px] w-[18px] rounded-full border-[1.6px] border-current opacity-60" />}
+                  icon={t.done ? <CheckCircle2 size={18} style={{ color: tint('green') }} /> : <span className="h-[18px] w-[18px] rounded-full border-[1.6px] border-current opacity-60" />}
                   onSelect={run(() => ui.openTask(t.id))}
                   hint={t.dueDate ? dateLabel(t.dueDate) : undefined}
                 >
@@ -317,7 +316,7 @@ function Palette() {
             {on('notes') && (
               <Command.Group heading="Notas" className={groupCls}>
                 {notes.map((n) => (
-                  <Item key={n.id} value={`n:${n.id}`} keywords={[n.title, n.content.slice(0, 200)]} icon={<FileText size={17} style={{ color: tintInk('yellow') }} />} onSelect={() => go(`/notes/${n.id}`)}>
+                  <Item key={n.id} value={`n:${n.id}`} keywords={[n.title, n.content.slice(0, 200)]} icon={<FileText size={17} style={{ color: tint('yellow') }} />} onSelect={() => go(`/notes/${n.id}`)}>
                     {n.title || 'Sin título'}
                   </Item>
                 ))}
@@ -373,7 +372,7 @@ function Palette() {
             {on('people') && (
               <Command.Group heading="Personas" className={groupCls}>
                 {people.map((p) => (
-                  <Item key={p.id} value={`p:${p.id}`} keywords={[p.name, p.company]} icon={<User size={17} style={{ color: tintInk('green') }} />} onSelect={() => go(`/people/${p.id}`)} hint={p.company}>
+                  <Item key={p.id} value={`p:${p.id}`} keywords={[p.name, p.company]} icon={<User size={17} style={{ color: tint('purple') }} />} onSelect={() => go(`/people/${p.id}`)} hint={p.company}>
                     {p.name}
                   </Item>
                 ))}

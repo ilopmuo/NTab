@@ -70,40 +70,6 @@
 
   --ambient-opacity: 0.55;
   color-scheme: dark;
-
-  /* Color por módulo (docs/REDISENO.md): sólido para baldosas, anillos y
-     barras; tinta para texto de color con contraste AA (src/lib/hues.test.ts) */
-  --m-blue: #0a84ff;
-  --m-blue-ink: #3d9bff;
-  --m-sky: #5ac8f5;
-  --m-sky-ink: #5ac8f5;
-  --m-red: #ff453a;
-  --m-red-ink: #ff5a50;
-  --m-pink: #ff375f;
-  --m-pink-ink: #ff5577;
-  --m-orange: #ff9f0a;
-  --m-orange-ink: #ff9f0a;
-  --m-yellow: #ffd60a;
-  --m-yellow-ink: #ffd60a;
-  --m-green: #30d158;
-  --m-green-ink: #30d158;
-  --m-mint: #63e6e2;
-  --m-mint-ink: #63e6e2;
-  --m-teal: #40c8e0;
-  --m-teal-ink: #40c8e0;
-  --m-indigo: #5e5ce6;
-  --m-indigo-ink: #8482ea;
-  --m-purple: #bf5af2;
-  --m-purple-ink: #c76cf3;
-  --m-brown: #ac8e68;
-  --m-brown-ink: #ac8e68;
-  --m-gray: #8e8e93;
-  --m-gray-ink: #9a9aa0;
-  /* colores que elige el usuario (áreas, proyectos, hábitos): cuánto del color
-     queda al mezclarlo con el texto para que se lea */
-  --ink-mix: 72%;
-  --halo-a: 16%;
-
 }
 
 [data-theme='light'] {
@@ -145,36 +111,6 @@
 
   --ambient-opacity: 0.4;
   color-scheme: light;
-
-  --m-blue: #007aff;
-  --m-blue-ink: #036adc;
-  --m-sky: #32ade6;
-  --m-sky-ink: #26759a;
-  --m-red: #ff3b30;
-  --m-red-ink: #cd322a;
-  --m-pink: #ff2d55;
-  --m-pink-ink: #cf2748;
-  --m-orange: #ff9500;
-  --m-orange-ink: #9d5f08;
-  --m-yellow: #ffcc00;
-  --m-yellow-ink: #836b0a;
-  --m-green: #34c759;
-  --m-green-ink: #267c3d;
-  --m-mint: #00c7be;
-  --m-mint-ink: #077975;
-  --m-teal: #30b0c7;
-  --m-teal-ink: #257787;
-  --m-indigo: #5856d6;
-  --m-indigo-ink: #5856d6;
-  --m-purple: #af52de;
-  --m-purple-ink: #9949c2;
-  --m-brown: #a2845e;
-  --m-brown-ink: #816a4d;
-  --m-gray: #8e8e93;
-  --m-gray-ink: #6d6d72;
-  --ink-mix: 46%;
-  --halo-a: 11%;
-
 }
 
 /* ── Color de acento (Ajustes → Apariencia) ─────────────────────────
@@ -486,23 +422,6 @@
   transition: background-color 1200ms ease;
   will-change: transform;
 }
-/* Halo del módulo: una luz suave de su color arriba de cada pantalla, que se
-   funde con el fondo y se va con el scroll (como los espacios de Arc) */
-.page-halo {
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 420px;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(60% 70% at 18% 0%, color-mix(in srgb, var(--halo) var(--halo-a), transparent), transparent 72%),
-    radial-gradient(45% 55% at 85% 0%, color-mix(in srgb, var(--halo) calc(var(--halo-a) * 0.6), transparent), transparent 70%);
-  transition: background 600ms ease;
-}
-[data-contrast='more'] .page-halo {
-  display: none;
-}
-
 /* Cambio de tema: la vista nueva se revela en círculo (ver app/theme.ts) */
 .theme-transition::view-transition-old(root),
 .theme-transition::view-transition-new(root) {

@@ -1,6 +1,5 @@
 import { m as motion } from 'motion/react'
 import { BookOpen, ChevronRight, Hash, LayoutGrid, type LucideIcon, PanelBottom, Plus, Receipt, Search, Timer } from 'lucide-react'
-import { hue, type Hue } from '@/lib/hues'
 import { FEATURE_GROUPS } from '@/lib/features'
 import { useLookup } from '@/db/hooks'
 import { useNavCounts, useProjectProgress } from '@/app/counts'
@@ -125,38 +124,43 @@ export function MoreView() {
 }
 
 /**
- * Acciones rápidas como las baldosas de Atajos: degradado del color del módulo,
- * glifo arriba y nombre abajo en blanco (sobre la parte más oscura, para que se lea)
+ * Acciones rápidas como las baldosas de Atajos: glifo arriba y nombre abajo.
+ * La principal (nueva tarea) en el acento; el resto, de cristal.
  */
 function QuickActions() {
   const features = useFeatures()
-  const actions: { id: string; label: string; icon: LucideIcon; c: Hue; to?: string; run?: () => void }[] = [
-    { id: 'task', label: 'Nueva tarea', icon: Plus, c: 'blue', run: () => ui.quickAdd() },
-    { id: 'focus', label: 'Empezar foco', icon: Timer, c: 'indigo', to: '/focus' },
-    { id: 'expenses', label: 'Apuntar gasto', icon: Receipt, c: 'teal', to: '/expenses' },
-    { id: 'journal', label: 'Escribir el diario', icon: BookOpen, c: 'purple', to: '/journal' },
+  const actions: { id: string; label: string; icon: LucideIcon; to?: string; run?: () => void }[] = [
+    { id: 'task', label: 'Nueva tarea', icon: Plus, run: () => ui.quickAdd() },
+    { id: 'focus', label: 'Empezar foco', icon: Timer, to: '/focus' },
+    { id: 'expenses', label: 'Apuntar gasto', icon: Receipt, to: '/expenses' },
+    { id: 'journal', label: 'Escribir el diario', icon: BookOpen, to: '/journal' },
   ]
   const shown = actions.filter((a) => a.id === 'task' || features.section(a.id))
   return (
     <Block title="Acciones rápidas">
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         {shown.map((a, i) => {
+          const main = i === 0
           const body = (
             <>
-              <a.icon size={22} strokeWidth={2.3} aria-hidden />
+              <span className={cx('flex h-8 w-8 items-center justify-center rounded-full', main ? 'bg-white/20' : 'bg-fill')}>
+                <a.icon size={18} strokeWidth={2.4} aria-hidden />
+              </span>
               <span className="text-[15px] leading-tight font-semibold">{a.label}</span>
             </>
           )
-          const cls = 'flex h-[92px] flex-col justify-between rounded-[18px] p-3.5 text-left text-white shadow-[0_8px_22px_-14px_rgb(0_0_0/0.6)] transition-transform active:scale-95'
-          const style = { background: `linear-gradient(155deg, color-mix(in srgb, ${hue(a.c)} 88%, white) 0%, color-mix(in srgb, ${hue(a.c)} 62%, black) 100%)` }
+          const cls = cx(
+            'flex h-[92px] w-full flex-col justify-between rounded-[18px] p-3.5 text-left transition-transform active:scale-95',
+            main ? 'bg-accent-fill text-white shadow-[0_10px_24px_-14px_rgb(0_0_0/0.55)]' : 'glass',
+          )
           return (
             <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...softSpring, delay: i * 0.03 }}>
               {a.to ? (
-                <a href={href(a.to)} className={cls} style={style}>
+                <a href={href(a.to)} className={cls}>
                   {body}
                 </a>
               ) : (
-                <button type="button" onClick={a.run} className={cx(cls, 'w-full')} style={style}>
+                <button type="button" onClick={a.run} className={cls}>
                   {body}
                 </button>
               )}
@@ -191,7 +195,7 @@ function Tiles({ title, items, count, index = 0 }: { title: string; items: Secti
             transition={{ ...softSpring, delay: index * 0.04 + i * 0.02 }}
             className="glass relative flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-[18px] px-2 py-3 text-center transition-transform active:scale-95"
           >
-            <SectionIcon def={s} size={44} square />
+            <SectionIcon def={s} size={36} />
             <span className="text-[13px] leading-tight font-medium">{s.short}</span>
             {!!count[s.id] && (
               <span className="font-num absolute top-2 right-2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold text-white" style={{ background: 'var(--c-accent-fill)' }}>

@@ -5,7 +5,7 @@ import { RollingNumber, cx, spring } from '@/components/ui'
 import { useNavCounts } from './counts'
 import { useNav } from './nav'
 import { href, useRoute } from './router'
-import { section, soft, tintInk } from './sections'
+import { section, tint } from './sections'
 import { ui } from './store'
 
 /** Al bajar por una pantalla la barra se encoge (sin textos); al subir, vuelve */
@@ -46,8 +46,8 @@ export function MobileBar() {
   const moreOn = path === '/more' || !tabs.some((t) => isOn(t.path))
   const badge: Record<string, number> = { today: c.today, habits: c.habitsLeft, inbox: c.inbox, shopping: c.shopping, people: c.peopleDue }
   const items = [
-    ...tabs.map((t) => ({ id: t.id, path: t.path, label: t.short, on: isOn(t.path), color: tintInk(t.tint), pill: soft(t.tint, 16), icon: t.icon })),
-    { id: 'more', path: '/more', label: 'Más', on: moreOn, color: 'var(--c-blue)', pill: 'var(--c-fill)', icon: LayoutGrid },
+    ...tabs.map((t) => ({ id: t.id, path: t.path, label: t.short, on: isOn(t.path), color: tint(t.tint), icon: t.icon })),
+    { id: 'more', path: '/more', label: 'Más', on: moreOn, color: 'var(--c-blue)', icon: LayoutGrid },
   ]
   return (
     <div
@@ -79,7 +79,7 @@ export function MobileBar() {
               )}
               style={{ color: t.on ? t.color : 'var(--c-text)' }}
             >
-              {t.on && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full" style={{ background: t.pill }} />}
+              {t.on && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
               {/* Al elegirla, el icono da un saltito (como los SF Symbols) */}
               <motion.span
                 className="relative"

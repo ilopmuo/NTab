@@ -89,7 +89,7 @@
 
 ## Diseño
 
-Tranquilo, con superficies neutras y un color por módulo. La marca (símbolo, logotipo, paleta y tipografía) está en [docs/BRAND.md](docs/BRAND.md); el sistema de diseño, en [docs/DESIGN.md](docs/DESIGN.md).
+Minimalista, casi monocromo y tranquilo. La marca (símbolo, logotipo, paleta y tipografía) está en [docs/BRAND.md](docs/BRAND.md); el sistema de diseño, en [docs/DESIGN.md](docs/DESIGN.md).
 
 - **Símbolo:** una órbita y su luna, que la abre: el centro de tu sistema y lo que gira alrededor.
 - **Casi negro, casi blanco y grises.** Solo el **índigo LUNO** (u otro color de acento a tu elección) para actuar (hoy, selección, botones) y **verde lima** para lo hecho.

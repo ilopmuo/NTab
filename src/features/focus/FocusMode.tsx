@@ -12,7 +12,6 @@ import { dateLabel } from '@/lib/dates'
 import { LONG_EVERY, RATINGS, breakAfter } from '@/lib/focusStats'
 import { Checkbox } from '@/components/TaskItem'
 import { Button, ProgressRing, Segmented, cx, softSpring, spring } from '@/components/ui'
-import { tint } from '@/app/sections'
 import { DURATIONS, clock, focus, isBreak, logFocus, rateFocus, remaining, useFocus } from './focus'
 import { NOISES, loadNoise, playNoise, saveNoise, stopNoise, unlockAudio, type NoisePrefs } from './noise'
 
@@ -196,11 +195,11 @@ export function FocusMode() {
           <button type="button" onClick={() => focus.minimize(false)} aria-label="Abrir el modo foco" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-1 pr-2 text-left">
             <span className="relative flex h-[42px] w-[42px] shrink-0 items-center justify-center">
               <span className="absolute inset-0">
-                <ProgressRing value={s.finished ? 1 : 1 - left / total} size={42} stroke={3.5} color={s.finished || brk ? 'var(--c-green)' : tint('indigo')} />
+                <ProgressRing value={s.finished ? 1 : 1 - left / total} size={42} stroke={3.5} color={s.finished || brk ? 'var(--c-green)' : 'var(--c-blue)'} />
               </span>
               <span
                 className="flex h-[30px] w-[30px] items-center justify-center rounded-full"
-                style={s.finished || brk ? { background: 'var(--c-green)', color: 'var(--c-on-green)' } : { background: tint('indigo'), color: '#fff' }}
+                style={s.finished || brk ? { background: 'var(--c-green)', color: 'var(--c-on-green)' } : { background: 'var(--c-accent-fill)', color: '#fff' }}
               >
                 {s.finished ? <Check size={15} strokeWidth={3} /> : brk ? <Coffee size={15} strokeWidth={2.4} /> : <Timer size={15} strokeWidth={2.4} />}
               </span>

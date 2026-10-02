@@ -28,16 +28,13 @@ import {
   Wallet,
 } from 'lucide-react'
 import { cx } from '@/components/ui'
-import { hue, ink, onHue, softHue, type Hue } from '@/lib/hues'
 import type { FeatureGroup } from '@/lib/features'
 
-/** Color de módulo. Cada sección tiene uno fijo: ver docs/REDISENO.md */
-export type Tint = Hue
-/** Tono sólido (baldosas, anillos, barras) */
-export const tint = (t: Tint) => hue(t)
-/** Tono para texto de color (contraste AA) */
-export const tintInk = (t: Tint) => ink(t)
-export const soft = (t: Tint | string, pct = 18) => softHue(t, pct)
+/** Colores de sistema. Cada sección tiene uno fijo: ver docs/DESIGN.md */
+export type Tint = 'blue' | 'orange' | 'red' | 'green' | 'teal' | 'indigo' | 'purple' | 'yellow' | 'pink' | 'gray'
+export const tint = (t: Tint) => `var(--c-${t})`
+export const soft = (t: Tint | string, pct = 18) =>
+  `color-mix(in srgb, ${t.startsWith('#') || t.startsWith('var') ? t : tint(t as Tint)} ${pct}%, transparent)`
 
 export interface SectionDef {
   id: string
@@ -54,48 +51,44 @@ export interface SectionDef {
 
 export const SECTIONS: SectionDef[] = [
   { id: 'today', path: '/today', label: 'Hoy', short: 'Hoy', icon: 'today', tint: 'blue', key: 'H' },
-  { id: 'upcoming', path: '/upcoming', label: 'Próximo', short: 'Próximo', icon: CalendarClock, tint: 'red', key: 'U' },
-  { id: 'inbox', path: '/inbox', label: 'Bandeja de entrada', short: 'Bandeja', icon: Inbox, tint: 'sky', key: 'I' },
-  { id: 'calendar', path: '/calendar', label: 'Calendario', short: 'Calendario', icon: CalendarDays, tint: 'pink', key: 'C' },
-  { id: 'habits', path: '/habits', label: 'Hábitos', short: 'Hábitos', icon: Flame, tint: 'orange', key: 'B', group: 'life' },
-  { id: 'routines', path: '/routines', label: 'Rutinas', short: 'Rutinas', icon: ListChecks, tint: 'teal', key: 'E', group: 'life' },
-  { id: 'focus', path: '/focus', label: 'Foco', short: 'Foco', icon: Timer, tint: 'indigo', key: 'Q', group: 'organize' },
-  { id: 'notes', path: '/notes', label: 'Notas', short: 'Notas', icon: StickyNote, tint: 'yellow', key: 'O', group: 'organize' },
-  { id: 'journal', path: '/journal', label: 'Diario', short: 'Diario', icon: BookOpen, tint: 'purple', key: 'D', group: 'life' },
-  { id: 'menu', path: '/menu', label: 'Menú', short: 'Menú', icon: CookingPot, tint: 'orange', key: 'Z', group: 'home' },
-  { id: 'shopping', path: '/shopping', label: 'Compra', short: 'Compra', icon: ShoppingCart, tint: 'green', key: 'A', group: 'home' },
-  { id: 'trackers', path: '/trackers', label: 'Última vez', short: 'Última vez', icon: History, tint: 'brown', key: 'V', group: 'life' },
-  { id: 'things', path: '/things', label: 'Cosas', short: 'Cosas', icon: Box, tint: 'teal', key: 'K', group: 'home' },
-  { id: 'people', path: '/people', label: 'Personas', short: 'Personas', icon: Users, tint: 'green', key: 'P', group: 'life' },
+  { id: 'upcoming', path: '/upcoming', label: 'Próximo', short: 'Próximo', icon: CalendarClock, tint: 'blue', key: 'U' },
+  { id: 'inbox', path: '/inbox', label: 'Bandeja de entrada', short: 'Bandeja', icon: Inbox, tint: 'blue', key: 'I' },
+  { id: 'calendar', path: '/calendar', label: 'Calendario', short: 'Calendario', icon: CalendarDays, tint: 'blue', key: 'C' },
+  { id: 'habits', path: '/habits', label: 'Hábitos', short: 'Hábitos', icon: Flame, tint: 'blue', key: 'B', group: 'life' },
+  { id: 'routines', path: '/routines', label: 'Rutinas', short: 'Rutinas', icon: ListChecks, tint: 'blue', key: 'E', group: 'life' },
+  { id: 'focus', path: '/focus', label: 'Foco', short: 'Foco', icon: Timer, tint: 'blue', key: 'Q', group: 'organize' },
+  { id: 'notes', path: '/notes', label: 'Notas', short: 'Notas', icon: StickyNote, tint: 'blue', key: 'O', group: 'organize' },
+  { id: 'journal', path: '/journal', label: 'Diario', short: 'Diario', icon: BookOpen, tint: 'blue', key: 'D', group: 'life' },
+  { id: 'menu', path: '/menu', label: 'Menú', short: 'Menú', icon: CookingPot, tint: 'blue', key: 'Z', group: 'home' },
+  { id: 'shopping', path: '/shopping', label: 'Compra', short: 'Compra', icon: ShoppingCart, tint: 'blue', key: 'A', group: 'home' },
+  { id: 'trackers', path: '/trackers', label: 'Última vez', short: 'Última vez', icon: History, tint: 'blue', key: 'V', group: 'life' },
+  { id: 'things', path: '/things', label: 'Cosas', short: 'Cosas', icon: Box, tint: 'blue', key: 'K', group: 'home' },
+  { id: 'people', path: '/people', label: 'Personas', short: 'Personas', icon: Users, tint: 'blue', key: 'P', group: 'life' },
   { id: 'projects', path: '/projects', label: 'Proyectos', short: 'Proyectos', icon: Layers, tint: 'blue', key: 'J', group: 'organize' },
-  { id: 'tags', path: '/tags', label: 'Etiquetas', short: 'Etiquetas', icon: Tags, tint: 'gray', key: 'Y', group: 'organize' },
-  { id: 'lists', path: '/lists', label: 'Listas inteligentes', short: 'Listas', icon: ListFilter, tint: 'teal', key: '', group: 'organize' },
-  { id: 'matrix', path: '/matrix', label: 'Matriz de Eisenhower', short: 'Matriz', icon: Grid2x2, tint: 'orange', key: '', group: 'organize' },
-  { id: 'someday', path: '/someday', label: 'Algún día', short: 'Algún día', icon: Telescope, tint: 'brown', key: '', group: 'organize' },
-  { id: 'templates', path: '/templates', label: 'Plantillas', short: 'Plantillas', icon: ClipboardList, tint: 'gray', key: 'M', group: 'organize' },
-  { id: 'goals', path: '/goals', label: 'Objetivos', short: 'Objetivos', icon: Target, tint: 'red', key: 'T', group: 'organize' },
-  { id: 'expenses', path: '/expenses', label: 'Gastos', short: 'Gastos', icon: Receipt, tint: 'mint', key: 'W', group: 'money' },
+  { id: 'tags', path: '/tags', label: 'Etiquetas', short: 'Etiquetas', icon: Tags, tint: 'blue', key: 'Y', group: 'organize' },
+  { id: 'lists', path: '/lists', label: 'Listas inteligentes', short: 'Listas', icon: ListFilter, tint: 'blue', key: '', group: 'organize' },
+  { id: 'matrix', path: '/matrix', label: 'Matriz de Eisenhower', short: 'Matriz', icon: Grid2x2, tint: 'blue', key: '', group: 'organize' },
+  { id: 'someday', path: '/someday', label: 'Algún día', short: 'Algún día', icon: Telescope, tint: 'blue', key: '', group: 'organize' },
+  { id: 'templates', path: '/templates', label: 'Plantillas', short: 'Plantillas', icon: ClipboardList, tint: 'blue', key: 'M', group: 'organize' },
+  { id: 'goals', path: '/goals', label: 'Objetivos', short: 'Objetivos', icon: Target, tint: 'blue', key: 'T', group: 'organize' },
+  { id: 'expenses', path: '/expenses', label: 'Gastos', short: 'Gastos', icon: Receipt, tint: 'blue', key: 'W', group: 'money' },
   { id: 'finance', path: '/finance', label: 'Pagos', short: 'Pagos', icon: Wallet, tint: 'blue', key: 'F', group: 'money' },
-  { id: 'review', path: '/review', label: 'Revisión semanal', short: 'Revisión', icon: RefreshCcw, tint: 'mint', key: 'R', group: 'organize' },
-  { id: 'trash', path: '/trash', label: 'Papelera', short: 'Papelera', icon: Trash2, tint: 'gray', key: 'X' },
-  { id: 'logbook', path: '/logbook', label: 'Completadas', short: 'Completadas', icon: Archive, tint: 'green', key: 'L' },
-  { id: 'settings', path: '/settings', label: 'Ajustes', short: 'Ajustes', icon: Settings, tint: 'gray', key: 'S' },
+  { id: 'review', path: '/review', label: 'Revisión semanal', short: 'Revisión', icon: RefreshCcw, tint: 'blue', key: 'R', group: 'organize' },
+  { id: 'trash', path: '/trash', label: 'Papelera', short: 'Papelera', icon: Trash2, tint: 'blue', key: 'X' },
+  { id: 'logbook', path: '/logbook', label: 'Completadas', short: 'Completadas', icon: Archive, tint: 'blue', key: 'L' },
+  { id: 'settings', path: '/settings', label: 'Ajustes', short: 'Ajustes', icon: Settings, tint: 'blue', key: 'S' },
 ]
 
 export const section = (id: string) => SECTIONS.find((s) => s.id === id) ?? SECTIONS[0]
 
 /** Color de la vista actual (para el halo del fondo y la barra superior) */
 export function routeTint(first: string | undefined): Tint {
-  if (first === 'project' || first === 'area') return section('projects').tint
-  if (first === 'list') return section('lists').tint
-  if (first === 'tag') return 'gray'
-  if (first === 'plan') return 'orange'
-  if (first === 'shutdown') return 'indigo'
-  if (first === 'more') return 'gray'
+  if (first === 'project' || first === 'area') return 'indigo'
+  if (first === 'tag') return 'blue'
   return SECTIONS.find((s) => s.id === first)?.tint ?? 'blue'
 }
 
-/** Icono de sección: glifo blanco sobre la baldosa del color del módulo (como Ajustes de iOS) */
+/** Icono de sección: glifo sobre círculo gris neutro (monocromo) */
 export function SectionIcon({
   def,
   size = 28,
@@ -110,16 +103,8 @@ export function SectionIcon({
   const glyph = Math.round(size * 0.52)
   return (
     <span
-      className={cx('inline-flex shrink-0 items-center justify-center', square ? 'rounded-[28%]' : 'rounded-full', className)}
-      style={{
-        width: size,
-        height: size,
-        // Hoy lleva el día escrito: su baldosa es la del acento (texto blanco con contraste AA)
-        color: def.icon === 'today' ? '#ffffff' : onHue(def.tint),
-        background:
-          def.icon === 'today' ? 'var(--c-accent-fill)' : `linear-gradient(180deg, color-mix(in srgb, ${hue(def.tint)} 80%, white), ${hue(def.tint)} 70%)`,
-        boxShadow: 'inset 0 0.5px 0 rgb(255 255 255 / 0.3)',
-      }}
+      className={cx('inline-flex shrink-0 items-center justify-center bg-fill text-fg', square ? 'rounded-[28%]' : 'rounded-full', className)}
+      style={{ width: size, height: size }}
     >
       {def.icon === 'today' ? (
         <span className="font-num leading-none font-bold" style={{ fontSize: Math.round(size * 0.44) }}>

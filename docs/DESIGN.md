@@ -2,20 +2,19 @@
 
 > La marca (símbolo, logotipo, paleta, tipografía y voz) está en [BRAND.md](BRAND.md).
 > Patrones de Recordatorios, Fitness, Calendario y Ajustes de Apple; la sensación de producto cuidado de Linear o Raycast.
-> Superficies casi negras o casi blancas; un color por módulo en iconos, cabeceras y gráficos; índigo LUNO para actuar y verde lima para lo hecho. Movimiento con física.
+> Casi negro, casi blanco y grises; índigo LUNO para actuar y verde lima para lo hecho. Movimiento con física.
 
 ## 1. Principios
 
-1. **Superficies neutras, color por módulo.** Casi negro, casi blanco y grises de fondo; el color vive en los iconos, cabeceras, anillos y gráficos (ver [REDISENO.md](REDISENO.md)). Hay tres familias:
-   - **Color de módulo** (`--m-*`, colores de sistema de Apple): cada sección tiene uno fijo (Hoy azul, Próximo rojo, Hábitos naranja, Notas amarillo, Foco índigo, Gastos menta…, en `src/app/sections.tsx`). Cada color tiene un tono **sólido** (`--m-x`: baldosas con glifo blanco, anillos, barras, halos) y uno de **tinta** (`--m-x-ink`: texto de color con contraste AA). Los colores que eliges para áreas, proyectos y hábitos se leen mezclados con el texto (`--ink-mix`). Lo comprueba `src/lib/hues.test.ts`. Helpers en `src/lib/hues.ts`: `hue`, `ink`, `onHue`, `softHue`, `tileGradient`.
-   - **Índigo LUNO** (o el color de acento que elijas en Ajustes → Apariencia: azul, violeta, rosa, naranja, verde azulado o grafito): solo para **actuar**: selección, botones principales, enlaces, foco del teclado y la prioridad máxima. Tres tonos para que todo el texto cumpla el contraste AA (4,5:1):
+1. **Monocromo.** Casi negro, casi blanco y grises. El color solo aparece donde aporta algo, y solo hay dos:
+   - **Índigo LUNO** (o el color de acento que elijas en Ajustes → Apariencia: azul, violeta, rosa, naranja, verde azulado o grafito): hoy, selección, botones principales, enlaces y la prioridad máxima. Tres tonos para que todo el texto cumpla el contraste AA (4,5:1):
      - `--c-blue` (nombre heredado) para texto y marcas de acento (`#8783FF` en oscuro, `#4F4BD9` en claro);
      - `--c-accent-fill` para los fondos con texto blanco, como botones o la sección activa (`#5B57E8`);
      - `--c-accent-on-soft` para el texto de los botones tintados sobre `accent-soft` (`#B9B6FF` / `#3F3BC0`).
-   - **Verde lima** (`#C5F82A`): lo hecho (casillas completadas, hábitos cumplidos, anillos completos). Siempre con el glifo en negro encima.
-   - **Grises**: `--c-muted` para cualquier texto secundario; `--c-faint` solo para lo decorativo.
-   El texto largo nunca va en color: solo títulos cortos de tarjeta, cifras grandes y etiquetas.
-2. **La importancia se marca con contraste.** Lo atrasado va en texto fuerte, lo que viene en gris y la prioridad sube de gris claro a blanco o negro, y al acento en la máxima. El color de módulo dice *dónde* estás, no *cuánto* importa.
+   - **Grises**: `--c-muted` para cualquier texto secundario; `--c-faint` solo para lo decorativo (iconos, separadores, textos de ejemplo), nunca para texto que haya que leer.
+   - **Verde lima** (`#C5F82A`): lo hecho (casillas completadas, hábitos cumplidos, anillos de progreso). Siempre con el glifo en negro encima.
+   Nada más: ni rojo, ni naranja, ni morado. Tampoco colores por área, proyecto o hábito.
+2. **La importancia se marca con contraste, no con color.** Lo atrasado va en texto fuerte, lo que viene en gris y la prioridad sube de gris claro a blanco o negro, y al acento en la máxima.
 3. **Superficies sólidas.** En oscuro, casi negro `#0A0A0C` (nunca negro puro) con celdas `#151518`; en claro, blanco roto `#F5F5F7` con celdas blancas, como las listas agrupadas de iOS. Sombras neutras y suaves: nunca de color.
 4. **Listas agrupadas.** Las filas van en bloques redondeados con separadores finos que empiezan tras el icono (*inset grouped*), como en Ajustes y Recordatorios.
 5. **Títulos grandes que se compactan.** Cada vista abre con un título grande. Al hacer scroll aparece una barra con el título pequeño.
@@ -26,11 +25,11 @@
 
 Cada color de acento redefine los tres tonos (`--c-blue`, `--c-accent-fill`, `--c-accent-on-soft`) en `index.css` con `[data-theme=…][data-accent=…]`. Un test (`src/lib/accents.test.ts`) lee esos valores y comprueba el contraste AA de todos en los dos temas; un acento nuevo que no lo cumpla no pasa la CI. Nada del código usa el azul a mano: siempre los tokens.
 
-Los nombres de color heredados (`--c-red`, `--c-orange`, `--c-purple`…) existen pero valen tonos de gris; el color de módulo usa siempre `--m-*` (a través de `tint()` / `tintInk()` de `sections.tsx` o de `src/lib/hues.ts`). `--c-blue` es el acento y `--c-green` el lima. La paleta oficial (`--luno-*`) está al principio de `index.css` y en [BRAND.md](BRAND.md#4-paleta).
+Los nombres de color heredados (`--c-red`, `--c-orange`, `--c-purple`…) existen pero valen tonos de gris, para que nada vuelva a colarse con color. Los únicos que no son grises son `--c-blue` (el acento: índigo LUNO por defecto) y `--c-green` (lima). La paleta oficial (`--luno-*`) está al principio de `index.css` y en [BRAND.md](BRAND.md#4-paleta).
 
 ## 3. Iconos
 
-Lucide para todo lo funcional. Cada sección lleva su glifo blanco sobre una baldosa del color de su módulo, con un degradado mínimo de arriba abajo (como Ajustes de iOS); Hoy lleva el día escrito sobre el acento. Arriba de cada pantalla, un halo muy suave del color del módulo se funde con el fondo y se va con el scroll (se apaga con «Más contraste»). La sección activa de la barra lateral se rellena del acento. La marca (`LunoMark`, `LunoWordmark`, `LunoLockup` en `src/components/Brand.tsx`) va arriba en la barra lateral, en el arranque, en el acceso y al pie de Ajustes. Los proyectos llevan un quesito con lo hecho (lima cuando está completo), como en Things.
+Lucide para todo lo funcional. Glifos sobre círculos o cuadrados de relleno gris (`--c-fill`). La sección activa de la barra lateral se rellena del acento. La marca (`LunoMark`, `LunoWordmark`, `LunoLockup` en `src/components/Brand.tsx`) va arriba en la barra lateral, en el arranque, en el acceso y al pie de Ajustes. Los proyectos llevan un quesito con lo hecho (lima cuando está completo), como en Things.
 
 ## 3 bis. Fechas
 
@@ -68,10 +67,11 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Deslizar una tarea (táctil) | → hecha (lima), ← a mañana (acento). La franja se colorea al pasar el umbral, con toque háptico; si no llega, vuelve con muelle |
 | Cambio de tema | El tema nuevo se revela en un círculo que crece desde el botón (*View Transitions*) |
 | Avisos | Cápsula con una barra del tiempo que queda para deshacer; se aparta deslizándola |
-| Barra de pestañas | Al bajar por una pantalla se recoge en un círculo con la pestaña en la que estás (y el botón de crear al otro lado); al subir vuelve entera, como en iOS 26. La pestaña activa lleva el color de su módulo sobre un fondo suave del mismo color |
-| Foco minimizado | Accesorio inferior, como el mini reproductor de Música: una cápsula sobre la barra de pestañas (en la esquina en el ordenador) con un anillo índigo que se llena, el título, el tiempo y un botón de pausa |
+| Barra de pestañas | Al bajar por una pantalla se recoge en un círculo con la pestaña en la que estás (y el botón de crear al otro lado); al subir vuelve entera, como en iOS 26 |
+| Foco minimizado | Accesorio inferior, como el mini reproductor de Música: una cápsula sobre la barra de pestañas (en la esquina en el ordenador) con un anillo en el acento que se llena, el título, el tiempo y un botón de pausa |
 | Barra superior compacta | Sin línea: se desvanece hacia abajo (borde de desplazamiento suave de iOS 26) |
-| Acciones rápidas | En «Más», baldosas como las de Atajos: degradado del color del módulo y glifo y nombre en blanco |
+| Ahora | Arriba de Hoy, lo que tiene hora y está en curso (anillo en el acento que se vacía y «Termina en 12 min») o lo siguiente («Empieza en 40 min»), como en Tiimo |
+| Acciones rápidas | En «Más», baldosas como las de Atajos: la principal (nueva tarea) en el acento y el resto de cristal |
 | Estados vacíos | El icono, en su baldosa y dentro de una órbita tenue, flota muy suavemente |
 | Rutina paso a paso | Un paso en grande que entra de lado; la barra de pasos se llena en lima; confeti al terminar |
 | Procesar la bandeja | Mazo de cartas: la de arriba se arrastra y gira con el dedo (→ hoy, ← luego) y sale volando; las de detrás suben |
