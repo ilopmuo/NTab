@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { Suspense, lazy, useRef, useState } from 'react'
 import { AnimatePresence, m as motion } from 'motion/react'
 import { Check, Flame, Plus } from 'lucide-react'
 import { toggleHabit } from '@/db/actions'
@@ -10,6 +10,9 @@ import type { Habit } from '@/db/types'
 import { useHabits } from './useHabits'
 import { bumpHabit } from './bump'
 import { haptic } from '@/lib/haptics'
+
+// Se carga aparte: solo hace falta cuando hay hábitos
+const StreakMilestones = lazy(() => import('./StreakMilestones').then((m) => ({ default: m.StreakMilestones })))
 
 /** Hábitos de hoy como interruptores de la app Casa: se encienden al tocarlos */
 export function HabitStrip() {
@@ -54,6 +57,11 @@ export function HabitStrip() {
             )
           })}
         </div>
+      )}
+      {habits.length > 0 && (
+        <Suspense fallback={null}>
+          <StreakMilestones />
+        </Suspense>
       )}
     </Card>
   )

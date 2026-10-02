@@ -72,6 +72,9 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Barra superior compacta | Sin línea: se desvanece hacia abajo (borde de desplazamiento suave de iOS 26) |
 | Ahora | Arriba de Hoy, lo que tiene hora y está en curso (anillo en el acento que se vacía y «Termina en 12 min») o lo siguiente («Empieza en 40 min»), como en Tiimo |
 | Acciones rápidas | En «Más», baldosas como las de Atajos: la principal (nueva tarea) en el acento y el resto de cristal |
+| Cuenta atrás | Como las tarjetas de Flighty, cambia según se acerca: lejos, tranquila; esta semana, la cifra crece y va en el acento; hoy, en lima. Un anillo fino alrededor del icono marca la parte de la espera que ya ha pasado |
+| Huchas | Un tarro que se llena con un muelle hasta lo que llevas, con una ola que se mueve despacio arriba; lleno del todo, en lima |
+| Hitos de racha | Al llegar a 7, 30, 100 o 365 días (4, 12, 26 o 52 semanas en los hábitos semanales): una tarjeta con el anillo que se cierra en lima, la cifra que sube, la llama que salta y confeti. Una vez por hito y día |
 | Estados vacíos | El icono, en su baldosa y dentro de una órbita tenue, flota muy suavemente |
 | Rutina paso a paso | Un paso en grande que entra de lado; la barra de pasos se llena en lima; confeti al terminar |
 | Procesar la bandeja | Mazo de cartas: la de arriba se arrastra y gira con el dedo (→ hoy, ← luego) y sale volando; las de detrás suben |

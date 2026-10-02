@@ -13,6 +13,7 @@ import { Icon } from '@/components/icons'
 import { Button, Empty, Group, PageHeader, ProgressRing, bouncy, cx, spring } from '@/components/ui'
 import { Page } from '../Page'
 import { HabitForm } from './HabitForm'
+import { StreakMilestones } from './StreakMilestones'
 import { useHabits } from './useHabits'
 import { haptic } from '@/lib/haptics'
 
@@ -208,6 +209,7 @@ export function HabitsView() {
         </div>
       )}
 
+      {habits.length > 0 && <StreakMilestones />}
       <HabitForm open={creating} onClose={() => setUI({ creating: null })} />
       <HabitForm habit={editing} open={!!editing} onClose={() => setEditing(undefined)} />
     </Page>

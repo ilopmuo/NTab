@@ -517,6 +517,16 @@
   view-transition-name: none !important;
 }
 
+/* Ola de las huchas: se desplaza un ancho de tarro y vuelve a empezar */
+@keyframes jar-wave {
+  to {
+    transform: translateX(-30px);
+  }
+}
+.jar-wave {
+  animation: jar-wave 3.2s linear infinite;
+}
+
 /* Tachado que se dibuja al completar (de izquierda a derecha, también en varias
    líneas); lo que ya estaba hecho aparece tachado sin animación */
 .strike {

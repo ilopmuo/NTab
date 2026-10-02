@@ -9,7 +9,7 @@ import { addDaysYmd, fmt, today } from '@/lib/dates'
 import { daysUntil } from '@/lib/things'
 import { toast } from '@/app/store'
 import { ICONS, Icon } from '@/components/icons'
-import { Button, Card, Field, Input, Modal, ModalHeader, cx, spring } from '@/components/ui'
+import { Button, Card, Field, Input, Modal, ModalHeader, ProgressRing, cx, spring } from '@/components/ui'
 
 const COUNT_ICONS = ['plane', 'gift', 'heart', 'star', 'sun', 'music', 'graduation', 'home', 'car', 'rocket', 'sparkles', 'baby'].filter((k) => k in ICONS)
 
@@ -37,6 +37,9 @@ export function CountdownsCard() {
         <div className="space-y-1.5">
           {list.slice(0, 4).map((c, i) => {
             const d = daysUntil(c.date, t)
+            // Como las tarjetas de Flighty: lejos, tranquila; esta semana, en el acento; hoy, en lima
+            const soon = d > 0 && d <= 7
+            const passed = elapsed(c, t)
             return (
               <motion.button
                 key={c.id}
@@ -47,14 +50,24 @@ export function CountdownsCard() {
                 onClick={() => setEditing(c)}
                 className={cx('flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left', d === 0 ? 'bg-green text-on-green' : 'bg-fill-2')}
               >
-                <Icon name={c.icon} size={18} />
+                {/* Lo que ya ha pasado desde que empezaste a esperarlo */}
+                <span className="relative flex h-9 w-9 shrink-0 items-center justify-center" title={d === 0 ? undefined : `Llevas el ${Math.round(passed * 100)} % de la espera`}>
+                  {d > 0 && (
+                    <span className="absolute inset-0">
+                      <ProgressRing value={passed} size={36} stroke={3} color={soon ? 'var(--c-blue)' : 'var(--c-muted)'} track="var(--c-fill)" delay={0.1 + i * 0.04} />
+                    </span>
+                  )}
+                  <Icon name={c.icon} size={17} />
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14.5px] font-semibold">{c.name}</span>
-                  <span className={cx('block text-[12px]', d === 0 ? 'opacity-80' : 'text-muted')}>{fmt(c.date, "EEEE d 'de' MMMM")}</span>
+                  <span className={cx('block text-[12px]', d === 0 ? 'opacity-80' : 'text-muted')}>
+                    {d === 1 ? 'Mañana' : soon ? `El ${fmt(c.date, 'EEEE')}` : fmt(c.date, "EEEE d 'de' MMMM")}
+                  </span>
                 </span>
                 <span className="text-right">
-                  <span className="font-num block text-[22px] leading-none font-bold">{d === 0 ? '¡Hoy!' : d}</span>
-                  {d > 0 && <span className={cx('block text-[11px]', 'text-muted')}>{d === 1 ? 'día' : 'días'}</span>}
+                  <span className={cx('font-num block leading-none font-bold', d === 0 ? 'text-[19px]' : soon ? 'text-[26px] text-blue' : 'text-[22px]')}>{d === 0 ? '¡Hoy!' : d}</span>
+                  {d > 0 && <span className="block text-[11px] text-muted">{d === 1 ? 'día' : 'días'}</span>}
                 </span>
               </motion.button>
             )
@@ -64,6 +77,14 @@ export function CountdownsCard() {
       <CountdownForm value={editing} onClose={() => setEditing(null)} />
     </Card>
   )
+}
+
+/** Parte de la espera que ya ha pasado (de 0, al crearla, a 1, el día) */
+function elapsed(c: Countdown, t: string) {
+  const start = new Date(c.createdAt).setHours(0, 0, 0, 0)
+  const end = new Date(`${c.date}T00:00:00`).getTime()
+  const now = new Date(`${t}T00:00:00`).getTime()
+  return end <= start ? 1 : Math.max(0, Math.min(1, (now - start) / (end - start)))
 }
 
 function CountdownForm({ value, onClose }: { value: Countdown | 'new' | null; onClose: () => void }) {

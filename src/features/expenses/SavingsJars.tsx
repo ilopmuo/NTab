@@ -9,7 +9,8 @@ import { money } from '@/lib/expenses'
 import { isMoneyGoal, monthlyToSave } from '@/lib/goals'
 import { haptic } from '@/lib/haptics'
 import { toast } from '@/app/store'
-import { Group, ProgressBar, Section } from '@/components/ui'
+import { m as motion } from 'motion/react'
+import { Group, Section } from '@/components/ui'
 
 /**
  * Huchas: los objetivos en euros, con lo que toca apartar cada mes para
@@ -46,6 +47,7 @@ function Jar({ goal }: { goal: Goal }) {
   return (
     <div className="px-4 py-3 shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
       <div className="flex items-center gap-3">
+        <JarGlass value={target ? current / target : 0} id={goal.id} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-semibold">{goal.title}</span>
           <span className="block truncate text-[12.5px] text-muted">
@@ -76,9 +78,40 @@ function Jar({ goal }: { goal: Goal }) {
           </button>
         )}
       </div>
-      <div className="mt-2">
-        <ProgressBar value={target ? Math.min(1, current / target) : 0} />
-      </div>
     </div>
+  )
+}
+
+/**
+ * El tarro de la hucha: se llena hasta lo que llevas, con una ola arriba que
+ * se mueve despacio (como los botes de Revolut). Lleno del todo, en lima.
+ */
+function JarGlass({ value, id }: { value: number; id: string }) {
+  const v = Math.max(0, Math.min(1, value))
+  const full = v >= 1
+  const W = 30
+  const H = 38
+  const inner = H - 6
+  const level = 3 + inner * (1 - v)
+  const color = full ? 'var(--c-green)' : 'var(--c-blue)'
+  const clip = `jar-${id}`
+  // Dos crestas por ancho: al desplazarse un ancho entero, la ola vuelve a empezar
+  const wave = `M0 3 Q ${W / 4} 0 ${W / 2} 3 T ${W} 3 T ${W * 1.5} 3 T ${W * 2} 3 V ${H} H 0 Z`
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="shrink-0" aria-hidden>
+      <defs>
+        <clipPath id={clip}>
+          <rect x="2" y="3" width={W - 4} height={H - 5} rx="8" />
+        </clipPath>
+      </defs>
+      <rect x="9" y="0.75" width={W - 18} height="3" rx="1.5" fill="var(--c-border-strong)" />
+      <g clipPath={`url(#${clip})`}>
+        <rect x="0" y="0" width={W} height={H} fill="var(--c-fill-2)" />
+        <motion.g initial={{ y: H }} animate={{ y: v > 0 ? level - 3 : H }} transition={{ type: 'spring', stiffness: 70, damping: 15 }}>
+          <path d={wave} fill={color} className="jar-wave" opacity="0.9" />
+        </motion.g>
+      </g>
+      <rect x="2" y="3" width={W - 4} height={H - 5} rx="8" fill="none" stroke="var(--c-border-strong)" strokeWidth="1.5" />
+    </svg>
   )
 }

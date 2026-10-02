@@ -20,19 +20,18 @@ Lo que engancha en esas apps y no depende del color es lo que traemos:
 - Barra superior compacta con borde de desplazamiento suave (sin línea).
 - «Más» abre con **acciones rápidas** tipo Atajos (la principal en el acento, el resto de cristal).
 
-### Fase 2 — Hoy
+### Fase 2 — Hoy ✅
 - **Tarjeta «Ahora»** (Tiimo / Structured): lo que tiene hora y está en curso, con un anillo que se vacía y «Termina en 12 min»; si no, lo siguiente y cuándo empieza.
 
-### Fase 3 — Piezas compartidas
-- **Tarjeta de cifra** (Salud / Fitness): título pequeño, número grande con cifras tabulares, unidad en gris y un mini gráfico.
-- Gráficos de barras con la de hoy resaltada en el acento y la media en línea discontinua (Tiempo de uso).
+### Fase 3 — Piezas compartidas (ya estaba)
+- Al revisarlo, los gráficos ya seguían estos patrones: cifras grandes con cifras tabulares, objetivo en línea discontinua y hoy resaltado (Logbook → Tu semana, Foco → Últimos 14 días, Gastos, Pagos). No se tocan.
 
-### Fase 4 — Módulos
-- **Hábitos** (Streaks): rachas y semanas más visibles; el anillo se cierra en lima.
+### Fase 4 — Módulos ✅
+- **Hábitos**: ya tenían anillo de fuerza, semana, mapa de calor y pausas; se quedan como están.
 - **Cuenta atrás** (Flighty): la tarjeta cambia según se acerca la fecha (lejos, tranquila; esta semana, más presente; hoy, a lo grande).
 - **Huchas** (Revolut / Finch): se llenan con una ola al añadir dinero.
 
-### Fase 5 — Momentos
+### Fase 5 — Momentos ✅
 - Hitos de racha (7, 30, 100, 365 días) con una tarjeta de celebración, la cifra que sube y confeti en lima y acento (Duolingo / Fitness).
 
 ## Restricciones que se respetan
