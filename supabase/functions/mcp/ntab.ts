@@ -1443,12 +1443,75 @@ export function addCountdown(rows: Row[], args: { nombre?: string; fecha?: strin
 
 // «compra: leche», «a la compra leche», «lista de la compra: …» (pero «comprar un regalo» es una tarea)
 const SHOPPING_PREFIX = /^\s*(?:(?:(?:a[nñ]ade|apunta|pon)\s+)?(?:(?:a|en)\s+)?(?:(?:la\s+)?lista\s+de\s+)?la\s+compra\s*[:,.-]?|compra\s*[:,.-])\s*/i
-const EXPENSE_PREFIX = /^\s*(?:gasto|gast[eé]|he\s+gastado|me\s+he\s+gastado)\s*[:,.-]?\s+/i
+// «gasto 12 café», «mete un gasto de quince euros en Mercadona», «me he gastado 20 en la cena», «he pagado 30 de luz»
+const EXPENSE_PREFIX = /^\s*(?:(?:(?:mete|meter|apunta|anota|a[nñ]ade|pon|registra)(?:me)?\s+(?:un\s+)?)?gasto(?:\s+de)?|gast[eé]|(?:me\s+)?he\s+gastado|pagu[eé]|he\s+pagado)\s*[:,.-]?\s+/i
 const NOTE_PREFIX = /^\s*(?:nota|apunta\s+una\s+nota)\s*[:,.-]?\s+/i
 // «hecho: cambiar las sábanas» → Última vez
 const DONE_PREFIX = /^\s*(?:lo\s+he\s+hecho|hecho|[uú]ltima\s+vez)\s*[:,.-]?\s+/i
 // «hábito: agua», «+1 agua», «+2 vasos de agua»
 const HABIT_PREFIX = /^\s*(?:h[aá]bito\s*[:,.-]?\s+|\+\s*(\d+)\s+)/i
+
+/** Lo que manda un atajo: el texto dictado, un gasto dictado o un pago de Apple Pay (importe y comercio) */
+export interface CaptureInput {
+  texto?: string
+  /** lo dictado en el atajo de gastos: «quince euros en el súper» */
+  gasto?: string
+  /** de la automatización de Apple Pay: «15,30 €», «€15.30» o un número */
+  importe?: string | number
+  comercio?: string
+}
+
+/** Los campos de un JSON o formulario, con los nombres en español o en inglés */
+export function captureFields(b: Record<string, unknown> | null | undefined): CaptureInput {
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = b?.[k]
+      if (typeof v === 'number') return v
+      if (typeof v === 'string' && v.trim()) return v.trim()
+    }
+    return undefined
+  }
+  const importe = pick('importe', 'amount', 'cantidad')
+  return {
+    texto: pick('texto', 'text', 'input') as string | undefined,
+    gasto: pick('gasto', 'expense') as string | undefined,
+    importe,
+    comercio: pick('comercio', 'merchant', 'concepto', 'tienda') as string | undefined,
+  }
+}
+
+/** «15,30 €», «€15.30», «1.234,56 EUR», «-4,99 €» → número (negativo si es una devolución) */
+export function readAmount(v: string | number | undefined): number | undefined {
+  if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v * 100) / 100 : undefined
+  if (!v) return undefined
+  const neg = /[-−]\s*[\d€$£]|\(\s*[\d€$£]/.test(v)
+  let n = v.replace(/[^\d.,]/g, '')
+  if (!/\d/.test(n)) return undefined
+  const lastComma = n.lastIndexOf(',')
+  const lastDot = n.lastIndexOf('.')
+  // El separador decimal es el último, si le siguen 1 o 2 cifras
+  const dec = Math.max(lastComma, lastDot)
+  if (dec >= 0 && n.length - dec - 1 <= 2) n = `${n.slice(0, dec).replace(/[.,]/g, '')}.${n.slice(dec + 1)}`
+  else n = n.replace(/[.,]/g, '')
+  const x = Math.round(Number(n) * 100) / 100
+  return Number.isFinite(x) ? (neg ? -x : x) : undefined
+}
+
+/** «MERCADONA S.A.» → «Mercadona S.A.»; lo que ya viene bien escrito se queda igual */
+const niceName = (s: string) => (/[a-zà-ÿ]/.test(s) ? s : s.toLowerCase().replace(/(^|[\s\-/&.])(\p{L})/gu, (_, a: string, b: string) => a + b.toUpperCase()))
+
+/**
+ * Un pago con Apple Pay, desde la automatización «Transacción» de Atajos
+ * (iOS 17 o posterior): se apunta como gasto con el comercio como concepto y
+ * la categoría que toque (también la aprendida). Las devoluciones no se apuntan.
+ */
+export function captureCardPayment(rows: Row[], input: CaptureInput, env: Env): WriteResult {
+  const amount = readAmount(input.importe)
+  if (amount === undefined || amount === 0) return { writes: [], report: ['No me ha llegado el importe del pago.'] }
+  if (amount < 0) return { writes: [], report: ['Es una devolución: no la apunto como gasto.'] }
+  const r = addExpenseTool(rows, { importe: amount, concepto: niceName(str(input.comercio).trim()) || 'Pago con tarjeta' }, env)
+  return { ...r, report: r.writes.length ? [r.report[0].split('. Este mes')[0] + '.'] : r.report }
+}
 
 /**
  * Lo que se dicta a Siri, escrito como en la captura rápida de la app:
@@ -1456,7 +1519,11 @@ const HABIT_PREFIX = /^\s*(?:h[aá]bito\s*[:,.-]?\s+|\+\s*(\d+)\s+)/i
  * «compra: leche y pan» → lista de la compra; «gasto 12,50 café» → gastos.
  * El texto de `report` es corto: Siri lo lee en voz alta.
  */
-export function capture(rows: Row[], raw: string, env: Env): WriteResult & { deletes?: Row[] } {
+export function capture(rows: Row[], input: string | CaptureInput, env: Env): WriteResult & { deletes?: Row[] } {
+  const fields = typeof input === 'string' ? { texto: input } : input
+  if (fields.importe !== undefined) return captureCardPayment(rows, fields, env)
+  // El atajo de gastos manda solo lo dictado: «quince euros en el súper»
+  const raw = fields.gasto ? `gasto ${fields.gasto}` : (fields.texto ?? '')
   const text = raw.replace(/\s+/g, ' ').trim().slice(0, 500)
   if (!text) return { writes: [], report: ['No he oído nada que apuntar.'] }
   const today = ymdIn(env.now, env.tz)
@@ -1484,10 +1551,13 @@ export function capture(rows: Row[], raw: string, env: Env): WriteResult & { del
     return { ...r, report: r.report.map(spoken) }
   }
   if (SHOPPING_PREFIX.test(text)) return addShopping(rows, { cosas: text.replace(SHOPPING_PREFIX, '') }, env)
-  if (EXPENSE_PREFIX.test(text)) {
-    const r = addExpenseTool(rows, { texto: text.replace(EXPENSE_PREFIX, '') }, env)
+  const expense = EXPENSE_PREFIX.exec(text)
+  // «he pagado la luz» sin importe es una tarea hecha, no un gasto
+  if (expense && (parseExpense(text.slice(expense[0].length)) || /gast/i.test(expense[0]))) {
+    const r = addExpenseTool(rows, { texto: text.slice(expense[0].length) }, env)
+    if (!r.writes.length) return { ...r, report: ['¿Cuánto has gastado? Dilo con el importe: «15 euros en el súper».'] }
     // Para Siri, sin el resumen del mes
-    return { ...r, report: r.writes.length ? [r.report[0].split('. Este mes')[0] + '.'] : r.report }
+    return { ...r, report: [r.report[0].split('. Este mes')[0] + '.'] }
   }
 
   const ix = new Index(rows)

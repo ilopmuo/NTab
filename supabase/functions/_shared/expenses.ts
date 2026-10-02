@@ -90,21 +90,95 @@ const TAG = /(^|\s)#([\p{L}\d][\p{L}\d_-]*)/gu
 /** «#Roma» → «roma» */
 export const normTag = (t: string) => t.replace(/^#/, '').trim().toLowerCase()
 
-/** «12,50 café» · «café 2,30» · «63€ súper» · «ayer 20 cena» · «1.250 alquiler» · «30 cena #roma» */
+const NUM_WORDS: Record<string, number> = {
+  un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10,
+  once: 11, doce: 12, trece: 13, catorce: 14, quince: 15, dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19,
+  veinte: 20, veintiun: 21, veintiuno: 21, veintiuna: 21, veintidos: 22, veintitres: 23, veinticuatro: 24, veinticinco: 25,
+  veintiseis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29, treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60,
+  setenta: 70, ochenta: 80, noventa: 90, cien: 100, ciento: 100, doscientos: 200, doscientas: 200, trescientos: 300,
+  trescientas: 300, cuatrocientos: 400, cuatrocientas: 400, quinientos: 500, quinientas: 500, seiscientos: 600,
+  seiscientas: 600, setecientos: 700, setecientas: 700, ochocientos: 800, ochocientas: 800, novecientos: 900,
+  novecientas: 900, mil: 1000,
+}
+const CURRENCY_WORD = /^(?:euros?|€|eur|pavos?)$/
+
+/** «treinta y cinco» desde la palabra `i`: el número y dónde acaba */
+function readWords(words: string[], i: number) {
+  let total = 0
+  let cur = 0
+  let j = i
+  for (; j < words.length; j++) {
+    const k = fold(words[j])
+    // «treinta y cinco»: la «y» solo une decenas y unidades
+    if (k === 'y' && j > i && (NUM_WORDS[fold(words[j + 1] ?? '')] ?? 10) < 10) continue
+    const v = NUM_WORDS[k]
+    if (v === undefined) break
+    if (v === 1000) {
+      total += (cur || 1) * 1000
+      cur = 0
+    } else cur += v
+  }
+  return j > i ? { value: total + cur, end: j } : undefined
+}
+
+/**
+ * Importes dichos con palabras (lo que a veces escribe el dictado):
+ * «quince euros» → «15 €», «doce con cincuenta» → «12,50 €», «veinte euros y
+ * medio» → «20,50 €». Solo si el texto no lleva ya cifras.
+ */
+export function spokenAmount(text: string): string {
+  if (/\d/.test(text)) return text
+  const words = text.split(/\s+/)
+  for (let i = 0; i < words.length; i++) {
+    const run = readWords(words, i)
+    if (!run) continue
+    let k = run.end
+    const currency = CURRENCY_WORD.test(fold(words[k] ?? '') || (words[k] ?? ''))
+    if (currency) k++
+    let cents = 0
+    if (fold(words[k] ?? '') === 'con') {
+      const c = readWords(words, k + 1)
+      if (c && c.value < 100) {
+        cents = c.value
+        k = c.end
+        if (/^centimos?$/.test(fold(words[k] ?? ''))) k++
+      }
+    } else if (fold(words[k] ?? '') === 'y' && fold(words[k + 1] ?? '') === 'medio') {
+      cents = 50
+      k += 2
+    }
+    // «un», «una» sueltos no son un importe («una cena»); al principio o al final del texto, sí
+    const edge = i === 0 || run.end === words.length
+    if ((run.value === 1 && !currency && !cents) || (!currency && !cents && !edge)) {
+      i = run.end - 1
+      continue
+    }
+    const amount = cents ? `${run.value},${String(cents).padStart(2, '0')}` : String(run.value)
+    return [...words.slice(0, i), `${amount} €`, ...words.slice(k)].join(' ')
+  }
+  return text
+}
+
+/** «12,50 café» · «café 2,30» · «63€ súper» · «ayer 20 cena» · «1.250 alquiler» · «30 cena #roma» · «quince euros en el súper» */
 export function parseExpense(input: string, rules?: ExpenseRules): ParsedExpense | null {
   const tags: string[] = []
-  let s = ` ${input.trim().replace(TAG, (_, pre: string, t: string) => (tags.includes(normTag(t)) || tags.push(normTag(t)), pre))} `
+  let s = ` ${spokenAmount(input.trim().replace(TAG, (_, pre: string, t: string) => (tags.includes(normTag(t)) || tags.push(normTag(t)), pre)))} `
   let daysAgo = 0
   s = s.replace(/\s(anteayer|antes de ayer)\s/i, () => ((daysAgo = 2), ' ')).replace(/\sayer\s/i, () => ((daysAgo = daysAgo || 1), ' ')).replace(/\shoy\s/i, ' ')
   // Importe: 12 · 12,5 · 12,50 · 12.50 · 1.250 · 1.250,50, con € o «euros» opcional
-  const m = s.match(/(?:^|\s)(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(?:€|eur(?:os?)?)?(?=\s|$)/i)
+  const m = s.match(/(?:^|\s)(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(?:€|eur(?:os?)?|pavos?)?(?=\s|$)/i)
   if (!m) return null
   let raw = m[1]
   if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(raw)) raw = raw.replace(/\./g, '').replace(',', '.')
   else raw = raw.replace(',', '.')
   const amount = Math.round(parseFloat(raw) * 100) / 100
   if (!(amount > 0)) return null
-  let note = (s.slice(0, m.index) + ' ' + s.slice((m.index ?? 0) + m[0].length)).replace(/\s+(en|de|del|por)\s*$/i, '').replace(/^\s*(en|de|del|por)\s+/i, '').replace(/\s+/g, ' ').trim()
+  // «de 15 euros en el súper» → «súper»: fuera las preposiciones y el artículo que quedan sueltos
+  let note = (s.slice(0, m.index) + ' ' + s.slice((m.index ?? 0) + m[0].length))
+    .replace(/\s+(en|de|del|por|para)\s*$/i, '')
+    .replace(/^\s*(?:(?:en|de|del|por|para)\s+)+(?:(?:el|la|los|las)\s+(?=\S))?/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
   note = note ? note.charAt(0).toUpperCase() + note.slice(1) : 'Gasto'
   return { amount, note, category: categoryFor(note, rules), daysAgo, ...(tags.length ? { tags } : {}) }
 }

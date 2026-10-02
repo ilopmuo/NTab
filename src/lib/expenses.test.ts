@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { budgetAlert, categoryBudgets, categoryFor, frequentExpenses, monthSummary, monthlyTotals, parseExpense, ruleKey, searchExpenses, tagTotals } from './expenses'
+import { spokenAmount, budgetAlert, categoryBudgets, categoryFor, frequentExpenses, monthSummary, monthlyTotals, parseExpense, ruleKey, searchExpenses, tagTotals } from './expenses'
 
 describe('gastos', () => {
   it('entiende el importe en cualquier sitio', () => {
@@ -85,5 +85,23 @@ describe('gastos como los mejores', () => {
       { month: '2026-10', total: 0 },
     ])
     expect(monthlyTotals(list, '2026-02', 2).map((m) => m.month)).toEqual(['2026-01', '2026-02'])
+  })
+})
+
+describe('importes dichos con palabras', () => {
+  it('los pasa a cifras', () => {
+    expect(spokenAmount('quince euros en el súper')).toBe('15 € en el súper')
+    expect(spokenAmount('treinta y cinco en gasolina')).toBe('35 € en gasolina')
+    expect(spokenAmount('doce con cincuenta en el bar')).toBe('12,50 € en el bar')
+    expect(spokenAmount('un euro con veinte de chicles')).toBe('1,20 € de chicles')
+    expect(spokenAmount('veinte euros y medio taxi')).toBe('20,50 € taxi')
+    expect(spokenAmount('mil doscientos alquiler')).toBe('1200 € alquiler')
+    expect(spokenAmount('cena para dos 40')).toBe('cena para dos 40')
+    expect(spokenAmount('una cena con Ana')).toBe('una cena con Ana')
+  })
+  it('y el gasto queda limpio', () => {
+    expect(parseExpense('de quince euros en el Mercadona')).toMatchObject({ amount: 15, note: 'Mercadona', category: 'super' })
+    expect(parseExpense('30 pavos en la gasolinera')).toMatchObject({ amount: 30, note: 'Gasolinera' })
+    expect(parseExpense('63 la compra')).toMatchObject({ amount: 63, note: 'La compra' })
   })
 })

@@ -6,10 +6,12 @@
 //
 // Con la misma URL privada + /capturar (POST con el texto) se apunta desde un
 // atajo de Siri: «llamar al dentista mañana a las 10», «compra: leche y pan».
+// También un gasto dictado ({ gasto }) o un pago de Apple Pay desde la
+// automatización «Transacción» de Atajos ({ importe, comercio }).
 // Responde una frase en texto plano, para que Siri la lea.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { handleMessage, type Store } from './server.ts'
-import { capture, type Env, type Row } from './ntab.ts'
+import { capture, captureFields, type CaptureInput, type Env, type Row } from './ntab.ts'
 import { loadEvents } from '../_shared/loadEvents.ts'
 
 const CORS = {
@@ -32,23 +34,17 @@ function tokenFrom(url: URL) {
 const isCapture = (url: URL) => url.pathname.replace(/\/+$/, '').endsWith('/capturar')
 const text = (body: string, status = 200) => new Response(body, { status, headers: { ...CORS, 'Content-Type': 'text/plain; charset=utf-8' } })
 
-/** El texto dictado: JSON {texto}, formulario, texto plano o ?texto= */
-async function captureText(req: Request, url: URL): Promise<string> {
-  const q = url.searchParams.get('texto') ?? url.searchParams.get('text')
-  if (q) return q
+/** Lo que manda el atajo: JSON ({texto}, {gasto} o {importe, comercio}), formulario, texto plano o ?texto= */
+async function captureInput(req: Request, url: URL): Promise<CaptureInput> {
+  const q = captureFields(Object.fromEntries(url.searchParams))
+  if (q.texto || q.gasto || q.importe !== undefined) return q
   const type = req.headers.get('content-type') ?? ''
   try {
-    if (type.includes('application/json')) {
-      const b = (await req.json()) as Record<string, unknown>
-      return String(b?.texto ?? b?.text ?? b?.input ?? '')
-    }
-    if (type.includes('form')) {
-      const f = await req.formData()
-      return String(f.get('texto') ?? f.get('text') ?? '')
-    }
-    return await req.text()
+    if (type.includes('application/json')) return captureFields((await req.json()) as Record<string, unknown>)
+    if (type.includes('form')) return captureFields(Object.fromEntries(await req.formData()))
+    return { texto: await req.text() }
   } catch {
-    return ''
+    return {}
   }
 }
 
@@ -121,7 +117,7 @@ Deno.serve(async (req) => {
   // Atajo de Siri: apuntar sin abrir la app
   if (capturing) {
     try {
-      const r = capture(await store.load(), await captureText(req, url), env)
+      const r = capture(await store.load(), await captureInput(req, url), env)
       if (r.writes.length || r.deletes?.length) await store.save(r.writes, r.deletes)
       return text(r.report.join(' '))
     } catch {

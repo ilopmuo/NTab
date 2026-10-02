@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { capture, type Env, type Row } from '../../supabase/functions/mcp/ntab'
+import { capture, captureFields, readAmount, type Env, type Row } from '../../supabase/functions/mcp/ntab'
 import { zonedToUtc } from '../../supabase/functions/_shared/time'
 
 // Jueves 24 de septiembre de 2026, 00:30 en Madrid (aún miércoles 23 en UTC)
@@ -54,6 +54,46 @@ describe('captura con Siri', () => {
     const r = capture(rows, 'gasto 12,50 café', env())
     expect(r.writes[0]).toMatchObject({ tbl: 'expenses', data: { amount: 12.5, date: '2026-09-24' } })
     expect(r.report[0]).not.toContain('Este mes')
+  })
+
+  it('gastos dichos con naturalidad, también con el importe en palabras', () => {
+    const nb = (s: string) => s.replace(/\u00a0/g, ' ')
+    let r = capture(rows, 'Mete un gasto de quince euros en Mercadona', env())
+    expect(r.writes[0]).toMatchObject({ tbl: 'expenses', data: { amount: 15, note: 'Mercadona', category: 'super' } })
+    expect(nb(r.report[0])).toBe('Apuntado: 15 € · Mercadona (Supermercado, hoy).')
+    expect(capture(rows, 'apunta un gasto de 8,50 en la farmacia', env()).writes[0].data).toMatchObject({ amount: 8.5, note: 'Farmacia', category: 'salud' })
+    expect(capture(rows, 'me he gastado veinte euros con cincuenta en la cena', env()).writes[0].data).toMatchObject({ amount: 20.5, note: 'Cena', category: 'comer' })
+    expect(capture(rows, 'he pagado 30 de luz', env()).writes[0].data).toMatchObject({ amount: 30, note: 'Luz', category: 'casa' })
+    // Sin importe: «he pagado la luz» es una tarea; «gasto en el súper», una pregunta
+    expect(capture(rows, 'he pagado la luz', env()).writes[0].tbl).toBe('tasks')
+    r = capture(rows, 'gasto en el súper', env())
+    expect(r.writes).toEqual([])
+    expect(r.report[0]).toContain('¿Cuánto has gastado?')
+    // El atajo de gastos solo manda lo dictado
+    expect(capture(rows, { gasto: 'doce con cincuenta en el bar' }, env()).writes[0].data).toMatchObject({ amount: 12.5, note: 'Bar', category: 'comer' })
+  })
+
+  it('pagos con Apple Pay desde la automatización «Transacción»', () => {
+    const nb = (s: string) => s.replace(/\u00a0/g, ' ')
+    const r = capture(rows, captureFields({ importe: '15,30 €', comercio: 'MERCADONA S.A.' }), env())
+    expect(r.writes[0]).toMatchObject({ tbl: 'expenses', data: { amount: 15.3, note: 'Mercadona S.A.', category: 'super', date: '2026-09-24' } })
+    expect(nb(r.report[0])).toBe('Apuntado: 15,30 € · Mercadona S.A. (Supermercado, hoy).')
+    expect(capture(rows, captureFields({ amount: 4.5, merchant: 'Starbucks' }), env()).writes[0].data).toMatchObject({ amount: 4.5, note: 'Starbucks' })
+    expect(capture(rows, captureFields({ importe: '-4,99 €', comercio: 'Amazon' }), env())).toEqual({ writes: [], report: ['Es una devolución: no la apunto como gasto.'] })
+    expect(capture(rows, captureFields({ importe: '', comercio: 'Amazon', texto: '' }), env()).report[0]).toBe('No he oído nada que apuntar.')
+    expect(capture(rows, captureFields({ importe: 'gratis' }), env()).report[0]).toBe('No me ha llegado el importe del pago.')
+  })
+
+  it('importes de cualquier formato', () => {
+    expect(readAmount('15,30 €')).toBe(15.3)
+    expect(readAmount('€15.30')).toBe(15.3)
+    expect(readAmount('1.234,56 EUR')).toBe(1234.56)
+    expect(readAmount('$1,234.56')).toBe(1234.56)
+    expect(readAmount('1.234 €')).toBe(1234)
+    expect(readAmount('−4,99 €')).toBe(-4.99)
+    expect(readAmount('-€4.99')).toBe(-4.99)
+    expect(readAmount(12)).toBe(12)
+    expect(readAmount('nada')).toBeUndefined()
   })
 
   it('«dentro de 2 horas» cuenta desde la hora del usuario', () => {
