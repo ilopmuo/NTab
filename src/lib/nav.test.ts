@@ -8,7 +8,6 @@ describe('resolveNav', () => {
     const nav = resolveNav(null, ALL)
     expect(nav.tiles).toEqual(DEFAULT_TILES)
     expect(nav.list).toEqual(DEFAULT_LIST.filter((id) => !DEFAULT_HIDDEN.includes(id)))
-    // Matriz y Plantillas empiezan ocultas, para no saturar la barra
     expect(nav.hidden).toEqual(DEFAULT_HIDDEN)
     expect(nav.tabs).toEqual(DEFAULT_TABS)
   })
@@ -21,16 +20,25 @@ describe('resolveNav', () => {
   })
 
   it('respeta el orden, el sitio y las ocultas', () => {
-    const nav = resolveNav({ order: ['notes', 'today', 'menu'], place: { menu: 'tile', inbox: 'hidden', review: 'hidden' } }, ALL)
-    expect(nav.tiles.slice(0, 3)).toEqual(['notes', 'today', 'menu'])
-    expect(nav.hidden.filter((id) => !DEFAULT_HIDDEN.includes(id))).toEqual(['inbox', 'review'])
-    expect(nav.list).not.toContain('menu')
+    const nav = resolveNav({ order: ['notes', 'today', 'money'], place: { money: 'tile', inbox: 'hidden', people: 'hidden' } }, ALL)
+    expect(nav.tiles.slice(0, 3)).toEqual(['notes', 'today', 'money'])
+    expect(nav.hidden.filter((id) => !DEFAULT_HIDDEN.includes(id))).toEqual(['inbox', 'people'])
+    expect(nav.list).not.toContain('money')
   })
 
-  it('lo oculto por defecto se puede volver a poner en la lista', () => {
-    const nav = resolveNav({ place: { matrix: 'list' } }, ALL)
-    expect(nav.list).toContain('matrix')
-    expect(nav.hidden).toEqual(['templates'])
+  it('lo oculto se puede volver a poner en la lista', () => {
+    const hidden = resolveNav({ place: { filters: 'hidden' } }, ALL)
+    expect(hidden.hidden).toEqual(['filters'])
+    const back = resolveNav({ place: { filters: 'list' } }, ALL)
+    expect(back.list).toContain('filters')
+    expect(back.hidden).toEqual([])
+  })
+
+  it('de la navegación de antes (por secciones) se queda lo que sigue existiendo', () => {
+    const nav = resolveNav({ order: ['shopping', 'notes', 'upcoming'], place: { notes: 'list', shopping: 'tile' }, tabs: ['today', 'upcoming', 'calendar', 'habits'] }, ALL)
+    expect(nav.order).not.toContain('shopping')
+    expect(nav.list).toContain('notes')
+    expect(nav.tabs).toEqual(['today', 'calendar', 'habits', 'inbox'])
   })
 
   it('Hoy no se puede ocultar', () => {
@@ -51,11 +59,11 @@ describe('resolveNav', () => {
     expect(nav.order).not.toContain('vieja')
     expect(nav.order.filter((x) => x === 'notes')).toHaveLength(1)
     expect(nav.place.notes).toBe('list')
-    expect(nav.tabs).toEqual(['inbox', 'today', 'upcoming', 'calendar'])
+    expect(nav.tabs).toEqual(['inbox', 'today', 'calendar', 'habits'])
   })
 
   it('siempre hay cuatro pestañas', () => {
-    expect(resolveNav({ tabs: ['shopping', 'menu', 'journal', 'people', 'notes'] }, ALL).tabs).toEqual(['shopping', 'menu', 'journal', 'people'])
+    expect(resolveNav({ tabs: ['home', 'money', 'plan', 'people', 'notes'] }, ALL).tabs).toEqual(['home', 'money', 'plan', 'people'])
     expect(resolveNav({ tabs: [] }, ALL).tabs).toEqual(DEFAULT_TABS)
   })
 })

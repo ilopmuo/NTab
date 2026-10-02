@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { FEATURES, cardOn, featureOn, featureOfSection, reminderAllowed, sectionOn } from './features'
-import { SECTIONS } from '@/app/sections'
+import { HUBS, SECTIONS, hubOf } from '@/app/sections'
 
 describe('funciones activables', () => {
   it('todo encendido por defecto; lo apagado se guarda a false', () => {
@@ -22,10 +22,14 @@ describe('funciones activables', () => {
     expect(featureOfSection('today')).toBeUndefined()
   })
 
-  it('cada función apunta a secciones que existen y tiene grupo en la barra lateral', () => {
+  it('cada función apunta a secciones que existen, y cada sección está en un espacio', () => {
     const ids = new Set(SECTIONS.map((s) => s.id))
     for (const f of FEATURES) for (const s of f.sections) expect(ids.has(s), `${f.id} → ${s}`).toBe(true)
-    for (const s of SECTIONS.filter((x) => FEATURES.some((f) => f.sections.includes(x.id)))) expect(s.group, s.id).toBeTruthy()
+    // Todas menos las del pie (Completadas, Papelera, Ajustes), en un solo espacio
+    for (const s of SECTIONS.filter((x) => !['logbook', 'trash', 'settings'].includes(x.id))) expect(hubOf(s.id), s.id).toBeTruthy()
+    const tabs = HUBS.flatMap((h) => h.tabs.map((t) => t.id))
+    expect(tabs).toHaveLength(new Set(tabs).size)
+    for (const t of tabs) expect(ids.has(t), t).toBe(true)
   })
 
   it('el servidor no avisa de lo apagado', () => {

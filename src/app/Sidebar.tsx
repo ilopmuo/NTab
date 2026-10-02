@@ -8,11 +8,11 @@ import { SyncBadge } from '@/sync/SyncBadge'
 import { useNavCounts, useProjectProgress, useSmartListCounts } from './counts'
 import { useNav } from './nav'
 import { href, navigate, useRoute } from './router'
-import { SectionIcon, section, type SectionDef } from './sections'
+import { SectionIcon, hub, section, type HubDef } from './sections'
+import { hubPath, inHub } from './hubs'
 import { FIXED } from '@/lib/nav'
 import { setUI, ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
-import { FEATURE_GROUPS } from '@/lib/features'
 import { usePins } from './pins'
 import { useCollapsed } from './navGroups'
 import { useSmartLists } from './smartLists'
@@ -21,10 +21,10 @@ import { useFeatures } from './features'
 const FOOT = FIXED.map(section)
 
 /** Lista inteligente en cuadrícula, como en Recordatorios */
-function Tile({ def, count, active }: { def: SectionDef; count?: number | string; active: boolean }) {
+function Tile({ def, to, count, active }: { def: HubDef; to: string; count?: number | string; active: boolean }) {
   return (
     <a
-      href={href(def.path)}
+      href={href(to)}
       aria-current={active ? 'page' : undefined}
       onClick={() => ui.sidebar(false)}
       className={cx(
@@ -133,11 +133,11 @@ function NavGroup({ id, label, active, action, className, children }: { id: stri
 }
 
 /**
- * Al pie de un grupo, lo que está oculto (por defecto, Matriz y Plantillas):
- * plegado tras «N más», salvo lo que estás viendo. Así no satura la barra y
- * sigue a mano en el ordenador, como «Más» en el móvil.
+ * Al pie de la lista, los espacios que has ocultado: plegados tras «N más»,
+ * salvo el que estás viendo. Así no saturan la barra y siguen a mano en el
+ * ordenador, como «Más» en el móvil.
  */
-function MoreRows({ group, label, items, isActive, render }: { group: string; label: string; items: SectionDef[]; isActive: (d: SectionDef) => boolean; render: (d: SectionDef) => React.ReactNode }) {
+function MoreRows({ group, label, items, isActive, render }: { group: string; label: string; items: HubDef[]; isActive: (d: HubDef) => boolean; render: (d: HubDef) => React.ReactNode }) {
   // useCollapsed recuerda lo que se ha tocado; aquí «tocado» es «abierto»
   const [open, toggle] = useCollapsed(`more:${group}`)
   const shown = open ? items : items.filter(isActive)
@@ -181,36 +181,32 @@ function SidebarContent() {
   const pins = usePins()
   const pinProgress = useProjectProgress(pins.filter((p) => p.kind === 'project').map((p) => p.id))
   const allSmart = useSmartLists()
-  const smart = useFeatures().on('lists') ? allSmart : []
+  const features = useFeatures()
+  const smart = features.on('lists') ? allSmart : []
   const smartCounts = useSmartListCounts(smart)
   const is = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
 
   const tileCount: Record<string, number | string> = {
     today: c.today,
-    upcoming: c.upcoming,
     inbox: c.inbox,
     calendar: c.calendar,
     habits: c.habitsTotal ? `${c.habitsDone}/${c.habitsTotal}` : 0,
     notes: c.notes,
-    shopping: c.shopping,
+    home: c.shopping,
     people: c.peopleDue,
   }
 
-  // La lista: primero lo esencial sin grupo; luego cada grupo, plegable
-  const list = nav.list.map(section)
-  const core = list.filter((d) => !d.group)
-  const hidden = nav.hidden.map(section)
-  const groups = FEATURE_GROUPS.map((g) => ({ ...g, items: list.filter((d) => d.group === g.id), more: hidden.filter((d) => d.group === g.id) })).filter(
-    (g) => g.items.length || g.more.length,
-  )
-  const sectionRow = (d: SectionDef) => (
+  // Los espacios: en cuadrícula, en la lista y los ocultos al pie
+  const to = (d: HubDef) => hubPath(d, features.section)
+  const hidden = nav.hidden.map(hub)
+  const hubRow = (d: HubDef) => (
     <Row
       key={d.id}
-      to={d.path}
-      active={is(d.path)}
+      to={to(d)}
+      active={inHub(d, path)}
       icon={<SectionIcon def={d} size={24} square />}
       label={d.label}
-      count={d.id === 'people' ? c.peopleDue : d.id === 'shopping' ? c.shopping : undefined}
+      count={d.id === 'people' ? c.peopleDue : d.id === 'home' ? c.shopping : undefined}
       countTone={d.id === 'people' ? 'var(--c-purple)' : undefined}
     />
   )
@@ -272,8 +268,8 @@ function SidebarContent() {
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-3 pb-4">
         <div className="grid grid-cols-2 gap-2">
-          {nav.tiles.map(section).map((d) => (
-            <Tile key={d.id} def={d} count={tileCount[d.id]} active={is(d.path)} />
+          {nav.tiles.map(hub).map((d) => (
+            <Tile key={d.id} def={d} to={to(d)} count={tileCount[d.id]} active={inHub(d, path)} />
           ))}
         </div>
 
@@ -319,18 +315,12 @@ function SidebarContent() {
           </NavGroup>
         )}
 
-        {core.length > 0 && (
-          <div className={cx('space-y-px', (nav.tiles.length > 0 || pinRows.length > 0) && 'mt-4')}>
-            {core.map(sectionRow)}
+        {nav.list.length + hidden.length > 0 && (
+          <div className={cx('space-y-px', (nav.tiles.length > 0 || pinRows.length > 0 || smart.length > 0) && 'mt-4')}>
+            {nav.list.map(hub).map(hubRow)}
+            {hidden.length > 0 && <MoreRows group="hubs" label="la barra" items={hidden} isActive={(d) => inHub(d, path)} render={hubRow} />}
           </div>
         )}
-
-        {groups.map((g) => (
-          <NavGroup key={g.id} id={g.id} label={g.label} active={[...g.items, ...g.more].some((d) => is(d.path))}>
-            {g.items.map(sectionRow)}
-            {g.more.length > 0 && <MoreRows group={g.id} label={g.label} items={g.more} isActive={(d) => is(d.path)} render={sectionRow} />}
-          </NavGroup>
-        ))}
 
         <NavGroup
           id="areas"

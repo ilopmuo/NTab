@@ -1,7 +1,8 @@
 /**
- * Navegación a tu medida: qué secciones van en la cuadrícula de la barra
- * lateral, cuáles en la lista, cuáles se ocultan (siguen en ⌘K y en los atajos)
- * y qué cuatro pestañas lleva la barra del móvil. Se guarda en el ajuste `nav`.
+ * Navegación a tu medida: qué espacios (Hoy, Casa, Dinero… ver HUBS en
+ * src/app/sections.tsx) van en la cuadrícula de la barra lateral, cuáles en la
+ * lista, cuáles se ocultan (siguen en ⌘K y en los atajos) y qué cuatro
+ * pestañas lleva la barra del móvil. Se guarda en el ajuste `nav`.
  */
 
 export type Place = 'tile' | 'list' | 'hidden'
@@ -14,11 +15,11 @@ export interface NavPrefs {
 
 /** Siempre al pie de la barra lateral: no se mueven ni se ocultan */
 export const FIXED = ['logbook', 'trash', 'settings']
-export const DEFAULT_TILES = ['today', 'upcoming', 'inbox', 'calendar', 'habits', 'notes']
-export const DEFAULT_LIST = ['shopping', 'menu', 'routines', 'focus', 'trackers', 'things', 'journal', 'people', 'projects', 'tags', 'lists', 'matrix', 'someday', 'templates', 'goals', 'expenses', 'finance', 'review']
-/** De la lista, pero ocultas al empezar (para no saturar la barra): en «N más» de su grupo, en «Más» y en ⌘K */
-export const DEFAULT_HIDDEN = ['matrix', 'templates']
-export const DEFAULT_TABS = ['today', 'upcoming', 'calendar', 'habits']
+export const DEFAULT_TILES = ['today', 'inbox', 'calendar', 'habits', 'notes', 'home']
+export const DEFAULT_LIST = ['plan', 'projects', 'filters', 'people', 'money']
+/** De la lista, pero ocultos al empezar: en «N más» al pie, en «Más» y en ⌘K */
+export const DEFAULT_HIDDEN: string[] = []
+export const DEFAULT_TABS = ['today', 'inbox', 'calendar', 'habits']
 export const TAB_COUNT = 4
 /** Hoy es la portada: no se puede ocultar */
 export const ALWAYS_VISIBLE = ['today']

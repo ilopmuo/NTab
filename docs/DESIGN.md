@@ -57,6 +57,7 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Evolución de un objetivo | La línea se dibuja de izquierda a derecha y el área de debajo aparece después |
 | Rutina con tiempo | Bajo el paso, la cuenta atrás en grande y una barra que se llena; al llegar a cero suena, vibra y el reloj pasa al acento |
 | Selección en la barra lateral | La píldora se desliza al nuevo elemento (*shared layout*) |
+| Pestañas de un espacio | Texto gris; la pestaña en la que estás, en el color del texto sobre una píldora de relleno gris |
 | Hojas y modales | Suben o crecen con muelle; en móvil se cierran arrastrando hacia abajo |
 | Anillos y números | Se llenan y cuentan desde cero al aparecer; los contadores ruedan al cambiar (el número viejo sale, el nuevo entra en la dirección del cambio). Al cerrarse un anillo, una onda sale de él |
 | Hábitos en Hoy | Al marcarlo, el lima crece en círculo desde donde tocas; la llama de la racha da un respingo y el número rueda; en los de cantidad, cada toque suelta un «+1» que sube y se desvanece |
@@ -98,7 +99,7 @@ La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el int
 ## 6. Navegación y accesibilidad
 
 - **Funciones activables** (`src/lib/features.ts`): lo que se apaga desaparece de la barra lateral, las pestañas, ⌘K, los atajos, Hoy y los avisos del servidor. Lo esencial (Hoy, Próximo, Bandeja, Calendario, Proyectos, Etiquetas) no se apaga.
-- **Barra lateral por grupos** (Organizar, Día a día, Casa, Dinero, Mis listas, Mis áreas, Fijados), plegables y recordados en cada dispositivo; un grupo plegado sigue enseñando la fila de lo que estás viendo. Lo oculto (Matriz y Plantillas, de inicio) queda al pie de su grupo tras «N más», también plegable. En el móvil, «Más» es una página con los mismos grupos en cuadrícula.
+- **Espacios** (`HUBS` en `src/app/sections.tsx`): la barra lateral, «Más» y las pestañas del móvil no enseñan cada función sino once espacios que juntan lo que va junto (Casa = Compra, Menú y Cosas). Dentro, una fila de pestañas encima del título (`src/app/HubTabs.tsx`) cambia de sección; la activa lleva una píldora gris y el espacio recuerda la última pestaña en cada dispositivo. Las rutas y los atajos `G` + tecla de cada sección siguen igual. En la barra lateral: Fijados, Mis listas y Mis áreas, plegables; los espacios ocultos quedan al pie tras «N más». En el móvil, «Más» enseña los espacios en cuadrícula.
 - **Texto**: `--c-faint` nunca para texto que haya que leer (contadores, días de la semana, hechas tachadas): `--c-muted`. Nada de transparencias sobre texto.
 - **Más contraste** (`[data-contrast='more']`): grises de texto y bordes más marcados, materiales opacos y sin halo de fondo. **Menos movimiento** (`[data-motion='reduce']`): sin animaciones de CSS ni de Motion, sin confeti ni revelados. Ambos siguen al sistema o se fuerzan en Ajustes → Accesibilidad.
 - **Lector de pantalla**: los avisos y los cambios de pantalla se anuncian (`#announcer`, `aria-live`); «Saltar al contenido» es lo primero al tabular; al navegar desde la barra lateral el foco pasa al contenido. Títulos: un `h1` por pantalla y `h2` para los bloques.

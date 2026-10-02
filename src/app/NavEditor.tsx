@@ -4,7 +4,8 @@ import { ALWAYS_VISIBLE, setTab, type Place } from '@/lib/nav'
 import { Button, Modal, ModalHeader, Segmented, Select } from '@/components/ui'
 import { saveNav, useNav } from './nav'
 import { useFeatures } from './features'
-import { SECTIONS, SectionIcon, section } from './sections'
+import { HUBS, SectionIcon, hub } from './sections'
+import { hubTabs } from './hubs'
 import { ui, useUI } from './store'
 
 /** Personalizar la barra lateral (cuadrícula, lista u oculta) y las pestañas del móvil */
@@ -41,7 +42,7 @@ function SidebarEditor() {
   return (
     <>
       <p className="px-5 pb-3 text-[13.5px] text-muted">
-        Arrastra para ordenar. Lo que ocultes queda plegado en «N más» al pie de su grupo, en la búsqueda (⌘K) y en los atajos de teclado.
+        Arrastra para ordenar. Lo que ocultes queda plegado en «N más» al pie de la lista, en la búsqueda (⌘K) y en los atajos de teclado.
       </p>
       <Reorder.Group axis="y" values={nav.order} onReorder={(order) => save({ order })} className="max-h-[52vh] space-y-1.5 overflow-y-auto px-5">
         {nav.order.map((id) => (
@@ -61,7 +62,7 @@ const PLACES: { value: Place; label: React.ReactNode; title: string }[] = [
 
 function SectionRow({ id, place, onPlace }: { id: string; place: Place; onPlace: (p: Place) => void }) {
   const controls = useDragControls()
-  const def = section(id)
+  const def = hub(id)
   const options = ALWAYS_VISIBLE.includes(id) ? PLACES.filter((p) => p.value !== 'hidden') : PLACES
   return (
     <Reorder.Item value={id} dragListener={false} dragControls={controls} className="flex h-12 items-center gap-2 rounded-xl bg-fill-2 pr-2 pl-1.5">
@@ -88,7 +89,7 @@ function TabsEditor() {
       <p className="px-5 pb-3 text-[13.5px] text-muted">Las cuatro pestañas de la barra inferior en el iPhone. «Más» abre todo lo demás.</p>
       <div className="mx-5 mb-4 flex items-center justify-around rounded-full bg-fill-2 px-2 py-2.5">
         {nav.tabs.map((id) => {
-          const def = section(id)
+          const def = hub(id)
           return (
             <span key={id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
               <SectionIcon def={def} size={26} />
@@ -106,7 +107,7 @@ function TabsEditor() {
               value={id}
               onChange={(e) => void saveNav({ order: nav.order, place: nav.place, tabs: setTab(nav.tabs, slot, e.target.value) }, nav.prefs)}
             >
-              {SECTIONS.filter((s) => features.section(s.id)).map((s) => (
+              {HUBS.filter((h) => hubTabs(h, features.section).length).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}
                 </option>

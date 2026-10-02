@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ArrowLeft, BookOpen, Image as ImageIcon, LayoutTemplate, ListChecks, ListPlus, PenLine, Pin, PinOff, Plus, Search, Share, StickyNote, Trash2 } from 'lucide-react'
 import { SectionIcon, section } from '@/app/sections'
+import { pageTop } from '@/app/pageTop'
 import { db } from '@/db/db'
 import { toastTrashed } from '../trash/undo'
 import type { Note } from '@/db/types'
@@ -66,6 +67,7 @@ export function NotesView({ id }: { id?: string }) {
     <div className="flex h-full">
       <div className={cx('flex w-full flex-col md:w-[340px] md:shrink-0 md:shadow-[inset_-1px_0_0_var(--c-border)]', id && 'hidden md:flex')}>
         <div className="px-4 pt-[max(env(safe-area-inset-top),20px)] pb-3 lg:pt-10">
+          {pageTop.Component && <pageTop.Component anyDepth />}
           <div className="mb-4 flex items-center gap-3">
             <SectionIcon def={section('notes')} size={36} />
             <h1 className="flex-1 text-[30px] font-bold tracking-[-0.025em]">Notas</h1>

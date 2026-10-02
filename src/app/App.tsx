@@ -15,6 +15,8 @@ import { announce } from './announce'
 import { reducedMotion, useA11yPrefs } from './theme'
 import { useFeatures } from './features'
 import { FeatureOff } from '@/features/FeatureOff'
+import { HubTabs } from './HubTabs'
+import { pageTop } from './pageTop'
 import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
 import { ui, useUI } from './store'
@@ -22,6 +24,8 @@ import { closeAuth, useSync } from '@/sync/service'
 // Los avisos con la app abierta se cargan aparte (ver main.tsx)
 const reminders = () => import('@/reminders/local')
 import { ReauthBanner } from '@/sync/ReauthBanner'
+
+pageTop.Component = HubTabs
 
 const loadMotionFeatures = () => import('@/lib/motionFeatures').then((m) => m.default)
 

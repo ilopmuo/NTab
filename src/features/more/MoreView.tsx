@@ -1,12 +1,12 @@
 import { m as motion } from 'motion/react'
 import { BookOpen, ChevronRight, Hash, LayoutGrid, type LucideIcon, PanelBottom, Plus, Receipt, Search, Timer } from 'lucide-react'
-import { FEATURE_GROUPS } from '@/lib/features'
 import { useLookup } from '@/db/hooks'
 import { useNavCounts, useProjectProgress } from '@/app/counts'
 import { useNav } from '@/app/nav'
 import { usePins } from '@/app/pins'
 import { href } from '@/app/router'
-import { SECTIONS, SectionIcon, type SectionDef } from '@/app/sections'
+import { HUBS, SECTIONS, SectionIcon, type HubDef } from '@/app/sections'
+import { hubPath, hubTabs } from '@/app/hubs'
 import { ui } from '@/app/store'
 import { useFeatures } from '@/app/features'
 import { AreaBadge } from '@/components/icons'
@@ -16,8 +16,8 @@ import { Page } from '../Page'
 const FOOT = ['logbook', 'trash', 'settings']
 
 /**
- * «Más» (la pestaña del móvil): todo lo que no está en las pestañas, por
- * grupos, con lo fijado arriba y tus áreas y proyectos al final.
+ * «Más» (la pestaña del móvil): los espacios que no están en las pestañas, con
+ * lo fijado arriba y tus áreas y proyectos al final.
  */
 export function MoreView() {
   const nav = useNav()
@@ -28,17 +28,14 @@ export function MoreView() {
   const active = projects.filter((p) => p.status === 'active')
   const progress = useProjectProgress([...new Set([...active.map((p) => p.id), ...pins.filter((p) => p.kind === 'project').map((p) => p.id)])])
 
-  const shown = SECTIONS.filter((s) => features.section(s.id) && !nav.tabs.includes(s.id) && !FOOT.includes(s.id))
-  const core = shown.filter((s) => !s.group)
-  const groups = FEATURE_GROUPS.map((g) => ({ ...g, items: shown.filter((s) => s.group === g.id) })).filter((g) => g.items.length)
+  const shown = HUBS.filter((h) => hubTabs(h, features.section).length && !nav.tabs.includes(h.id))
   const count: Record<string, number | undefined> = {
     today: c.today,
-    upcoming: c.upcoming,
     inbox: c.inbox,
     calendar: c.calendar,
     habits: c.habitsLeft,
     notes: c.notes,
-    shopping: c.shopping,
+    home: c.shopping,
     people: c.peopleDue,
   }
 
@@ -83,10 +80,7 @@ export function MoreView() {
         </Block>
       )}
 
-      {core.length > 0 && <Tiles title="Esenciales" items={core} count={count} />}
-      {groups.map((g, i) => (
-        <Tiles key={g.id} title={g.label} items={g.items} count={count} index={i + 1} />
-      ))}
+      {shown.length > 0 && <Tiles title="Secciones" items={shown} to={(h) => hubPath(h, features.section)} count={count} />}
 
       {(areas.length > 0 || active.length > 0) && (
         <Block title="Mis áreas y proyectos">
@@ -181,15 +175,15 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   )
 }
 
-/** Un grupo de secciones en cuadrícula, como los iconos de una pantalla de inicio */
-function Tiles({ title, items, count, index = 0 }: { title: string; items: SectionDef[]; count: Record<string, number | undefined>; index?: number }) {
+/** Los espacios en cuadrícula, como los iconos de una pantalla de inicio */
+function Tiles({ title, items, to, count, index = 0 }: { title: string; items: HubDef[]; to: (h: HubDef) => string; count: Record<string, number | undefined>; index?: number }) {
   return (
     <Block title={title}>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {items.map((s, i) => (
           <motion.a
             key={s.id}
-            href={href(s.path)}
+            href={href(to(s))}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...softSpring, delay: index * 0.04 + i * 0.02 }}

@@ -1,17 +1,19 @@
 import { expect, openApp, test } from './fixtures'
 
-test('barra lateral: ocultar una sección y pasar otra a la cuadrícula', async ({ page }) => {
+test('barra lateral: ocultar un espacio y pasar otro a la cuadrícula', async ({ page }) => {
   await openApp(page)
   await page.getByRole('button', { name: 'Personalizar la barra lateral' }).click()
   const row = (label: string) => page.getByRole('dialog').locator('li', { hasText: label }).first()
   await row('Bandeja de entrada').getByTitle('Oculta').click()
-  await row('Menú').getByTitle('En la cuadrícula').click()
+  await row('Dinero').getByTitle('En la cuadrícula').click()
   await page.getByRole('button', { name: 'Listo' }).click()
   const grid = page.locator('nav .grid a')
   await expect(grid.filter({ hasText: 'Bandeja' })).toHaveCount(0)
-  await expect(grid.filter({ hasText: 'Menú' })).toHaveCount(1)
-  // Oculta en la barra, pero se llega igual
-  await page.evaluate(() => (location.hash = '/inbox'))
+  await expect(grid.filter({ hasText: 'Dinero' })).toHaveCount(1)
+  // Oculta: plegada al pie de la lista, y se llega igual
+  const nav = page.getByRole('navigation', { name: 'Barra lateral' })
+  await nav.getByRole('button', { name: 'Ver 1 más de la barra' }).click()
+  await nav.getByRole('link', { name: 'Bandeja de entrada' }).click()
   await expect(page.locator('#main h1')).toHaveText('Bandeja de entrada')
 })
 
@@ -36,7 +38,7 @@ test.describe('en el móvil', () => {
   test('elegir las pestañas de la barra inferior', async ({ page }) => {
     await openApp(page, '/settings')
     await page.getByText('Pestañas del móvil').click()
-    await page.getByLabel('Pestaña 2').selectOption('shopping')
+    await page.getByLabel('Pestaña 2').selectOption('home')
     await page.getByRole('button', { name: 'Listo' }).click()
     // Las cuatro pestañas y «Más»
     const tabs = page.locator('nav.glass-thick a:not([href$="/more"])')
@@ -46,18 +48,28 @@ test.describe('en el móvil', () => {
   })
 })
 
-test('funciones: apagar Menú lo quita de la barra lateral, ⌘K y su página; encenderla lo devuelve', async ({ page }) => {
+test('funciones: apagar Menú lo quita de las pestañas de Casa, ⌘K y su página; sin Gastos ni Pagos no hay Dinero', async ({ page }) => {
   await openApp(page, '/today')
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
-  await expect(nav.getByRole('link', { name: 'Menú' })).toBeVisible()
+  const casa = page.getByRole('navigation', { name: 'Casa' })
+  await page.evaluate(() => (location.hash = '/shopping'))
+  await expect(casa.getByRole('link', { name: 'Menú' })).toBeVisible()
+  await page.evaluate(() => (location.hash = '/today'))
   // Desde el aviso de Hoy
   await page.getByRole('button', { name: 'Elegir funciones' }).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByRole('switch', { name: 'Menú' }).click()
   await expect(sheet.getByRole('switch', { name: 'Menú' })).toHaveAttribute('aria-checked', 'false')
+  await sheet.getByRole('switch', { name: 'Gastos' }).click()
+  await sheet.getByRole('switch', { name: 'Pagos' }).click()
   await page.keyboard.press('Escape')
-  await expect(nav.getByRole('link', { name: 'Menú' })).toHaveCount(0)
+  await expect(nav.getByRole('link', { name: 'Dinero' })).toHaveCount(0)
+  await expect(nav.getByRole('link', { name: 'Casa' })).toBeVisible()
+  await page.evaluate(() => (location.hash = '/shopping'))
+  await expect(casa.getByRole('link', { name: 'Cosas' })).toBeVisible()
+  await expect(casa.getByRole('link', { name: 'Menú' })).toHaveCount(0)
   // El aviso de Hoy ya no vuelve
+  await page.evaluate(() => (location.hash = '/today'))
   await expect(page.getByRole('region', { name: 'Haz LUNO a tu medida' })).toHaveCount(0)
 
   await page.keyboard.press('Control+k')
@@ -70,23 +82,25 @@ test('funciones: apagar Menú lo quita de la barra lateral, ⌘K y su página; e
   await expect(page.getByText('Menú está apagada')).toBeVisible()
   await page.getByRole('button', { name: 'Encender Menú' }).click()
   await expect(page.locator('#main h1').first()).toHaveText('Menú')
-  await expect(nav.getByRole('link', { name: 'Menú' })).toBeVisible()
+  await expect(casa.getByRole('link', { name: 'Menú' })).toHaveAttribute('aria-current', 'page')
 })
 
-test('grupos plegables y fijados en la barra lateral', async ({ page }) => {
+test('espacios: pestañas arriba, se recuerda la última y fijados en la barra lateral', async ({ page }) => {
   await openApp(page, '/today')
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
-  const casa = nav.getByRole('button', { name: 'Casa' })
-  await expect(casa).toHaveAttribute('aria-expanded', 'true')
-  await casa.click()
-  await expect(casa).toHaveAttribute('aria-expanded', 'false')
+  // Compra, Menú y Cosas no van sueltas: están dentro de Casa
   await expect(nav.getByRole('link', { name: 'Compra' })).toHaveCount(0)
-  // Plegado se recuerda; si estás dentro, se ve tu sección
-  await page.reload()
-  await expect(nav.getByRole('button', { name: 'Casa' })).toHaveAttribute('aria-expanded', 'false')
-  await page.evaluate(() => (location.hash = '/shopping'))
-  await expect(nav.getByRole('link', { name: 'Compra' })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'Menú' })).toHaveCount(0)
+  await nav.getByRole('link', { name: 'Casa' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Compra')
+  const casa = page.getByRole('navigation', { name: 'Casa' })
+  await expect(casa.getByRole('link', { name: 'Compra' })).toHaveAttribute('aria-current', 'page')
+  await casa.getByRole('link', { name: 'Menú' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Menú')
+  await expect(nav.getByRole('link', { name: 'Casa' })).toHaveAttribute('aria-current', 'page')
+  // Al volver a Casa se abre lo último que viste
+  await nav.getByRole('link', { name: 'Hoy' }).first().click()
+  await nav.getByRole('link', { name: 'Casa' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Menú')
 
   // Fijar un área
   await nav.getByRole('link', { name: 'Salud' }).click()

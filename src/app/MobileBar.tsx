@@ -5,7 +5,9 @@ import { RollingNumber, cx, spring } from '@/components/ui'
 import { useNavCounts } from './counts'
 import { useNav } from './nav'
 import { href, useRoute } from './router'
-import { section, tint } from './sections'
+import { hub, tint } from './sections'
+import { hubPath, inHub } from './hubs'
+import { useFeatures } from './features'
 import { ui } from './store'
 
 /** Al bajar por una pantalla la barra se encoge (sin textos); al subir, vuelve */
@@ -41,12 +43,12 @@ export function MobileBar() {
   const { path } = useRoute()
   const mini = useMinimized(path)
   const c = useNavCounts()
-  const tabs = useNav().tabs.map(section)
-  const isOn = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
-  const moreOn = path === '/more' || !tabs.some((t) => isOn(t.path))
-  const badge: Record<string, number> = { today: c.today, habits: c.habitsLeft, inbox: c.inbox, shopping: c.shopping, people: c.peopleDue }
+  const features = useFeatures()
+  const tabs = useNav().tabs.map(hub)
+  const moreOn = path === '/more' || !tabs.some((t) => inHub(t, path))
+  const badge: Record<string, number> = { today: c.today, habits: c.habitsLeft, inbox: c.inbox, home: c.shopping, people: c.peopleDue }
   const items = [
-    ...tabs.map((t) => ({ id: t.id, path: t.path, label: t.short, on: isOn(t.path), color: tint(t.tint), icon: t.icon })),
+    ...tabs.map((t) => ({ id: t.id, path: hubPath(t, features.section), label: t.short, on: inHub(t, path), color: tint(t.tint), icon: t.icon })),
     { id: 'more', path: '/more', label: 'Más', on: moreOn, color: 'var(--c-blue)', icon: LayoutGrid },
   ]
   return (

@@ -130,19 +130,17 @@ test('notas enlazadas: [[…]] crea la otra nota y sale «Mencionada en»', asyn
   await expect(page.locator('a', { hasText: 'Lista de la compra' }).first()).toBeVisible()
 })
 
-test('barra lateral: Matriz y Plantillas, plegadas en «2 más» de Organizar', async ({ page }) => {
+test('barra lateral: Matriz y Plantillas, dentro de sus espacios', async ({ page }) => {
   await openApp(page)
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
-  await expect(nav.getByRole('link', { name: 'Proyectos' })).toBeVisible()
   await expect(nav.getByRole('link', { name: 'Matriz de Eisenhower' })).toHaveCount(0)
-  await nav.getByRole('button', { name: 'Ver 2 más de Organizar' }).click()
-  await nav.getByRole('link', { name: 'Matriz de Eisenhower' }).click()
+  await nav.getByRole('link', { name: 'Etiquetas y filtros' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Etiquetas')
+  await page.getByRole('navigation', { name: 'Etiquetas y filtros' }).getByRole('link', { name: 'Matriz' }).click()
   await expect(page.locator('#main h1')).toHaveText('Matriz de Eisenhower')
-  // Plegado otra vez, lo que estás viendo sigue a la vista
-  await nav.getByRole('button', { name: 'Ocultar las secciones ocultas de Organizar' }).click()
-  await expect(nav.getByRole('link', { name: 'Matriz de Eisenhower' })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'Plantillas' })).toHaveCount(0)
-  await expect(nav.getByRole('button', { name: 'Ver 1 más de Organizar' })).toBeVisible()
+  await nav.getByRole('link', { name: 'Proyectos' }).click()
+  await page.getByRole('navigation', { name: 'Proyectos' }).getByRole('link', { name: 'Plantillas' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Plantillas')
 })
 
 test('renombrar una nota actualiza sus enlaces', async ({ page }) => {

@@ -270,7 +270,8 @@ function Palette() {
         </Command.Group>
 
         <Command.Group heading="Ir a" className={groupCls}>
-          {SECTIONS.filter((n) => section(n.id)).map((n) => (
+          {/* Planificar y Cerrar el día ya están en las acciones */}
+          {SECTIONS.filter((n) => section(n.id) && n.id !== 'plan' && n.id !== 'shutdown').map((n) => (
             <Item key={n.path} value={`ir ${n.label}`} icon={<SectionIcon def={n} size={26} square />} onSelect={() => go(n.path)} hint={n.key ? `G ${n.key}` : undefined}>
               {n.label}
             </Item>
