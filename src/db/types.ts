@@ -1,3 +1,4 @@
+import type { MedLike, MedLogLike } from '../../supabase/functions/_shared/meds.ts'
 export type ID = string
 
 export type Priority = 0 | 1 | 2 | 3 // 0 ninguna, 1 baja, 2 media, 3 alta
@@ -146,6 +147,10 @@ export interface Task {
   important?: string
   /** veces que se ha pasado a otro día cuando ya tocaba (ver src/lib/day.ts) */
   postponed?: number
+  /** a la espera de alguien («esperando a Ana»): su fecha es cuándo volver a preguntar */
+  waitingFor?: string
+  /** YYYY-MM-DD: desde cuándo se espera */
+  waitingSince?: string
   projectId?: ID
   /** sección dentro de su proyecto (si ya no existe, la tarea va sin sección) */
   sectionId?: ID
@@ -398,6 +403,21 @@ export interface Countdown {
   createdAt: number
 }
 
+/** Medicamento (como en Medicamentos de Apple Salud): ver supabase/functions/_shared/meds.ts */
+export interface Med extends MedLike {
+  id: ID
+  /** color de la pastilla, para reconocerla de un vistazo */
+  color: string
+  order: number
+  createdAt: number
+}
+
+/** Una toma: tomada o saltada, con la hora exacta. id = `${medId}:${date}:${time}` si es con hora */
+export interface MedLog extends MedLogLike {
+  id: ID
+  medId: ID
+}
+
 export interface HabitLog {
   id: ID
   habitId: ID
@@ -447,7 +467,7 @@ export interface Setting {
 export interface TrashItem {
   /** `${tbl}:${itemId}` */
   id: string
-  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals' | 'routines' | 'things' | 'trackers' | 'recipes'
+  tbl: 'tasks' | 'notes' | 'projects' | 'people' | 'habits' | 'subscriptions' | 'goals' | 'routines' | 'things' | 'trackers' | 'recipes' | 'meds'
   itemId: ID
   title: string
   data: Record<string, unknown>

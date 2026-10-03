@@ -369,3 +369,17 @@ describe('franjas del día y fechas', () => {
     expect(p('Comer algo antes de salir').deadline).toBeUndefined()
   })
 })
+
+describe('a la espera', () => {
+  const ctx = { projects: [], areas: [], people: [{ id: 'p1', name: 'Ana López' }, { id: 'p2', name: 'Raquel' }], now: new Date('2026-10-03T10:00:00'), today: '2026-10-03' }
+  it('«esperando a Ana»: a quién, y se vuelve a mirar en 3 días', () => {
+    expect(parseQuickAdd('Presupuesto del fontanero esperando a Luis', ctx)).toMatchObject({ title: 'Presupuesto del fontanero', waitingFor: 'Luis', dueDate: '2026-10-06' })
+    expect(parseQuickAdd('esperando a ana: que me devuelva el libro', ctx)).toMatchObject({ title: 'Que me devuelva el libro', waitingFor: 'Ana López', people: ['p1'] })
+    expect(parseQuickAdd('Factura de la luz a la espera de @raquel el viernes', ctx)).toMatchObject({ title: 'Factura de la luz', waitingFor: 'Raquel', people: ['p2'], dueDate: '2026-10-09' })
+  })
+  it('sin nombre, es una tarea normal', () => {
+    const p = parseQuickAdd('Seguir esperando a que seque la pintura', ctx)
+    expect(p.waitingFor).toBeUndefined()
+    expect(p.title).toBe('Seguir esperando a que seque la pintura')
+  })
+})

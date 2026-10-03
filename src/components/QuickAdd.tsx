@@ -8,7 +8,7 @@ import { useLookup } from '@/db/hooks'
 import { applySuggestion, suggest, type Suggestion } from '@/lib/autocomplete'
 import { createTask } from '@/db/actions'
 import { parseQuickAdd } from '@/lib/parse'
-import { dateLabel } from '@/lib/dates'
+import { dateLabel, today } from '@/lib/dates'
 import { toast, ui, useUI } from '@/app/store'
 import { ParsedChips } from './ParsedChips'
 import { Icon } from './icons'
@@ -79,6 +79,10 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   if (parsed.reminder) final.reminder = parsed.reminder
   if (parsed.estimate) final.estimate = parsed.estimate
   if (parsed.nag) final.nag = parsed.nag
+  if (parsed.waitingFor) {
+    final.waitingFor = parsed.waitingFor
+    final.waitingSince = today()
+  }
   if (parsed.people?.length) final.people = [...new Set([...(defaults?.people ?? []), ...parsed.people])]
   if (parsed.projectId) {
     final.projectId = parsed.projectId

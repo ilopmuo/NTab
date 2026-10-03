@@ -6,6 +6,7 @@ import { useLookup } from '@/db/hooks'
 import { createTask } from '@/db/actions'
 import { loadParser, useParser } from '@/lib/useParser'
 import { isFresh, sortManual, sortTasks } from '@/lib/tasks'
+import { today } from '@/lib/dates'
 import { TaskItem } from './TaskItem'
 import { useListOrder } from './ManualOrder'
 import { Group, cx } from './ui'
@@ -126,6 +127,10 @@ export function InlineAdd({
     if (parsed.reminder) data.reminder = parsed.reminder
     if (parsed.estimate) data.estimate = parsed.estimate
     if (parsed.nag) data.nag = parsed.nag
+    if (parsed.waitingFor) {
+      data.waitingFor = parsed.waitingFor
+      data.waitingSince = today()
+    }
     if (parsed.people?.length) data.people = [...new Set([...(defaults?.people ?? []), ...parsed.people])]
     if (parsed.projectId) {
       data.projectId = parsed.projectId

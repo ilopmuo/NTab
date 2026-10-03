@@ -66,9 +66,11 @@ const loaders = {
   JournalView: () => import('@/features/journal/JournalView').then((m) => ({ default: m.JournalView })),
   ShoppingView: () => import('@/features/shopping/ShoppingView').then((m) => ({ default: m.ShoppingView })),
   TrackersView: () => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView })),
+  MedsView: () => import('@/features/meds/MedsView').then((m) => ({ default: m.MedsView })),
+  WaitingView: () => import('@/features/waiting/WaitingView').then((m) => ({ default: m.WaitingView })),
   RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), FocusView = lazy(loaders.FocusView), HouseView = lazy(loaders.HouseView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), ShutdownView = lazy(loaders.ShutdownView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), MoreView = lazy(loaders.MoreView), SomedayView = lazy(loaders.SomedayView), SmartListsView = lazy(loaders.SmartListsView), MatrixView = lazy(loaders.MatrixView), SmartListView = lazy(loaders.SmartListView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
+const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), FocusView = lazy(loaders.FocusView), HouseView = lazy(loaders.HouseView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), ShutdownView = lazy(loaders.ShutdownView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), MoreView = lazy(loaders.MoreView), SomedayView = lazy(loaders.SomedayView), SmartListsView = lazy(loaders.SmartListsView), MatrixView = lazy(loaders.MatrixView), SmartListView = lazy(loaders.SmartListView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), MedsView = lazy(loaders.MedsView), WaitingView = lazy(loaders.WaitingView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
@@ -141,6 +143,10 @@ function Screen() {
       return <ThingsView id={id} />
     case 'trackers':
       return <TrackersView />
+    case 'meds':
+      return <MedsView />
+    case 'waiting':
+      return <WaitingView />
     case 'shopping':
       return <ShoppingView />
     case 'journal':
@@ -199,6 +205,8 @@ const TITLES: Record<string, string> = {
   piso: 'Piso',
   things: 'Cosas',
   trackers: 'Última vez',
+  meds: 'Medicación',
+  waiting: 'A la espera',
   shopping: 'Compra',
   journal: 'Diario',
   expenses: 'Gastos',
@@ -307,6 +315,12 @@ function Workspace() {
     if (parts[0] === 'routine' && parts[1]) {
       navigate('/today')
       runner.open(parts[1])
+      return
+    }
+    // «Tomada» desde el aviso de una toma, con la app cerrada
+    if (parts[0] === 'med' && parts[1] && parts[2] === 'med-taken') {
+      navigate('/meds')
+      void reminders().then((r) => r.applyReminderAction('med-taken', decodeURIComponent(parts[1])))
       return
     }
     if (parts[0] === 'habit' && parts[1] && parts[2] === 'habit-done') {

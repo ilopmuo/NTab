@@ -34,6 +34,8 @@ export function SiriBlock() {
                   <li>«compra: leche y pan» (lista de la compra) · «piso: papel higiénico» (la compra del piso compartido) · «mete un gasto de 15 euros en Mercadona» (gastos)</li>
                   <li>«nota: el código del portal es 4512» (notas) · «hecho: cambiar las sábanas» (última vez)</li>
                   <li>«+1 agua» o el nombre de un hábito, como «meditar» (hábitos)</li>
+                  <li>«tomada: ibuprofeno» (medicación) · «¿me he tomado la pastilla?» (te lo dice)</li>
+                  <li>«presupuesto del fontanero esperando a Luis» (a la espera: te lo recuerda en 3 días)</li>
                 </ul>
                 Siri te lee lo que ha apuntado.
               </li>

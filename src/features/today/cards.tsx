@@ -7,6 +7,7 @@ import { useFeatures } from '@/app/features'
 export const TODAY_CARDS = [
   { id: 'rings', label: 'Anillos del día' },
   { id: 'agenda', label: 'Agenda' },
+  { id: 'meds', label: 'Medicación' },
   { id: 'journal', label: '¿Qué tal el día? (por la tarde)' },
   { id: 'meals', label: 'Hoy se come' },
   { id: 'countdowns', label: 'Cuenta atrás' },

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, Reorder, m as motion, useDragControls } from 'motion/react'
-import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, UserRoundCheck, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Subtask, Task } from '@/db/types'
@@ -10,7 +10,8 @@ import { deleteTask, duplicateTask, mutateTask, skipOccurrence, updateTask } fro
 import { addDaysYmd, capitalize, dateLabel, fmt, fromYmd, longDateLabel, relativeDays, today, weekStart, ymd, WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { endOfMonth } from 'date-fns'
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
-import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor, moveItem } from '@/lib/tasks'
+import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor, moveItem, waitingLabel } from '@/lib/tasks'
+import { nudge, onDay, startWaiting, stopWaiting, waitMore } from '@/features/waiting/nudge'
 import { uid } from '@/lib/id'
 import { durationLabel, parseDuration } from '@/lib/duration'
 import { NAG_OPTIONS, REMINDER_OPTIONS, nagLabel, reminderLabel, reminderValue } from '@/lib/reminders'
@@ -125,6 +126,52 @@ function Row({
       </div>
       {children && <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pl-[42px]">{children}</div>}
     </div>
+  )
+}
+
+/** A la espera de alguien (GTD): con quién, desde cuándo, «Recordárselo» y «Ya no espero» */
+function WaitingRow({ task, names }: { task: Task; names: string[] }) {
+  const [who, setWho] = useState('')
+  const [busy, setBusy] = useState(false)
+  const run = (fn: () => Promise<unknown>) => {
+    setBusy(true)
+    void fn().finally(() => setBusy(false))
+  }
+  if (task.waitingFor)
+    return (
+      <Row icon={<UserRoundCheck size={15} strokeWidth={2.6} />} color="var(--c-text)" label="A la espera" value={waitingLabel(task, today())} onClear={() => run(() => stopWaiting(task))}>
+        {!task.done && (
+          <>
+            <Pill tone="strong" onClick={() => run(() => nudge(task))}>
+              Recordárselo
+            </Pill>
+            <Pill onClick={() => run(async () => toast(`Lo vuelves a mirar ${onDay(await waitMore(task))}`))}>3 días más</Pill>
+          </>
+        )}
+      </Row>
+    )
+  return (
+    <Row icon={<UserRoundCheck size={15} strokeWidth={2.6} />} color="var(--c-gray)" label="A la espera de alguien">
+      <form
+        className="flex items-center gap-1.5"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (who.trim()) run(async () => (await startWaiting(task, who), setWho('')))
+        }}
+      >
+        <input list="waiting-people" value={who} disabled={busy} onChange={(e) => setWho(e.target.value)} placeholder="¿De quién?" aria-label="A la espera de" className={fieldCls} />
+        <datalist id="waiting-people">
+          {names.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
+        {who.trim() && (
+          <Pill tone="strong" onClick={() => run(async () => (await startWaiting(task, who), setWho('')))}>
+            Esperar
+          </Pill>
+        )}
+      </form>
+    </Row>
   )
 }
 
@@ -590,6 +637,7 @@ function TaskDetail({ task }: { task: Task }) {
               </a>
             )}
           </Row>
+          <WaitingRow task={task} names={people.map((p) => p.name)} />
           <Row icon={<Hash size={15} strokeWidth={2.6} />} color="var(--c-blue)" label="Etiquetas">
             {task.tags.map((tag) => (
               <span key={tag} className="inline-flex h-8 items-center gap-1 rounded-full bg-accent-soft pr-1.5 pl-3 text-[13px] font-semibold text-blue">

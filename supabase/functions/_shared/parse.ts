@@ -55,7 +55,12 @@ export interface ParsedTask {
   estimate?: number
   /** insistir: repetir el aviso cada N minutos */
   nag?: number
+  /** a la espera de alguien («esperando a Ana»): se le vuelve a preguntar en unos días */
+  waitingFor?: string
 }
+
+/** Días hasta volver a preguntar por lo que esperas de alguien (si no se dice cuándo) */
+export const WAIT_DAYS = 3
 
 // Límites de palabra que funcionan con acentos y ñ (\b no los entiende).
 const B = '(?<=^|[\\s,;(])'
@@ -547,6 +552,34 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedTask {
     if (out.dueDate) return false
     out.someday = true
   })
+  // ── A la espera ───────────────────────────────────────────
+  // «Esperando a Ana: presupuesto del fontanero» o «Presupuesto del fontanero
+  // esperando a Ana» (GTD: «A la espera»). Solo con un nombre (en mayúscula, con
+  // @ o de tus personas): «esperar a que seque la pintura» es una tarea normal.
+  const who = (raw: string) => {
+    const name = raw.replace(/^@/, '').trim()
+    // Solo el nombre entero o el de pila (para que «que» no sea Raquel)
+    const q = normalize(name)
+    const p = ctx.people?.find((x) => normalize(x.name) === q || normalize(x.name.trim().split(/\s+/)[0]) === q)
+    if (p) {
+      out.people = [...new Set([...(out.people ?? []), p.id])]
+      return p.name.trim()
+    }
+    return /^@|^\p{Lu}/u.test(raw.trim()) ? name : undefined
+  }
+  const lead = text.match(/^\s*(?:esperando|a\s+la\s+espera\s+de)\s+(?:a\s+)?([^:,]{1,40}?)\s*[:,]\s*(.+)$/is)
+  const leadWho = lead ? who(lead[1]) : undefined
+  if (lead && leadWho) {
+    out.waitingFor = leadWho
+    text = ` ${lead[2]} `
+  } else
+    take(new RegExp(`${B}(?:[Ee]sperando\\s+(?:a|de)|[Aa]\\s+la\\s+espera\\s+de)\\s+(@?[\\p{L}][\\p{L}\\p{N}_-]*(?:\\s+\\p{Lu}[\\p{L}]+)?)${E}`, 'u'), (m) => {
+      const name = who(m[1]) ?? who(m[1].split(/\s+/)[0])
+      if (!name) return false
+      out.waitingFor = name
+    })
+  if (out.waitingFor && !out.dueDate && !out.someday) out.dueDate = addDays(base, WAIT_DAYS)
+
   // «mañana por la tarde» → 17:00; sin fecha, «por la tarde» no dice qué día y se deja en el título
   if (slot && !out.dueTime) {
     if (out.dueDate) out.dueTime = slot

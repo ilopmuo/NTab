@@ -7,6 +7,7 @@ export const REMINDER_FEATURE: Record<string, string> = {
   routines: 'routines',
   journal: 'journal',
   trackers: 'trackers',
+  meds: 'meds',
   things: 'things',
   subscriptions: 'finance',
 }

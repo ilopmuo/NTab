@@ -44,7 +44,7 @@ export function openTaskFromNotification(id: string) {
 }
 
 export const SNOOZE_MINUTES = 15
-export type ReminderAction = 'snooze' | 'done' | 'habit-done'
+export type ReminderAction = 'snooze' | 'done' | 'habit-done' | 'med-taken'
 
 /** minutos de a a b (HH:MM del mismo día) */
 function minutesBetween(a: string, b: string) {
@@ -57,6 +57,16 @@ const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('es-ES', { hour: '2
 
 /** Posponer o completar desde un aviso (dentro de la app o desde la notificación) */
 export async function applyReminderAction(action: ReminderAction, id: string) {
+  if (action === 'med-taken') {
+    // id: `${medId}|${fecha}|${hora}`
+    const [medId, date, time] = id.split('|')
+    const med = await db.meds.get(medId)
+    if (!med) return
+    const { markDose } = await import('@/features/meds/actions')
+    const { log, undo } = await markDose(med, { time, date })
+    toast(`${med.name}: tomada a las ${hhmm(log.at)}`, { label: 'Deshacer', run: () => void undo() })
+    return
+  }
   if (action === 'habit-done') {
     const habit = await db.habits.get(id)
     if (!habit) return
@@ -82,7 +92,7 @@ export async function applyReminderAction(action: ReminderAction, id: string) {
 function listenToWorker() {
   navigator.serviceWorker?.addEventListener('message', (e: MessageEvent) => {
     const d = e.data as { type?: string; action?: ReminderAction; id?: string } | null
-    if (d?.type === 'reminder-action' && d.id && (d.action === 'snooze' || d.action === 'done' || d.action === 'habit-done')) void applyReminderAction(d.action, d.id)
+    if (d?.type === 'reminder-action' && d.id && (d.action === 'snooze' || d.action === 'done' || d.action === 'habit-done' || d.action === 'med-taken')) void applyReminderAction(d.action, d.id)
   })
 }
 
@@ -104,7 +114,7 @@ export const TASK_ACTIONS = [
   { action: 'snooze', title: `Posponer ${SNOOZE_MINUTES} min` },
 ]
 
-export async function showSystemNotification(tag: string, title: string, body: string, url: string, key?: string, habitId?: string) {
+export async function showSystemNotification(tag: string, title: string, body: string, url: string, key?: string, habitId?: string, medDose?: string) {
   if (key) await markAlerted(key)
   if (!('Notification' in window) || Notification.permission !== 'granted') return
   const options: NotificationOptions & { actions?: typeof TASK_ACTIONS } = {
@@ -112,9 +122,9 @@ export async function showSystemNotification(tag: string, title: string, body: s
     tag,
     icon: './icon-192.png',
     badge: './badge-96.png',
-    data: { url, habitId },
+    data: { url, habitId, medDose },
     requireInteraction: true,
-    ...(tag.startsWith('tasks-') ? { actions: TASK_ACTIONS } : habitId ? { actions: [{ action: 'habit-done', title: 'Hecho' }] } : {}),
+    ...(tag.startsWith('tasks-') ? { actions: TASK_ACTIONS } : habitId ? { actions: [{ action: 'habit-done', title: 'Hecho' }] } : medDose ? { actions: [{ action: 'med-taken', title: 'Tomada' }] } : {}),
   }
   try {
     const reg = await navigator.serviceWorker?.getRegistration()
@@ -225,6 +235,24 @@ export function startLocalReminders() {
       })
       void showSystemNotification(`habits-${h.id}`, h.name, 'Aún no lo has marcado hoy. ¿Lo haces ahora?', './#/habits', `habits-${h.id}-${day}`, h.id)
     }
+    // Medicación: a la hora y, si no se marca, a los 15 y a los 30 minutos (las mismas claves que el push)
+    const medsDue: string[] = []
+    const meds = await db.meds.where('archived').equals(0).toArray()
+    if (meds.length) {
+      const { dosesOn, medReminder, nagIndex } = await import('@/lib/meds')
+      const logs = await db.medLogs.where('date').equals(day).toArray()
+      for (const d of dosesOn(meds, logs, day, day, nowHm)) {
+        const n = d.log ? undefined : nagIndex(d.time, nowHm)
+        const key = `meds-${d.med.id}-${day}-${d.time}-${n}`
+        if (n === undefined || seen.has(key)) continue
+        seen.add(key)
+        medsDue.push(key)
+        const msg = medReminder(d.med, d.time, n)
+        const dose = `${d.med.id}|${day}|${d.time}`
+        toast(msg.title, { label: 'Tomada', run: () => void applyReminderAction('med-taken', dose) }, 30_000, { icon: 'bell', onClick: () => navigate('/meds') })
+        void showSystemNotification(`meds-${d.med.id}-${d.time}`, msg.title, msg.body, './#/meds', key, undefined, dose)
+      }
+    }
     // Rutinas con hora que aún no están completas
     const routines = (await db.routines.where('archived').equals(0).toArray()).filter(
       (r) => r.time && r.steps.length && routineToday(r, day) && nowHm >= r.time && minutesBetween(r.time, nowHm) < 15 && !seen.has(`routine:${r.id}:${day}`),
@@ -276,8 +304,8 @@ export function startLocalReminders() {
         void showSystemNotification('journal', '¿Qué tal el día?', 'Apunta cómo te ha ido en un minuto.', './#/journal', `journal-${day}`)
       }
     }
-    if (habits.length || routines.length || journalDue || deadlines.length) saveSeen(seen)
-    if (due.length || nags.length || subs.length || things.length || trackers.length || pending.length || startNow.length || journalDue || deadlines.length) {
+    if (habits.length || routines.length || journalDue || deadlines.length || medsDue.length) saveSeen(seen)
+    if (due.length || nags.length || subs.length || things.length || trackers.length || pending.length || startNow.length || journalDue || deadlines.length || medsDue.length) {
       saveSeen(seen)
       if (prefs.reminderSound) chime()
     }

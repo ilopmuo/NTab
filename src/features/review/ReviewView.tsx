@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Cake, CalendarRange, Check, Folder, Inbox, Minus, PartyPopper, Plus, Sparkles, Target, Telescope } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Cake, CalendarRange, Check, Folder, Inbox, Minus, PartyPopper, Plus, Sparkles, Target, Telescope, UserRoundCheck } from 'lucide-react'
 import { db } from '@/db/db'
 import { createTask, markReviewed, setGoalCurrent, setSetting, updateTask } from '@/db/actions'
 import { useLookup, useOpenTasks } from '@/db/hooks'
@@ -26,6 +26,7 @@ const STEPS = [
   { key: 'inbox', title: 'Procesa la bandeja', icon: Inbox, hint: 'Para cada cosa: ponle fecha, muévela a un proyecto o bórrala.' },
   { key: 'overdue', title: 'Lo atrasado', icon: AlertTriangle, hint: 'Sé honesto: ¿lo vas a hacer? Reprograma o elimina.' },
   { key: 'projects', title: 'Tus proyectos', icon: Folder, hint: 'Cada proyecto activo necesita al menos un siguiente paso claro. Márcalos como revisados.' },
+  { key: 'waiting', title: 'A la espera', icon: UserRoundCheck, hint: '¿Te ha llegado ya algo de lo que esperabas? Márcalo. Si no, recuérdaselo.' },
   { key: 'someday', title: 'Algún día', icon: Telescope, hint: '¿Alguna ya toca? Ponle fecha. ¿Alguna ya no te interesa? Bórrala.' },
   { key: 'goals', title: 'Tus objetivos', icon: Target, hint: '¿Te acercas a lo que quieres? Actualiza la cifra o dale un siguiente paso.' },
   { key: 'week', title: 'La semana que viene', icon: CalendarRange, hint: 'Echa un vistazo a lo que viene y prepárate.' },
@@ -105,6 +106,7 @@ export function ReviewView() {
             {s.key === 'inbox' && <InboxStep />}
             {s.key === 'overdue' && <OverdueStep />}
             {s.key === 'projects' && <ProjectsStep />}
+            {s.key === 'waiting' && <WaitingStep />}
             {s.key === 'someday' && <SomedayStep />}
             {s.key === 'goals' && <GoalsStep />}
             {s.key === 'week' && <WeekStep />}
@@ -265,6 +267,12 @@ function ReviewedButton({ project }: { project: Project }) {
       <Check size={14} strokeWidth={2.8} aria-hidden /> {fresh ? 'Revisado' : 'Revisar'}
     </button>
   )
+}
+
+function WaitingStep() {
+  const tasks = useLiveQuery(() => db.tasks.where('done').equals(0).filter((t) => !!t.waitingFor).toArray(), []) ?? []
+  if (!tasks.length) return <p className="text-[14px] text-muted">No esperas nada de nadie. Cuando algo dependa de otra persona, escribe «esperando a Ana» al capturarlo.</p>
+  return <TaskList tasks={tasks} />
 }
 
 function SomedayStep() {

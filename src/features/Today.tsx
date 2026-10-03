@@ -41,6 +41,7 @@ import { SelectButton } from '@/features/select/SelectButton'
 const ImportantPicker = lazy(() => import('./today/ImportantPicker'))
 // Solo si tienes piso: se carga aparte para no pesar en el arranque
 const HouseCard = lazy(() => import('./today/HouseCard'))
+const MedsCard = lazy(() => import('./today/MedsCard'))
 const DayComplete = lazy(() => import('@/components/Celebrate').then((m) => ({ default: m.DayComplete })))
 
 const PARTS = [
@@ -371,6 +372,12 @@ export function TodayView() {
                 return (
                   <Suspense key={id} fallback={null}>
                     <HouseCard />
+                  </Suspense>
+                )
+              case 'meds':
+                return (
+                  <Suspense key={id} fallback={null}>
+                    <MedsCard />
                   </Suspense>
                 )
               case 'things':

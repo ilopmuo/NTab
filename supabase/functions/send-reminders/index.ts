@@ -11,6 +11,7 @@ import webpush from 'npm:web-push@3.6.7'
 import { buildDeadlinePayload, buildDigest, buildHabitPayload, buildPayload, buildRoutinePayload, buildJournalPayload, type DueDeadline, type DueJournal, type DueDigest, type DueHabit, type DueReminder, type DueRoutine } from './format.ts'
 import { REMINDER_FEATURE, reminderAllowed } from '../_shared/features.ts'
 import { sendHouseReminders, type SendPush } from './house.ts'
+import { dueMedJobs } from './meds.ts'
 
 const PUBLIC_KEY =
   Deno.env.get('VAPID_PUBLIC_KEY') ?? 'BITtwUVzfRk6yMCn5x36uN9n3nRV7fpCXOyk_bf1RwMYryFTJ54C6HbJFCzdNVPNVMBuTzlT3OEOYbwM6eH3CJM'
@@ -164,6 +165,13 @@ Deno.serve(async (req) => {
       log: { user_id: h.user_id, tbl: 'habits', item_id: `${h.habit_id}:${h.local_date}`, remind_at: new Date().toISOString() },
     })),
   ]
+  // Medicación: a la hora de cada toma y, si no se marca, dos veces más
+  jobs.push(
+    ...(await dueMedJobs(admin).catch((e) => {
+      console.error('meds', e)
+      return []
+    })),
+  )
   if (!jobs.length) return json({ sent: houseSent })
 
   // Lo de las funciones apagadas (Ajustes → Funciones) no avisa

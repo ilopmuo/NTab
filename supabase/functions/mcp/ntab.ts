@@ -19,6 +19,8 @@ import { ceilTo, freeSlots, slotsLabel, toMin, type Block } from '../_shared/sch
 import { houseSummary, type HouseCtx } from './casa.ts'
 import { bestWindow, focusStreak, lastDays, minutesByDay, minutesByHour, windowLabel, type FocusGoal, type FocusLogLike } from '../_shared/focus.ts'
 import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
+import { WAIT_DAYS } from '../_shared/parse.ts'
+import { captureMed, medLines } from './meds.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -58,6 +60,9 @@ export interface Task {
   important?: string
   /** veces que se ha pasado a otro día cuando ya tocaba */
   postponed?: number
+  /** a la espera de alguien: su fecha es cuándo volver a preguntar */
+  waitingFor?: string
+  waitingSince?: string
   order: number
   createdAt: number
   completedAt?: number
@@ -213,6 +218,7 @@ function taskLine(t: Task, ix: Index, today: string) {
     where ? ` · ${where}` : '',
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
     t.people?.length ? ` · con ${ix.personNames(t.people).join(', ')}` : '',
+    t.waitingFor && !t.done ? ` · A LA ESPERA de ${t.waitingFor}${t.waitingSince ? ` desde ${relDay(t.waitingSince, today)}` : ''}` : '',
     t.estimate ? ` · ~${minutesLabel(t.estimate)}` : '',
     t.nag ? ` · insiste cada ${t.nag} min` : '',
     t.recurrence ? ' · se repite' : '',
@@ -278,6 +284,16 @@ function freeLine(label: string, day: string, open: Task[], events: EventLike[],
 }
 
 /** Lo importante de hoy (hasta tres), lo primero que mirar */
+/** Lo que depende de otra persona (GTD: «A la espera») */
+function waitingLines(open: Task[], today: string) {
+  const list = open.filter((t) => t.waitingFor).sort(byDate)
+  if (!list.length) return []
+  return [
+    `\nA LA ESPERA DE OTRAS PERSONAS (${list.length}) — dependen de otro: el día de su fecha toca preguntarle (no proponerlas como trabajo suyo):`,
+    ...list.map((t) => `- [${t.id}] ${t.title}: de ${t.waitingFor}${t.waitingSince ? `, desde ${relDay(t.waitingSince, today)}` : ''}${t.dueDate ? `; volver a preguntar ${relDay(t.dueDate, today)} (${t.dueDate})` : ''}`),
+  ]
+}
+
 function importantLines(open: Task[], today: string) {
   const list = open.filter((t) => t.important === today)
   if (list.length) return [`LO IMPORTANTE DE HOY (lo que eligió; ayúdale a hacerlo antes que lo demás): ${list.map((t) => `${t.title} [${t.id}]`).join('; ')}`]
@@ -335,6 +351,8 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
     ...freeLine('HOY', today, open, calendar?.events ?? [], env, toMin(hhmmIn(env.now, env.tz))),
     ...freeLine('MAÑANA', addDays(today, 1), open, calendar?.events ?? [], env, 0),
     ...importantLines(open, today),
+    ...medLines(rows, env, today),
+    ...waitingLines(open, today),
     ...goalLines(rows, ix.tasks, env, today),
     ...focusLines(rows, env, today),
     ...(house ? houseSummary(house, today) : []),
@@ -539,6 +557,8 @@ export interface NewTask {
   insistir?: number
   /** de lo importante del día (de hoy si no tiene fecha) */
   importante?: boolean
+  /** a la espera de esta persona */
+  esperando?: string
 }
 
 export interface Change {
@@ -556,6 +576,8 @@ export interface Change {
   insistir?: number | null
   /** de lo importante de hoy (o del día que tenga, si es más tarde); false para quitarlo */
   importante?: boolean
+  /** a la espera de esta persona; null para dejar de esperar */
+  esperando?: string | null
 }
 
 export interface WriteResult {
@@ -596,6 +618,13 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
     if (dueDate && isHhmm(n.hora)) task.dueTime = normTime(n.hora)
     if (isYmd(n.fecha_limite)) task.deadline = n.fecha_limite
     if (n.algun_dia === true && !dueDate) task.someday = true
+    if (str(n.esperando).trim()) {
+      task.waitingFor = str(n.esperando).trim()
+      task.waitingSince = today
+      delete task.someday
+      // Se vuelve a mirar en unos días si no dice cuándo
+      if (!task.dueDate) task.dueDate = addDays(today, WAIT_DAYS)
+    }
     if (project) {
       task.projectId = String(project.id)
       if (project.areaId) task.areaId = String(project.areaId)
@@ -690,6 +719,14 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
     else if (t.dueDate) delete t.someday
     if (c.hora === null) delete t.dueTime
     else if (isHhmm(c.hora) && t.dueDate) t.dueTime = normTime(c.hora)
+    if (c.esperando === null) {
+      delete t.waitingFor
+      delete t.waitingSince
+    } else if (str(c.esperando).trim()) {
+      t.waitingFor = str(c.esperando).trim()
+      t.waitingSince = current.waitingFor ? (current.waitingSince ?? today) : today
+      if (!isYmd(c.fecha) && (!t.dueDate || t.dueDate <= today)) t.dueDate = addDays(today, WAIT_DAYS)
+    }
     if (c.proyecto === null) {
       delete t.projectId
     } else if (typeof c.proyecto === 'string') {
@@ -1731,6 +1768,9 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env): Wr
     const r = markHabit(rows, { habito: name, ...(habit?.[1] ? { cantidad: Number(habit[1]) } : {}) }, env)
     return { ...r, report: r.report.map(spoken) }
   }
+  // «tomada: ibuprofeno», «¿me he tomado la pastilla?»
+  const med = captureMed(rows, text, env)
+  if (med) return med
   const append = NOTE_APPEND.exec(text)
   if (append) return appendNoteTool(rows, { nota: append[1], texto: append[2] }, env)
   if (NOTE_PREFIX.test(text)) {
@@ -1785,9 +1825,17 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env): Wr
   if (parsed.reminder) task.reminder = parsed.reminder
   if (parsed.estimate) task.estimate = parsed.estimate
   if (parsed.nag) task.nag = parsed.nag
+  if (parsed.waitingFor) {
+    task.waitingFor = parsed.waitingFor
+    task.waitingSince = today
+  }
   task = withReminder(task, env)
 
-  const when = task.dueDate ? `, ${relDay(task.dueDate, today)}${task.dueTime ? ` a las ${task.dueTime}` : ''}` : ''
+  const when = task.waitingFor
+    ? `, esperando a ${task.waitingFor}; te lo recuerdo ${relDay(task.dueDate!, today)}`
+    : task.dueDate
+      ? `, ${relDay(task.dueDate, today)}${task.dueTime ? ` a las ${task.dueTime}` : ''}`
+      : ''
   const where = task.projectId ? ix.projectName(task.projectId) : task.areaId ? ix.areaName(task.areaId) : task.dueDate ? '' : 'la bandeja'
   return {
     writes: [{ tbl: 'tasks', id: task.id, data: task as unknown as Data }],

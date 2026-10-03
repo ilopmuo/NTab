@@ -23,8 +23,9 @@ export const STUCK = 3
  * ya tocaba (hoy o antes) y que no está hecha. Las que se repiten no cuentan:
  * sus fechas avanzan solas.
  */
-export function isPostpone(task: { done?: number | boolean; dueDate?: string; recurrence?: unknown }, next: string | undefined, today: string): boolean {
-  return !task.done && !task.recurrence && !!task.dueDate && task.dueDate <= today && !!next && next > task.dueDate
+export function isPostpone(task: { done?: number | boolean; dueDate?: string; recurrence?: unknown; waitingFor?: string }, next: string | undefined, today: string): boolean {
+  // Volver a preguntar más tarde por lo que esperas de alguien no es posponer
+  return !task.done && !task.recurrence && !task.waitingFor && !!task.dueDate && task.dueDate <= today && !!next && next > task.dueDate
 }
 
 /** «Pospuesta 4 veces» a partir de 3: la que se arrastra día tras día */

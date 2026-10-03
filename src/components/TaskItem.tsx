@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { m as motion, useTransform, type MotionValue } from 'motion/react'
-import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, ListChecks, Repeat, RotateCcw, Star, StickyNote, Sunrise, Telescope } from 'lucide-react'
+import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, ListChecks, Repeat, RotateCcw, Star, StickyNote, Sunrise, Telescope, UserRoundCheck } from 'lucide-react'
 import { durationLabel } from '@/lib/duration'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
@@ -9,7 +9,7 @@ import { mutateTask, toggleTask } from '@/db/actions'
 import { addDaysYmd, dateLabel, today } from '@/lib/dates'
 import { haptic } from '@/lib/haptics'
 import { useSwipe } from './swipe'
-import { PRIORITY_COLOR, dateColor } from '@/lib/tasks'
+import { PRIORITY_COLOR, dateColor, waitingLabel } from '@/lib/tasks'
 import { recurrenceLabel } from '@/lib/recurrence'
 import { isStuck, postponedLabel } from '@/lib/day'
 import { toast, ui, useUI } from '@/app/store'
@@ -268,6 +268,14 @@ export const TaskItem = memo(function TaskItem({
     meta.push(
       <span key="d" className="font-medium" style={{ color: task.done ? undefined : dateColor(task.dueDate, t) }}>
         {dateLabel(task.dueDate, t)}
+      </span>,
+    )
+  }
+  if (task.waitingFor && !task.done) {
+    meta.push(
+      <span key="w" className="inline-flex items-center gap-1 font-medium text-fg">
+        <UserRoundCheck size={11} strokeWidth={2.4} aria-hidden />
+        {waitingLabel(task, t)}
       </span>,
     )
   }

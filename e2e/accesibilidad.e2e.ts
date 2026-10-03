@@ -7,7 +7,7 @@ import { expect, openApp, quickAdd, test } from './fixtures'
  * sin nombre, controles anidados…
  */
 // Todas las secciones (las de src/app/sections.tsx), «Más» y Planificar
-const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/lists', '/matrix', '/someday', '/templates', '/goals', '/expenses', '/finance', '/review', '/trash', '/logbook', '/settings', '/plan', '/more']
+const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/lists', '/matrix', '/someday', '/waiting', '/meds', '/templates', '/goals', '/expenses', '/finance', '/review', '/trash', '/logbook', '/settings', '/plan', '/more']
 
 for (const theme of ['dark', 'light'] as const) {
   test(`sin problemas serios de accesibilidad (tema ${theme === 'dark' ? 'oscuro' : 'claro'})`, async ({ page }) => {

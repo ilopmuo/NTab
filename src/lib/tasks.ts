@@ -109,3 +109,12 @@ export function moveItem<T>(list: T[], from: number, to: number): T[] {
   next.splice(Math.max(0, Math.min(to, next.length)), 0, item)
   return next
 }
+
+/** Días que lleva a la espera («Esperando a Ana · 3 días») */
+export function waitingDays(t: Pick<Task, 'waitingSince'>, ref: string) {
+  return t.waitingSince ? Math.max(0, Math.round((Date.parse(ref) - Date.parse(t.waitingSince)) / 864e5)) : 0
+}
+export function waitingLabel(t: Pick<Task, 'waitingFor' | 'waitingSince'>, ref: string) {
+  const n = waitingDays(t, ref)
+  return `Esperando a ${t.waitingFor}${n ? ` · ${n === 1 ? 'desde ayer' : `${n} días`}` : ''}`
+}

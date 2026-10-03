@@ -6,6 +6,7 @@ const TASK_ACTIONS = [
   { action: 'snooze', title: 'Posponer ' + SNOOZE_MINUTES + ' min' },
 ]
 const HABIT_ACTIONS = [{ action: 'habit-done', title: 'Hecho' }]
+const MED_ACTIONS = [{ action: 'med-taken', title: 'Tomada' }]
 
 /** ¿La app abierta ya dio este aviso en este dispositivo? (ver src/reminders/local.ts) */
 async function alertedHere(key) {
@@ -50,8 +51,8 @@ self.addEventListener('push', (event) => {
     requireInteraction: true,
     icon: 'icon-192.png',
     badge: 'badge-96.png',
-    data: { url: data.url || './#/today', taskId, habitId: data.habitId },
-    actions: taskId ? TASK_ACTIONS : data.habitId ? HABIT_ACTIONS : [],
+    data: { url: data.url || './#/today', taskId, habitId: data.habitId, medDose: data.medDose },
+    actions: taskId ? TASK_ACTIONS : data.habitId ? HABIT_ACTIONS : data.medDose ? MED_ACTIONS : [],
   }
   event.waitUntil(showPush(title, options, data.key || data.tag))
 })
@@ -76,6 +77,10 @@ self.addEventListener('notificationclick', (event) => {
   }
   if (event.action === 'habit-done' && data.habitId) {
     event.waitUntil(runAction('habit-done', data.habitId, 'habit'))
+    return
+  }
+  if (event.action === 'med-taken' && data.medDose) {
+    event.waitUntil(runAction('med-taken', data.medDose, 'med'))
     return
   }
   const url = new URL(data.url || './#/today', self.registration.scope).href

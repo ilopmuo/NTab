@@ -1,4 +1,4 @@
-import { AtSign, Bell, Calendar, CalendarClock, Clock, Telescope, Flag, Folder, Hash, Hourglass, Repeat, Repeat2 } from 'lucide-react'
+import { AtSign, Bell, Calendar, CalendarClock, Clock, Telescope, Flag, Folder, Hash, Hourglass, Repeat, Repeat2, UserRoundCheck } from 'lucide-react'
 import type { ParsedTask } from '@/lib/parse'
 import { useLookup } from '@/db/hooks'
 import { dateLabel } from '@/lib/dates'
@@ -32,7 +32,7 @@ export function ParsedChips({ parsed, className }: { parsed: ParsedTask; classNa
   const p = project(parsed.projectId)
   const a = area(parsed.areaId)
   const who = (parsed.people ?? []).map(person).filter((x) => !!x)
-  const has = parsed.someday || parsed.deadline || parsed.dueDate || parsed.dueTime || parsed.priority || parsed.tags.length || p || a || parsed.recurrence || parsed.reminder || parsed.estimate || who.length
+  const has = parsed.someday || parsed.deadline || parsed.dueDate || parsed.dueTime || parsed.priority || parsed.tags.length || p || a || parsed.recurrence || parsed.reminder || parsed.estimate || who.length || parsed.waitingFor
   if (!has) return null
   return (
     <div className={cx('flex flex-wrap gap-1.5', className)}>
@@ -40,6 +40,12 @@ export function ParsedChips({ parsed, className }: { parsed: ParsedTask; classNa
         <Chip color={dateColor(parsed.dueDate)}>
           <Calendar size={13} strokeWidth={2.4} />
           {dateLabel(parsed.dueDate)}
+        </Chip>
+      )}
+      {parsed.waitingFor && (
+        <Chip color="var(--c-text)">
+          <UserRoundCheck size={13} strokeWidth={2.4} />
+          Esperando a {parsed.waitingFor}
         </Chip>
       )}
       {parsed.someday && (

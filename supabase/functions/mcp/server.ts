@@ -6,6 +6,7 @@
 import { houseAdd, houseDone, houseView, type HouseCtx } from './casa.ts'
 import type { HouseOp } from '../_shared/house.ts'
 import { ymdIn } from '../_shared/time.ts'
+import { takeMed, viewMeds } from './meds.ts'
 import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
@@ -23,7 +24,8 @@ export const SERVER_INFO = { name: 'ntab', title: 'LUNO', version: '1.0.0' }
 
 const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza su vida: tareas, proyectos, hábitos, rutinas, objetivos, pagos, personas y sus cosas. Es muy despistado: ayúdale a no olvidar nada.
 - Ante «¿dónde dejé…?», «¿quién tiene mi…?» o «¿cuándo caduca…?», usa donde_esta; si te cuenta dónde guarda algo, a quién presta algo o que algo caduca, apúntalo con guardar_cosa.
-- Para lo que no puede olvidar (pastillas, llamadas importantes), crea la tarea con hora e insistir.
+- Para lo que no puede olvidar (llamadas importantes), crea la tarea con hora e insistir. Sus pastillas van en Medicación: ante «¿me he tomado la pastilla?», mira MEDICACIÓN DE HOY en el resumen o usa ver_medicacion; «me la he tomado» se marca con tomar_medicacion.
+- Si algo depende de otra persona («le he pedido a Ana el presupuesto», «espero la respuesta del casero»), crea la tarea con esperando: sale de Hoy y vuelve en unos días para que pregunte. Las de A LA ESPERA no son trabajo suyo: cuando llegue su fecha, propón preguntar.
 - Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
 - Si te cuenta qué tal su día y quiere guardarlo, usa escribir_diario.
 - Para consultar lo que tiene apuntado en sus notas, buscar_notas; para añadir a una nota que ya tiene (ideas, la maleta…), anadir_a_nota.
@@ -107,6 +109,7 @@ export const TOOLS = [
               duracion: DURATION,
               insistir: NAG,
               importante: { type: 'boolean', description: 'De lo importante del día (hasta 3; de hoy si no tiene fecha)' },
+              esperando: { type: 'string', description: 'A la espera de esta persona (algo que depende de otro: «le he pedido a Ana el presupuesto»). Sin fecha, vuelve en 3 días para que pregunte' },
             },
             required: ['titulo'],
           },
@@ -142,6 +145,7 @@ export const TOOLS = [
               duracion: { type: ['integer', 'null'], minimum: 1, description: 'Minutos estimados, o null para quitarla' },
               insistir: { type: ['integer', 'null'], minimum: 5, description: 'Repetir el aviso cada N minutos hasta que la haga, o null para dejar de insistir' },
               importante: { type: 'boolean', description: 'true: de lo importante de hoy (hasta 3, arriba en su Hoy); false: quitarlo' },
+              esperando: { type: ['string', 'null'], description: 'A la espera de esta persona (vuelve a Hoy en 3 días si no tiene fecha), o null si ya no espera nada' },
             },
             required: ['id'],
           },
@@ -427,6 +431,24 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'ver_medicacion',
+    title: 'Ver la medicación',
+    description: '¿Se ha tomado la pastilla? Lo de hoy de cada medicamento (tomada y a qué hora, pendiente, sin tomar), cuántas quedan y cómo ha cumplido las dos últimas semanas.',
+    inputSchema: { type: 'object', properties: { medicamento: { type: 'string', description: 'Solo este (por su nombre); sin él, todos' } } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'tomar_medicacion',
+    title: 'Marcar una toma',
+    description: 'Apunta que se ha tomado (o saltado) un medicamento: la toma pendiente más cercana a ahora, o la de «hora». Descuenta de lo que queda.',
+    inputSchema: {
+      type: 'object',
+      properties: { medicamento: { type: 'string' }, hora: { ...TIME, description: 'La toma de esta hora (HH:MM); sin ella, la más cercana a ahora' }, saltada: { type: 'boolean', description: 'true: no se la ha tomado a propósito (saltar la toma)' } },
+      required: ['medicamento'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'ultima_vez',
     title: 'Última vez',
     description: '¿Cuándo fue la última vez que hizo algo que hace de vez en cuando (cambiar las sábanas, ir al dentista, regar las plantas)? Sin «cosa», lista todo.',
@@ -640,6 +662,13 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(lastTime(await store.load(), args, env))
     case 'ver_compra':
       return text(listShopping(await store.load()))
+    case 'ver_medicacion':
+      return text(viewMeds(rows, args, env))
+    case 'tomar_medicacion': {
+      const r = takeMed(rows, args, env)
+      if (r.writes.length) await store.save(r.writes)
+      return text(r.report.join('\n'))
+    }
     case 'ver_menu':
       return text(readMenu(await store.load(), args, env))
     case 'ver_gastos':

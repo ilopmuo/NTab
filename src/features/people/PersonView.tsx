@@ -289,9 +289,16 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
   )
 }
 
-/** Tareas abiertas que mencionan a la persona (@Ana): para tenerlas a mano al hablar con ella */
+/** Tareas abiertas que mencionan a la persona (@Ana) o que esperas de ella: para tenerlas a mano al hablar con ella */
 function PendingWith({ personId, name }: { personId: string; name: string }) {
-  const tasks = useLiveQuery(() => db.tasks.where('people').equals(personId).filter((t) => !t.done).toArray(), [personId])
+  const tasks = useLiveQuery(async () => {
+    const key = name.trim().toLowerCase()
+    const first = key.split(/\s+/)[0]
+    const linked = await db.tasks.where('people').equals(personId).filter((t) => !t.done).toArray()
+    // «Esperando a Ana» sin enlazar a la persona también cuenta
+    const waiting = await db.tasks.where('done').equals(0).filter((t) => !!t.waitingFor && !t.people?.includes(personId) && [key, first].includes(t.waitingFor.trim().toLowerCase())).toArray()
+    return [...linked, ...waiting]
+  }, [personId, name])
   if (!tasks) return null
   const first = name.trim().split(/\s+/)[0] || name
   return (
