@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, m as motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import type { Task } from '@/db/types'
@@ -24,6 +24,16 @@ const rowSeparator =
  * Lista de tareas en bloque agrupado. Las filas entran escalonadas, se
  * reordenan con suavidad y al completarse se pliegan.
  */
+/** Falso durante el primer momento de la lista; luego, cierto */
+function useSettled(ms = 700) {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setOn(true), ms)
+    return () => clearTimeout(id)
+  }, [ms])
+  return on
+}
+
 export function TaskList({
   tasks,
   hideDate,
@@ -60,10 +70,12 @@ export function TaskList({
   const manual = useListOrder(orderKey)
   const all = useMemo(() => (manual && orderKey ? [...tasks].sort(sortManual(orderKey)) : sort ? [...tasks].sort(sortTasks) : tasks), [tasks, sort, manual, orderKey])
   // Las listas largas, por tramos (ordenar a mano necesita todas)
-  const { limit, sentinel } = useProgressive(manual ? 0 : all.length)
+  const { limit, sentinel } = useProgressive(manual ? 0 : all.length, 20)
   const list = manual ? all : all.slice(0, limit)
-  // Recolocar con animación mide todas las filas: solo en listas cortas
-  const animateLayout = all.length <= 60
+  // Recolocar con animación mide todas las filas: solo en listas cortas y no
+  // al abrir la pantalla (medirlas al montarlas costaba casi un cuarto del pintado)
+  const settled = useSettled()
+  const animateLayout = settled && all.length <= 60
   if (!list.length && !add && !empty) return null
 
   const rows = (

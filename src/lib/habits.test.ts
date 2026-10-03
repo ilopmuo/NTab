@@ -119,3 +119,50 @@ describe('pausas y días libres (como en Streaks y Loop)', () => {
     expect(bestStreak({ ...daily, createdAt: new Date(2026, 8, 1).getTime() }, done, T)).toBe(3)
   })
 })
+
+describe('fuerza y mejor racha empiezan en el primer registro', () => {
+  // Lo de antes del primer registro siempre suma 0: contar desde la fecha de
+  // creación (que puede quedar años atrás) da lo mismo, pero cuesta mucho más
+  const addDays = (ymd: string, n: number) => {
+    const d = new Date(`${ymd}T12:00:00`)
+    d.setDate(d.getDate() + n)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  /** Como antes: día a día desde que se creó */
+  function fromCreation(h: { days: number[]; target?: number }, counts: Map<string, number>, ref: string, since: string) {
+    const target = Math.max(1, h.target ?? 1)
+    const keep = Math.pow(0.5, Math.sqrt(7 / Math.max(1, h.days.length)) / 13)
+    let score = 0
+    let best = 0
+    let run = 0
+    for (let d = since; d <= ref; d = addDays(d, 1)) {
+      if (!isScheduled(h, d)) continue
+      const value = Math.min(1, (counts.get(d) ?? 0) / target)
+      if (!(d === ref && value < 1)) score = score * keep + value * (1 - keep)
+      if (value >= 1) best = Math.max(best, ++run)
+      else if (d !== ref) run = 0
+    }
+    return { score, best }
+  }
+  // Pseudoaleatorio con semilla: siempre los mismos casos
+  let seed = 7
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  it('da exactamente lo mismo que contar desde la creación', () => {
+    for (let k = 0; k < 40; k++) {
+      const days = [0, 1, 2, 3, 4, 5, 6].filter(() => rand() > 0.35)
+      const h = { days: days.length ? days : [1], target: rand() > 0.5 ? 3 : 1, createdAt: new Date(2024, 0, 1).getTime() }
+      const counts = new Map<string, number>()
+      const start = Math.floor(rand() * 500)
+      for (let i = start; i < 640; i++) if (rand() > 0.4) counts.set(addDays('2024-06-01', i), 1 + Math.floor(rand() * 3))
+      const done = doneDays(h, counts)
+      const ref = T
+      const old = fromCreation(h, counts, ref, '2024-01-01')
+      expect(strength(h, counts, ref)).toBeCloseTo(old.score, 10)
+      expect(bestStreak(h, done, ref)).toBe(old.best)
+    }
+  })
+  it('sin ningún registro, 0', () => {
+    expect(strength(daily, new Map(), T)).toBe(0)
+    expect(bestStreak(daily, new Set(), T)).toBe(0)
+  })
+})

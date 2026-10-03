@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { m as motion } from 'motion/react'
-import { Cake, ChevronLeft, Mail, MessageSquare, Phone, Plus, Trash2, Users, Video, X } from 'lucide-react'
+import { Cake, Mail, MessageSquare, Phone, Plus, Trash2, Users, Video, X } from 'lucide-react'
 import { db } from '@/db/db'
 import { createTask, deletePerson, logInteraction } from '@/db/actions'
 import { toastTrashed } from '../trash/undo'
@@ -9,7 +9,7 @@ import type { Interaction, Person } from '@/db/types'
 import { addDaysYmd, dateLabel, diffDays, relativeDays, today } from '@/lib/dates'
 import { nextBirthday } from '@/lib/people'
 import { PersonDates, PersonGifts } from './PersonExtras'
-import { href, navigate } from '@/app/router'
+import { navigate } from '@/app/router'
 import { toast, ui } from '@/app/store'
 import { ThingRow } from '../things/ThingRow'
 import { Button, Card, Empty, Field, Group, IconButton, Input, Section, Select, Textarea, bouncy, cx } from '@/components/ui'
@@ -93,15 +93,12 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
   ]
 
   return (
-    <Page>
-      <div className="mb-4 flex items-center">
-        <a href={href('/people')} className="inline-flex items-center gap-1 text-[16px] font-medium text-blue">
-          <ChevronLeft size={20} strokeWidth={2.4} /> Personas
-        </a>
+    <Page
+      trailing={
         <IconButton
           label="Eliminar persona"
           filled
-          className="ml-auto hover:!text-red"
+          className="hover:!text-red"
           onClick={async () => {
             await deletePerson(person.id)
             navigate('/people')
@@ -110,8 +107,8 @@ function PersonDetail({ person, interactions }: { person: Person; interactions: 
         >
           <Trash2 size={15} strokeWidth={2.3} />
         </IconButton>
-      </div>
-
+      }
+    >
       <header className="mb-6 flex flex-col items-center text-center">
         <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={bouncy}>
           <Avatar name={name || '?'} size={96} />

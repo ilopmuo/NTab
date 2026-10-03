@@ -31,7 +31,7 @@ export function LogbookView() {
         items={[...groups]}
         weight={([, list]) => list.length}
         render={([day, list]) => (
-          <Section key={day} title={dateLabel(day)} count={list.length} tone="green">
+          <Section key={day} title={dateLabel(day)} count={list.length} tone="green" sticky>
             <TaskList tasks={list} sort={false} />
           </Section>
         )}

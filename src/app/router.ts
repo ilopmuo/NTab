@@ -8,7 +8,6 @@ function current() {
 
 const listeners = new Set<() => void>()
 const notify = () => listeners.forEach((l) => l())
-if (typeof window !== 'undefined') window.addEventListener('hashchange', notify)
 
 export function useRoute(): { path: string; parts: string[] } {
   const path = useSyncExternalStore(
@@ -36,6 +35,93 @@ type Doc = Document & { startViewTransition?: (cb: () => void) => { finished: Pr
 
 const canTransition = () =>
   typeof document !== 'undefined' && !!(document as Doc).startViewTransition && document.documentElement.dataset.motion !== 'reduce'
+
+// ── Hacia dentro y hacia fuera (como la pila de navegación de iOS) ──
+// Entrar en algo (un proyecto, una persona, una etiqueta) desliza la pantalla
+// nueva desde la derecha sobre la anterior; volver la retira hacia la
+// derecha. Entre pantallas del mismo nivel (las pestañas), un fundido.
+const DEPTH: Record<string, number> = { area: 2, people: 2, tag: 2, list: 2, notes: 2, project: 3 }
+
+/** Cuánto «dentro» está una pantalla: 1 las de la barra; 2 o 3 lo que se abre desde ellas */
+export function depthOf(path: string) {
+  const [s, id] = path.split('/').filter(Boolean)
+  if (!id) return 1
+  // En el ordenador, Notas es lista y nota a la vez: abrir una no es entrar en otra pantalla
+  if (s === 'notes' && typeof matchMedia !== 'undefined' && matchMedia('(min-width: 768px)').matches) return 1
+  return DEPTH[s] ?? 1
+}
+
+export type NavDirection = 'push' | 'pop' | 'fade'
+export function directionOf(from: string, to: string): NavDirection {
+  const a = depthOf(from)
+  const b = depthOf(to)
+  return b > a ? 'push' : b < a ? 'pop' : 'fade'
+}
+
+let vtRun = 0
+/** Cambia de pantalla dentro de una View Transition con su dirección (ver index.css) */
+function transition(dir: NavDirection, update: () => void) {
+  const run = ++vtRun
+  const root = document.documentElement
+  root.dataset.nav = dir
+  transitioning = true
+  const vt = (document as Doc).startViewTransition!(update)
+  // Si el navegador la salta (p. ej. otra navegación encima), no es un error
+  const vtx = vt as unknown as { ready?: Promise<void>; updateCallbackDone?: Promise<void> }
+  vtx.ready?.catch(() => {})
+  vtx.updateCallbackDone?.catch(() => {})
+  vt.finished
+    .catch(() => {})
+    .finally(() => {
+      if (run !== vtRun) return
+      transitioning = false
+      delete root.dataset.nav
+    })
+}
+
+// ── Lo visitado en esta sesión, para saber adónde lleva «atrás» ──
+// Cada entrada del historial lleva su posición; así se sabe qué hay detrás.
+const visited = new Map<number, string>()
+let position = 0
+if (typeof window !== 'undefined') {
+  position = (history.state as { i?: number } | null)?.i ?? 0
+  visited.set(position, current())
+  if ((history.state as { i?: number } | null)?.i === undefined) history.replaceState({ ...(history.state ?? {}), i: position }, '')
+}
+const forgetAfter = (i: number) => [...visited.keys()].forEach((k) => k > i && visited.delete(k))
+
+/** La pantalla de la que se viene (si se llegó a esta desde otra de la app) */
+export function previousPath(): string | undefined {
+  return visited.get(position - 1)
+}
+
+/** Lo siguiente que llegue por el historial se pinta sin transición (lo anima otro: el gesto de volver) */
+let instantNext = false
+
+if (typeof window !== 'undefined')
+  window.addEventListener('hashchange', () => {
+    // Atrás, adelante o un cambio de la dirección a mano: se apunta dónde estamos
+    const i = (history.state as { i?: number } | null)?.i
+    // Una entrada nueva (un enlace sin pasar por `navigate`, la dirección a mano):
+    // se pinta ya, sin transición. Ir atrás o adelante: con su animación.
+    const fresh = i === undefined
+    if (fresh) {
+      position++
+      forgetAfter(position - 1)
+      history.replaceState({ ...(history.state ?? {}), i: position }, '')
+    } else position = i
+    const to = current()
+    visited.set(position, to)
+    if (instantNext) {
+      instantNext = false
+      transitioning = true
+      flushSync(notify)
+      transitioning = false
+      return
+    }
+    if (fresh || !canTransition() || to === shownPath) return notify()
+    transition(directionOf(shownPath, to), () => flushSync(notify))
+  })
 
 // ── Cada pantalla recuerda dónde la dejaste (como en iOS) ─────
 // Al ir a otra se guarda la posición; al volver atrás (botón, gesto o
@@ -73,26 +159,48 @@ export function placeScroll(path: string) {
   requestAnimationFrame(again)
 }
 
-export function navigate(path: string) {
+export function navigate(path: string, dir?: NavDirection | 'none') {
   const target = `#${path}`
   if (window.location.hash === target) return
   saveScroll()
   fromHistory = false
-  if (!canTransition()) {
-    window.location.hash = path
+  const push = () => {
+    position++
+    forgetAfter(position - 1)
+    visited.set(position, path)
+    // pushState no lanza «hashchange»: se avisa a mano y React pinta ya, dentro de la transición
+    history.pushState({ i: position }, '', target)
+  }
+  if (dir === 'none') {
+    push()
+    // Ya animado por el gesto: la pantalla nueva aparece tal cual, sin su entrada
+    transitioning = true
+    flushSync(notify)
+    transitioning = false
     return
   }
-  transitioning = true
-  const vt = (document as Doc).startViewTransition!(() => {
-    // pushState no lanza «hashchange»: se avisa a mano y React pinta ya, dentro de la transición
-    history.pushState(null, '', target)
+  if (!canTransition()) {
+    push()
+    notify()
+    return
+  }
+  const from = shownPath
+  transition(dir ?? directionOf(from, path), () => {
+    push()
     flushSync(notify)
   })
-  // Si el navegador la salta (p. ej. otra navegación encima), no es un error
-  const vtx = vt as unknown as { ready?: Promise<void>; updateCallbackDone?: Promise<void> }
-  vtx.ready?.catch(() => {})
-  vtx.updateCallbackDone?.catch(() => {})
-  vt.finished.catch(() => {}).finally(() => (transitioning = false))
+}
+
+/**
+ * Volver: a la pantalla de la que se vino (como el botón de atrás de iOS) o,
+ * si se abrió directamente (un enlace, un aviso), a la de arriba.
+ * `instant`: sin transición, porque ya la ha hecho el gesto de deslizar.
+ */
+export function goBack(parent: string, instant = false) {
+  if (previousPath() !== undefined) {
+    instantNext = instant
+    history.back()
+  } else navigate(parent, instant ? 'none' : 'pop')
 }
 
 export function href(path: string) {

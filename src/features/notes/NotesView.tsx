@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowLeft, BookOpen, Image as ImageIcon, LayoutTemplate, ListChecks, ListPlus, PenLine, Pin, PinOff, Plus, Search, Share, StickyNote, Trash2 } from 'lucide-react'
+import { BookOpen, ChevronLeft, Image as ImageIcon, LayoutTemplate, ListChecks, ListPlus, PenLine, Pin, PinOff, Plus, Search, Share, StickyNote, Trash2 } from 'lucide-react'
 import { SectionIcon, section } from '@/app/sections'
 import { pageTop } from '@/app/pageTop'
 import { db } from '@/db/db'
@@ -10,9 +10,10 @@ import { toastTrashed } from '../trash/undo'
 import type { Note } from '@/db/types'
 import { createNote, createTask, notesCreatedHere, updateNote, deleteNote, renameNoteLinks, restoreNoteContents, setSetting } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
-import { href, navigate } from '@/app/router'
+import { goBack, href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { Empty, IconButton, Select, Textarea, cx, useMediaQuery } from '@/components/ui'
+import { Progressive } from '@/components/Progressive'
 import { allNoteTags, groupNotes, noteTags, suggestLink } from '@/lib/notes'
 import { LinkSuggestions, NoteConnections } from './NoteLinks'
 import { NoteReader } from './NoteReader'
@@ -60,6 +61,7 @@ export function NotesView({ id }: { id?: string }) {
     navigate(`/notes/${n.id}`)
   }
   const [templates, setTemplates] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
 
   if (!notes) return null
 
@@ -106,7 +108,7 @@ export function NotesView({ id }: { id?: string }) {
             </div>
           )}
         </div>
-        <div className="flex-1 overflow-y-auto px-3 pb-36 lg:pb-4">
+        <div ref={listRef} className="flex-1 overflow-y-auto px-3 pb-36 lg:pb-4">
           {list.length === 0 &&
             (q || notes.length ? (
               <p className="px-3 py-6 text-center text-[13px] text-muted">Sin resultados</p>
@@ -120,29 +122,21 @@ export function NotesView({ id }: { id?: string }) {
                 </Empty>
               </div>
             ))}
-          {groupNotes(list).map((g) => (
-            <section key={g.title} className="mb-3">
-              <h2 className="px-3.5 pt-2 pb-1 text-[12px] font-semibold tracking-wide text-muted uppercase">{g.title}</h2>
-              {g.items.map((n) => (
-                <a
-                  key={n.id}
-                  href={href(`/notes/${n.id}`)}
-                  className={cx('mb-1 block rounded-[14px] px-3.5 py-3 transition-colors', n.id === id ? 'bg-fill' : 'hover:bg-hover')}
-                >
-                  <div className="flex items-center gap-1.5">
-                    {!!n.pinned && <Pin size={12} className="shrink-0 text-muted" strokeWidth={2.6} />}
-                    <span className="truncate text-[15px] font-semibold">{n.title || 'Sin título'}</span>
-                  </div>
-                  <p className="mt-0.5 flex items-center gap-1 truncate text-[13px] text-muted">
-                    <span className="shrink-0 font-medium text-fg/70">{noteWhen(n.updatedAt)}</span>
-                    <ListProgress content={n.content} />
-                    {!!n.images?.length && <ImageIcon size={12} strokeWidth={2.4} className="shrink-0" aria-label="Con fotos" />}
-                    <span className="truncate">{preview(n.content) && ` · ${preview(n.content)}`}</span>
-                  </p>
-                </a>
-              ))}
-            </section>
-          ))}
+          {/* Cientos de notas: se pintan por tramos según se baja */}
+          <Progressive
+            root={listRef}
+            items={groupNotes(list).flatMap((g): { key: string; head?: string; note?: Note }[] => [{ key: `h:${g.title}`, head: g.title }, ...g.items.map((n) => ({ key: n.id, note: n }))])}
+            weight={() => 1}
+            render={(x) =>
+              x.note ? (
+                <NoteRow key={x.key} note={x.note} active={x.note.id === id} />
+              ) : (
+                <h2 key={x.key} className="px-3.5 pt-3 pb-1 text-[12px] font-semibold tracking-wide text-muted uppercase first:pt-2">
+                  {x.head}
+                </h2>
+              )
+            }
+          />
         </div>
       </div>
 
@@ -161,6 +155,27 @@ export function NotesView({ id }: { id?: string }) {
     </div>
   )
 }
+
+/** Una nota en la lista: título, cuándo, cómo va su lista y la primera línea */
+const NoteRow = memo(function NoteRow({ note: n, active }: { note: Note; active: boolean }) {
+  const first = preview(n.content)
+  return (
+    <a href={href(`/notes/${n.id}`)} className={cx('row-lazy mb-1 block rounded-[14px] px-3.5 py-3 transition-colors', active ? 'bg-fill' : 'hover:bg-hover')}>
+      <div className="flex items-center gap-1.5">
+        {!!n.pinned && <Pin size={12} className="shrink-0 text-muted" strokeWidth={2.6} />}
+        <span className="truncate text-[15px] font-semibold">{n.title || 'Sin título'}</span>
+      </div>
+      <p className="mt-0.5 flex items-center gap-1 truncate text-[13px] text-muted">
+        <span className="shrink-0 font-medium text-fg/70">{noteWhen(n.updatedAt)}</span>
+        <ListProgress content={n.content} />
+        {!!n.images?.length && <ImageIcon size={12} strokeWidth={2.4} className="shrink-0" aria-label="Con fotos" />}
+        <span className="truncate">{first && ` · ${first}`}</span>
+      </p>
+    </a>
+  )
+},
+// Dexie da objetos nuevos en cada consulta: la fila solo se repinta si la nota cambió
+(a, b) => a.active === b.active && a.note.updatedAt === b.note.updatedAt && a.note.id === b.note.id && a.note.pinned === b.note.pinned)
 
 /** «☑ 3/7» en la lista: cómo va la lista de casillas de la nota */
 function ListProgress({ content }: { content: string }) {
@@ -322,9 +337,10 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col px-5 pt-[max(env(safe-area-inset-top),16px)] pb-36 lg:px-10 lg:pt-10 lg:pb-10">
       <div className="mb-4 flex items-center gap-1">
-        <a href={href('/notes')} className="mr-1 flex items-center gap-0.5 rounded-lg py-1.5 pr-2 text-[16px] font-medium text-blue md:hidden" aria-label="Volver">
-          <ArrowLeft size={18} strokeWidth={2.4} /> Notas
-        </a>
+        {/* Como en Notas de iOS: vuelve a la lista con su animación */}
+        <button type="button" onClick={() => goBack('/notes')} className="mr-1 -ml-1.5 flex items-center rounded-lg py-1.5 pr-2 text-[17px] font-medium text-blue active:opacity-50 md:hidden" aria-label="Volver a Notas">
+          <ChevronLeft size={26} strokeWidth={2.4} className="-mr-0.5" /> Notas
+        </button>
         <Select
           value={assign}
           onChange={(e) => {

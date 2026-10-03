@@ -4,7 +4,7 @@ import { Hash } from 'lucide-react'
 import { db } from '@/db/db'
 import { TaskList } from '@/components/TaskList'
 import { PageHeader } from '@/components/ui'
-import { href, navigate, vtName } from '@/app/router'
+import { navigate, vtName } from '@/app/router'
 import { Page } from './Page'
 import { SelectButton } from '@/features/select/SelectButton'
 import { TagMenu, TagNameInput, renameTagUndoable } from './tags/TagsView'
@@ -19,7 +19,6 @@ export function TagView({ tag }: { tag: string }) {
   return (
     <Page>
       <PageHeader
-        eyebrow={<a href={href('/tags')} className="hover:underline">Etiquetas</a>}
         icon={
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-fill text-white">
             <Hash size={22} strokeWidth={2.6} />

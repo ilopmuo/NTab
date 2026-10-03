@@ -1,7 +1,7 @@
 import { cx } from '@/components/ui'
 import { pageTop } from '@/app/pageTop'
 
-export function Page({ children, wide, className }: { children: React.ReactNode; wide?: boolean; className?: string }) {
+export function Page({ children, wide, className, trailing }: { children: React.ReactNode; wide?: boolean; className?: string; /** a la derecha del «‹ Atrás» (p. ej. eliminar) */ trailing?: React.ReactNode }) {
   const Top = pageTop.Component
   return (
     <div
@@ -11,7 +11,7 @@ export function Page({ children, wide, className }: { children: React.ReactNode;
         className,
       )}
     >
-      {Top && <Top />}
+      {Top && <Top trailing={trailing} />}
       {children}
     </div>
   )

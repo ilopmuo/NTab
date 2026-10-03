@@ -15,6 +15,7 @@ import { isStuck, postponedLabel } from '@/lib/day'
 import { toast, ui, useUI } from '@/app/store'
 import { bouncy, cx } from './ui'
 import { dragToDay } from './dayDrag'
+import { taskMenu } from './taskMenu'
 import { selection, useIsPicked, useSelecting } from '@/features/select/selection'
 
 /** Casilla redonda de Recordatorios: se rellena con un muelle y el ✓ se dibuja */
@@ -114,6 +115,27 @@ function Sparks({ size, color }: { size: number; color: string }) {
   )
 }
 
+/** Pulsación larga con el dedo (sin moverse): para el menú contextual, como en iOS */
+const LONG_PRESS = 450
+function longPress(e: React.PointerEvent, run: () => void) {
+  const sx = e.clientX
+  const sy = e.clientY
+  const timer = setTimeout(() => {
+    stop()
+    run()
+  }, LONG_PRESS)
+  const move = (ev: PointerEvent) => Math.hypot(ev.clientX - sx, ev.clientY - sy) > 10 && stop()
+  const stop = () => {
+    clearTimeout(timer)
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', stop)
+    window.removeEventListener('pointercancel', stop)
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', stop)
+  window.addEventListener('pointercancel', stop)
+}
+
 export async function completeWithFeedback(task: Task) {
   const wasDone = !!task.done
   if (!wasDone) haptic('success')
@@ -208,7 +230,21 @@ export const TaskItem = memo(function TaskItem({
   const selected = useUI((s) => s.selectedTaskId === task.id)
   const picking = useSelecting()
   const picked = useIsPicked(task.id)
-  const drag = draggable ? dragToDay(task) : ({} as Partial<ReturnType<typeof dragToDay>>)
+  // El menú contextual: pulsación larga con el dedo, clic derecho o la tecla de menú
+  const rowRef = useRef<HTMLDivElement>(null)
+  const pointer = useRef('mouse')
+  const held = useRef(false)
+  const openMenu = (at?: { x: number; y: number }) => {
+    const r = rowRef.current?.getBoundingClientRect()
+    if (!r) return
+    taskMenu.open({ task, rect: { top: r.top, left: r.left, width: r.width, height: r.height }, at })
+  }
+  const holdMenu = () => {
+    held.current = true
+    haptic()
+    openMenu()
+  }
+  const drag = draggable ? dragToDay(task, holdMenu) : ({} as Partial<ReturnType<typeof dragToDay>>)
   // Deslizar: → hecha (o pendiente otra vez), ← a mañana (o un día más tarde)
   const t0 = today()
   const tomorrow = addDaysYmd(t0, 1)
@@ -386,20 +422,34 @@ export const TaskItem = memo(function TaskItem({
       {swipe.active && <SwipeBackdrop x={swipe.x} armed={swipe.armed} done={!!task.done} later={laterLabel} />}
       <motion.div
         {...drag}
+        ref={rowRef}
         onPointerDown={(e) => {
+          pointer.current = e.pointerType
+          held.current = false
           drag.onPointerDown?.(e)
           swipe.onPointerDown(e)
+          // En las filas que se arrastran a otro día, la pulsación larga ya es suya (y al soltar sin moverla, el menú)
+          if (e.pointerType === 'touch' && !draggable && !picking) longPress(e, holdMenu)
         }}
-        style={{ ...drag.style, x: swipe.x }}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          if (picking || taskMenu.isOpen()) return
+          // La tecla de menú (o ⇧F10) no trae puntero: el menú sale junto a la fila
+          const keyboard = e.clientX === 0 && e.clientY === 0
+          openMenu(pointer.current === 'mouse' && !keyboard ? { x: e.clientX, y: e.clientY } : undefined)
+        }}
+        style={{ ...drag.style, WebkitTouchCallout: 'none', x: swipe.x }}
         data-task-id={task.id}
         onClick={(e) => {
+          // El clic que sigue a la pulsación larga no abre la tarea
+          if (held.current) return void (held.current = false)
           if (swipe.swiped.current) return
           // Ctrl/⌘ + clic, o con la selección activa: marcar en vez de abrir
           if (picking || e.metaKey || e.ctrlKey) return selection.toggle(task.id)
           ui.openTask(task.id)
         }}
         className={cx(
-          'group relative flex cursor-default items-start gap-3 px-4 transition-colors duration-150',
+          'group relative flex cursor-default items-start gap-3 px-4 transition-colors duration-150 pointer-coarse:select-none',
           draggable && 'select-none',
           compact ? 'py-2' : 'py-[11px]',
           picked || (selected && !picking) ? 'bg-accent-soft' : 'hover:bg-hover has-[.task-title:focus-visible]:bg-hover active:bg-press',

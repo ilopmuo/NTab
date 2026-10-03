@@ -51,6 +51,7 @@ const GROUPS: [string, [string[], string][]][] = [
       [['M'], 'Pasarla a mañana'],
       [['S'], 'Mandarla a «Algún día»'],
       [['Supr'], 'Borrarla (a la papelera)'],
+      [['⇧', 'F10'], 'Su menú (también con clic derecho o manteniéndola pulsada)'],
       [['⌘', 'Z'], 'Deshacer lo último'],
     ],
   ],

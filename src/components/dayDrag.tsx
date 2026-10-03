@@ -102,7 +102,7 @@ export async function moveTaskToSection(task: Task, sectionId: string, name: str
   })
 }
 
-function startDrag(e: React.PointerEvent, task: Task, { kind, from, drop }: DropKind) {
+function startDrag(e: React.PointerEvent, task: Task, { kind, from, drop }: DropKind, onHold?: () => void) {
   if (e.button !== 0) return
   // La casilla, los enlaces y los campos funcionan como siempre
   if ((e.target as HTMLElement).closest('[role=checkbox], a, input, textarea, select')) return
@@ -171,6 +171,8 @@ function startDrag(e: React.PointerEvent, task: Task, { kind, from, drop }: Drop
     if (!started) return
     set(null)
     swallowNextClick()
+    // Con el dedo, mantener pulsado y soltar sin moverla es pedir su menú (como en iOS)
+    if (touch && onHold && Math.hypot(x - sx, y - sy) < 12) return onHold()
     if (over && over !== from) drop(task, over, label ?? '')
   }
   const cancel = () => {
@@ -184,14 +186,14 @@ function startDrag(e: React.PointerEvent, task: Task, { kind, from, drop }: Drop
 }
 
 /** Props para hacer arrastrable algo que representa una tarea */
-export function dragTask(task: Task, to: DropKind) {
+export function dragTask(task: Task, to: DropKind, onHold?: () => void) {
   return {
-    onPointerDown: (e: React.PointerEvent) => startDrag(e, task, to),
+    onPointerDown: (e: React.PointerEvent) => startDrag(e, task, to, onHold),
     style: { WebkitTouchCallout: 'none' } as React.CSSProperties,
   }
 }
 
-export const dragToDay = (task: Task) => dragTask(task, { kind: 'day', from: task.dueDate, drop: DAY })
+export const dragToDay = (task: Task, onHold?: () => void) => dragTask(task, { kind: 'day', from: task.dueDate, drop: DAY }, onHold)
 
 export const dragToSection = (task: Task) =>
   dragTask(task, { kind: 'section', from: task.sectionId ?? '-', drop: (t, to, label) => void moveTaskToSection(t, to, label) })

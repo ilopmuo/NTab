@@ -153,7 +153,6 @@ export function SmartListView({ id }: { id: string }) {
   return (
     <Page>
       <PageHeader
-        eyebrow={<a href={href('/lists')} className="hover:underline">Listas inteligentes</a>}
         icon={
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-fill text-white">
             <ListFilter size={21} strokeWidth={2.4} />

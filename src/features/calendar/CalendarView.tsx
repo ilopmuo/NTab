@@ -11,6 +11,7 @@ import { sortTasks } from '@/lib/tasks'
 import { SectionIcon, section } from '@/app/sections'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
+import { Progressive } from '@/components/Progressive'
 import { Button, Card, IconButton, PageHeader, Section, Segmented, cx, spring, useIsMobile, useMediaQuery } from '@/components/ui'
 import { dragToDay, useDropOver } from '@/components/dayDrag'
 import { eventTime, eventsByDay, useEvents, type CalEvent } from '@/lib/calendarEvents'
@@ -201,9 +202,14 @@ export function CalendarView() {
         <WeekGrid days={range.days} byDay={byDay} evByDay={evByDay} birthdays={birthdays} />
       ) : (
         <div className="grid gap-3 @[560px]:grid-cols-2 @[820px]:grid-cols-4 @[1180px]:grid-cols-7">
-          {range.days.map((d, i) => (
-            <WeekDay key={d} day={d} index={i} list={byDay.get(d) ?? []} events={evByDay.get(d) ?? []} birthdays={birthdays.filter((b) => b.date === d).map((b) => b.person)} isToday={d === t} />
-          ))}
+          {/* Una semana con muchas tareas: los días de abajo se pintan al acercarse */}
+          <Progressive
+            items={range.days.map((d, i) => ({ d, i }))}
+            weight={({ d }) => (byDay.get(d)?.length ?? 0) + 2}
+            render={({ d, i }) => (
+              <WeekDay key={d} day={d} index={i} list={byDay.get(d) ?? []} events={evByDay.get(d) ?? []} birthdays={birthdays.filter((b) => b.date === d).map((b) => b.person)} isToday={d === t} />
+            )}
+          />
         </div>
       )}
     </Page>

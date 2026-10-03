@@ -22,6 +22,9 @@ export function startLookupCache() {
   })
 }
 
+/** Lo mismo, fuera de React (p. ej. para saber de qué área cuelga un proyecto) */
+export const lookupNow = () => cache
+
 function useCache() {
   startLookupCache()
   return useSyncExternalStore(
@@ -41,8 +44,34 @@ export function useProjects(): Project[] {
   return useCache().projects
 }
 
+// Las tareas pendientes también se quedan en memoria: Hoy, la Bandeja,
+// Próximo o un proyecto las leen de aquí, así que volver a una de esas
+// pantallas no espera a IndexedDB (con miles de tareas, un buen rato en un
+// móvil) y se pinta en el mismo fotograma. Se mantienen al día solas.
+let open: Task[] | undefined
+const openListeners = new Set<() => void>()
+let openStarted = false
+export function startOpenTasks() {
+  if (openStarted) return
+  openStarted = true
+  liveQuery(() => db.tasks.where('done').equals(0).toArray()).subscribe({
+    next: (list) => {
+      open = list
+      openListeners.forEach((l) => l())
+    },
+    error: (e) => console.error('[pendientes]', e),
+  })
+}
+
 export function useOpenTasks(): Task[] | undefined {
-  return useLiveQuery(() => db.tasks.where('done').equals(0).toArray(), [])
+  startOpenTasks()
+  return useSyncExternalStore(
+    (l) => {
+      openListeners.add(l)
+      return () => void openListeners.delete(l)
+    },
+    () => open,
+  )
 }
 
 export function useTask(id: string | null | undefined) {

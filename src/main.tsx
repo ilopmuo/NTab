@@ -8,7 +8,7 @@ import { seedIfEmpty } from './db/seed'
 import { db } from './db/db'
 import { watchPrefs } from './lib/prefs'
 import { initSync } from './sync/service'
-import { startLookupCache } from './db/hooks'
+import { startLookupCache, startOpenTasks } from './db/hooks'
 import { requestPersistentStorage } from './sync/authStorage'
 import { rollSubscriptions } from './db/actions'
 import { purgeTrash } from './db/trash'
@@ -44,6 +44,8 @@ void requestPersistentStorage()
 
 seedIfEmpty().finally(() => {
   startLookupCache()
+  // Hoy las necesita: se piden ya, mientras React arranca
+  startOpenTasks()
   watchPrefs(db)
   // Los avisos con la app abierta, en cuanto haya cargado lo demás
   void import('./reminders/local').then((m) => m.startLocalReminders())

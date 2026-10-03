@@ -32,7 +32,7 @@ export function UpcomingView() {
         actions={<SelectButton />}
       />
       {overdue.length > 0 && (
-        <Section title="Atrasadas" count={overdue.length} tone="red">
+        <Section title="Atrasadas" count={overdue.length} tone="red" sticky>
           <TaskList tasks={overdue} draggable />
         </Section>
       )}
@@ -53,7 +53,7 @@ export function UpcomingView() {
         }}
       />
       {later.length > 0 && (
-        <Section title="Más adelante" count={later.length} tone="orange">
+        <Section title="Más adelante" count={later.length} tone="orange" sticky>
           <TaskList tasks={later} draggable />
         </Section>
       )}
@@ -68,7 +68,8 @@ function DaySection({ day, index, tasks }: { day: string; index: number; tasks: 
   const weekend = [0, 6].includes(fromYmd(day).getDay())
   return (
     <section data-drop-day={day} className={cx('-mx-2 mb-4 rounded-[20px] px-2 pt-1 pb-2 transition-colors', over && 'bg-accent-soft ring-2 ring-blue')}>
-      <div className="mb-2 flex items-baseline gap-2 px-1">
+      {/* El día se queda arriba mientras se ven sus tareas (como en Recordatorios) */}
+      <div className="sticky-head -mx-2 mb-2 flex items-baseline gap-2 rounded-t-[20px] px-3 py-1.5">
         <span className={cx('font-num text-[28px] leading-none font-bold', index === 0 ? 'text-blue' : weekend ? 'text-muted' : 'text-fg')}>{fromYmd(day).getDate()}</span>
         <span className="text-[17px] font-bold">{dayLabel(day, index)}</span>
         {index === 0 && <span className="text-[14px] text-muted">{capitalize(fmt(day, 'MMMM'))}</span>}

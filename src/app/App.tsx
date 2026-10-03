@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { AnimatePresence, LazyMotion, MotionConfig, m as motion } from 'motion/react'
 import { TodayView } from '@/features/Today'
 import { DragGhost } from '@/components/dayDrag'
@@ -15,7 +15,8 @@ import { announce } from './announce'
 import { reducedMotion, useA11yPrefs } from './theme'
 import { useFeatures } from './features'
 import { FeatureOff } from '@/features/FeatureOff'
-import { HubTabs } from './HubTabs'
+import { BackButton, PageTop } from './BackButton'
+import { useTaskMenu } from '@/components/taskMenu'
 import { pageTop } from './pageTop'
 import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
@@ -24,73 +25,105 @@ import { closeAuth, useSync } from '@/sync/service'
 // Los avisos con la app abierta se cargan aparte (ver main.tsx)
 const reminders = () => import('@/reminders/local')
 import { ReauthBanner } from '@/sync/ReauthBanner'
+import { TITLES } from './titles'
 
-pageTop.Component = HubTabs
+pageTop.Component = PageTop
+pageTop.Back = BackButton
 
 const loadMotionFeatures = () => import('@/lib/motionFeatures').then((m) => m.default)
+
+/** El código de cada pantalla que ya ha llegado */
+const loaded = new Map<() => Promise<unknown>, unknown>()
+/** Un cargador que, al terminar, deja el componente a mano */
+function keep<M extends { default: unknown }>(load: () => Promise<M>) {
+  const fn = () =>
+    load().then((m) => {
+      loaded.set(fn, m.default)
+      return m
+    })
+  return fn
+}
+/**
+ * Como `lazy`, pero si el código ya llegó (lo normal: se precarga), se pinta
+ * directamente. Con `lazy` React suspende igualmente la primera vez, enseña el
+ * hueco y tarda ~300 ms en enseñar una pantalla que ya tenía.
+ */
+function warm<P extends object>(load: () => Promise<{ default: ComponentType<P> }>) {
+  const Lazy = lazy(load)
+  return function Warm(props: P) {
+    // Se decide una vez: cambiar de uno a otro volvería a montar la pantalla
+    const [Ready] = useState(() => loaded.get(load) as ComponentType<P> | undefined)
+    return Ready ? <Ready {...props} /> : <Lazy {...props} />
+  }
+}
 
 // Hoy se carga con la app; el resto de vistas, al abrirlas (y en segundo plano
 // en cuanto la app está lista, para que navegar siga siendo instantáneo)
 const loaders = {
-  AreaView: () => import('@/features/areas/AreaView').then((m) => ({ default: m.AreaView })),
-  CalendarView: () => import('@/features/calendar/CalendarView').then((m) => ({ default: m.CalendarView })),
-  FinanceView: () => import('@/features/finance/FinanceView').then((m) => ({ default: m.FinanceView })),
-  FocusView: () => import('@/features/focus/FocusView').then((m) => ({ default: m.FocusView })),
-  HouseView: () => import('@/features/house/HouseView').then((m) => ({ default: m.HouseView })),
-  GoalsView: () => import('@/features/goals/GoalsView').then((m) => ({ default: m.GoalsView })),
-  HabitsView: () => import('@/features/habits/HabitsView').then((m) => ({ default: m.HabitsView })),
-  InboxView: () => import('@/features/Inbox').then((m) => ({ default: m.InboxView })),
-  LogbookView: () => import('@/features/Logbook').then((m) => ({ default: m.LogbookView })),
-  NotesView: () => import('@/features/notes/NotesView').then((m) => ({ default: m.NotesView })),
-  PlanView: () => import('@/features/plan/PlanView').then((m) => ({ default: m.PlanView })),
-  ShutdownView: () => import('@/features/plan/ShutdownView').then((m) => ({ default: m.ShutdownView })),
-  TrashView: () => import('@/features/trash/TrashView').then((m) => ({ default: m.TrashView })),
-  TemplatesView: () => import('@/features/templates/TemplatesView').then((m) => ({ default: m.TemplatesView })),
-  PeopleView: () => import('@/features/people/PeopleView').then((m) => ({ default: m.PeopleView })),
-  PersonView: () => import('@/features/people/PersonView').then((m) => ({ default: m.PersonView })),
-  ProjectView: () => import('@/features/projects/ProjectView').then((m) => ({ default: m.ProjectView })),
-  ProjectsView: () => import('@/features/projects/ProjectsView').then((m) => ({ default: m.ProjectsView })),
-  ReviewView: () => import('@/features/review/ReviewView').then((m) => ({ default: m.ReviewView })),
-  SettingsView: () => import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
-  TagView: () => import('@/features/TagView').then((m) => ({ default: m.TagView })),
-  TagsView: () => import('@/features/tags/TagsView').then((m) => ({ default: m.TagsView })),
-  MoreView: () => import('@/features/more/MoreView').then((m) => ({ default: m.MoreView })),
-  SomedayView: () => import('@/features/someday/SomedayView').then((m) => ({ default: m.SomedayView })),
-  MatrixView: () => import('@/features/matrix/MatrixView').then((m) => ({ default: m.MatrixView })),
-  SmartListsView: () => import('@/features/lists/SmartListsView').then((m) => ({ default: m.SmartListsView })),
-  SmartListView: () => import('@/features/lists/SmartListsView').then((m) => ({ default: m.SmartListView })),
-  UpcomingView: () => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView })),
-  ThingsView: () => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView })),
-  MenuView: () => import('@/features/menu/MenuView').then((m) => ({ default: m.MenuView })),
-  ExpensesView: () => import('@/features/expenses/ExpensesView').then((m) => ({ default: m.ExpensesView })),
-  JournalView: () => import('@/features/journal/JournalView').then((m) => ({ default: m.JournalView })),
-  ShoppingView: () => import('@/features/shopping/ShoppingView').then((m) => ({ default: m.ShoppingView })),
-  TrackersView: () => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView })),
-  MedsView: () => import('@/features/meds/MedsView').then((m) => ({ default: m.MedsView })),
-  WaitingView: () => import('@/features/waiting/WaitingView').then((m) => ({ default: m.WaitingView })),
-  RoutinesView: () => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView })),
+  AreaView: keep(() => import('@/features/areas/AreaView').then((m) => ({ default: m.AreaView }))),
+  CalendarView: keep(() => import('@/features/calendar/CalendarView').then((m) => ({ default: m.CalendarView }))),
+  FinanceView: keep(() => import('@/features/finance/FinanceView').then((m) => ({ default: m.FinanceView }))),
+  FocusView: keep(() => import('@/features/focus/FocusView').then((m) => ({ default: m.FocusView }))),
+  HouseView: keep(() => import('@/features/house/HouseView').then((m) => ({ default: m.HouseView }))),
+  GoalsView: keep(() => import('@/features/goals/GoalsView').then((m) => ({ default: m.GoalsView }))),
+  HabitsView: keep(() => import('@/features/habits/HabitsView').then((m) => ({ default: m.HabitsView }))),
+  InboxView: keep(() => import('@/features/Inbox').then((m) => ({ default: m.InboxView }))),
+  LogbookView: keep(() => import('@/features/Logbook').then((m) => ({ default: m.LogbookView }))),
+  NotesView: keep(() => import('@/features/notes/NotesView').then((m) => ({ default: m.NotesView }))),
+  PlanView: keep(() => import('@/features/plan/PlanView').then((m) => ({ default: m.PlanView }))),
+  ShutdownView: keep(() => import('@/features/plan/ShutdownView').then((m) => ({ default: m.ShutdownView }))),
+  TrashView: keep(() => import('@/features/trash/TrashView').then((m) => ({ default: m.TrashView }))),
+  TemplatesView: keep(() => import('@/features/templates/TemplatesView').then((m) => ({ default: m.TemplatesView }))),
+  PeopleView: keep(() => import('@/features/people/PeopleView').then((m) => ({ default: m.PeopleView }))),
+  PersonView: keep(() => import('@/features/people/PersonView').then((m) => ({ default: m.PersonView }))),
+  ProjectView: keep(() => import('@/features/projects/ProjectView').then((m) => ({ default: m.ProjectView }))),
+  ProjectsView: keep(() => import('@/features/projects/ProjectsView').then((m) => ({ default: m.ProjectsView }))),
+  ReviewView: keep(() => import('@/features/review/ReviewView').then((m) => ({ default: m.ReviewView }))),
+  SettingsView: keep(() => import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView }))),
+  TagView: keep(() => import('@/features/TagView').then((m) => ({ default: m.TagView }))),
+  TagsView: keep(() => import('@/features/tags/TagsView').then((m) => ({ default: m.TagsView }))),
+  MoreView: keep(() => import('@/features/more/MoreView').then((m) => ({ default: m.MoreView }))),
+  SomedayView: keep(() => import('@/features/someday/SomedayView').then((m) => ({ default: m.SomedayView }))),
+  MatrixView: keep(() => import('@/features/matrix/MatrixView').then((m) => ({ default: m.MatrixView }))),
+  SmartListsView: keep(() => import('@/features/lists/SmartListsView').then((m) => ({ default: m.SmartListsView }))),
+  SmartListView: keep(() => import('@/features/lists/SmartListsView').then((m) => ({ default: m.SmartListView }))),
+  UpcomingView: keep(() => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView }))),
+  ThingsView: keep(() => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView }))),
+  MenuView: keep(() => import('@/features/menu/MenuView').then((m) => ({ default: m.MenuView }))),
+  ExpensesView: keep(() => import('@/features/expenses/ExpensesView').then((m) => ({ default: m.ExpensesView }))),
+  JournalView: keep(() => import('@/features/journal/JournalView').then((m) => ({ default: m.JournalView }))),
+  ShoppingView: keep(() => import('@/features/shopping/ShoppingView').then((m) => ({ default: m.ShoppingView }))),
+  TrackersView: keep(() => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView }))),
+  MedsView: keep(() => import('@/features/meds/MedsView').then((m) => ({ default: m.MedsView }))),
+  WaitingView: keep(() => import('@/features/waiting/WaitingView').then((m) => ({ default: m.WaitingView }))),
+  RoutinesView: keep(() => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView }))),
 }
-const AreaView = lazy(loaders.AreaView), CalendarView = lazy(loaders.CalendarView), FinanceView = lazy(loaders.FinanceView), FocusView = lazy(loaders.FocusView), HouseView = lazy(loaders.HouseView), GoalsView = lazy(loaders.GoalsView), HabitsView = lazy(loaders.HabitsView), InboxView = lazy(loaders.InboxView), LogbookView = lazy(loaders.LogbookView), NotesView = lazy(loaders.NotesView), PlanView = lazy(loaders.PlanView), ShutdownView = lazy(loaders.ShutdownView), TrashView = lazy(loaders.TrashView), TemplatesView = lazy(loaders.TemplatesView), PeopleView = lazy(loaders.PeopleView), PersonView = lazy(loaders.PersonView), ProjectView = lazy(loaders.ProjectView), ProjectsView = lazy(loaders.ProjectsView), ReviewView = lazy(loaders.ReviewView), SettingsView = lazy(loaders.SettingsView), TagView = lazy(loaders.TagView), TagsView = lazy(loaders.TagsView), MoreView = lazy(loaders.MoreView), SomedayView = lazy(loaders.SomedayView), SmartListsView = lazy(loaders.SmartListsView), MatrixView = lazy(loaders.MatrixView), SmartListView = lazy(loaders.SmartListView), UpcomingView = lazy(loaders.UpcomingView), RoutinesView = lazy(loaders.RoutinesView), ThingsView = lazy(loaders.ThingsView), TrackersView = lazy(loaders.TrackersView), MedsView = lazy(loaders.MedsView), WaitingView = lazy(loaders.WaitingView), ShoppingView = lazy(loaders.ShoppingView), JournalView = lazy(loaders.JournalView), ExpensesView = lazy(loaders.ExpensesView), MenuView = lazy(loaders.MenuView)
+const AreaView = warm(loaders.AreaView), CalendarView = warm(loaders.CalendarView), FinanceView = warm(loaders.FinanceView), FocusView = warm(loaders.FocusView), HouseView = warm(loaders.HouseView), GoalsView = warm(loaders.GoalsView), HabitsView = warm(loaders.HabitsView), InboxView = warm(loaders.InboxView), LogbookView = warm(loaders.LogbookView), NotesView = warm(loaders.NotesView), PlanView = warm(loaders.PlanView), ShutdownView = warm(loaders.ShutdownView), TrashView = warm(loaders.TrashView), TemplatesView = warm(loaders.TemplatesView), PeopleView = warm(loaders.PeopleView), PersonView = warm(loaders.PersonView), ProjectView = warm(loaders.ProjectView), ProjectsView = warm(loaders.ProjectsView), ReviewView = warm(loaders.ReviewView), SettingsView = warm(loaders.SettingsView), TagView = warm(loaders.TagView), TagsView = warm(loaders.TagsView), MoreView = warm(loaders.MoreView), SomedayView = warm(loaders.SomedayView), SmartListsView = warm(loaders.SmartListsView), MatrixView = warm(loaders.MatrixView), SmartListView = warm(loaders.SmartListView), UpcomingView = warm(loaders.UpcomingView), RoutinesView = warm(loaders.RoutinesView), ThingsView = warm(loaders.ThingsView), TrackersView = warm(loaders.TrackersView), MedsView = warm(loaders.MedsView), WaitingView = warm(loaders.WaitingView), ShoppingView = warm(loaders.ShoppingView), JournalView = warm(loaders.JournalView), ExpensesView = warm(loaders.ExpensesView), MenuView = warm(loaders.MenuView)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
  * pintado: se cargan aparte y se montan la primera vez que se abren.
  */
 const panels = {
-  TaskDetailPanel: () => import('@/components/TaskDetail').then((m) => ({ default: m.TaskDetailPanel })),
-  CommandPalette: () => import('@/components/CommandPalette').then((m) => ({ default: m.CommandPalette })),
-  ShortcutsHelp: () => import('@/components/ShortcutsHelp').then((m) => ({ default: m.ShortcutsHelp })),
-  RecoveryModal: () => import('@/features/auth/RecoveryModal').then((m) => ({ default: m.RecoveryModal })),
-  FocusMode: () => import('@/features/focus/FocusMode').then((m) => ({ default: m.FocusMode })),
-  RoutineRunner: () => import('@/features/routines/RoutineRunner').then((m) => ({ default: m.RoutineRunner })),
-  WhatNow: () => import('@/features/whatnow/WhatNow').then((m) => ({ default: m.WhatNow })),
-  SelectionBar: () => import('@/features/select/SelectionBar').then((m) => ({ default: m.SelectionBar })),
-  AuthScreen: () => import('@/features/auth/AuthScreen').then((m) => ({ default: m.AuthScreen })),
-  NavEditor: () => import('./NavEditor').then((m) => ({ default: m.NavEditor })),
-  FeaturesSheet: () => import('@/features/settings/FeaturesSheet').then((m) => ({ default: m.FeaturesSheet })),
-  QuickAdd: () => import('@/components/QuickAdd').then((m) => ({ default: m.QuickAdd })),
+  TaskDetailPanel: keep(() => import('@/components/TaskDetail').then((m) => ({ default: m.TaskDetailPanel }))),
+  CommandPalette: keep(() => import('@/components/CommandPalette').then((m) => ({ default: m.CommandPalette }))),
+  ShortcutsHelp: keep(() => import('@/components/ShortcutsHelp').then((m) => ({ default: m.ShortcutsHelp }))),
+  RecoveryModal: keep(() => import('@/features/auth/RecoveryModal').then((m) => ({ default: m.RecoveryModal }))),
+  FocusMode: keep(() => import('@/features/focus/FocusMode').then((m) => ({ default: m.FocusMode }))),
+  RoutineRunner: keep(() => import('@/features/routines/RoutineRunner').then((m) => ({ default: m.RoutineRunner }))),
+  WhatNow: keep(() => import('@/features/whatnow/WhatNow').then((m) => ({ default: m.WhatNow }))),
+  SelectionBar: keep(() => import('@/features/select/SelectionBar').then((m) => ({ default: m.SelectionBar }))),
+  AuthScreen: keep(() => import('@/features/auth/AuthScreen').then((m) => ({ default: m.AuthScreen }))),
+  NavEditor: keep(() => import('./NavEditor').then((m) => ({ default: m.NavEditor }))),
+  FeaturesSheet: keep(() => import('@/features/settings/FeaturesSheet').then((m) => ({ default: m.FeaturesSheet }))),
+  QuickAdd: keep(() => import('@/components/QuickAdd').then((m) => ({ default: m.QuickAdd }))),
+  TaskContextMenu: keep(() => import('@/components/TaskContextMenu').then((m) => ({ default: m.TaskContextMenu }))),
 }
-const TaskDetailPanel = lazy(panels.TaskDetailPanel), CommandPalette = lazy(panels.CommandPalette), ShortcutsHelp = lazy(panels.ShortcutsHelp), RecoveryModal = lazy(panels.RecoveryModal), FocusMode = lazy(panels.FocusMode), RoutineRunner = lazy(panels.RoutineRunner), WhatNow = lazy(panels.WhatNow), SelectionBar = lazy(panels.SelectionBar), AuthScreen = lazy(panels.AuthScreen), NavEditor = lazy(panels.NavEditor), FeaturesSheet = lazy(panels.FeaturesSheet), QuickAdd = lazy(panels.QuickAdd)
+// Volver deslizando desde el borde: solo con el dedo (en el ordenador ni se carga)
+const EdgeBack = lazy(() => import('./EdgeBack').then((m) => ({ default: m.EdgeBack })))
+const touchScreen = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
+
+const TaskDetailPanel = warm(panels.TaskDetailPanel), CommandPalette = warm(panels.CommandPalette), ShortcutsHelp = warm(panels.ShortcutsHelp), RecoveryModal = warm(panels.RecoveryModal), FocusMode = warm(panels.FocusMode), RoutineRunner = warm(panels.RoutineRunner), WhatNow = warm(panels.WhatNow), SelectionBar = warm(panels.SelectionBar), AuthScreen = warm(panels.AuthScreen), NavEditor = warm(panels.NavEditor), FeaturesSheet = warm(panels.FeaturesSheet), QuickAdd = warm(panels.QuickAdd), TaskContextMenu = warm(panels.TaskContextMenu)
 
 /** Monta su contenido la primera vez que `when` es cierto y lo deja montado (para que se anime al cerrar) */
 function Deferred({ when, children }: { when: boolean; children: ReactNode }) {
@@ -99,12 +132,88 @@ function Deferred({ when, children }: { when: boolean; children: ReactNode }) {
   return on ? <Suspense fallback={null}>{children}</Suspense> : null
 }
 
-/** Precarga el resto de vistas y paneles cuando el navegador está libre */
+/** Qué código necesita cada pantalla (por la primera parte de la ruta) */
+const ROUTE_CODE: Record<string, () => Promise<unknown>> = {
+  inbox: loaders.InboxView,
+  upcoming: loaders.UpcomingView,
+  calendar: loaders.CalendarView,
+  habits: loaders.HabitsView,
+  routines: loaders.RoutinesView,
+  focus: loaders.FocusView,
+  house: loaders.HouseView,
+  things: loaders.ThingsView,
+  trackers: loaders.TrackersView,
+  meds: loaders.MedsView,
+  waiting: loaders.WaitingView,
+  shopping: loaders.ShoppingView,
+  journal: loaders.JournalView,
+  expenses: loaders.ExpensesView,
+  menu: loaders.MenuView,
+  notes: loaders.NotesView,
+  people: loaders.PeopleView,
+  projects: loaders.ProjectsView,
+  project: loaders.ProjectView,
+  area: loaders.AreaView,
+  tag: loaders.TagView,
+  tags: loaders.TagsView,
+  goals: loaders.GoalsView,
+  finance: loaders.FinanceView,
+  review: loaders.ReviewView,
+  plan: loaders.PlanView,
+  shutdown: loaders.ShutdownView,
+  logbook: loaders.LogbookView,
+  trash: loaders.TrashView,
+  templates: loaders.TemplatesView,
+  settings: loaders.SettingsView,
+  more: loaders.MoreView,
+  someday: loaders.SomedayView,
+  matrix: loaders.MatrixView,
+  lists: loaders.SmartListsView,
+  list: loaders.SmartListView,
+}
+
+/** Empieza a traer el código de una pantalla (al pasar por encima de su enlace o al tocarlo) */
+export function preloadRoute(path: string) {
+  const load = ROUTE_CODE[path.replace(/^#?\//, '').split('/')[0]]
+  if (load) void load()
+}
+
+type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+const idle = (cb: () => void) => {
+  const ric = (window as IdleWindow).requestIdleCallback
+  if (ric) ric(cb, { timeout: 1500 })
+  else setTimeout(cb, 300)
+}
+
+/**
+ * Precarga el resto cuando el navegador está libre: primero lo que más se
+ * abre (el detalle de una tarea, la captura, las pestañas y la barra
+ * lateral), y de una en una, para no frenar lo que estés haciendo.
+ */
 function preloadViews() {
-  const run = () => [...Object.values(panels), ...Object.values(loaders)].forEach((load) => void load())
-  const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback
-  if (idle) idle(run)
-  else setTimeout(run, 1500)
+  const first = [panels.TaskDetailPanel, panels.QuickAdd, panels.CommandPalette, loaders.InboxView, loaders.UpcomingView, loaders.CalendarView, loaders.HabitsView, loaders.ProjectsView, loaders.ProjectView, loaders.NotesView, loaders.MoreView]
+  const queue = [...new Set([...first, ...Object.values(panels), ...Object.values(loaders)])]
+  const next = () =>
+    idle(() => {
+      const load = queue.shift()
+      if (load) void load().finally(next)
+    })
+  // Un momento después del primer pintado, para que el arranque no lo note
+  setTimeout(next, 600)
+  // Y en cuanto se apunta a un enlace (o se toca), su pantalla, sin esperar a la cola
+  const intent = (e: Event) => {
+    const to = (e.target as Element | null)?.closest?.('a')?.getAttribute('href')
+    if (to?.startsWith('#/')) preloadRoute(to)
+  }
+  document.addEventListener('pointerover', intent, { passive: true })
+  document.addEventListener('pointerdown', intent, { passive: true })
+  document.addEventListener('focusin', intent)
+  return () => {
+    queue.length = 0
+    document.removeEventListener('pointerover', intent)
+    document.removeEventListener('pointerdown', intent)
+    document.removeEventListener('focusin', intent)
+  }
 }
 
 function Screen() {
@@ -193,44 +302,6 @@ function Screen() {
   }
 }
 
-const TITLES: Record<string, string> = {
-  today: 'Hoy',
-  inbox: 'Bandeja',
-  upcoming: 'Próximo',
-  calendar: 'Calendario',
-  habits: 'Hábitos',
-  routines: 'Rutinas',
-  focus: 'Foco',
-  house: 'Tareas de casa',
-  piso: 'Piso',
-  things: 'Cosas',
-  trackers: 'Última vez',
-  meds: 'Medicación',
-  waiting: 'A la espera',
-  shopping: 'Compra',
-  journal: 'Diario',
-  expenses: 'Gastos',
-  menu: 'Menú',
-  notes: 'Notas',
-  people: 'Personas',
-  projects: 'Proyectos',
-  tags: 'Etiquetas',
-  more: 'Más',
-  someday: 'Algún día',
-  lists: 'Listas inteligentes',
-  matrix: 'Matriz',
-  list: 'Lista inteligente',
-  tag: 'Etiqueta',
-  goals: 'Objetivos',
-  finance: 'Pagos',
-  review: 'Revisión',
-  plan: 'Planificar el día',
-  shutdown: 'Cerrar el día',
-  logbook: 'Completadas',
-  trash: 'Papelera',
-  templates: 'Plantillas',
-  settings: 'Ajustes',
-}
 
 // El enlace del piso compartido: lo abren tus compañeros, sin cuenta (ni barra lateral)
 const GuestHouse = lazy(() => import('@/features/house/GuestHouse').then((m) => ({ default: m.GuestHouse })))
@@ -406,6 +477,11 @@ function Workspace() {
         </motion.div>
       </main>
       <MobileBar />
+      {touchScreen && (
+        <Suspense fallback={null}>
+          <EdgeBack />
+        </Suspense>
+      )}
       <Panels />
       <DragGhost />
       <Toast />
@@ -420,6 +496,7 @@ function Panels() {
   const navEditor = useUI((s) => !!s.navEditor)
   const featuresOpen = useUI((s) => s.featuresOpen)
   const quickAdd = useUI((s) => s.quickAdd.open)
+  const taskMenuOpen = !!useTaskMenu()
   const { recovery } = useSync()
   const focusing = !!useFocus()
   const routine = !!useRunner()
@@ -462,6 +539,9 @@ function Panels() {
       </Deferred>
       <Deferred when={quickAdd}>
         <QuickAdd />
+      </Deferred>
+      <Deferred when={taskMenuOpen}>
+        <TaskContextMenu />
       </Deferred>
     </>
   )

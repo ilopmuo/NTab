@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { inViewTransition } from '@/app/router'
+import { pageTop } from '@/app/pageTop'
 import { AnimatePresence, m as motion, useDragControls, useMotionValue, useTransform, type PanInfo } from 'motion/react'
 import { ChevronDown, X } from 'lucide-react'
 
@@ -368,15 +369,79 @@ export function Modal({
   )
 }
 
+/** ¿Hay algo desplazado por encima del dedo (una lista dentro de la hoja) entre el toque y la hoja? */
+function scrolledAbove(target: EventTarget | null, sheet: HTMLElement) {
+  for (let el = target as HTMLElement | null; el && el !== sheet; el = el.parentElement) {
+    if (el.scrollTop > 0) return true
+    if (el.matches('input[type=range], [data-no-sheet-drag]')) return true
+  }
+  return false
+}
+
 function Sheet({ children, onClose, className }: { children: ReactNode; onClose: () => void; className?: string }) {
   const y = useMotionValue(0)
   const opacity = useTransform(y, [0, 300], [1, 0.6])
   const controls = useDragControls()
+  const ref = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 120 || info.velocity.y > 600) onClose()
   }
+  // Como en iOS: arriba del todo, tirar hacia abajo desde cualquier parte de la
+  // hoja (no solo del asa) la baja con el dedo, y al soltar se cierra o vuelve
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let start: { x: number; y: number } | null = null
+    let dragging = false
+    let last = { y: 0, t: 0 }
+    let speed = 0
+    const onStart = (e: TouchEvent) => {
+      dragging = false
+      const t = e.touches[0]
+      start = e.touches.length === 1 && el.scrollTop <= 0 && !scrolledAbove(e.target, el) ? { x: t.clientX, y: t.clientY } : null
+    }
+    const onMove = (e: TouchEvent) => {
+      if (!start) return
+      const t = e.touches[0]
+      const dy = t.clientY - start.y
+      if (!dragging) {
+        const dx = t.clientX - start.x
+        // Hacia arriba o de lado es desplazarse por la hoja, como siempre
+        if (dy < -4 || Math.abs(dx) > Math.abs(dy)) return void (start = null)
+        if (dy < 8) return
+        dragging = true
+        last = { y: t.clientY, t: e.timeStamp }
+      }
+      e.preventDefault()
+      speed = (t.clientY - last.y) / Math.max(1, e.timeStamp - last.t)
+      last = { y: t.clientY, t: e.timeStamp }
+      y.set(Math.max(0, dy - 8))
+    }
+    const onEnd = () => {
+      if (dragging) {
+        if (y.get() > 120 || speed > 0.6) closeRef.current()
+        // Si no, vuelve a su sitio con un muelle (lo pesado de Motion ya está cargado al tener la hoja abierta)
+        else void import('@/lib/motionFeatures').then((m) => m.animate(y, 0, { type: 'spring', stiffness: 420, damping: 40 }))
+      }
+      start = null
+      dragging = false
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    el.addEventListener('touchcancel', onEnd)
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+    }
+  }, [y])
   return (
     <motion.div
+      ref={ref}
       role="dialog"
       aria-modal="true"
       initial={{ y: '100%' }}
@@ -478,6 +543,7 @@ export function Section({
   children,
   tone,
   className,
+  sticky,
 }: {
   title: ReactNode
   count?: number
@@ -485,10 +551,12 @@ export function Section({
   children: ReactNode
   tone?: string
   className?: string
+  /** la cabecera se queda arriba al bajar por el bloque */
+  sticky?: boolean
 }) {
   return (
     <section className={cx('mb-8', className)}>
-      <div className="mb-2 flex min-h-8 items-center gap-2 px-1">
+      <div className={cx('mb-2 flex min-h-8 items-center gap-2 px-1', sticky && 'sticky-head -mx-2 px-3 py-1')}>
         <h2 className="text-[19px] font-bold tracking-tight" style={{ color: tone ? TONES[tone] : undefined }}>
           {title}
         </h2>
@@ -611,16 +679,6 @@ export function PageHeader({
   // Dentro de una View Transition el navegador ya anima el cambio: sin entrada propia
   const vt = inViewTransition()
   const ref = useRef<HTMLDivElement>(null)
-  const [compact, setCompact] = useState(false)
-  const slot = typeof document !== 'undefined' ? document.getElementById('topbar') : null
-  useEffect(() => {
-    const el = ref.current
-    const root = document.getElementById('main')
-    if (!el || !root) return
-    const io = new IntersectionObserver(([e]) => setCompact(!e.isIntersecting), { root, rootMargin: '-60px 0px 0px 0px' })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
   return (
     <>
       {/* Si no caben título y botones, los botones bajan a otra línea (en vez de cortar el título) */}
@@ -666,32 +724,48 @@ export function PageHeader({
         </div>
         {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
       </header>
-      {slot &&
-        createPortal(
-          <AnimatePresence>
-            {compact && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="glass-bar edge-soft pointer-events-auto flex h-13 items-center justify-center px-14"
-              >
-                <motion.span
-                  initial={{ y: 6 }}
-                  animate={{ y: 0 }}
-                  transition={spring}
-                  className="truncate text-[16px] font-semibold"
-                >
-                  {title}
-                </motion.span>
-                {actions && <div className="absolute right-4 flex items-center gap-1">{actions}</div>}
-              </motion.div>
-            )}
-          </AnimatePresence>,
-          slot,
-        )}
+      <CompactBar target={ref} title={title} actions={actions} />
     </>
+  )
+}
+
+/**
+ * La barra de arriba con el título pequeño (y «‹ Atrás» dentro de algo), que
+ * aparece cuando el título grande (`target`) sale por arriba al hacer scroll.
+ */
+export function CompactBar({ target, title, actions }: { target: React.RefObject<HTMLElement | null>; title: ReactNode; actions?: ReactNode }) {
+  const [compact, setCompact] = useState(false)
+  const slot = typeof document !== 'undefined' ? document.getElementById('topbar') : null
+  const Back = pageTop.Back
+  useEffect(() => {
+    const el = target.current
+    const root = document.getElementById('main')
+    if (!el || !root) return
+    const io = new IntersectionObserver(([e]) => setCompact(!e.isIntersecting), { root, rootMargin: '-60px 0px 0px 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [target])
+  if (!slot) return null
+  return createPortal(
+    <AnimatePresence>
+      {compact && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="glass-bar edge-soft pointer-events-auto flex h-13 items-center justify-center px-14"
+        >
+          {/* Dentro de algo, «‹ Atrás» también aquí, como en la barra de navegación de iOS */}
+          {Back && <Back compact className="absolute left-1.5" />}
+          <motion.span initial={{ y: 6 }} animate={{ y: 0 }} transition={spring} className="truncate text-[16px] font-semibold">
+            {title}
+          </motion.span>
+          {actions && <div className="absolute right-4 flex items-center gap-1">{actions}</div>}
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    slot,
   )
 }
 

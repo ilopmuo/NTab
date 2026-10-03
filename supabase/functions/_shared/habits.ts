@@ -169,6 +169,17 @@ function firstDay(h: Pick<HabitLike, 'createdAt'>, done: Set<string>, ref: strin
 }
 
 /**
+ * Primer día con algo registrado. Antes de él, la fuerza y las rachas valen 0
+ * pase lo que pase, así que se empieza a contar ahí (y no en la fecha de
+ * creación, que puede quedar años atrás): mismo resultado, mucho menos trabajo.
+ */
+function firstLogged(days: Iterable<string>, ref: string) {
+  let first: string | undefined
+  for (const d of days) if (d <= ref && (!first || d < first)) first = d
+  return first
+}
+
+/**
  * Fuerza del hábito (como en Loop Habit Tracker): media con más peso para lo
  * reciente, de 0 a 1. Cada vez que toca y se hace sube; si no, baja un poco;
  * un fallo suelto tras una buena racha no lo tira abajo. Con cantidad, cuenta
@@ -176,7 +187,8 @@ function firstDay(h: Pick<HabitLike, 'createdAt'>, done: Set<string>, ref: strin
  */
 export function strength(h: HabitRule & Pick<HabitLike, 'createdAt'>, counts: Map<string, number> | undefined, ref: string): number {
   const done = doneDays(h, counts)
-  const since = firstDay(h, done, ref)
+  const since = firstLogged([...(counts ?? new Map<string, number>())].filter(([, c]) => c > 0).map(([d]) => d), ref)
+  if (!since) return 0
   const n = perWeekOf(h)
   let score = 0
   if (n) {
@@ -204,7 +216,8 @@ export function strength(h: HabitRule & Pick<HabitLike, 'createdAt'>, counts: Ma
 
 /** La racha más larga hasta `ref` (en días o, con «N veces por semana», en semanas) */
 export function bestStreak(h: HabitRule & Pick<HabitLike, 'createdAt'>, done: Set<string>, ref: string): number {
-  const since = firstDay(h, done, ref)
+  const since = firstLogged(done, ref)
+  if (!since) return 0
   const n = perWeekOf(h)
   let best = 0
   let run = 0

@@ -417,6 +417,15 @@
   }
 }
 
+/* Cabecera de un bloque que se queda arriba al bajar (los días de Próximo, como
+   en Recordatorios): justo debajo de la barra compacta, sobre el fondo de la página */
+@utility sticky-head {
+  position: sticky;
+  top: calc(env(safe-area-inset-top) + 52px);
+  z-index: 6;
+  background-color: var(--c-bg);
+}
+
 /* Filas de listas largas: fuera de la pantalla, el navegador no las maqueta ni las pinta */
 @utility row-lazy {
   content-visibility: auto;
@@ -565,6 +574,81 @@
     transform: translateY(10px);
   }
 }
+/* Hacia dentro y hacia fuera (ver directionOf en app/router.ts), como en iOS:
+   al entrar, la pantalla nueva llega desde la derecha con su sombra y la de
+   detrás se aparta un poco y se apaga; al volver, al revés. En el ordenador,
+   el mismo gesto en pequeño (un desplazamiento corto y un fundido). */
+html[data-nav='push']::view-transition-old(root) {
+  animation: 0.44s cubic-bezier(0.32, 0.72, 0, 1) both vt-push-old;
+}
+html[data-nav='push']::view-transition-new(root) {
+  animation: 0.44s cubic-bezier(0.32, 0.72, 0, 1) both vt-push-new;
+  box-shadow: -10px 0 30px rgb(0 0 0 / 0.22);
+}
+html[data-nav='pop']::view-transition-old(root) {
+  z-index: 2;
+  animation: 0.4s cubic-bezier(0.32, 0.72, 0, 1) both vt-pop-old;
+  box-shadow: -10px 0 30px rgb(0 0 0 / 0.22);
+}
+html[data-nav='pop']::view-transition-new(root) {
+  animation: 0.4s cubic-bezier(0.32, 0.72, 0, 1) both vt-pop-new;
+}
+@keyframes vt-push-old {
+  to {
+    transform: translateX(-28%);
+    opacity: 0.45;
+  }
+}
+@keyframes vt-push-new {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-pop-old {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-pop-new {
+  from {
+    transform: translateX(-28%);
+    opacity: 0.45;
+  }
+}
+@media (min-width: 1024px) {
+  html[data-nav='push']::view-transition-old(root),
+  html[data-nav='pop']::view-transition-old(root) {
+    animation: 0.18s ease-out both vt-fade-out;
+    box-shadow: none;
+  }
+  html[data-nav='push']::view-transition-new(root) {
+    animation: 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) 0.04s both vt-in-right;
+    box-shadow: none;
+  }
+  html[data-nav='pop']::view-transition-new(root) {
+    animation: 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) 0.04s both vt-in-left;
+  }
+}
+@keyframes vt-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+@keyframes vt-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+/* En el móvil, entrar y salir mueve la pantalla entera: el título y lo demás van con ella */
+@media (max-width: 1023px) {
+  html[data-nav='push'] main [style*='view-transition-name'],
+  html[data-nav='pop'] main [style*='view-transition-name'] {
+    view-transition-name: none !important;
+  }
+}
+
 /* Al cambiar de tema o de color, todo es una sola imagen (el revelado circular la necesita entera) */
 .vt-whole * {
   view-transition-name: none !important;

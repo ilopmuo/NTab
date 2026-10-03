@@ -70,6 +70,13 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Avisos | Cápsula con una barra del tiempo que queda para deshacer; se aparta deslizándola |
 | Pantalla que aún no ha llegado | Su esqueleto (título, subtítulo y un bloque con filas) aparece tras 0,18 s, para que lo rápido no parpadee, y late suave mientras espera |
 | Volver atrás | La pantalla vuelve a donde la dejaste (como en iOS); ir a ella de nuevo la abre arriba |
+| Entrar y salir | Abrir algo desde otra pantalla (un proyecto, una persona, una etiqueta, una nota en el móvil) desliza la nueva desde la derecha, con su sombra, sobre la anterior, que se aparta un 28 % y se apaga; volver (botón, gesto o historial) la retira por la derecha. En el ordenador, lo mismo en pequeño: 28 px y un fundido. Entre pantallas del mismo nivel (pestañas, barra lateral), el fundido de siempre (`directionOf` en `app/router.ts`) |
+| «‹ Atrás» | Encima del título (y en la barra compacta al bajar), en el acento, con el nombre de la pantalla de la que vienes; si llegaste directamente, la de arriba (el área de un proyecto, Personas, Etiquetas…). Las pantallas de la barra no lo tienen |
+| Deslizar desde el borde | Solo con el dedo, en la app instalada (Safari ya lo hace solo) y dentro de algo: la pantalla sigue al dedo con su sombra; debajo asoma la de detrás (su título y un esqueleto) desplazándose más despacio y aclarándose. Pasado un 35 % del ancho (toque háptico) o con un gesto rápido, vuelve; si no, regresa con el muelle |
+| Menú de una tarea | Pulsación larga (0,45 s, toque háptico): el fondo se difumina, la fila se levanta un 3 % con sombra (y sube lo justo si el menú no cabe debajo) y el menú crece desde ella. Opciones como en iOS: el texto a la izquierda y el icono a la derecha, grupos separados por una franja. Con el ratón (clic derecho), el menú sale en el puntero sin levantar la fila. En las filas que se arrastran a otro día, mantener y soltar sin mover abre el menú |
+| Hojas | Arriba del todo, tirar hacia abajo desde cualquier parte de la hoja (no solo del asa) la baja con el dedo; al soltar pasados 120 px, o rápido, se cierra |
+| Cabeceras de día | En Próximo y Completadas, el día (o «Atrasadas») se queda arriba, justo bajo la barra compacta, mientras se ven sus tareas, como en Recordatorios |
+| ⌘K | Lo buscado, en negrita en cada resultado; los grupos dicen «12 de 111» cuando hay más |
 | Barra de pestañas | Al bajar por una pantalla se recoge en un círculo con la pestaña en la que estás (y el botón de crear al otro lado); al subir vuelve entera, como en iOS 26 |
 | Foco minimizado | Accesorio inferior, como el mini reproductor de Música: una cápsula sobre la barra de pestañas (en la esquina en el ordenador) con un anillo en el acento que se llena, el título, el tiempo y un botón de pausa |
 | Barra superior compacta | Sin línea: se desvanece hacia abajo (borde de desplazamiento suave de iOS 26) |
@@ -106,6 +113,11 @@ La app tiene que ir igual de suave con 3.000 tareas en un móvil normal. Reglas 
 - **Animaciones solo donde se ven**: la entrada escalonada, para las 12 primeras filas; la recolocación animada (`layout`), solo en listas de hasta 60 y con `layoutDependency` (si no, Motion vuelve a medir toda la pantalla en cada render); el fondo de deslizar una tarea, solo mientras se desliza; nada de `layout` en lo que cambia al escribir.
 - **Cristal sin coste**: los bloques de la página y las hojas son casi opacos, así que no llevan `backdrop-filter` (no se notaba y obligaba a desenfocar listas enteras); el desenfoque queda para la barra superior (`glass-bar`, translúcida de verdad) y el velo bajo las hojas.
 - **Nada de leer el scroll en cada evento**: una lectura por fotograma (`requestAnimationFrame`).
+- **Pantallas listas antes de tocarlas**: se precargan de una en una cuando el navegador está libre, primero lo más usado (detalle, captura, ⌘K, Bandeja, Próximo, Calendario…), y al pasar por encima de un enlace o tocarlo se pide ya la suya (como Linear). Las que ya llegaron se pintan directamente (`warm` en `App.tsx`): con `lazy`, React suspendía igualmente y tardaba ~300 ms en enseñar algo que ya tenía.
+- **Lo que se lee en todas partes, en memoria**: áreas, proyectos, personas y las tareas pendientes (`useOpenTasks`) se mantienen al día solas; volver a Hoy o a la Bandeja no espera a IndexedDB.
+- **El primer fotograma, ligero**: cada lista pinta 20 filas al abrir (el resto llega en segundo plano) y la recolocación animada de filas se enciende un momento después (medirlas al montarlas costaba casi un cuarto del pintado). Medir el ancho de una fila al tocarla, solo si de verdad se desliza.
+- **Buscar sin recorrer todo en cada tecla**: ⌘K guarda el texto de cada cosa ya sin acentos y en palabras; cada tecla solo compara y pinta los mejores de cada grupo (12 tareas, 6 de lo demás).
+- **Cálculos que no empiezan antes de tiempo**: la fuerza y la mejor racha de un hábito se cuentan desde su primer registro (antes de él suman 0), no desde que se creó.
 
 ## 6. Navegación y accesibilidad
 

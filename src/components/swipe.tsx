@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useMotionValue, type MotionValue } from 'motion/react'
 import { haptic } from '@/lib/haptics'
+import { taskMenu } from './taskMenu'
 
 /**
  * Deslizar una fila con el dedo (solo en pantallas táctiles), como en
@@ -32,7 +33,9 @@ export function useSwipe({ right, left, disabled }: { right?: SwipeSide; left?: 
     if (disabled || e.pointerType === 'mouse' || (!right && !left)) return
     if ((e.target as HTMLElement).closest('[role=checkbox], a, input, textarea, select')) return
     const el = e.currentTarget
-    const width = el.getBoundingClientRect().width
+    // El ancho se mide al empezar a deslizar, no al tocar: leerlo obliga a
+    // maquetar la página y un simple toque (abrir la tarea) no lo necesita
+    let width = 0
     const sx = e.clientX
     const sy = e.clientY
     let mode: 'pending' | 'swipe' | 'off' = 'pending'
@@ -42,9 +45,12 @@ export function useSwipe({ right, left, disabled }: { right?: SwipeSide; left?: 
       const dx = ev.clientX - sx
       const dy = ev.clientY - sy
       if (mode === 'pending') {
+        // Si la pulsación larga ya abrió el menú, mover el dedo no desliza la fila
+        if (taskMenu.isOpen()) return void (mode = 'off')
         if (Math.abs(dy) > START && Math.abs(dy) > Math.abs(dx)) return void (mode = 'off')
         if (Math.abs(dx) < START || Math.abs(dx) < Math.abs(dy) * 1.4) return
         mode = 'swipe'
+        width = el.getBoundingClientRect().width
         swiped.current = true
         setActive(true)
       }

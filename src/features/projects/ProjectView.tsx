@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, m as motion } from 'motion/react'
 import { Check, CheckCircle2, ChevronRight, ClipboardList, Columns3, FileText, List, MoreHorizontal, Pause, Pencil, Pin, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
@@ -15,7 +15,7 @@ import { TaskList } from '@/components/TaskList'
 import { Menu } from '@/components/Menu'
 import { ProjectTasks } from './ProjectTasks'
 import { ProjectBoard } from './ProjectBoard'
-import { Button, Empty, Group, Modal, ModalHeader, ProgressRing, Section, Segmented, cx, softSpring } from '@/components/ui'
+import { Button, CompactBar, Empty, Group, Modal, ModalHeader, ProgressRing, Section, Segmented, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 import { ProjectForm } from './ProjectForm'
 import { toastTrashed } from '../trash/undo'
@@ -38,6 +38,7 @@ export function ProjectView({ id }: { id: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showDone, setShowDone] = useState(false)
   const pins = usePins()
+  const titleRef = useRef<HTMLDivElement>(null)
 
   if (project === undefined || !tasks) return null
   if (project === null) return <Page><Empty icon={<FileText size={28} />} title="Proyecto no encontrado" /></Page>
@@ -71,7 +72,7 @@ export function ProjectView({ id }: { id: string }) {
             )}
           </div>
         )}
-        <div className="flex items-center gap-4">
+        <div ref={titleRef} className="flex items-center gap-4">
           <div className="relative shrink-0" style={{ viewTransitionName: vtName('proj-ring', project.id) }}>
             <ProgressRing value={progress} size={64} stroke={7} color={progress === 1 ? 'var(--c-green)' : 'var(--c-blue)'} track="var(--c-fill)" />
             <span className="font-num absolute inset-0 flex items-center justify-center text-[15px] font-bold">
@@ -101,6 +102,7 @@ export function ProjectView({ id }: { id: string }) {
             </p>
           </div>
         </div>
+        <CompactBar target={titleRef} title={project.name} />
         {project.description && <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted">{project.description}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {project.status === 'done' || project.status === 'paused' ? (

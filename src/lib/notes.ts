@@ -20,7 +20,9 @@ export function groupNotes<T extends { pinned?: number | boolean; updatedAt: num
   const groups = new Map<string, T[]>()
   for (const n of notes.filter((x) => !x.pinned)) {
     const title = noteGroup(n.updatedAt, ref)
-    groups.set(title, [...(groups.get(title) ?? []), n])
+    const list = groups.get(title)
+    if (list) list.push(n)
+    else groups.set(title, [n])
   }
   return [...(pinned.length ? [{ title: 'Fijadas', items: pinned }] : []), ...[...groups].map(([title, items]) => ({ title, items }))]
 }
