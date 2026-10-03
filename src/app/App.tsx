@@ -8,7 +8,7 @@ import { useWhatNowOpen } from '@/features/whatnow/store'
 import { runner, useRunner } from '@/features/routines/useRoutines'
 import { Toast } from '@/components/Toast'
 import { cx } from '@/components/ui'
-import { inViewTransition, navigate, useRoute } from './router'
+import { inViewTransition, navigate, placeScroll, useRoute } from './router'
 import { useGlobalShortcuts } from './shortcuts'
 import { Sidebar } from './Sidebar'
 import { announce } from './announce'
@@ -353,7 +353,7 @@ function Workspace() {
     const title = TITLES[parts[0]] ?? 'LUNO'
     document.title = `${title} · LUNO`
     const main = document.getElementById('main')
-    main?.scrollTo({ top: 0 })
+    placeScroll(`/${parts.join('/')}`)
     // Para quien navega con teclado o lector de pantalla: se anuncia la pantalla
     // y, si venía de la barra lateral o de las pestañas, el foco pasa al contenido
     if (!firstRender.current) {
@@ -393,13 +393,13 @@ function Workspace() {
         <motion.div
           key={screenKey}
           // Con View Transition, la transición ya la hace el navegador
-          initial={inViewTransition() ? false : { opacity: 0, y: 10, filter: 'blur(6px)' }}
-          // Al terminar se quita el filtro: si se queda, el cristal de las tarjetas
-          // no puede difuminar el fondo ambiental (el filtro crea una "raíz de fondo")
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+          // Sin desenfoque: difuminar la página entera en cada cambio costaba mucho
+          initial={inViewTransition() ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 30, mass: 0.8 }}
-          className={cx('min-h-full', screenKey === 'notes' && 'h-full')}
+          className={cx('screen min-h-full', screenKey === 'notes' && 'h-full')}
         >
+          {/* Mientras llega (el código o los datos), la pantalla está vacía y se ve su esqueleto (ver .screen en index.css) */}
           <Suspense fallback={null}>
             <Screen />
           </Suspense>

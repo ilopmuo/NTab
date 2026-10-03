@@ -7,6 +7,7 @@ import { TaskList } from '@/components/TaskList'
 import { Empty, Group, PageHeader, Section } from '@/components/ui'
 import { Page } from './Page'
 import { WeekStatsCard } from './WeekStatsCard'
+import { Progressive } from '@/components/Progressive'
 
 export function LogbookView() {
   const done = useLiveQuery(() => db.tasks.where('completedAt').above(0).reverse().limit(300).toArray(), [])
@@ -26,11 +27,15 @@ export function LogbookView() {
           <Empty icon={<Archive size={28} strokeWidth={2.2} />} title="Aún nada completado" hint="Cuando completes tareas, aparecerán aquí." />
         </Group>
       )}
-      {[...groups].map(([day, list]) => (
-        <Section key={day} title={dateLabel(day)} count={list.length} tone="green">
-          <TaskList tasks={list} sort={false} />
-        </Section>
-      ))}
+      <Progressive
+        items={[...groups]}
+        weight={([, list]) => list.length}
+        render={([day, list]) => (
+          <Section key={day} title={dateLabel(day)} count={list.length} tone="green">
+            <TaskList tasks={list} sort={false} />
+          </Section>
+        )}
+      />
     </Page>
   )
 }

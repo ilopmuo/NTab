@@ -10,6 +10,7 @@ import { today } from '@/lib/dates'
 import { TaskItem } from './TaskItem'
 import { useListOrder } from './ManualOrder'
 import { Group, cx } from './ui'
+import { useProgressive } from './Progressive'
 
 // Lo entendido al escribir (fecha, etiquetas…), solo al escribir
 const ParsedChips = lazy(() => import('./ParsedChips').then((m) => ({ default: m.ParsedChips })))
@@ -57,7 +58,12 @@ export function TaskList({
 }) {
   const lookup = useLookup()
   const manual = useListOrder(orderKey)
-  const list = useMemo(() => (manual && orderKey ? [...tasks].sort(sortManual(orderKey)) : sort ? [...tasks].sort(sortTasks) : tasks), [tasks, sort, manual, orderKey])
+  const all = useMemo(() => (manual && orderKey ? [...tasks].sort(sortManual(orderKey)) : sort ? [...tasks].sort(sortTasks) : tasks), [tasks, sort, manual, orderKey])
+  // Las listas largas, por tramos (ordenar a mano necesita todas)
+  const { limit, sentinel } = useProgressive(manual ? 0 : all.length)
+  const list = manual ? all : all.slice(0, limit)
+  // Recolocar con animación mide todas las filas: solo en listas cortas
+  const animateLayout = all.length <= 60
   if (!list.length && !add && !empty) return null
 
   const rows = (
@@ -71,18 +77,22 @@ export function TaskList({
           {list.map((t, i) => (
             <motion.div
               key={t.id}
-              layout="position"
-              initial={{ opacity: 0, y: 8 }}
+              layout={animateLayout ? 'position' : undefined}
+              // Solo se mide de nuevo si cambia de sitio (no en cada render)
+              layoutDependency={i}
+              // Entran escalonadas solo las primeras (las de más abajo ni se ven)
+              initial={i < 12 ? { opacity: 0, y: 8 } : false}
               animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 32, delay: Math.min(i, 12) * 0.03 } }}
               // Recorta solo al plegarse; si no, las chispas de la casilla saldrían cortadas
               exit={{ opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
-              className={cx(rowSeparator, isFresh(t) && 'just-added')}
+              className={cx(rowSeparator, 'row-lazy', isFresh(t) && 'just-added')}
             >
               <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} hideImportant={hideImportant} compact={compact} draggable={draggable} />
             </motion.div>
           ))}
         </AnimatePresence>
       )}
+      {sentinel}
       {!list.length && empty}
       {add && (
         <div className={cx(list.length > 0 && 'shadow-[inset_0_1px_0_var(--c-border)]')}>

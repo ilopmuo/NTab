@@ -33,7 +33,7 @@ export function Agenda({ tasks, events = [], names = {} }: { tasks: Task[]; even
   const markerAt = nowIndex === -1 ? timed.length : nowIndex
 
   const marker = (
-    <motion.div key="now" layout className="flex items-center gap-2 py-1">
+    <motion.div key="now" layout layoutDependency={markerAt} className="flex items-center gap-2 py-1">
       <span className="font-num w-11 text-right text-[12px] font-bold text-blue">{now}</span>
       <span className="relative h-2.5 w-2.5 rounded-full bg-blue">
         <span className="absolute inset-0 animate-ping rounded-full bg-blue opacity-60" />

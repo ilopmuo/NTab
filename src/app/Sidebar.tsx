@@ -80,7 +80,7 @@ function Row({
         active ? 'font-semibold text-fg' : 'text-fg/90 hover:bg-hover',
       )}
     >
-      {active && <motion.span layoutId="nav-pill" transition={spring} className="absolute inset-0 rounded-[10px] bg-fill" />}
+      {active && <motion.span layoutId="nav-pill" layoutDependency={active} transition={spring} className="absolute inset-0 rounded-[10px] bg-fill" />}
       <span className="relative flex w-6 shrink-0 justify-center">{icon}</span>
       <span className="relative min-w-0 flex-1 truncate">{label}</span>
       {!!count && (

@@ -18,16 +18,25 @@ function useMinimized(path: string) {
     const el = document.getElementById('main')
     if (!el) return
     let last = el.scrollTop
+    let frame = 0
+    // Una lectura por fotograma (leer el scroll en cada evento obliga a maquetar a mitad de scroll)
     const onScroll = () => {
-      const y = el.scrollTop
-      const d = y - last
-      if (y < 60) setMini(false)
-      else if (d > 8) setMini(true)
-      else if (d < -8) setMini(false)
-      if (Math.abs(d) > 8) last = y
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const y = el.scrollTop
+        const d = y - last
+        if (y < 60) setMini(false)
+        else if (d > 8) setMini(true)
+        else if (d < -8) setMini(false)
+        if (Math.abs(d) > 8) last = y
+      })
     }
     el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
   }, [path])
   return mini
 }
@@ -60,7 +69,7 @@ export function MobileBar() {
         initial={false}
         animate={{ height: mini ? 50 : 62 }}
         transition={barSpring}
-        className={cx('glass-thick pointer-events-auto flex items-center rounded-full', mini ? 'flex-none px-[5px]' : 'flex-1 px-1.5')}
+        className={cx('glass-thick pointer-events-auto flex items-center rounded-full', mini ? 'flex-none px-[5px]' : 'flex-1 px-1')}
       >
         {items.map((t) => {
           const hidden = mini && !t.on
@@ -75,13 +84,14 @@ export function MobileBar() {
               animate={{ opacity: hidden ? 0 : 1, maxWidth: hidden ? 0 : mini ? 40 : 160, minWidth: hidden ? 0 : 40 }}
               transition={barSpring}
               className={cx(
-                'relative flex flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-full transition-[height] duration-300 active:scale-95',
-                mini ? 'h-[40px]' : 'h-[52px]',
+                'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-0.5 transition-[height] duration-300 active:scale-95',
+                // Recortar solo al encogerse (si no, las esquinas cortaban «Calendario»)
+                mini ? 'h-[40px] overflow-hidden' : 'h-[52px]',
                 hidden && 'pointer-events-none',
               )}
               style={{ color: t.on ? t.color : 'var(--c-text)' }}
             >
-              {t.on && <motion.span layoutId="tab-pill" transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
+              {t.on && <motion.span layoutId="tab-pill" layoutDependency={t.on} transition={spring} className="absolute inset-0 rounded-full bg-fill" />}
               {/* Al elegirla, el icono da un saltito (como los SF Symbols) */}
               <motion.span
                 className="relative"
@@ -136,7 +146,8 @@ function Label({ mini, children }: { mini: boolean; children: React.ReactNode })
       initial={false}
       animate={{ opacity: mini ? 0 : 1, height: mini ? 0 : 'auto', scale: mini ? 0.8 : 1 }}
       transition={barSpring}
-      className="relative overflow-hidden text-[10px] font-semibold"
+      // Sin cortar «Calendario» en un iPhone estrecho
+      className="relative overflow-hidden text-[10px] font-semibold tracking-[-0.02em] whitespace-nowrap"
     >
       {children}
     </motion.span>

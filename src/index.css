@@ -365,14 +365,67 @@
 }
 
 /* Material translúcido (cristal) */
+/* Bloques de la página: el material es casi opaco, así que sin desenfoque (no se
+   notaba y obligaba a desenfocar listas enteras al pintar y al hacer scroll).
+   Lo flotante (hojas, barras, avisos, menús) usa glass-thick y glass-bar. */
 @utility glass {
   background: var(--c-material);
-  backdrop-filter: blur(40px) saturate(180%);
   box-shadow: var(--c-shadow), inset 0 1px 0 var(--c-highlight);
 }
+/* Esqueleto de una pantalla que aún no ha llegado (código o datos): el título,
+   el subtítulo y un bloque con filas. Sale tras un instante, para que lo rápido
+   no parpadee, y late suave mientras espera. */
+.screen:empty::before,
+.screen:empty::after {
+  content: '';
+  display: block;
+  opacity: 0;
+  animation:
+    skeleton-in 0.25s ease 0.18s forwards,
+    skeleton-pulse 1.6s ease-in-out 0.45s infinite;
+}
+.screen:empty::before {
+  width: min(46%, 260px);
+  height: 32px;
+  border-radius: 10px;
+  margin: calc(max(env(safe-area-inset-top), 20px) + 60px) 0 0 max(16px, calc((100% - 48rem) / 2 + 16px));
+  background: var(--c-fill);
+  /* el subtítulo: la sombra de la misma barra, más estrecha y más abajo */
+  box-shadow: 0 46px 0 -9px var(--c-fill);
+}
+.screen:empty::after {
+  height: 312px;
+  border-radius: 18px;
+  margin: 60px max(16px, calc((100% - 48rem) / 2 + 16px)) 0;
+  background: var(--c-material) repeating-linear-gradient(to bottom, transparent 0 51px, var(--c-border) 51px 52px);
+  box-shadow: var(--c-shadow);
+}
+@keyframes skeleton-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen:empty::before,
+  .screen:empty::after {
+    animation: skeleton-in 0.01s linear 0.18s forwards;
+  }
+}
+
+/* Filas de listas largas: fuera de la pantalla, el navegador no las maqueta ni las pinta */
+@utility row-lazy {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
+}
+/* Hojas, menús, avisos y la barra del móvil: casi opacos (96-97 %), así que el
+   desenfoque apenas se veía y costaba en cada fotograma (al escribir, al animar) */
 @utility glass-thick {
   background: var(--c-material-thick);
-  backdrop-filter: blur(50px) saturate(200%);
   box-shadow: var(--c-shadow-lg), inset 0 1px 0 var(--c-highlight);
 }
 @utility glass-bar {

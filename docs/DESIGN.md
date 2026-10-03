@@ -50,7 +50,7 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Momento | Animación |
 |---|---|
 | Arranque | La órbita de LUNO gira hasta su sitio, la luna se posa y aparece el logotipo; luego el contenido entra escalonado |
-| Cambio de vista | Con View Transitions (Chrome, Edge, Safari 18): el contenido sale fundido y el nuevo sube 10 px; la barra lateral y la de pestañas no se mueven; el título viaja al nuevo título, y el nombre y el anillo de un proyecto viajan de su tarjeta a su página (igual con las etiquetas). Sin ellas: fundido con desplazamiento de 8 px y desenfoque |
+| Cambio de vista | Con View Transitions (Chrome, Edge, Safari 18): el contenido sale fundido y el nuevo sube 10 px; la barra lateral y la de pestañas no se mueven; el título viaja al nuevo título, y el nombre y el anillo de un proyecto viajan de su tarjeta a su página (igual con las etiquetas). Sin ellas: fundido con desplazamiento de 10 px (sin desenfoque: difuminar la página entera costaba demasiado) |
 | Completar tarea | El círculo se rellena con un muelle, el ✓ se dibuja, el tachado cruza el título de izquierda a derecha y la fila se pliega |
 | Tarea nueva | Su fila se tiñe muy suave del acento, con una barra a la izquierda, y se apaga despacio (1,8 s), para ver dónde ha caído; suave a propósito, para que su texto se siga leyendo |
 | Tableros (proyecto, matriz) | Las tarjetas se arrastran (en táctil, con pulsación larga) y la columna o el cuadrante de destino se marca con el acento; al moverse, las demás se recolocan con un muelle |
@@ -68,6 +68,8 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 | Deslizar una tarea (táctil) | → hecha (lima), ← a mañana (acento). La franja se colorea al pasar el umbral, con toque háptico; si no llega, vuelve con muelle |
 | Cambio de tema | El tema nuevo se revela en un círculo que crece desde el botón (*View Transitions*) |
 | Avisos | Cápsula con una barra del tiempo que queda para deshacer; se aparta deslizándola |
+| Pantalla que aún no ha llegado | Su esqueleto (título, subtítulo y un bloque con filas) aparece tras 0,18 s, para que lo rápido no parpadee, y late suave mientras espera |
+| Volver atrás | La pantalla vuelve a donde la dejaste (como en iOS); ir a ella de nuevo la abre arriba |
 | Barra de pestañas | Al bajar por una pantalla se recoge en un círculo con la pestaña en la que estás (y el botón de crear al otro lado); al subir vuelve entera, como en iOS 26 |
 | Foco minimizado | Accesorio inferior, como el mini reproductor de Música: una cápsula sobre la barra de pestañas (en la esquina en el ordenador) con un anillo en el acento que se llena, el título, el tiempo y un botón de pausa |
 | Barra superior compacta | Sin línea: se desvanece hacia abajo (borde de desplazamiento suave de iOS 26) |
@@ -95,6 +97,15 @@ Nunca el selector de fecha del navegador en el detalle: atajos (Hoy, Mañana, El
 Con «Reducir movimiento» (sistema o Ajustes) no hay transiciones entre pantallas, ni animaciones de CSS o de Motion, ni confeti.
 
 La háptica usa `navigator.vibrate` en Android y, en el iPhone (iOS 18+), el interruptor nativo oculto (`src/lib/haptics.ts`).
+
+### Fluidez
+
+La app tiene que ir igual de suave con 3.000 tareas en un móvil normal. Reglas que lo mantienen (medido con la CPU 4× más lenta y miles de registros):
+
+- **Listas largas por tramos** (`src/components/Progressive.tsx`): se pintan las primeras 40 filas y, al acercarse al final, 30 más, en segundo plano (`startTransition`), para que el scroll no se pare. Las filas llevan `row-lazy` (`content-visibility: auto`): lo que no se ve no se maqueta ni se pinta.
+- **Animaciones solo donde se ven**: la entrada escalonada, para las 12 primeras filas; la recolocación animada (`layout`), solo en listas de hasta 60 y con `layoutDependency` (si no, Motion vuelve a medir toda la pantalla en cada render); el fondo de deslizar una tarea, solo mientras se desliza; nada de `layout` en lo que cambia al escribir.
+- **Cristal sin coste**: los bloques de la página y las hojas son casi opacos, así que no llevan `backdrop-filter` (no se notaba y obligaba a desenfocar listas enteras); el desenfoque queda para la barra superior (`glass-bar`, translúcida de verdad) y el velo bajo las hojas.
+- **Nada de leer el scroll en cada evento**: una lectura por fotograma (`requestAnimationFrame`).
 
 ## 6. Navegación y accesibilidad
 

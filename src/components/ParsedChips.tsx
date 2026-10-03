@@ -13,8 +13,8 @@ import { bouncy, cx } from './ui'
 function Chip({ children, color }: { children: React.ReactNode; color?: string }) {
   const c = color ?? 'var(--c-blue)'
   return (
+    // Sin «layout»: recolocar con animación mediría toda la pantalla en cada tecla
     <motion.span
-      layout
       initial={{ opacity: 0, scale: 0.6 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={bouncy}

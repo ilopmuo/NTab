@@ -37,9 +37,47 @@ type Doc = Document & { startViewTransition?: (cb: () => void) => { finished: Pr
 const canTransition = () =>
   typeof document !== 'undefined' && !!(document as Doc).startViewTransition && document.documentElement.dataset.motion !== 'reduce'
 
+// ── Cada pantalla recuerda dónde la dejaste (como en iOS) ─────
+// Al ir a otra se guarda la posición; al volver atrás (botón, gesto o
+// historial) se recupera. Ir a una pantalla de nuevo la abre arriba.
+const scrolls = new Map<string, number>()
+let shownPath = typeof window !== 'undefined' ? current() : '/today'
+let fromHistory = false
+const saveScroll = () => {
+  const main = document.getElementById('main')
+  if (main) scrolls.set(shownPath, main.scrollTop)
+}
+if (typeof window !== 'undefined')
+  window.addEventListener('popstate', () => {
+    saveScroll()
+    fromHistory = true
+  })
+
+/** Tras pintar una pantalla: arriba, o donde estaba si se vuelve atrás */
+export function placeScroll(path: string) {
+  const main = document.getElementById('main')
+  const back = fromHistory
+  fromHistory = false
+  shownPath = path
+  if (!main) return
+  const y = back ? (scrolls.get(path) ?? 0) : 0
+  main.scrollTo({ top: y })
+  if (!y) return
+  // Lo de abajo llega un momento después (datos, listas por tramos): se insiste un poco
+  const start = performance.now()
+  const again = () => {
+    if (Math.abs(main.scrollTop - y) <= 2 || performance.now() - start > 900 || shownPath !== path) return
+    main.scrollTop = y
+    requestAnimationFrame(again)
+  }
+  requestAnimationFrame(again)
+}
+
 export function navigate(path: string) {
   const target = `#${path}`
   if (window.location.hash === target) return
+  saveScroll()
+  fromHistory = false
   if (!canTransition()) {
     window.location.hash = path
     return

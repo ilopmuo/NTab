@@ -251,6 +251,7 @@ export function Segmented<T extends string | number>({
             {on && (
               <motion.span
                 layoutId={`seg-${id}`}
+                layoutDependency={on}
                 transition={spring}
                 className="absolute inset-0 rounded-[8px] bg-surface shadow-[0_1px_3px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.03)] dark:bg-[#636366]"
               />

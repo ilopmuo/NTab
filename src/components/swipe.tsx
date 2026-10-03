@@ -24,6 +24,8 @@ export type SwipeState = { x: MotionValue<number>; armed: 'left' | 'right' | nul
 export function useSwipe({ right, left, disabled }: { right?: SwipeSide; left?: SwipeSide; disabled?: boolean }) {
   const x = useMotionValue(0)
   const [armed, setArmed] = useState<'left' | 'right' | null>(null)
+  // Mientras se desliza (y hasta que la fila vuelve a su sitio): solo entonces se pinta lo de detrás
+  const [active, setActive] = useState(false)
   const swiped = useRef(false)
 
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
@@ -44,6 +46,7 @@ export function useSwipe({ right, left, disabled }: { right?: SwipeSide; left?: 
         if (Math.abs(dx) < START || Math.abs(dx) < Math.abs(dy) * 1.4) return
         mode = 'swipe'
         swiped.current = true
+        setActive(true)
       }
       if (mode !== 'swipe') return
       // Sin acción hacia ese lado: resistencia
@@ -67,14 +70,16 @@ export function useSwipe({ right, left, disabled }: { right?: SwipeSide; left?: 
       const action = side === 'right' ? right : side === 'left' ? left : undefined
       if (!action) {
         setArmed(null)
-        return void animate(x, 0, { type: 'spring', stiffness: 500, damping: 36 })
+        await animate(x, 0, { type: 'spring', stiffness: 500, damping: 36 })
+        return setActive(false)
       }
       await animate(x, side === 'right' ? width : -width, { duration: 0.2, ease: [0.3, 0, 0.2, 1] })
       await action.run()
       // Si la fila sigue en pantalla (p. ej. muestra las hechas), vuelve a su sitio
-      setTimeout(() => {
+      setTimeout(async () => {
         setArmed(null)
-        void animate(x, 0, { type: 'spring', stiffness: 380, damping: 34 })
+        await animate(x, 0, { type: 'spring', stiffness: 380, damping: 34 })
+        setActive(false)
       }, 380)
     }
     const cancel = () => {
@@ -84,7 +89,7 @@ export function useSwipe({ right, left, disabled }: { right?: SwipeSide; left?: 
       if (mode === 'swipe') {
         swiped.current = false
         setArmed(null)
-        void animate(x, 0, { type: 'spring', stiffness: 500, damping: 36 })
+        void animate(x, 0, { type: 'spring', stiffness: 500, damping: 36 }).then(() => setActive(false))
       }
     }
     window.addEventListener('pointermove', move)
@@ -95,6 +100,7 @@ export function useSwipe({ right, left, disabled }: { right?: SwipeSide; left?: 
   return {
     x,
     armed,
+    active,
     /** true justo después de deslizar: el clic que sigue no debe abrir la tarea */
     swiped,
     onPointerDown,

@@ -48,16 +48,20 @@ export function hhmmIn(ms: number, tz: string) {
   return `${pad(x.h)}:${pad(x.min)}`
 }
 
-const toDate = (ymd: string) => {
-  const [y, m, d] = ymd.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d))
+// Se llaman miles de veces seguidas (rachas, fuerza de los hábitos, calendarios):
+// aritmética de días sobre milisegundos UTC, sin trocear ni formatear con Date
+const DAY = 864e5
+const toMs = (ymd: string) => Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1, +ymd.slice(8, 10))
+const fromMs = (ms: number) => {
+  const d = new Date(ms)
+  const m = d.getUTCMonth() + 1
+  const day = d.getUTCDate()
+  return `${d.getUTCFullYear()}-${m < 10 ? '0' : ''}${m}-${day < 10 ? '0' : ''}${day}`
 }
-const fromDate = (d: Date) => d.toISOString().slice(0, 10)
+const fromDate = (d: Date) => fromMs(d.getTime())
 
 export function addDays(ymd: string, n: number) {
-  const d = toDate(ymd)
-  d.setUTCDate(d.getUTCDate() + n)
-  return fromDate(d)
+  return fromMs(toMs(ymd) + n * DAY)
 }
 
 /** Suma meses sin pasarse de fin de mes (31 ene + 1 mes = 28/29 feb) */
@@ -70,13 +74,13 @@ export function addMonths(ymd: string, n: number) {
 }
 
 /** 0 = domingo … 6 = sábado */
-export const weekday = (ymd: string) => toDate(ymd).getUTCDay()
+export const weekday = (ymd: string) => (Math.floor(toMs(ymd) / DAY) + 4) % 7
 
 /** Lunes de la semana */
 export const weekStart = (ymd: string) => addDays(ymd, -((weekday(ymd) + 6) % 7))
 
 export function diffDays(a: string, b: string) {
-  return Math.round((toDate(a).getTime() - toDate(b).getTime()) / 864e5)
+  return Math.round((toMs(a) - toMs(b)) / DAY)
 }
 
 export const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']

@@ -383,7 +383,7 @@ export const TaskItem = memo(function TaskItem({
 
   return (
     <div className="relative touch-pan-y">
-      <SwipeBackdrop x={swipe.x} armed={swipe.armed} done={!!task.done} later={laterLabel} />
+      {swipe.active && <SwipeBackdrop x={swipe.x} armed={swipe.armed} done={!!task.done} later={laterLabel} />}
       <motion.div
         {...drag}
         onPointerDown={(e) => {

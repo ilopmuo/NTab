@@ -11,6 +11,7 @@ import { useDropOver } from '@/components/dayDrag'
 import type { Task } from '@/db/types'
 import { Page } from './Page'
 import { SelectButton } from '@/features/select/SelectButton'
+import { Progressive } from '@/components/Progressive'
 
 export function UpcomingView() {
   const tasks = useOpenTasks()
@@ -35,17 +36,22 @@ export function UpcomingView() {
           <TaskList tasks={overdue} draggable />
         </Section>
       )}
-      {days.map((d, i) => {
-        const list = tasks.filter((x) => whenDue(x) === d)
-        // El mes, como separador, solo cuando cambia (y no antes del primer día)
-        const newMonth = i > 0 && d.slice(0, 7) !== days[i - 1].slice(0, 7)
-        return (
-          <div key={d}>
-            {newMonth && <h2 className="mt-6 mb-3 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">{fmt(d, 'MMMM')}</h2>}
-            {list.length ? <DaySection day={d} index={i} tasks={list} /> : <FreeDay day={d} index={i} />}
-          </div>
-        )
-      })}
+      {/* Los días, por tramos: con muchas tareas, los primeros salen ya */}
+      <Progressive
+        items={days.map((d, i) => ({ d, i, list: tasks.filter((x) => whenDue(x) === d) }))}
+        weight={(x) => x.list.length}
+        first={Math.max(40, 80 - overdue.length)}
+        render={({ d, i, list }) => {
+          // El mes, como separador, solo cuando cambia (y no antes del primer día)
+          const newMonth = i > 0 && d.slice(0, 7) !== days[i - 1].slice(0, 7)
+          return (
+            <div key={d}>
+              {newMonth && <h2 className="mt-6 mb-3 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">{fmt(d, 'MMMM')}</h2>}
+              {list.length ? <DaySection day={d} index={i} tasks={list} /> : <FreeDay day={d} index={i} />}
+            </div>
+          )
+        }}
+      />
       {later.length > 0 && (
         <Section title="Más adelante" count={later.length} tone="orange">
           <TaskList tasks={later} draggable />
