@@ -4,7 +4,9 @@ import { db } from '@/db/db'
 import { setSetting } from '@/db/actions'
 import { SUPABASE_URL } from '@/sync/config'
 import { getSupabase } from '@/sync/client'
-import { applyOps, type HouseItem, type HouseOp } from '@/lib/house'
+import { applyOps, myShares, type HouseItem, type HouseOp } from '@/lib/house'
+import { categoryFor } from '@/lib/expenses'
+import type { Expense } from '@/db/types'
 
 /**
  * El piso compartido visto desde este dispositivo. Vive en el servidor (los
@@ -93,6 +95,7 @@ export async function sync(token: string): Promise<void> {
     // Lo que se hizo mientras tanto, encima de lo del servidor
     const rest = get(token).pending.slice(ops.length)
     set(token, { name: body.name, items: rest.length ? applyOps(body.items, rest).items : body.items, pending: rest, ready: true, gone: false, offline: false })
+    void mirrorExpenses(token, body.items).catch(() => {})
     if (rest.length) again.add(token)
   } catch {
     set(token, { offline: true, ready: get(token).ready })
@@ -100,6 +103,36 @@ export async function sync(token: string): Promise<void> {
     busy.delete(token)
     if (again.delete(token)) void sync(token)
   }
+}
+
+/**
+ * Tu parte de cada gasto del piso, en tus Gastos (categoría según lo que sea,
+ * Casa si no se sabe; etiqueta #piso), para que tu presupuesto del mes cuente
+ * lo que de verdad pagas. Solo en tu piso (no en los que visitas con el
+ * enlace). Una vez por gasto: si la borras de tus Gastos, no vuelve; si el
+ * gasto cambia o se borra en el piso, la tuya cambia con él.
+ */
+async function mirrorExpenses(token: string, items: HouseItem[]) {
+  const mine = (await db.settings.get('household'))?.value as MyHouse | null | undefined
+  if (!mine || mine.token !== token) return
+  const seen = new Set(((await db.settings.get('pisoMirrored'))?.value as string[] | undefined) ?? [])
+  const shares = myShares(items, mine.me)
+  const want = new Map(shares.map((s) => [`piso-${s.id}`, s]))
+  const have = new Map((await db.expenses.filter((e) => e.id.startsWith('piso-')).toArray()).map((e) => [e.id, e]))
+  const put: Expense[] = []
+  for (const [id, s] of want) {
+    const prev = have.get(id)
+    // Ya se llevó y la quitaste de tus Gastos: no se vuelve a poner
+    if (!prev && seen.has(s.id)) continue
+    const category = prev?.category ?? (categoryFor(s.what) === 'otros' ? 'casa' : categoryFor(s.what))
+    const next: Expense = { id, amount: s.amount, note: `${s.what} (piso)`, category, date: s.day, tags: ['piso'], createdAt: prev?.createdAt ?? (s.at || Date.now()) }
+    if (!prev || prev.amount !== next.amount || prev.note !== next.note || prev.date !== next.date) put.push(next)
+  }
+  const gone = [...have.keys()].filter((id) => !want.has(id))
+  if (put.length) await db.expenses.bulkPut(put)
+  if (gone.length) await db.expenses.bulkDelete(gone)
+  const all = [...new Set([...seen, ...shares.map((s) => s.id)])].slice(-2000)
+  if (all.length !== seen.size) await setSetting('pisoMirrored', all)
 }
 
 /** Un cambio: se ve ya y se sube detrás */
@@ -159,6 +192,21 @@ export function guestMe(token: string): string | null {
 export function setGuestMe(token: string, id: string) {
   try {
     localStorage.setItem(ME(token), id)
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
+/**
+ * El piso «de casa» de un compañero sin cuenta: la app instalada en su
+ * pantalla de inicio se abre sin el enlace, así que se recuerda aquí y
+ * src/main.tsx lo abre al arrancar.
+ */
+const GUEST_HOME = 'ntab-guest-house'
+export function setGuestHome(token: string | null) {
+  try {
+    if (token) localStorage.setItem(GUEST_HOME, token)
+    else localStorage.removeItem(GUEST_HOME)
   } catch {
     /* sin almacenamiento */
   }

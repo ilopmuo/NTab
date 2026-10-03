@@ -9,19 +9,21 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 async function fakeHouse(page: Page, items: HouseItem[]) {
   const state = { name: 'Piso de la calle Mayor', items }
   const ops: HouseOp[] = []
+  const pushes: { member: string; open: string }[] = []
   await page.route(/functions\/v1\/casa\//, async (route) => {
     const req = route.request()
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
     if (req.method() === 'POST') {
-      const body = req.postDataJSON() as { ops: HouseOp[] }
-      ops.push(...body.ops)
-      const r = applyOps(state.items, body.ops)
+      const body = req.postDataJSON() as { ops?: HouseOp[]; push?: { member: string; open: string } }
+      if (body.push) pushes.push(body.push)
+      ops.push(...(body.ops ?? []))
+      const r = applyOps(state.items, body.ops ?? [])
       state.items = r.items
       if (r.name) state.name = r.name
     }
     await route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(state) })
   })
-  return { state, ops }
+  return { state, ops, pushes }
 }
 
 const people = (): HouseItem[] => [
@@ -93,6 +95,25 @@ test('Casa → Tareas: turnos, tareas sueltas, cuentas y la compra del piso', as
     expect.objectContaining({ name: 'Leche', done: true, doneBy: 'yo' }),
     expect.objectContaining({ name: 'Pan', by: 'yo' }),
   ])
+
+  // Precios y total, como en la tuya; lo comprado pasa a «lo de siempre» con su precio
+  await page.getByRole('button', { name: 'Poner precio a Leche' }).click()
+  await page.getByLabel('Precio de Leche').fill('1,20')
+  await page.keyboard.press('Enter')
+  await page.getByRole('button', { name: 'Poner precio a Pan' }).click()
+  await page.getByLabel('Precio de Pan').fill('0,8')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('#main')).toContainText('Unos 2,00 € · 1,20 € comprado')
+  await page.getByRole('button', { name: 'Quitar lo comprado' }).click()
+  await expect(page.getByRole('checkbox', { name: 'Leche: sin comprar' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Leche', exact: true }).click()
+  await expect(page.getByRole('checkbox', { name: 'Leche: comprado' })).toBeVisible()
+  // Vuelve con el precio de la última vez
+  await expect(page.getByRole('button', { name: 'Precio de Leche: 1,20 €. Cambiar' })).toBeVisible()
+
+  // Tu parte de los gastos del piso, en tus Gastos
+  await page.goto('./#/expenses')
+  await expect(page.locator('#main')).toContainText(/Papel higiénico \(piso\)Casa · #piso3\s€/)
 })
 
 test('un compañero entra con el enlace, sin cuenta, y se le recuerda', async ({ page }) => {
@@ -122,4 +143,30 @@ test('un compañero entra con el enlace, sin cuenta, y se le recuerda', async ({
   await expect(page.getByRole('heading', { name: 'Piso de la calle Mayor' })).toBeVisible()
   await expect(page.getByText('¿Quién eres?')).toHaveCount(0)
   await expect(page.locator('main, #main').first()).toContainText('Tú, Ignacio y Luis')
+
+  // Desde la pantalla de inicio (la app sin enlace) se abre directamente en su piso
+  await page.goto('./')
+  await expect(page).toHaveURL(new RegExp(`#/piso/${TOKEN}$`))
+  await expect(page.getByRole('heading', { name: 'Piso de la calle Mayor' })).toBeVisible()
+})
+
+test('un compañero sin cuenta puede pedir que le avise el móvil', async ({ page }) => {
+  const house = await fakeHouse(page, [...people(), { id: 'basura', kind: 'chore', data: { title: 'Sacar la basura', rotation: ['ana', 'yo'], turn: 0, at: 0 } }])
+  // Permiso y servicio de avisos de mentira (Chromium sin ventana los niega, y aquí no hay service worker)
+  await page.addInitScript(() => {
+    let permission: NotificationPermission = 'default'
+    Object.defineProperty(Notification, 'permission', { get: () => permission })
+    Notification.requestPermission = async () => (permission = 'granted')
+    const sub = { endpoint: 'https://push.ejemplo/ana', toJSON: () => ({ endpoint: 'https://push.ejemplo/ana', keys: { p256dh: 'p'.repeat(87), auth: 'a'.repeat(22) } }), unsubscribe: async () => true }
+    const reg = { active: {}, pushManager: { getSubscription: async () => sub, subscribe: async () => sub } }
+    Object.defineProperty(navigator.serviceWorker, 'getRegistration', { value: async () => reg })
+  })
+  await page.goto(`./#/piso/${TOKEN}`)
+  await page.getByRole('button', { name: /Ana/ }).click()
+  await expect(page.getByText('Que te avise el móvil', { exact: true })).toBeVisible()
+  await expect(page.getByText('A las 9:00, lo que te toca en casa; a las 20:00, si sigue sin hacer.')).toBeVisible()
+  await page.getByRole('button', { name: 'Activar' }).click()
+  await expect(toast(page, 'Listo: te avisaremos de lo que te toca en casa')).toBeVisible()
+  await expect.poll(() => house.pushes).toEqual([expect.objectContaining({ member: 'ana', open: 'piso' })])
+  await expect(page.getByText('Avisos activados')).toBeVisible()
 })

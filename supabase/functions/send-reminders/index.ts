@@ -10,6 +10,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { buildDeadlinePayload, buildDigest, buildHabitPayload, buildPayload, buildRoutinePayload, buildJournalPayload, type DueDeadline, type DueJournal, type DueDigest, type DueHabit, type DueReminder, type DueRoutine } from './format.ts'
 import { REMINDER_FEATURE, reminderAllowed } from '../_shared/features.ts'
+import { sendHouseReminders, type SendPush } from './house.ts'
 
 const PUBLIC_KEY =
   Deno.env.get('VAPID_PUBLIC_KEY') ?? 'BITtwUVzfRk6yMCn5x36uN9n3nRV7fpCXOyk_bf1RwMYryFTJ54C6HbJFCzdNVPNVMBuTzlT3OEOYbwM6eH3CJM'
@@ -83,6 +84,23 @@ Deno.serve(async (req) => {
   }
   if (body.test) return sendTest(req, admin, Number(body.delay) || 0)
 
+  // Los avisos del piso compartido (también para quien no tiene cuenta)
+  const pushOne: SendPush = async (s, payload) => {
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60, urgency: 'high' })
+      return 'ok'
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode
+      if (status === 404 || status === 410) return 'gone'
+      console.error('push casa', status, (e as Error).message)
+      return 'error'
+    }
+  }
+  const houseSent = await sendHouseReminders(admin, pushOne).catch((e) => {
+    console.error('casa', e)
+    return 0
+  })
+
   const [remindersRes, digestsRes, habitsRes, nagsRes, routinesRes, journalRes, deadlinesRes] = await Promise.all([
     admin.rpc('due_reminders', { window_minutes: 15 }),
     admin.rpc('due_digests', { window_minutes: 15 }),
@@ -146,7 +164,7 @@ Deno.serve(async (req) => {
       log: { user_id: h.user_id, tbl: 'habits', item_id: `${h.habit_id}:${h.local_date}`, remind_at: new Date().toISOString() },
     })),
   ]
-  if (!jobs.length) return json({ sent: 0 })
+  if (!jobs.length) return json({ sent: houseSent })
 
   // Lo de las funciones apagadas (Ajustes → Funciones) no avisa
   const withFeatures = [...new Set(jobs.filter((j) => REMINDER_FEATURE[j.log.tbl]).map((j) => j.user_id))]
@@ -155,7 +173,7 @@ Deno.serve(async (req) => {
     if (featuresError) console.error('features', featuresError.message)
     const flags = new Map((rows ?? []).map((r: { user_id: string; data: { value?: Record<string, unknown> } | null }) => [r.user_id, r.data?.value]))
     for (let i = jobs.length - 1; i >= 0; i--) if (!reminderAllowed(flags.get(jobs[i].user_id), jobs[i].log.tbl)) jobs.splice(i, 1)
-    if (!jobs.length) return json({ sent: 0 })
+    if (!jobs.length) return json({ sent: houseSent })
   }
 
   const users = [...new Set(jobs.map((j) => j.user_id))]
@@ -200,5 +218,5 @@ Deno.serve(async (req) => {
   if (gone.size) await admin.from('push_subscriptions').delete().in('endpoint', [...gone])
   if (used.size) await admin.from('push_subscriptions').update({ last_used_at: new Date().toISOString() }).in('endpoint', [...used])
 
-  return json({ sent, removed: gone.size })
+  return json({ sent: sent + houseSent, removed: gone.size })
 })

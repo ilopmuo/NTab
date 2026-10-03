@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Home, Plus } from 'lucide-react'
 import { members } from '@/lib/house'
 import { uid } from '@/lib/id'
@@ -7,7 +7,8 @@ import { navigate } from '@/app/router'
 import { LunoLockup } from '@/components/Brand'
 import { Button, Empty, Group, Input, Segmented } from '@/components/ui'
 import { HouseMoney, HouseTasks, SharedShopping, membersLabel } from './parts'
-import { act, guestMe, saveMyHouse, setGuestMe, useHouse, useMyHouse } from './store'
+import { act, guestMe, saveMyHouse, setGuestHome, setGuestMe, useHouse, useMyHouse } from './store'
+import { HousePushCard, InstallHint, disableHousePush, housePushState } from './HousePush'
 
 type Tab = 'tasks' | 'shop' | 'money'
 
@@ -26,6 +27,11 @@ export function GuestHouse({ token }: { token: string }) {
     setGuestMe(token, id)
     setMe(id)
   }
+  // Quien entra sin cuenta: este es su piso (la app instalada se abre en él)
+  const guest = sync.state !== 'loading' && !sync.user && !sync.localOnly && !sync.knownEmail
+  useEffect(() => {
+    if (guest) setGuestHome(token)
+  }, [guest, token])
 
   const body = () => {
     if (!snap || !snap.ready) return <p className="py-20 text-center text-muted">Abriendo el piso…</p>
@@ -44,12 +50,25 @@ export function GuestHouse({ token }: { token: string }) {
             ...(ms.length > 1 ? [{ value: 'money' as Tab, label: 'Cuentas' }] : []),
           ]}
         />
+        {tab === 'tasks' && housePushState(token, me) !== 'on' && <HousePushCard token={token} me={me} open="piso" />}
         {tab === 'tasks' && <HouseTasks token={token} me={me} items={snap.items} />}
         {tab === 'shop' && <SharedShopping token={token} me={me} items={snap.items} />}
         {tab === 'money' && <HouseMoney token={token} me={me} items={snap.items} />}
-        <div className="mt-10 space-y-3 text-center text-[13px] text-muted">
-          <p>Guarda este enlace (o añádelo a la pantalla de inicio) para volver.</p>
-          <button type="button" onClick={() => (setGuestMe(token, ''), setMe(null))} className="font-semibold text-blue">
+        <div className="mt-10">
+          <InstallHint />
+        </div>
+        <div className="space-y-3 text-center text-[13px] text-muted">
+          {housePushState(token, me) === 'on' && <HousePushCard token={token} me={me} open="piso" compact />}
+          <button
+            type="button"
+            onClick={() => {
+              // Los avisos eran para quien eras
+              if (housePushState(token, me) === 'on') void disableHousePush(token)
+              setGuestMe(token, '')
+              setMe(null)
+            }}
+            className="font-semibold text-blue"
+          >
             No soy {ms.find((m) => m.id === me)?.data.name}
           </button>
           {sync.user && mine === null && (
@@ -69,6 +88,18 @@ export function GuestHouse({ token }: { token: string }) {
             <div>
               <Button onClick={() => navigate('/house')}>Ir a mi LUNO</Button>
             </div>
+          )}
+          {guest && (
+            <button
+              type="button"
+              onClick={() => {
+                setGuestHome(null)
+                navigate('/today')
+              }}
+              className="block w-full text-[12.5px] text-faint"
+            >
+              ¿Quieres LUNO para organizar lo tuyo? Empieza aquí
+            </button>
           )}
         </div>
       </>

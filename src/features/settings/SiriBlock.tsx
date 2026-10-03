@@ -31,7 +31,7 @@ export function SiriBlock() {
                 Llámalo «Apunta en LUNO». Ya puedes decir: <i>«Oye Siri, apunta en LUNO»</i> y dictar, por ejemplo:
                 <ul className="mt-1 list-disc space-y-0.5 pl-4">
                   <li>«llamar al dentista mañana a las 10» o «sacar la ropa dentro de una hora» (tarea)</li>
-                  <li>«compra: leche y pan» (lista de la compra) · «mete un gasto de 15 euros en Mercadona» (gastos)</li>
+                  <li>«compra: leche y pan» (lista de la compra) · «piso: papel higiénico» (la compra del piso compartido) · «mete un gasto de 15 euros en Mercadona» (gastos)</li>
                   <li>«nota: el código del portal es 4512» (notas) · «hecho: cambiar las sábanas» (última vez)</li>
                   <li>«+1 agua» o el nombre de un hábito, como «meditar» (hábitos)</li>
                 </ul>

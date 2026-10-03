@@ -9,6 +9,8 @@ import { SectionIcon, section } from '@/app/sections'
 import { Button, Card, Empty, Group, IconButton, Input, Modal, ModalHeader, PageHeader } from '@/components/ui'
 import { Page } from '../Page'
 import { HouseMoney, HouseTasks, membersLabel, useNames } from './parts'
+import { HousePushCard } from './HousePush'
+import { Cleaning } from './Cleaning'
 import { PISO_LIST, act, createHouse, houseAdmin, inviteLink, saveMyHouse, useHouse, useMyHouse, type MyHouse } from './store'
 
 /**
@@ -64,6 +66,8 @@ function House({ mine }: { mine: MyHouse }) {
       {!snap.ready ? null : (
         <>
           <HouseTasks token={mine.token} me={mine.me} items={snap.items} />
+          {/* La tuya, aparte de la del piso (si la tienes) */}
+          <Cleaning title="Tu limpieza por estancias" starters={false} />
           <Card className="mb-8 flex items-center gap-3 p-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fill">
               <ShoppingCart size={18} />
@@ -151,6 +155,9 @@ function HouseSettings({ open, onClose, mine, items, name }: { open: boolean; on
     <Modal open={open} onClose={onClose} position="center">
       <ModalHeader title="Ajustes del piso" onClose={onClose} />
       <div className="space-y-5 px-5 pb-5">
+        <div className="-mb-1 [&>div]:mb-0">
+          <HousePushCard token={mine.token} me={mine.me} open="house" />
+        </div>
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -285,11 +292,12 @@ function Setup() {
   const token = /([a-f0-9]{32,128})\s*$/.exec(link.trim())?.[1]
   return (
     <Page>
-      <PageHeader icon={<SectionIcon def={section('house')} size={40} />} title="Tareas de casa" subtitle="Quién limpia qué, la compra y las cuentas del piso." />
+      <PageHeader icon={<SectionIcon def={section('house')} size={40} />} title="Tareas de casa" subtitle="La limpieza de cada estancia y, si vives con más gente, quién hace qué." />
+      <Cleaning />
       <Card className="mb-6 p-5">
-        <p className="text-[17px] font-semibold">Monta tu casa</p>
+        <p className="text-[17px] font-semibold">¿Vives con más gente?</p>
         <p className="mt-1 mb-4 text-[14px] leading-snug text-muted">
-          Las tareas que se repiten van por turnos (sacar la basura, el baño…): cuando alguien la hace, le toca al siguiente. Si vives con más gente, comparte la compra y las cuentas; ellos entran con un enlace, sin cuenta.
+          Monta el piso: las tareas de casa van por turnos (cuando alguien saca la basura, le toca al siguiente), y tenéis la compra y las cuentas en común. Tus compañeros entran con un enlace, sin cuenta ni instalar nada.
         </p>
         {signedIn ? (
           <form

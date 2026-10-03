@@ -76,14 +76,17 @@ test('cosas: garantía de 3 años y agrupadas por estancia', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Cocina' })).toBeVisible()
 })
 
-test('limpieza por estancias: lo típico y la barra de suciedad', async ({ page }) => {
-  await openApp(page, '/trackers')
-  await page.getByRole('button', { name: 'Cambiar las sábanas' }).click()
-  await page.getByRole('button', { name: 'Por estancia' }).click()
+test('limpieza por estancias en Casa → Tareas, también sin piso: lo típico y la barra de suciedad', async ({ page }) => {
+  await openApp(page, '/house')
   await page.getByRole('button', { name: 'Lo típico de baño' }).click()
   await expect(page.getByRole('heading', { name: 'Baño' })).toBeVisible()
   // Nunca hecho: toca
   await expect(page.getByRole('img', { name: 'Limpiar el baño: toca' })).toBeVisible()
   await page.getByRole('button', { name: 'Limpiar el baño: lo he hecho hoy' }).click()
   await expect(page.getByRole('img', { name: 'Limpiar el baño: limpio' })).toBeVisible()
+
+  // En «Última vez» ya no se repite: solo un enlace a Casa
+  await page.goto('./#/trackers')
+  await expect(page.getByRole('link', { name: /La limpieza por estancias \(\d+\) está en Casa/ })).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Limpiar el baño: limpio' })).toHaveCount(0)
 })

@@ -80,6 +80,37 @@ Deno.serve(async (req) => {
     }
 
     // Los cambios (y, de paso, fuera lo viejo: lo comprado hace semanas, las tareas sueltas ya hechas)
+    // Avisos del piso en este móvil (para el miembro que dice ser)
+    if (body.push) {
+      const p = body.push as { member?: unknown; endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown }; tz?: unknown; open?: unknown }
+      const items = await houseItems(admin, h.id)
+      const ok =
+        typeof p.endpoint === 'string' && p.endpoint.startsWith('https://') && p.endpoint.length < 1000 &&
+        typeof p.keys?.p256dh === 'string' && p.keys.p256dh.length < 300 &&
+        typeof p.keys?.auth === 'string' && p.keys.auth.length < 300 &&
+        items.some((i) => i.kind === 'member' && i.id === p.member)
+      if (!ok) return json({ error: 'Suscripción no válida' }, 400)
+      const { error: e } = await admin.from('household_push').upsert(
+        {
+          endpoint: p.endpoint,
+          household_id: h.id,
+          member: p.member,
+          p256dh: p.keys!.p256dh,
+          auth: p.keys!.auth,
+          tz: typeof p.tz === 'string' ? p.tz.slice(0, 64) : null,
+          open: p.open === 'house' ? 'house' : 'piso',
+        },
+        { onConflict: 'endpoint' },
+      )
+      if (e) throw new Error(e.message)
+      return json({ push: true })
+    }
+    if (body.unpush) {
+      const endpoint = (body.unpush as { endpoint?: unknown }).endpoint
+      if (typeof endpoint === 'string') await admin.from('household_push').delete().eq('household_id', h.id).eq('endpoint', endpoint)
+      return json({ push: false })
+    }
+
     const ops = Array.isArray(body.ops) ? (body.ops as HouseOp[]) : []
     return json(await applyHouseOps(admin, h, ops))
   } catch (e) {

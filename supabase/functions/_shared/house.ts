@@ -16,7 +16,7 @@ function addDays(ymd: string, n: number) {
   return d.toISOString().slice(0, 10)
 }
 
-export type HouseKind = 'member' | 'chore' | 'shop' | 'expense'
+export type HouseKind = 'member' | 'chore' | 'shop' | 'expense' | 'usual'
 
 export interface Member {
   name: string
@@ -47,11 +47,21 @@ export interface Chore {
 export interface ShopItem {
   name: string
   qty?: string
+  /** precio estimado (€) */
+  price?: number
   by?: string
   done?: boolean
   doneBy?: string
   /** cuándo se compró */
   doneAt?: number
+  at: number
+}
+
+/** «Lo de siempre» del piso: lo que más se compra, cuántas veces y lo que costó la última vez */
+export interface Usual {
+  name: string
+  count: number
+  price?: number
   at: number
 }
 
@@ -82,7 +92,7 @@ export type HouseOp =
   | { op: 'done'; id: string; by: string; day: string; at: number }
   | { op: 'name'; name: string }
 
-export const KINDS: HouseKind[] = ['member', 'chore', 'shop', 'expense']
+export const KINDS: HouseKind[] = ['member', 'chore', 'shop', 'expense', 'usual']
 export const MAX_ITEMS = 3000
 export const MAX_OPS = 60
 
@@ -93,6 +103,7 @@ const int = (v: unknown, min: number, max: number) => (typeof v === 'number' && 
 const ids = (v: unknown, max = 20) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string' && ID.test(x)))].slice(0, max) : [])
 const time = (v: unknown) => int(v, 0, 9e15) ?? 0
 const opt = <T>(v: T | undefined | '' | false) => (v === undefined || v === '' || v === false ? undefined : v)
+const price = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.round(Math.min(10_000, v) * 100) / 100 : undefined)
 
 /** Deja solo lo que cada tipo admite, con límites (lo que llega de fuera no se guarda tal cual) */
 export function sanitize(kind: HouseKind, d: Record<string, unknown>): Record<string, unknown> | null {
@@ -129,12 +140,17 @@ export function sanitize(kind: HouseKind, d: Record<string, unknown>): Record<st
     return clean({
       name,
       qty: opt(str(d.qty, 30)),
+      price: price(d.price),
       by: typeof d.by === 'string' && ID.test(d.by) ? d.by : undefined,
       done: opt(d.done === true),
       doneBy: d.done === true && typeof d.doneBy === 'string' && ID.test(d.doneBy) ? d.doneBy : undefined,
       doneAt: d.done === true ? opt(time(d.doneAt)) : undefined,
       at: time(d.at),
     })
+  }
+  if (kind === 'usual') {
+    const name = str(d.name, 120)
+    return name ? clean({ name, count: int(d.count, 0, 100_000) ?? 1, price: price(d.price), at: time(d.at) }) : null
   }
   const what = str(d.what, 120)
   const amount = typeof d.amount === 'number' && Number.isFinite(d.amount) ? Math.round(Math.min(100_000, Math.max(0, d.amount)) * 100) / 100 : 0
@@ -228,6 +244,50 @@ export const chores = (items: HouseItem[]) => items.filter((i): i is HouseItem<C
 export const shopItems = (items: HouseItem[]) => items.filter((i): i is HouseItem<ShopItem> => i.kind === 'shop')
 export const expenses = (items: HouseItem[]) => items.filter((i): i is HouseItem<Expense> => i.kind === 'expense')
 
+/** El id de «lo de siempre» de una cosa: el nombre sin mayúsculas, acentos ni signos */
+export const usualId = (name: string) =>
+  `u-${name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60)}`
+
+/** Lo de siempre: lo más comprado que no está ya en la lista */
+export function usuals(items: HouseItem[]): HouseItem<Usual>[] {
+  const pending = new Set(shopItems(items).filter((i) => !i.data.done).map((i) => usualId(i.data.name)))
+  return items
+    .filter((i): i is HouseItem<Usual> => i.kind === 'usual' && !pending.has(i.id))
+    .sort((a, b) => b.data.count - a.data.count || b.data.at - a.data.at)
+}
+
+/** Al comprar algo: marcarlo (quién y cuándo) y sumarlo a «lo de siempre», con su precio */
+export function buyOps(items: HouseItem[], item: HouseItem<ShopItem>, by: string, at: number): HouseOp[] {
+  const id = usualId(item.data.name)
+  const prev = items.find((i) => i.id === id)?.data as Usual | undefined
+  return [
+    { op: 'put', kind: 'shop', id: item.id, data: { ...item.data, done: true, doneBy: by, doneAt: at } },
+    { op: 'put', kind: 'usual', id, data: { name: item.data.name, count: (prev?.count ?? 0) + 1, price: item.data.price ?? prev?.price, at } },
+  ]
+}
+
+/** Poner o cambiar el precio de algo; si ya está en «lo de siempre», también allí (la próxima vez sale con él) */
+export function priceOps(items: HouseItem[], item: HouseItem<ShopItem>, price: number | undefined): HouseOp[] {
+  const id = usualId(item.data.name)
+  const prev = items.find((i) => i.id === id)?.data as Usual | undefined
+  const ops: HouseOp[] = [{ op: 'put', kind: 'shop', id: item.id, data: { ...item.data, price } }]
+  if (prev && price) ops.push({ op: 'put', kind: 'usual', id, data: { ...prev, price } })
+  return ops
+}
+
+/** Lo que cuesta la lista (con los precios que se saben): lo pendiente, lo comprado y lo que no tiene precio */
+export function shopTotal(items: HouseItem[]) {
+  const list = shopItems(items)
+  const sum = (xs: HouseItem<ShopItem>[]) => Math.round(xs.reduce((n, i) => n + (i.data.price ?? 0), 0) * 100) / 100
+  return { total: sum(list), bought: sum(list.filter((i) => i.data.done)), missing: list.filter((i) => !i.data.price).length, priced: list.filter((i) => i.data.price).length }
+}
+
 /** A quién le toca (el turno salta a quien ya no está en el piso); sin turnos: nadie en concreto */
 export function whoseTurn(c: Chore, memberIds: string[]): string | undefined {
   const live = c.rotation.filter((id) => memberIds.includes(id))
@@ -290,6 +350,29 @@ export function balances(items: HouseItem[]): Map<string, number> {
   return new Map([...out].map(([id, c]) => [id, c / 100]))
 }
 
+/** Lo que le toca pagar a alguien de un gasto (a partes iguales, en céntimos, como en las cuentas); 0 si no entra */
+export function shareOf(e: Expense, member: string, all: string[]): number {
+  const split = e.split.length ? e.split : all
+  const i = split.indexOf(member)
+  if (i < 0) return 0
+  const amount = cents(e.amount)
+  const share = Math.floor(amount / split.length)
+  const rest = amount - share * split.length
+  return (share + (i < rest ? 1 : 0)) / 100
+}
+
+/**
+ * Tu parte de cada gasto del piso, para llevarla a tus Gastos: no los pagos
+ * para saldar (eso ya es tu parte de otros gastos). Por id del gasto del piso.
+ */
+export function myShares(items: HouseItem[], me: string): { id: string; what: string; amount: number; day: string; at: number }[] {
+  const all = members(items).map((m) => m.id)
+  return expenses(items)
+    .filter((e) => !e.data.settle)
+    .map((e) => ({ id: e.id, what: e.data.what, amount: shareOf(e.data, me, all), day: e.data.day, at: e.data.at }))
+    .filter((s) => s.amount > 0)
+}
+
 /** Cómo saldar las cuentas con los menos pagos posibles: quién paga a quién y cuánto */
 export function settleUp(bal: Map<string, number>): { from: string; to: string; amount: number }[] {
   const debt = [...bal].filter(([, v]) => cents(v) < 0).map(([id, v]) => ({ id, c: -cents(v) })).sort((a, b) => b.c - a.c)
@@ -306,6 +389,39 @@ export function settleUp(bal: Map<string, number>): { from: string; to: string; 
     if (!credit[j].c) j++
   }
   return out
+}
+
+// ── Avisos del piso ─────────────────────────────────────────
+
+/** A qué horas se avisa (hora del móvil de cada uno) */
+export const HOUSE_REMINDERS = { morning: '09:00', evening: '20:00' } as const
+export type HouseReminderKind = keyof typeof HOUSE_REMINDERS
+
+/** ¿Toca avisar ahora? En los 15 minutos siguientes a cada hora (por si el reloj del servidor se salta una vuelta) */
+export function reminderKindAt(hhmm: string): HouseReminderKind | null {
+  for (const [kind, at] of Object.entries(HOUSE_REMINDERS) as [HouseReminderKind, string][]) {
+    const [h, m] = at.split(':').map(Number)
+    const [hh, mm] = hhmm.split(':').map(Number)
+    const diff = hh * 60 + mm - (h * 60 + m)
+    if (diff >= 0 && diff < 15) return kind
+  }
+  return null
+}
+
+/**
+ * El aviso para alguien del piso (como los recordatorios de Flatastic): por la
+ * mañana, lo que le toca hoy o lleva retraso; por la tarde, lo de hoy que sigue
+ * sin hacer. Sin nada que avisar, null.
+ */
+export function houseReminder(items: HouseItem[], member: string, today: string, kind: HouseReminderKind): { title: string; body: string } | null {
+  const ids = members(items).map((m) => m.id)
+  const mine = chores(items)
+    .filter((c) => !c.data.done && !!c.data.due && (kind === 'morning' ? c.data.due <= today : c.data.due === today) && whoseTurn(c.data, ids) === member)
+    .sort((a, b) => a.data.due!.localeCompare(b.data.due!))
+  if (!mine.length) return null
+  const title = kind === 'evening' ? 'Aún te toca en casa' : mine.length === 1 ? 'Hoy te toca en casa' : `Hoy te tocan ${mine.length} cosas en casa`
+  const names = mine.slice(0, 4).map((c) => (c.data.due! < today ? `${c.data.title} (con retraso)` : c.data.title))
+  return { title, body: names.join(' · ') + (mine.length > 4 ? ` y ${mine.length - 4} más` : '') }
 }
 
 /** Ideas para empezar (como las tareas típicas de Sweepy o Tody): cada cuántos días */

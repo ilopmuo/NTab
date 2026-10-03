@@ -1,14 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { AnimatePresence, m as motion } from 'motion/react'
-import { ArrowRight, Check, HandCoins, Plus, ShoppingCart, Sparkles, Trash2, X } from 'lucide-react'
+import { ArrowRight, Check, HandCoins, Mic, Plus, ShoppingCart, Sparkles, Trash2, X } from 'lucide-react'
 import { addDaysYmd, dateLabel, today } from '@/lib/dates'
 import { haptic } from '@/lib/haptics'
 import { uid } from '@/lib/id'
 import { money } from '@/lib/expenses'
-import { AISLES, aisleFor, parseItems } from '@/lib/shopping'
+import { AISLES, aisleFor, euros, parseItems } from '@/lib/shopping'
+import { useDictation } from '@/lib/speech'
 import {
   CHORE_IDEAS,
   balances,
+  buyOps,
+  priceOps,
   choreStatus,
   chores,
   completeChore,
@@ -18,11 +21,15 @@ import {
   myChores,
   settleUp,
   shopItems,
+  shopTotal,
+  usualId,
+  usuals,
   whoseTurn,
   type Chore,
   type Expense,
   type HouseItem,
   type ShopItem,
+  type Usual,
 } from '@/lib/house'
 import { toast } from '@/app/store'
 import { Button, Empty, Group, Input, Modal, ModalHeader, Section, bouncy, cx, softSpring } from '@/components/ui'
@@ -404,32 +411,39 @@ function ChoreFields({ token, me, items, chore, onClose }: Props & { chore?: Hou
 
 // ── Compra compartida ───────────────────────────────────────
 
-/** La lista de la compra del piso: la ve y la toca todo el mundo, con quién apuntó y quién compró cada cosa */
+/** La lista de la compra del piso: la ve y la toca todo el mundo, con quién apuntó y quién compró cada cosa (como Bring!) */
 export function SharedShopping({ token, me, items }: Props) {
   const name = useNames(items, me)
   const [text, setText] = useState('')
+  const base = useRef('')
+  const dictation = useDictation((t) => setText(`${base.current}${base.current && t ? ', ' : ''}${t}`))
   const all = shopItems(items).sort((a, b) => a.data.at - b.data.at)
   const pending = all.filter((i) => !i.data.done)
   const bought = all.filter((i) => i.data.done)
-  const add = () => {
-    const list = parseItems(text)
+  const usual = usuals(items).slice(0, 12)
+  const priceOf = (n: string) => (items.find((i) => i.id === usualId(n))?.data as Usual | undefined)?.price
+  const add = (value = text) => {
+    const list = parseItems(value)
     if (!list.length) return
-    const have = new Set(pending.map((i) => i.data.name.toLowerCase()))
-    const fresh = list.filter((p) => !have.has(p.name.toLowerCase()))
-    if (fresh.length) act(token, fresh.map((p) => ({ op: 'put' as const, kind: 'shop' as const, id: uid(), data: { name: p.name, qty: p.qty, by: me, at: Date.now() } })))
+    const have = new Set(pending.map((i) => usualId(i.data.name)))
+    const fresh = list.filter((p) => !have.has(usualId(p.name)))
+    // Sin precio escrito, el de la última vez
+    if (fresh.length) act(token, fresh.map((p) => ({ op: 'put' as const, kind: 'shop' as const, id: uid(), data: { name: p.name, qty: p.qty, price: p.price ?? priceOf(p.name), by: me, at: Date.now() } })))
     haptic()
     setText('')
     toast(fresh.length ? (fresh.length === 1 ? `${fresh[0].name} a la compra del piso` : `${fresh.length} cosas a la compra del piso`) : 'Ya estaba en la lista')
   }
   const toggle = (i: HouseItem<ShopItem>) => {
     haptic()
-    const done = !i.data.done
-    act(token, [{ op: 'put', kind: 'shop', id: i.id, data: { ...i.data, done, doneBy: done ? me : undefined, doneAt: done ? Date.now() : undefined } }])
+    if (!i.data.done) return act(token, buyOps(items, i, me, Date.now()))
+    act(token, [{ op: 'put', kind: 'shop', id: i.id, data: { ...i.data, done: false, doneBy: undefined, doneAt: undefined } }])
   }
+  const setPrice = (i: HouseItem<ShopItem>, price: number | undefined) => act(token, priceOps(items, i, price))
   const clear = () => {
     act(token, bought.map((i) => ({ op: 'del' as const, id: i.id })))
     toast(`Fuera lo comprado (${bought.length})`, { label: 'Deshacer', run: () => act(token, bought.map((i) => ({ op: 'put' as const, kind: 'shop' as const, id: i.id, data: i.data as unknown as Record<string, unknown> }))) })
   }
+  const total = shopTotal(items)
 
   return (
     <>
@@ -438,7 +452,7 @@ export function SharedShopping({ token, me, items }: Props) {
           e.preventDefault()
           add()
         }}
-        className="glass mb-4 flex items-center gap-2 rounded-[18px] py-2 pr-2 pl-4"
+        className="glass mb-3 flex items-center gap-2 rounded-[18px] py-2 pr-2 pl-4"
       >
         <Plus size={18} className="shrink-0 text-muted" />
         <input
@@ -448,10 +462,54 @@ export function SharedShopping({ token, me, items }: Props) {
           aria-label="Añadir a la compra del piso"
           className="h-10 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-faint"
         />
+        {dictation.supported && (
+          <button
+            type="button"
+            aria-label={dictation.listening ? 'Dejar de dictar' : 'Dictar la compra'}
+            onClick={() => {
+              if (dictation.listening) return dictation.stop()
+              base.current = text.trim()
+              dictation.start()
+            }}
+            className={cx('relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full', dictation.listening ? 'bg-green text-on-green' : 'bg-fill text-fg')}
+          >
+            {dictation.listening && <motion.span className="absolute inset-0 rounded-full bg-green" animate={{ scale: [1, 1.6], opacity: [0.5, 0] }} transition={{ duration: 1.2, repeat: Infinity }} />}
+            <Mic size={17} className="relative" />
+          </button>
+        )}
         <button type="submit" aria-label="Añadir" disabled={!text.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white transition-opacity disabled:opacity-30">
           <ArrowRight size={18} strokeWidth={2.6} />
         </button>
       </form>
+      {dictation.error && <p className="mb-3 px-1 text-[13px] text-muted">{dictation.error}</p>}
+
+      {usual.length > 0 && (
+        <div className="mb-5">
+          <p className="mb-2 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">Lo de siempre</p>
+          <div className="flex flex-wrap gap-1.5">
+            {usual.map((u) => (
+              <motion.button
+                key={u.id}
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                onClick={() => add(u.data.name)}
+                className="flex h-8 items-center gap-1 rounded-full bg-fill pr-3 pl-2 text-[13.5px] font-medium hover:bg-press"
+              >
+                <Plus size={13} strokeWidth={2.6} /> {u.data.name}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {total.priced > 0 && (
+        <p className="mb-4 px-1 text-[13.5px] text-muted" aria-live="polite">
+          <span className="font-num font-semibold text-fg">Unos {euros(total.total)}</span>
+          {total.bought > 0 && ` · ${euros(total.bought)} comprado`}
+          {total.missing > 0 && ` · ${total.missing} sin precio`}
+        </p>
+      )}
+
       {all.length === 0 ? (
         <Group>
           <Empty icon={<ShoppingCart size={26} strokeWidth={2.2} />} title="La compra del piso está vacía" hint="Lo que apuntéis aquí lo ve todo el piso al momento, con quién lo apuntó. Quien lo compre, lo marca." />
@@ -466,7 +524,7 @@ export function SharedShopping({ token, me, items }: Props) {
                 <h3 className="mb-1.5 px-1 text-[13px] font-semibold tracking-wide text-muted uppercase">{a.label}</h3>
                 <Group>
                   {list.map((i) => (
-                    <ShopRow key={i.id} item={i} who={name(i.data.by, 'alguien')} onToggle={() => toggle(i)} onRemove={() => act(token, [{ op: 'del', id: i.id }])} />
+                    <ShopRow key={i.id} item={i} who={name(i.data.by, 'alguien')} onToggle={() => toggle(i)} onPrice={(p) => setPrice(i, p)} onRemove={() => act(token, [{ op: 'del', id: i.id }])} />
                   ))}
                 </Group>
               </section>
@@ -482,7 +540,7 @@ export function SharedShopping({ token, me, items }: Props) {
               </div>
               <Group>
                 {bought.map((i) => (
-                  <ShopRow key={i.id} item={i} who={`compró ${name(i.data.doneBy, 'alguien').replace(/^Tú$/, 'tú')}`} onToggle={() => toggle(i)} onRemove={() => act(token, [{ op: 'del', id: i.id }])} />
+                  <ShopRow key={i.id} item={i} who={`compró ${name(i.data.doneBy, 'alguien').replace(/^Tú$/, 'tú')}`} onToggle={() => toggle(i)} onPrice={(p) => setPrice(i, p)} onRemove={() => act(token, [{ op: 'del', id: i.id }])} />
                 ))}
               </Group>
             </section>
@@ -493,7 +551,42 @@ export function SharedShopping({ token, me, items }: Props) {
   )
 }
 
-function ShopRow({ item, who, onToggle, onRemove }: { item: HouseItem<ShopItem>; who: string; onToggle: () => void; onRemove: () => void }) {
+/** Precio de una cosa: se toca para ponerlo o cambiarlo */
+function PriceButton({ name, value, onChange }: { name: string; value?: number; onChange: (v: number | undefined) => void }) {
+  const [editing, setEditing] = useState(false)
+  if (editing)
+    return (
+      <input
+        autoFocus
+        inputMode="decimal"
+        aria-label={`Precio de ${name}`}
+        defaultValue={value ? String(value).replace('.', ',') : ''}
+        onBlur={(e) => {
+          const n = Number(e.target.value.replace(',', '.').replace(/[^\d.]/g, ''))
+          onChange(n > 0 ? Math.round(n * 100) / 100 : undefined)
+          setEditing(false)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          if (e.key === 'Escape') setEditing(false)
+        }}
+        placeholder="€"
+        className="font-num h-7 w-16 shrink-0 rounded-lg bg-fill px-2 text-right text-[13px] font-semibold"
+      />
+    )
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      aria-label={value ? `Precio de ${name}: ${euros(value)}. Cambiar` : `Poner precio a ${name}`}
+      className={cx('font-num h-7 shrink-0 rounded-full px-2 font-semibold text-muted transition-colors hover:bg-hover', value ? 'text-[12.5px]' : 'text-[12px]')}
+    >
+      {value ? euros(value) : '€'}
+    </button>
+  )
+}
+
+function ShopRow({ item, who, onToggle, onPrice, onRemove }: { item: HouseItem<ShopItem>; who: string; onToggle: () => void; onPrice: (v: number | undefined) => void; onRemove: () => void }) {
   const on = !!item.data.done
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
@@ -508,6 +601,7 @@ function ShopRow({ item, who, onToggle, onRemove }: { item: HouseItem<ShopItem>;
         </span>
         {item.data.qty && <span className="font-num shrink-0 rounded-full bg-fill px-2 py-0.5 text-[12.5px] font-semibold text-muted">{item.data.qty}</span>}
       </button>
+      <PriceButton name={item.data.name} value={item.data.price} onChange={onPrice} />
       <button type="button" aria-label={`Quitar ${item.data.name}`} onClick={onRemove} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-faint hover:bg-hover hover:text-fg">
         <X size={14} />
       </button>

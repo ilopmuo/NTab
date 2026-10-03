@@ -17,8 +17,8 @@ export type PushState =
   | 'off'
   | 'on'
 
-const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-const isStandalone = () =>
+export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+export const isStandalone = () =>
   matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 
 export function isPushEnabledHere() {
@@ -99,8 +99,17 @@ async function activeWorker(): Promise<ServiceWorkerRegistration> {
   return reg
 }
 
-/** Pide permiso, suscribe este dispositivo y lo guarda en tu cuenta */
-export async function enablePush(userId: string): Promise<PushState> {
+export interface DeviceSubscription {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+}
+
+/**
+ * Pide permiso y suscribe este dispositivo a los avisos push (o reutiliza su
+ * suscripción). Sin permiso, devuelve el estado. Lo usan tus avisos y los del
+ * piso compartido.
+ */
+export async function subscribeDevice(): Promise<DeviceSubscription | 'denied' | 'off'> {
   // Primero, sin esperar a nada más: iOS solo muestra la petición si viene directa del toque
   const permission = await withTimeout(
     askPermission(),
@@ -125,8 +134,14 @@ export async function enablePush(userId: string): Promise<PushState> {
       throw new PushError(`No se pudo suscribir este dispositivo: ${e instanceof Error ? e.message : String(e)}`)
     })
   }
+  return sub.toJSON() as DeviceSubscription
+}
+
+/** Pide permiso, suscribe este dispositivo y lo guarda en tu cuenta */
+export async function enablePush(userId: string): Promise<PushState> {
+  const json = await subscribeDevice()
+  if (typeof json === 'string') return json
   const supabase = await getSupabase()
-  const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
   const { error } = await withTimeout(
     Promise.resolve(
       supabase.from('push_subscriptions').upsert(

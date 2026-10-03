@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOps, balances, choreStatus, completeChore, fairness, myChores, sanitize, settleUp, stale, whoseTurn, type Chore, type HouseItem } from './house'
+import { applyOps, balances, buyOps, choreStatus, completeChore, fairness, houseReminder, myChores, myShares, priceOps, reminderKindAt, sanitize, settleUp, shareOf, shopTotal, stale, usualId, usuals, whoseTurn, type Chore, type HouseItem, type ShopItem } from './house'
 
 const member = (id: string, name: string, order: number): HouseItem => ({ id, kind: 'member', data: { name, order } })
 const chore = (id: string, data: Partial<Chore>): HouseItem => ({ id, kind: 'chore', data: { title: id, rotation: [], turn: 0, at: 0, ...data } })
@@ -97,5 +97,59 @@ describe('casa compartida', () => {
     expect(sanitize('expense', { what: 'Luz', amount: 45.678, paidBy: 'yo', day: 'ayer' })).toMatchObject({ amount: 45.68, day: '1970-01-01', split: [] })
     expect(sanitize('chore', { title: 'Baño', due: '2026-13', every: 9999 })).toMatchObject({ every: 365 })
     expect(sanitize('chore', { title: 'Baño', due: '2026-13' })?.due).toBeUndefined()
+  })
+
+  it('avisos del piso: a las 9 lo que te toca (y lo atrasado); a las 20, lo de hoy sin hacer', () => {
+    expect(reminderKindAt('08:59')).toBeNull()
+    expect(reminderKindAt('09:00')).toBe('morning')
+    expect(reminderKindAt('09:14')).toBe('morning')
+    expect(reminderKindAt('09:15')).toBeNull()
+    expect(reminderKindAt('20:03')).toBe('evening')
+    const today = '2026-10-03'
+    const items = [
+      ...base(),
+      chore('basura', { title: 'Sacar la basura', rotation: ['ana', 'yo'], due: today }),
+      chore('baño', { title: 'Limpiar el baño', rotation: ['ana'], due: '2026-10-01' }),
+      chore('nevera', { title: 'Limpiar la nevera', rotation: ['ana'], due: '2026-10-10' }),
+      chore('casero', { title: 'Llamar al casero', rotation: ['ana'] }),
+    ]
+    expect(houseReminder(items, 'ana', today, 'morning')).toEqual({ title: 'Hoy te tocan 2 cosas en casa', body: 'Limpiar el baño (con retraso) · Sacar la basura' })
+    expect(houseReminder(items, 'ana', today, 'evening')).toEqual({ title: 'Aún te toca en casa', body: 'Sacar la basura' })
+    expect(houseReminder(items, 'yo', today, 'morning')).toBeNull()
+  })
+
+  it('compra del piso: lo de siempre al comprar, con su precio, y el total', () => {
+    const leche: HouseItem<ShopItem> = { id: 's1', kind: 'shop', data: { name: 'Leche', price: 1.2, by: 'ana', at: 1 } }
+    let items: HouseItem[] = [...base(), leche, { id: 's2', kind: 'shop', data: { name: 'Pan', by: 'yo', at: 2 } }]
+    expect(usualId('Papel higiénico ')).toBe('u-papel-higienico')
+    expect(shopTotal(items)).toEqual({ total: 1.2, bought: 0, missing: 1, priced: 1 })
+    items = applyOps(items, buyOps(items, leche, 'yo', 50)).items
+    expect(items.find((i) => i.id === 's1')?.data).toMatchObject({ done: true, doneBy: 'yo', doneAt: 50 })
+    expect(items.find((i) => i.id === 'u-leche')?.data).toEqual({ name: 'Leche', count: 1, price: 1.2, at: 50 })
+    expect(shopTotal(items)).toMatchObject({ total: 1.2, bought: 1.2 })
+    // Ya comprada no está pendiente: sale en «lo de siempre»; otra vez, cuenta 2
+    expect(usuals(items).map((u) => u.data.name)).toEqual(['Leche'])
+    const again = { ...leche, id: 's3', data: { ...leche.data, price: undefined } }
+    items = applyOps([...items, again], buyOps([...items, again], again, 'ana', 60)).items
+    expect(items.find((i) => i.id === 'u-leche')?.data).toMatchObject({ count: 2, price: 1.2 })
+    // El precio puesto después de comprar también se queda para la próxima
+    const s3 = items.find((i) => i.id === 's3') as HouseItem<ShopItem>
+    items = applyOps(items, priceOps(items, s3, 1.35)).items
+    expect(items.find((i) => i.id === 'u-leche')?.data).toMatchObject({ count: 2, price: 1.35 })
+    const pan = items.find((i) => i.id === 's2') as HouseItem<ShopItem>
+    expect(priceOps(items, pan, 0.8)).toHaveLength(1)
+  })
+
+  it('tu parte de cada gasto, como en las cuentas (sin los pagos para saldar)', () => {
+    const items: HouseItem[] = [
+      ...base(),
+      { id: 'e1', kind: 'expense', data: { what: 'Internet', amount: 10, paidBy: 'ana', split: [], day: '2026-10-01', at: 1 } },
+      { id: 'e2', kind: 'expense', data: { what: 'Pizza', amount: 20, paidBy: 'yo', split: ['ana', 'luis'], day: '2026-10-02', at: 2 } },
+      { id: 'e3', kind: 'expense', data: { what: 'Pago para saldar', amount: 3.33, paidBy: 'yo', split: ['ana'], day: '2026-10-03', settle: true, at: 3 } },
+    ]
+    expect(shareOf({ what: 'x', amount: 10, paidBy: 'ana', split: [], day: '', at: 0 }, 'yo', ['yo', 'ana', 'luis'])).toBe(3.34)
+    expect(shareOf({ what: 'x', amount: 10, paidBy: 'ana', split: [], day: '', at: 0 }, 'ana', ['yo', 'ana', 'luis'])).toBe(3.33)
+    expect(myShares(items, 'yo')).toEqual([{ id: 'e1', what: 'Internet', amount: 3.34, day: '2026-10-01', at: 1 }])
+    expect(myShares(items, 'ana').map((s) => s.amount)).toEqual([3.33, 10])
   })
 })

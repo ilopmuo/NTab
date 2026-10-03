@@ -5,7 +5,7 @@
  */
 import { normalize } from '../_shared/text.ts'
 import { parseItems } from '../_shared/shopping.ts'
-import { balances, choreStatus, chores, expenses, fairness, members, settleUp, shopItems, whoseTurn, type Chore, type HouseItem, type HouseOp } from '../_shared/house.ts'
+import { balances, choreStatus, chores, expenses, fairness, members, settleUp, shopItems, usualId, whoseTurn, type Chore, type HouseItem, type HouseOp, type Usual } from '../_shared/house.ts'
 
 export interface HouseCtx {
   name: string
@@ -103,8 +103,13 @@ export function houseAdd(h: HouseCtx, args: Args, env: { now: number; today: str
     const have = new Set(shopItems(h.items).filter((i) => !i.data.done).map((i) => normalize(i.data.name)))
     const fresh = parseItems(texto).filter((p) => !have.has(normalize(p.name)))
     if (!fresh.length) return { ops: [], report: 'Ya estaba todo en la compra del piso.' }
+    // Sin precio dicho, el de la última vez
+    const lastPrice = (name: string) => (h.items.find((i) => i.id === usualId(name))?.data as Usual | undefined)?.price
     return {
-      ops: fresh.map((p) => ({ op: 'put', kind: 'shop', id: env.newId(), data: { name: p.name, ...(p.qty ? { qty: p.qty } : {}), by: h.me, at: env.now } })),
+      ops: fresh.map((p) => {
+        const price = p.price ?? lastPrice(p.name)
+        return { op: 'put', kind: 'shop', id: env.newId(), data: { name: p.name, ...(p.qty ? { qty: p.qty } : {}), ...(price ? { price } : {}), by: h.me, at: env.now } }
+      }),
       report: `Apuntado en la compra del piso: ${fresh.map((p) => p.name).join(', ')}. Lo ve todo el piso.`,
     }
   }
@@ -133,6 +138,15 @@ export function houseAdd(h: HouseCtx, args: Args, env: { now: number; today: str
     }
   }
   return { ops: [], report: 'tipo tiene que ser «compra», «tarea» o «gasto».' }
+}
+
+/**
+ * Lo dictado a Siri para la compra del piso: «piso: leche y pan», «compra del
+ * piso, papel higiénico». Devuelve lo que hay que comprar o null si no va al piso.
+ */
+export function pisoText(text: string): string | null {
+  const m = /^\s*(?:(?:a\s+)?la\s+)?(?:compra\s+(?:del|de\s+el)\s+piso|para\s+el\s+piso|piso)\s*[:,.]?\s+(.+)$/is.exec(text)
+  return m ? m[1].trim() : null
 }
 
 /** hecho_en_casa: marca una tarea de casa como hecha (por el usuario o por quien se diga) y pasa el turno */

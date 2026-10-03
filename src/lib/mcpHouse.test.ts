@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { handleMessage, type Store } from '../../supabase/functions/mcp/server'
 import type { Env, Row } from '../../supabase/functions/mcp/ntab'
-import type { HouseCtx } from '../../supabase/functions/mcp/casa'
+import { pisoText, type HouseCtx } from '../../supabase/functions/mcp/casa'
 import { applyOps, type HouseItem } from '../../supabase/functions/_shared/house'
 
 // Viernes 2 de octubre de 2026, 10:00 en Madrid
@@ -76,5 +76,17 @@ describe('conector: casa compartida', () => {
   it('sin piso lo dice', async () => {
     const store: Store = { async load() { return [] }, async save() {} }
     expect(await call(store, 'ver_casa')).toContain('No tiene casa compartida')
+  })
+
+  it('Siri: «piso: …» va a la compra del piso, con el precio de la última vez', async () => {
+    expect(pisoText('piso: leche y pan')).toBe('leche y pan')
+    expect(pisoText('Piso, papel higiénico')).toBe('papel higiénico')
+    expect(pisoText('compra del piso lavavajillas')).toBe('lavavajillas')
+    expect(pisoText('A la compra del piso: aceite')).toBe('aceite')
+    expect(pisoText('comprar un piso nuevo')).toBeNull()
+    expect(pisoText('compra: leche')).toBeNull()
+    const store = houseStore([...items(), { id: 'u-leche', kind: 'usual', data: { name: 'Leche', count: 3, price: 1.2, at: 0 } }])
+    expect(await call(store, 'anadir_a_casa', { tipo: 'compra', texto: 'leche' })).toContain('Leche')
+    expect((await store.house())!.items.find((i) => i.kind === 'shop' && (i.data as { name: string }).name === 'Leche')?.data).toMatchObject({ price: 1.2 })
   })
 })
