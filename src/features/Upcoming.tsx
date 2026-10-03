@@ -3,17 +3,21 @@ import { Plus } from 'lucide-react'
 import { ui } from '@/app/store'
 import { useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, capitalize, fmt, fromYmd, today } from '@/lib/dates'
-import { SectionIcon, section } from '@/app/sections'
 import { TaskList } from '@/components/TaskList'
 import { whenDue } from '@/lib/tasks'
-import { PageHeader, Section, cx } from '@/components/ui'
+import { Section, cx } from '@/components/ui'
 import { useDropOver } from '@/components/dayDrag'
 import type { Task } from '@/db/types'
-import { Page } from './Page'
-import { SelectButton } from '@/features/select/SelectButton'
 import { Progressive } from '@/components/Progressive'
 
-export function UpcomingView() {
+/** Cuántas tareas hay programadas a partir de hoy */
+export const scheduledFrom = (tasks: Task[], t = today()) => tasks.filter((x) => (whenDue(x) ?? '') >= t).length
+
+/**
+ * Lo que viene, día a día (como Próximo de Things): lo atrasado, los próximos
+ * 14 días y lo de más adelante. Es la vista «Lista» del Calendario.
+ */
+export function UpcomingList() {
   const tasks = useOpenTasks()
   const t = today()
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDaysYmd(t, i)), [t])
@@ -21,16 +25,9 @@ export function UpcomingView() {
   // Cada tarea, en el día que manda (el de hacerla o el de su fecha límite, el que llegue antes)
   const overdue = tasks.filter((x) => (whenDue(x) ?? '9') < t)
   const later = tasks.filter((x) => (whenDue(x) ?? '') > days[days.length - 1])
-  const total = tasks.filter((x) => (whenDue(x) ?? '') >= t).length
 
   return (
-    <Page>
-      <PageHeader
-        icon={<SectionIcon def={section('upcoming')} size={40} />}
-        title="Próximo"
-        subtitle={`${total} ${total === 1 ? 'tarea programada' : 'tareas programadas'} a partir de hoy`}
-        actions={<SelectButton />}
-      />
+    <>
       {overdue.length > 0 && (
         <Section title="Atrasadas" count={overdue.length} tone="red" sticky>
           <TaskList tasks={overdue} draggable />
@@ -57,7 +54,7 @@ export function UpcomingView() {
           <TaskList tasks={later} draggable />
         </Section>
       )}
-    </Page>
+    </>
   )
 }
 

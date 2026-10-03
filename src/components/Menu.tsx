@@ -29,6 +29,8 @@ export function Menu({
   className?: string
 }) {
   const [open, setOpen] = useState(false)
+  // Hacia dónde se abre: el lado pedido, salvo que no quepa en la pantalla (en el móvil los botones bajan a la izquierda)
+  const [side, setSide] = useState(align)
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const list = useRef<HTMLDivElement>(null)
@@ -72,7 +74,12 @@ export function Menu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          const r = root.current?.getBoundingClientRect()
+          const width = 224
+          if (r) setSide(align === 'end' ? (r.right - width < 8 ? 'start' : 'end') : r.left + width > window.innerWidth - 8 ? 'end' : 'start')
+          setOpen((v) => !v)
+        }}
         onKeyDown={(e) => e.key === 'ArrowDown' && (e.preventDefault(), setOpen(true))}
         className="flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-full bg-fill px-2 text-[13px] font-semibold text-fg transition-colors hover:bg-press"
       >
@@ -92,7 +99,7 @@ export function Menu({
             transition={spring}
             className={cx(
               'glass-thick absolute top-full z-40 mt-1.5 min-w-52 overflow-hidden rounded-[14px] p-1 shadow-[var(--c-shadow-lg)]',
-              align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
+              side === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
             )}
           >
             {visible.map((it) => (

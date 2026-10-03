@@ -29,7 +29,8 @@ test('etiquetas: ver, cambiar el nombre (juntando dos) y quitar con deshacer', a
   page.once('dialog', (d) => void d.accept())
   await page.getByRole('button', { name: 'Opciones de #salud' }).click()
   await page.getByRole('menuitem', { name: 'Quitar la etiqueta' }).click()
-  await expect(page.locator('#main h1')).toHaveText('Etiquetas')
+  // Las etiquetas viven en Listas
+  await expect(page.locator('#main h1')).toHaveText('Listas')
   await expect(row('salud')).toHaveCount(0)
   // (el aviso anterior puede estar aún desapareciendo)
   await page.getByRole('button', { name: 'Deshacer' }).last().click()

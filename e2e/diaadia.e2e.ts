@@ -23,8 +23,10 @@ test('hábitos: pausa y «hoy no toca» sin romper la racha; fuerza', async ({ p
 })
 
 test('«Días sin…»: lo que quieres dejar, con récord y ahorro', async ({ page }) => {
+  // Última vez está dentro de Hábitos
   await openApp(page, '/trackers')
-  await page.getByRole('button', { name: 'Nuevo' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Hábitos')
+  await page.getByRole('button', { name: 'Apuntar', exact: true }).click()
   await page.getByRole('button', { name: 'Lo quiero dejar' }).click()
   await page.getByLabel('Nombre').fill('Fumar')
   await page.getByPlaceholder('Ej. 5,50 €').fill('5')

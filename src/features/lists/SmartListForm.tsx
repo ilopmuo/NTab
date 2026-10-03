@@ -74,7 +74,7 @@ function Form({ list, onClose }: { list?: SmartList; onClose: () => void }) {
         void save()
       }}
     >
-      <ModalHeader title={list ? 'Editar lista' : 'Nueva lista inteligente'} onClose={onClose} />
+      <ModalHeader title={list ? 'Editar filtro' : 'Nuevo filtro'} onClose={onClose} />
       <div className="max-h-[68vh] space-y-5 overflow-y-auto p-5">
         <Input autoFocus aria-label="Nombre de la lista" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Llamadas de trabajo" className="h-11 text-[15px]" />
         <p className="-mt-2 px-1 text-[13px] text-muted">Solo salen las tareas pendientes que cumplen todo lo que elijas. Se actualiza sola.</p>

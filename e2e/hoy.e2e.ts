@@ -14,6 +14,14 @@ const dialog = (page: Page, title: string) => page.getByRole('dialog').filter({ 
 test('lo importante de hoy: se elige, va arriba y no se repite', async ({ page }) => {
   await openApp(page, '/today')
   for (const t of ['Llamar al banco hoy', 'Enviar el informe hoy', 'Comprar pan hoy']) await quickAdd(page, t)
+  // Hoy sugiere una cosa cada vez: primero elegir funciones, luego planificar el día
+  // (que ya incluye lo importante) y, hecho eso, «¿Qué es lo importante hoy?»
+  await expect(page.getByRole('button', { name: /¿Qué es lo importante hoy\?/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Ahora no' }).click()
+  await page.getByRole('link', { name: /Planifica tu día/ }).click()
+  await page.getByRole('button', { name: /Listo, a por el día/ }).click()
+  await expect(page.locator('#main h1').first()).not.toHaveText('Planifica tu día')
+  await page.evaluate(() => (location.hash = '/today'))
   await page.getByRole('button', { name: /¿Qué es lo importante hoy\?/ }).click()
   const picker = dialog(page, 'Lo importante de hoy')
   await picker.getByRole('checkbox', { name: /Enviar el informe/ }).click()

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Folder, Plus } from 'lucide-react'
+import { ClipboardList, Folder, Plus, Target } from 'lucide-react'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import type { ProjectStatus } from '@/db/types'
@@ -9,6 +9,8 @@ import { setUI, useUI } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Button, Empty, PageHeader, Section, Segmented } from '@/components/ui'
 import { Page } from '../Page'
+import { Tile } from '@/components/Tile'
+import { useFeatures } from '@/app/features'
 import { ProjectCard } from './ProjectCard'
 import { ProjectForm } from './ProjectForm'
 
@@ -16,6 +18,9 @@ export function ProjectsView() {
   const { areas, projects } = useLookup()
   const tasks = useLiveQuery(() => db.tasks.where('projectId').above('').toArray(), []) ?? []
   const [status, setStatus] = useState<ProjectStatus>('active')
+  const { on } = useFeatures()
+  const goals = useLiveQuery(() => db.goals.where('status').equals('active').count(), [])
+  const templates = useLiveQuery(() => db.templates.count(), [])
   const creating = useUI((s) => s.creating === 'project')
   const list = projects.filter((p) => p.status === status)
   const groups = [
@@ -35,6 +40,13 @@ export function ProjectsView() {
           </Button>
         }
       />
+      {/* Objetivos y Plantillas viven aquí dentro (antes eran pestañas aparte) */}
+      {(on('goals') || on('templates')) && (
+        <div className="mb-6 grid grid-cols-2 gap-3 @[640px]:max-w-md">
+          {on('goals') && <Tile to="/goals" icon={Target} label="Objetivos" count={goals} hint="Hacia dónde vas" />}
+          {on('templates') && <Tile to="/templates" icon={ClipboardList} label="Plantillas" count={templates} hint="Listas que repites" />}
+        </div>
+      )}
       <Segmented
         className="mb-8"
         value={status}

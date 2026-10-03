@@ -1,12 +1,12 @@
-import { featureOfSection } from '@/lib/features'
+import { FEATURES, featureOfSection } from '@/lib/features'
 import { setFeature } from '@/app/features'
 import { SectionIcon, section } from '@/app/sections'
 import { Button, Empty } from '@/components/ui'
 import { Page } from './Page'
 
 /** Se abre una sección cuya función está apagada (un enlace antiguo, un atajo…) */
-export function FeatureOff({ id }: { id: string }) {
-  const f = featureOfSection(id)
+export function FeatureOff({ id, feature }: { id: string; /** si no es la de la sección (un filtro, dentro de Listas) */ feature?: string }) {
+  const f = feature ? FEATURES.find((x) => x.id === feature) : featureOfSection(id)
   const def = section(id)
   return (
     <Page>

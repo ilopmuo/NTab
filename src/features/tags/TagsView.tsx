@@ -4,27 +4,20 @@ import { ChevronRight, Hash, MoreHorizontal, Pencil, Pin, Tags, Trash2 } from 'l
 import { db } from '@/db/db'
 import { deleteTag, renameTag, restoreTasks } from '@/db/actions'
 import { cleanTag, tagStats, type TagStat } from '@/lib/tags'
-import { SectionIcon, section } from '@/app/sections'
 import { href, vtName } from '@/app/router'
 import { toast } from '@/app/store'
 import { isPinned, togglePinWithToast, usePins } from '@/app/pins'
 import { Menu } from '@/components/Menu'
-import { Empty, Group, PageHeader } from '@/components/ui'
-import { Page } from '../Page'
+import { Empty, Group, Section } from '@/components/ui'
 
-/** Todas las etiquetas en uso: cuántas tareas tienen, renombrar (o juntar) y quitar */
-export function TagsView() {
+/** Todas las etiquetas en uso (en Listas): cuántas tareas tienen, renombrar (o juntar) y quitar */
+export function TagsBlock() {
   const tasks = useLiveQuery(() => db.tasks.toArray(), [])
   if (!tasks) return null
   const stats = tagStats(tasks)
   const names = stats.map((s) => s.tag)
   return (
-    <Page>
-      <PageHeader
-        icon={<SectionIcon def={section('tags')} size={40} />}
-        title="Etiquetas"
-        subtitle={stats.length ? `${stats.length} ${stats.length === 1 ? 'etiqueta' : 'etiquetas'}. Se ponen al escribir: «Llamar a Ana #llamadas».` : undefined}
-      />
+    <Section title="Etiquetas" count={stats.length}>
       {stats.length === 0 ? (
         <Group>
           <Empty
@@ -40,7 +33,7 @@ export function TagsView() {
           ))}
         </Group>
       )}
-    </Page>
+    </Section>
   )
 }
 

@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, m as motion } from 'motion/react'
-import { ArrowRight, CalendarCheck, ChevronRight, Moon, RefreshCcw, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
+import { ArrowRight, CalendarCheck, ChevronRight, Moon, MoreHorizontal, RefreshCcw, SlidersHorizontal, Sparkles, Sun, Timer } from 'lucide-react'
 import { whatNow } from './whatnow/store'
 import { db } from '@/db/db'
 import { setSetting, updateTask } from '@/db/actions'
@@ -9,10 +9,11 @@ import { useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, greeting, longDateLabel, today, weekStart } from '@/lib/dates'
 import { isDue } from '@/lib/habits'
 import { whenDue } from '@/lib/tasks'
-import { href } from '@/app/router'
+import { href, navigate } from '@/app/router'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
 import { OrderToggle } from '@/components/ManualOrder'
+import { Menu } from '@/components/Menu'
 import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/components/ui'
 import { HabitStrip } from './habits/HabitStrip'
 import { RoutinesCard } from './routines/RoutinesCard'
@@ -113,6 +114,22 @@ export function TodayView() {
   // Por la tarde, cerrar el día (como Sunsama): si aún no se ha cerrado y hay algo que repasar
   const needsShutdown = lastShutdown !== undefined && lastShutdown !== t && new Date().getHours() >= 18 && (pending > 0 || done.length > 0)
 
+  // Una sola sugerencia cada vez (la que toca ahora), no un montón de avisos apilados
+  const importantPrompt = important.length === 0 && todays.length + overdue.length >= 3
+  // Por la tarde, cerrar el día; la primera vez, elegir funciones (para que todo lo demás sea menos);
+  // por la mañana, planificar (que ya incluye elegir lo importante); luego lo importante y la revisión
+  const suggestion: 'shutdown' | 'plan' | 'important' | 'review' | 'features' | null = needsShutdown
+    ? 'shutdown'
+    : featuresIntro === null
+      ? 'features'
+      : needsPlan
+        ? 'plan'
+        : importantPrompt
+          ? 'important'
+          : needsReview
+            ? 'review'
+            : null
+
   const summary =
     total === 0
       ? 'Nada planificado. Un buen día para adelantar algo.'
@@ -147,6 +164,17 @@ export function TodayView() {
               </button>
             )}
             <SelectButton />
+            {/* Planificar, foco, cierre y revisión: momentos del día, que salen de aquí (no son lugares) */}
+            <Menu
+              label="Tu día"
+              trigger={<MoreHorizontal size={17} strokeWidth={2.4} />}
+              items={[
+                { label: 'Planificar el día', icon: <Sun size={14} />, onSelect: () => navigate('/plan') },
+                features.on('focus') && { label: 'Empezar foco', icon: <Timer size={14} />, onSelect: () => navigate('/focus') },
+                { label: 'Cerrar el día', icon: <Moon size={14} />, onSelect: () => navigate('/shutdown') },
+                features.on('review') && { label: 'Revisión semanal', icon: <RefreshCcw size={14} />, onSelect: () => navigate('/review') },
+              ]}
+            />
           </>
         }
       />
@@ -176,7 +204,7 @@ export function TodayView() {
         <div className="min-w-0 [grid-area:tasks]">
           <NowCard tasks={todays} events={todayEvents} />
           <AnimatePresence>
-            {featuresIntro === null && (
+            {suggestion === 'features' && (
               <motion.section
                 aria-label="Haz LUNO a tu medida"
                 initial={{ opacity: 0, y: -8 }}
@@ -208,7 +236,7 @@ export function TodayView() {
             )}
           </AnimatePresence>
           <AnimatePresence>
-            {needsPlan && (
+            {suggestion === 'plan' && (
               <motion.a
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -234,7 +262,7 @@ export function TodayView() {
             )}
           </AnimatePresence>
           <AnimatePresence>
-            {needsShutdown && (
+            {suggestion === 'shutdown' && (
               <motion.a
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -257,7 +285,7 @@ export function TodayView() {
             )}
           </AnimatePresence>
           <AnimatePresence>
-            {needsReview && (
+            {suggestion === 'review' && (
               <motion.a
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -282,7 +310,7 @@ export function TodayView() {
           {important.length > 0 ? (
             <ImportantSection tasks={important} onPick={() => setPicking(true)} />
           ) : (
-            todays.length + overdue.length >= 3 && <ImportantPrompt onPick={() => setPicking(true)} />
+            suggestion === 'important' && <ImportantPrompt onPick={() => setPicking(true)} />
           )}
 
           {overdue.length > 0 && (

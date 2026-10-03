@@ -6,12 +6,11 @@ import { useLookup, type Lookup } from '@/db/hooks'
 import type { Task } from '@/db/types'
 import { defaultsFor, describe, filterTasks, PRESETS, type SmartList } from '@/lib/smartLists'
 import { deleteSmartList, saveSmartList, useSmartLists } from '@/app/smartLists'
-import { SectionIcon, section } from '@/app/sections'
 import { href, navigate, vtName } from '@/app/router'
 import { setUI, useUI } from '@/app/store'
 import { Menu } from '@/components/Menu'
 import { TaskList } from '@/components/TaskList'
-import { Button, Empty, Group, PageHeader } from '@/components/ui'
+import { Button, Empty, Group, PageHeader, Section } from '@/components/ui'
 import { SelectButton } from '@/features/select/SelectButton'
 import { Page } from '../Page'
 import { SmartListForm } from './SmartListForm'
@@ -25,34 +24,32 @@ export const listNames = (lookup: Lookup) => ({
 const openTasks = () => db.tasks.where('done').equals(0).toArray()
 
 /**
- * Listas inteligentes: búsquedas guardadas por fecha, prioridad, etiquetas,
- * lista, persona y duración (como los filtros de Todoist o las listas
- * inteligentes de TickTick). Salen en la barra lateral, bajo «Mis listas».
+ * Filtros: búsquedas guardadas por fecha, prioridad, etiquetas, lista,
+ * persona y duración (como los filtros de Todoist o las listas inteligentes de
+ * TickTick). Van en la página Listas y en la barra lateral, bajo «Mis filtros».
  */
-export function SmartListsView() {
+export function SmartListsBlock() {
   const lists = useSmartLists()
   const tasks = useLiveQuery(openTasks, []) ?? []
   const lookup = useLookup()
   const creating = useUI((s) => s.creating === 'smartList')
   const presets = PRESETS.filter((p) => !lists.some((l) => l.name === p.name))
   return (
-    <Page>
-      <PageHeader
-        icon={<SectionIcon def={section('lists')} size={40} />}
-        title="Listas inteligentes"
-        subtitle="Búsquedas guardadas que se actualizan solas: «lo urgente de #trabajo», «lo rápido para hoy»…"
-        actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'smartList' })}>
-            <Plus size={16} strokeWidth={2.6} /> Nueva
-          </Button>
-        }
-      />
+    <Section
+      title="Filtros"
+      count={lists.length}
+      action={
+        <Button size="sm" variant="tinted" onClick={() => setUI({ creating: 'smartList' })}>
+          <Plus size={14} strokeWidth={2.6} /> Nuevo filtro
+        </Button>
+      }
+    >
       {lists.length === 0 ? (
         <Group>
           <Empty
             icon={<ListFilter size={28} strokeWidth={2.2} />}
-            title="Aún no tienes listas"
-            hint="Crea una con «Nueva» o empieza con una de estas ideas. Aparecerán en la barra lateral, bajo «Mis listas»."
+            title="Aún no tienes filtros"
+            hint="Una búsqueda que se guarda y se pone al día sola: «lo urgente de #trabajo», «lo rápido para hoy». Empieza con una de estas ideas."
           />
         </Group>
       ) : (
@@ -63,28 +60,23 @@ export function SmartListsView() {
         </Group>
       )}
       {presets.length > 0 && (
-        <section className="mt-8" aria-labelledby="smart-presets">
-          <h2 id="smart-presets" className="mb-2 px-1 text-[13px] font-bold text-muted">
-            Ideas para empezar
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {presets.map((p) => (
-              <button
-                key={p.name}
-                type="button"
-                onClick={() => void saveSmartList(p)}
-                className="hit inline-flex h-9 items-center gap-1.5 rounded-full bg-fill px-3.5 text-[14px] font-medium text-fg transition-colors hover:bg-hover"
-              >
-                <Plus size={14} strokeWidth={2.6} aria-hidden />
-                {p.name}
-                <span className="text-muted">· {filterTasks({ ...p, id: '' }, tasks).length}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Ideas para empezar">
+          {presets.map((p) => (
+            <button
+              key={p.name}
+              type="button"
+              onClick={() => void saveSmartList(p)}
+              className="hit inline-flex h-9 items-center gap-1.5 rounded-full bg-fill px-3.5 text-[14px] font-medium text-fg transition-colors hover:bg-hover"
+            >
+              <Plus size={14} strokeWidth={2.6} aria-hidden />
+              {p.name}
+              <span className="text-muted">· {filterTasks({ ...p, id: '' }, tasks).length}</span>
+            </button>
+          ))}
+        </div>
       )}
       <SmartListForm open={creating} onClose={() => setUI({ creating: null })} />
-    </Page>
+    </Section>
   )
 }
 
@@ -115,9 +107,9 @@ function ListMenu({ list, onEdit }: { list: SmartList; onEdit: () => void }) {
       label={`Opciones de ${list.name}`}
       trigger={<MoreHorizontal size={16} strokeWidth={2.4} />}
       items={[
-        { label: 'Editar la lista', icon: <Pencil size={14} />, onSelect: onEdit },
+        { label: 'Editar el filtro', icon: <Pencil size={14} />, onSelect: onEdit },
         {
-          label: 'Borrar la lista',
+          label: 'Borrar el filtro',
           icon: <Trash2 size={14} />,
           danger: true,
           onSelect: () => {
@@ -142,7 +134,7 @@ export function SmartListView({ id }: { id: string }) {
     return (
       <Page>
         <Group>
-          <Empty icon={<ListFilter size={28} strokeWidth={2.2} />} title="Esta lista ya no existe" hint="Puede que la hayas borrado en otro dispositivo.">
+          <Empty icon={<ListFilter size={28} strokeWidth={2.2} />} title="Este filtro ya no existe" hint="Puede que lo hayas borrado en otro dispositivo.">
             <Button onClick={() => navigate('/lists')}>Ver mis listas</Button>
           </Empty>
         </Group>
@@ -170,7 +162,7 @@ export function SmartListView({ id }: { id: string }) {
       />
       <TaskList
         tasks={shown}
-        add={{ defaults: defaultsFor(list), placeholder: 'Nueva tarea en esta lista' }}
+        add={{ defaults: defaultsFor(list), placeholder: 'Nueva tarea en este filtro' }}
         empty={<p className="px-4 py-6 text-center text-[15px] text-muted">Nada por aquí ahora mismo. Cuando una tarea cumpla la búsqueda, saldrá sola.</p>}
       />
       <SmartListForm list={list} open={editing} onClose={() => setEditing(false)} />

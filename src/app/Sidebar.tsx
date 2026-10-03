@@ -284,13 +284,13 @@ function SidebarContent() {
         {smart.length > 0 && (
           <NavGroup
             id="smart"
-            label="Mis listas"
+            label="Mis filtros"
             active={smart.some((l) => path === `/list/${l.id}`)}
             className={cx(nav.tiles.length > 0 && pinRows.length === 0 && 'mt-4')}
             action={
               <button
                 type="button"
-                aria-label="Nueva lista inteligente"
+                aria-label="Nuevo filtro"
                 onClick={() => {
                   ui.sidebar(false)
                   navigate('/lists')

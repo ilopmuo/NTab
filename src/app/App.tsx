@@ -81,24 +81,21 @@ const loaders = {
   ReviewView: keep(() => import('@/features/review/ReviewView').then((m) => ({ default: m.ReviewView }))),
   SettingsView: keep(() => import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView }))),
   TagView: keep(() => import('@/features/TagView').then((m) => ({ default: m.TagView }))),
-  TagsView: keep(() => import('@/features/tags/TagsView').then((m) => ({ default: m.TagsView }))),
   MoreView: keep(() => import('@/features/more/MoreView').then((m) => ({ default: m.MoreView }))),
   SomedayView: keep(() => import('@/features/someday/SomedayView').then((m) => ({ default: m.SomedayView }))),
   MatrixView: keep(() => import('@/features/matrix/MatrixView').then((m) => ({ default: m.MatrixView }))),
-  SmartListsView: keep(() => import('@/features/lists/SmartListsView').then((m) => ({ default: m.SmartListsView }))),
+  ListsHome: keep(() => import('@/features/lists/ListsHome').then((m) => ({ default: m.ListsHome }))),
   SmartListView: keep(() => import('@/features/lists/SmartListsView').then((m) => ({ default: m.SmartListView }))),
-  UpcomingView: keep(() => import('@/features/Upcoming').then((m) => ({ default: m.UpcomingView }))),
   ThingsView: keep(() => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView }))),
   MenuView: keep(() => import('@/features/menu/MenuView').then((m) => ({ default: m.MenuView }))),
   ExpensesView: keep(() => import('@/features/expenses/ExpensesView').then((m) => ({ default: m.ExpensesView }))),
   JournalView: keep(() => import('@/features/journal/JournalView').then((m) => ({ default: m.JournalView }))),
   ShoppingView: keep(() => import('@/features/shopping/ShoppingView').then((m) => ({ default: m.ShoppingView }))),
-  TrackersView: keep(() => import('@/features/trackers/TrackersView').then((m) => ({ default: m.TrackersView }))),
   MedsView: keep(() => import('@/features/meds/MedsView').then((m) => ({ default: m.MedsView }))),
   WaitingView: keep(() => import('@/features/waiting/WaitingView').then((m) => ({ default: m.WaitingView }))),
   RoutinesView: keep(() => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView }))),
 }
-const AreaView = warm(loaders.AreaView), CalendarView = warm(loaders.CalendarView), FinanceView = warm(loaders.FinanceView), FocusView = warm(loaders.FocusView), HouseView = warm(loaders.HouseView), GoalsView = warm(loaders.GoalsView), HabitsView = warm(loaders.HabitsView), InboxView = warm(loaders.InboxView), LogbookView = warm(loaders.LogbookView), NotesView = warm(loaders.NotesView), PlanView = warm(loaders.PlanView), ShutdownView = warm(loaders.ShutdownView), TrashView = warm(loaders.TrashView), TemplatesView = warm(loaders.TemplatesView), PeopleView = warm(loaders.PeopleView), PersonView = warm(loaders.PersonView), ProjectView = warm(loaders.ProjectView), ProjectsView = warm(loaders.ProjectsView), ReviewView = warm(loaders.ReviewView), SettingsView = warm(loaders.SettingsView), TagView = warm(loaders.TagView), TagsView = warm(loaders.TagsView), MoreView = warm(loaders.MoreView), SomedayView = warm(loaders.SomedayView), SmartListsView = warm(loaders.SmartListsView), MatrixView = warm(loaders.MatrixView), SmartListView = warm(loaders.SmartListView), UpcomingView = warm(loaders.UpcomingView), RoutinesView = warm(loaders.RoutinesView), ThingsView = warm(loaders.ThingsView), TrackersView = warm(loaders.TrackersView), MedsView = warm(loaders.MedsView), WaitingView = warm(loaders.WaitingView), ShoppingView = warm(loaders.ShoppingView), JournalView = warm(loaders.JournalView), ExpensesView = warm(loaders.ExpensesView), MenuView = warm(loaders.MenuView)
+const AreaView = warm(loaders.AreaView), CalendarView = warm(loaders.CalendarView), FinanceView = warm(loaders.FinanceView), FocusView = warm(loaders.FocusView), HouseView = warm(loaders.HouseView), GoalsView = warm(loaders.GoalsView), HabitsView = warm(loaders.HabitsView), InboxView = warm(loaders.InboxView), LogbookView = warm(loaders.LogbookView), NotesView = warm(loaders.NotesView), PlanView = warm(loaders.PlanView), ShutdownView = warm(loaders.ShutdownView), TrashView = warm(loaders.TrashView), TemplatesView = warm(loaders.TemplatesView), PeopleView = warm(loaders.PeopleView), PersonView = warm(loaders.PersonView), ProjectView = warm(loaders.ProjectView), ProjectsView = warm(loaders.ProjectsView), ReviewView = warm(loaders.ReviewView), SettingsView = warm(loaders.SettingsView), TagView = warm(loaders.TagView), MoreView = warm(loaders.MoreView), SomedayView = warm(loaders.SomedayView), ListsHome = warm(loaders.ListsHome), MatrixView = warm(loaders.MatrixView), SmartListView = warm(loaders.SmartListView), RoutinesView = warm(loaders.RoutinesView), ThingsView = warm(loaders.ThingsView), MedsView = warm(loaders.MedsView), WaitingView = warm(loaders.WaitingView), ShoppingView = warm(loaders.ShoppingView), JournalView = warm(loaders.JournalView), ExpensesView = warm(loaders.ExpensesView), MenuView = warm(loaders.MenuView)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
@@ -135,14 +132,14 @@ function Deferred({ when, children }: { when: boolean; children: ReactNode }) {
 /** Qué código necesita cada pantalla (por la primera parte de la ruta) */
 const ROUTE_CODE: Record<string, () => Promise<unknown>> = {
   inbox: loaders.InboxView,
-  upcoming: loaders.UpcomingView,
+  upcoming: loaders.CalendarView,
   calendar: loaders.CalendarView,
   habits: loaders.HabitsView,
   routines: loaders.RoutinesView,
   focus: loaders.FocusView,
   house: loaders.HouseView,
   things: loaders.ThingsView,
-  trackers: loaders.TrackersView,
+  trackers: loaders.HabitsView,
   meds: loaders.MedsView,
   waiting: loaders.WaitingView,
   shopping: loaders.ShoppingView,
@@ -155,7 +152,7 @@ const ROUTE_CODE: Record<string, () => Promise<unknown>> = {
   project: loaders.ProjectView,
   area: loaders.AreaView,
   tag: loaders.TagView,
-  tags: loaders.TagsView,
+  tags: loaders.ListsHome,
   goals: loaders.GoalsView,
   finance: loaders.FinanceView,
   review: loaders.ReviewView,
@@ -168,7 +165,7 @@ const ROUTE_CODE: Record<string, () => Promise<unknown>> = {
   more: loaders.MoreView,
   someday: loaders.SomedayView,
   matrix: loaders.MatrixView,
-  lists: loaders.SmartListsView,
+  lists: loaders.ListsHome,
   list: loaders.SmartListView,
 }
 
@@ -191,7 +188,7 @@ const idle = (cb: () => void) => {
  * lateral), y de una en una, para no frenar lo que estés haciendo.
  */
 function preloadViews() {
-  const first = [panels.TaskDetailPanel, panels.QuickAdd, panels.CommandPalette, loaders.InboxView, loaders.UpcomingView, loaders.CalendarView, loaders.HabitsView, loaders.ProjectsView, loaders.ProjectView, loaders.NotesView, loaders.MoreView]
+  const first = [panels.TaskDetailPanel, panels.QuickAdd, panels.CommandPalette, loaders.InboxView, loaders.CalendarView, loaders.HabitsView, loaders.ProjectsView, loaders.ProjectView, loaders.NotesView, loaders.MoreView]
   const queue = [...new Set([...first, ...Object.values(panels), ...Object.values(loaders)])]
   const next = () =>
     idle(() => {
@@ -220,9 +217,9 @@ function Screen() {
   const { parts } = useRoute()
   const [section, id] = parts
   const features = useFeatures()
-  // Una lista inteligente depende de la función «Listas inteligentes»
-  const gate = section === 'list' ? 'lists' : section
-  if (gate && !features.section(gate)) return <FeatureOff id={gate} />
+  if (section && !features.section(section)) return <FeatureOff id={section} />
+  // Un filtro guardado depende de la función «Filtros» (Listas sigue estando)
+  if (section === 'list' && !features.on('lists')) return <FeatureOff id="lists" feature="lists" />
   switch (section) {
     case 'more':
       return <MoreView />
@@ -231,13 +228,14 @@ function Screen() {
     case 'matrix':
       return <MatrixView />
     case 'lists':
-      return <SmartListsView />
+      return <ListsHome />
     case 'list':
-      return id ? <SmartListView id={id} /> : <SmartListsView />
+      return id ? <SmartListView id={id} /> : <ListsHome />
     case 'inbox':
       return <InboxView />
+    // Próximo es la vista «Lista» del Calendario
     case 'upcoming':
-      return <UpcomingView />
+      return <CalendarView initial="list" />
     case 'calendar':
       return <CalendarView />
     case 'habits':
@@ -250,8 +248,9 @@ function Screen() {
       return <HouseView />
     case 'things':
       return <ThingsView id={id} />
+    // Última vez está dentro de Hábitos
     case 'trackers':
-      return <TrackersView />
+      return <HabitsView focus="trackers" />
     case 'meds':
       return <MedsView />
     case 'waiting':
@@ -276,9 +275,9 @@ function Screen() {
     case 'area':
       return id ? <AreaView id={id} /> : <ProjectsView />
     case 'tag':
-      return id ? <TagView tag={id} /> : <TagsView />
+      return id ? <TagView tag={id} /> : <ListsHome />
     case 'tags':
-      return <TagsView />
+      return <ListsHome />
     case 'goals':
       return <GoalsView />
     case 'finance':

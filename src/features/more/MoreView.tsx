@@ -13,7 +13,7 @@ import { AreaBadge } from '@/components/icons'
 import { Group, IconButton, PageHeader, ProgressPie, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
 
-const FOOT = ['logbook', 'trash', 'settings']
+const FOOT = ['trash', 'settings']
 
 /**
  * «Más» (la pestaña del móvil): los espacios que no están en las pestañas, con

@@ -23,7 +23,7 @@ export interface FeatureDef {
 
 export const FEATURES: FeatureDef[] = [
   { id: 'notes', label: 'Notas', hint: 'Apuntes, ideas y listas que se convierten en tareas', group: 'organize', sections: ['notes'], cards: [] },
-  { id: 'lists', label: 'Listas inteligentes', hint: 'Búsquedas guardadas por fecha, prioridad, etiqueta o persona', group: 'organize', sections: ['lists'], cards: [] },
+  { id: 'lists', label: 'Filtros', hint: 'Búsquedas guardadas por fecha, prioridad, etiqueta o persona, en Listas', group: 'organize', sections: [], cards: [] },
   { id: 'matrix', label: 'Matriz de Eisenhower', hint: 'Lo urgente y lo importante, en cuatro cuadrantes', group: 'organize', sections: ['matrix'], cards: [] },
   { id: 'templates', label: 'Plantillas', hint: 'Listas que repites: la maleta, el cierre de mes…', group: 'organize', sections: ['templates'], cards: [] },
   { id: 'goals', label: 'Objetivos', hint: 'Metas con una cifra o con sus proyectos', group: 'organize', sections: ['goals'], cards: [] },
@@ -59,8 +59,12 @@ export const featureOn = (flags: FeatureFlags | null | undefined, id: string) =>
 const bySection = new Map(FEATURES.flatMap((f) => f.sections.map((s) => [s, f.id] as const)))
 const byCard = new Map(FEATURES.flatMap((f) => f.cards.map((c) => [c, f.id] as const)))
 
+/** Lugares que juntan varias funciones: se ven si alguna está encendida (Hábitos lleva también Última vez) */
+const ANY_OF: Record<string, string[]> = { habits: ['habits', 'trackers'] }
+
 /** ¿Se ve esta sección? (las que no dependen de ninguna función, siempre) */
 export const sectionOn = (flags: FeatureFlags | null | undefined, section: string) => {
+  if (ANY_OF[section]) return ANY_OF[section].some((id) => featureOn(flags, id))
   const f = bySection.get(section)
   return !f || featureOn(flags, f)
 }

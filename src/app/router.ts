@@ -41,11 +41,13 @@ const canTransition = () =>
 // nueva desde la derecha sobre la anterior; volver la retira hacia la
 // derecha. Entre pantallas del mismo nivel (las pestañas), un fundido.
 const DEPTH: Record<string, number> = { area: 2, people: 2, tag: 2, list: 2, notes: 2, project: 3 }
+/** Páginas sin id que viven dentro de un lugar (Algún día, en Listas; Objetivos, en Proyectos…) */
+const INSIDE = new Set(['someday', 'waiting', 'logbook', 'matrix', 'goals', 'templates', 'plan', 'focus', 'shutdown', 'review'])
 
 /** Cuánto «dentro» está una pantalla: 1 las de la barra; 2 o 3 lo que se abre desde ellas */
 export function depthOf(path: string) {
   const [s, id] = path.split('/').filter(Boolean)
-  if (!id) return 1
+  if (!id) return INSIDE.has(s) ? 2 : 1
   // En el ordenador, Notas es lista y nota a la vez: abrir una no es entrar en otra pantalla
   if (s === 'notes' && typeof matchMedia !== 'undefined' && matchMedia('(min-width: 768px)').matches) return 1
   return DEPTH[s] ?? 1

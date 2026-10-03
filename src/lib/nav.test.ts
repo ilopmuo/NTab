@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_HIDDEN, DEFAULT_LIST, DEFAULT_TABS, DEFAULT_TILES, resolveNav, setTab } from './nav'
 
-const ALL = [...DEFAULT_TILES, ...DEFAULT_LIST, 'trash', 'logbook', 'settings']
+const ALL = [...DEFAULT_TILES, ...DEFAULT_LIST, 'trash', 'settings']
 
 describe('resolveNav', () => {
   it('sin ajustes: la barra de siempre', () => {
@@ -12,11 +12,17 @@ describe('resolveNav', () => {
     expect(nav.tabs).toEqual(DEFAULT_TABS)
   })
 
-  it('el pie (completadas, papelera, ajustes) no se coloca', () => {
+  it('el pie (papelera y ajustes) no se coloca', () => {
     const nav = resolveNav({ place: { settings: 'hidden', trash: 'tile' } }, ALL)
     expect(nav.order).not.toContain('settings')
     expect(nav.order).not.toContain('trash')
-    expect(nav.order).not.toContain('logbook')
+  })
+
+  it('de la navegación de antes se quitan los espacios que ya no existen (Planificar ahora sale de Hoy)', () => {
+    const nav = resolveNav({ order: ['plan', 'notes', 'filters'], place: { plan: 'tile' }, tabs: ['today', 'plan', 'inbox', 'habits'] }, ALL)
+    expect(nav.order).not.toContain('plan')
+    expect(nav.tabs).not.toContain('plan')
+    expect(nav.tabs).toHaveLength(4)
   })
 
   it('respeta el orden, el sitio y las ocultas', () => {
@@ -63,7 +69,7 @@ describe('resolveNav', () => {
   })
 
   it('siempre hay cuatro pestañas', () => {
-    expect(resolveNav({ tabs: ['home', 'money', 'plan', 'people', 'notes'] }, ALL).tabs).toEqual(['home', 'money', 'plan', 'people'])
+    expect(resolveNav({ tabs: ['home', 'money', 'filters', 'people', 'notes'] }, ALL).tabs).toEqual(['home', 'money', 'filters', 'people'])
     expect(resolveNav({ tabs: [] }, ALL).tabs).toEqual(DEFAULT_TABS)
   })
 })

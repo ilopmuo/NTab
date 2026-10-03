@@ -14,9 +14,9 @@ export interface NavPrefs {
 }
 
 /** Siempre al pie de la barra lateral: no se mueven ni se ocultan */
-export const FIXED = ['logbook', 'trash', 'settings']
+export const FIXED = ['trash', 'settings']
 export const DEFAULT_TILES = ['today', 'inbox', 'calendar', 'habits', 'notes', 'home']
-export const DEFAULT_LIST = ['plan', 'projects', 'filters', 'people', 'money']
+export const DEFAULT_LIST = ['projects', 'filters', 'people', 'money']
 /** De la lista, pero ocultos al empezar: en «N más» al pie, en «Más» y en ⌘K */
 export const DEFAULT_HIDDEN: string[] = []
 export const DEFAULT_TABS = ['today', 'inbox', 'calendar', 'habits']

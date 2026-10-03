@@ -23,15 +23,15 @@ export const TITLES: Record<string, string> = {
   notes: 'Notas',
   people: 'Personas',
   projects: 'Proyectos',
-  tags: 'Etiquetas',
+  tags: 'Listas',
   more: 'Más',
   someday: 'Algún día',
-  lists: 'Listas inteligentes',
+  lists: 'Listas',
   matrix: 'Matriz',
-  list: 'Lista inteligente',
+  list: 'Filtro',
   tag: 'Etiqueta',
   goals: 'Objetivos',
-  finance: 'Pagos',
+  finance: 'Pagos fijos',
   review: 'Revisión',
   plan: 'Planificar el día',
   shutdown: 'Cerrar el día',
@@ -46,9 +46,24 @@ export const TITLES: Record<string, string> = {
  * una persona, de Personas; una etiqueta, de Etiquetas… Las de la barra no
  * cuelgan de nada.
  */
+/** El lugar de cada página sin id que vive dentro de otro */
+const HOME_OF: Record<string, string> = {
+  someday: '/lists',
+  waiting: '/lists',
+  logbook: '/lists',
+  matrix: '/lists',
+  goals: '/projects',
+  templates: '/projects',
+  plan: '/today',
+  focus: '/today',
+  shutdown: '/today',
+  review: '/today',
+}
+
 export function parentOf(path: string): string | undefined {
   const [s, raw] = path.split('/').filter(Boolean)
-  if (!raw || depthOf(path) === 1) return undefined
+  if (depthOf(path) === 1) return undefined
+  if (!raw) return HOME_OF[s]
   const id = decodeURIComponent(raw)
   switch (s) {
     case 'project': {
@@ -61,7 +76,6 @@ export function parentOf(path: string): string | undefined {
     case 'people':
       return '/people'
     case 'tag':
-      return '/tags'
     case 'list':
       return '/lists'
     case 'notes':

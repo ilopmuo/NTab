@@ -11,10 +11,8 @@ import { AVOID_PRESETS, TRACKER_PRESETS, cleanDays, cleanRecord, everyLabel, inL
 import { money } from '@/lib/finance'
 import { setUI, useUI } from '@/app/store'
 import { href } from '@/app/router'
-import { SectionIcon, section } from '@/app/sections'
 import { Icon } from '@/components/icons'
-import { Button, Empty, Group, PageHeader, cx, spring } from '@/components/ui'
-import { Page } from '../Page'
+import { Button, Empty, Group, cx, spring } from '@/components/ui'
 import { TrackerForm } from './TrackerForm'
 
 
@@ -127,7 +125,12 @@ export function TrackerCard({ tracker, onEdit, index = 0 }: { tracker: Tracker; 
 }
 
 /** «Última vez»: cosas que se hacen de vez en cuando y cuánto hace de la última */
-export function TrackersView() {
+/**
+ * Última vez (en Hábitos): lo que haces de vez en cuando, cuánto hace y si
+ * toca, y los «Días sin…» lo que quieres dejar. Antes era una pestaña aparte;
+ * ahora va debajo de los hábitos, que es donde se busca.
+ */
+export function TrackersBlock() {
   const trackers = useLiveQuery(() => db.trackers.where('archived').equals(0).toArray(), [])
   const creating = useUI((s) => s.creating === 'tracker')
   const [editing, setEditing] = useState<Tracker | undefined>()
@@ -136,7 +139,9 @@ export function TrackersView() {
   const cleaning = trackers.filter((t) => t.room && !t.avoid).length
   const list = sortTrackers(trackers.filter((t) => !t.room || t.avoid))
   const due = list.filter((t) => trackerState(t).kind === 'due').length
-  const ideas = [...TRACKER_PRESETS, ...AVOID_PRESETS].filter((p) => !trackers.some((t) => t.name === p.name))
+  const all = [...TRACKER_PRESETS, ...AVOID_PRESETS].filter((p) => !trackers.some((t) => t.name === p.name))
+  // Sin ninguno aún, unas pocas ideas (la página de Hábitos ya tiene las suyas encima)
+  const ideas = list.length ? all : [...TRACKER_PRESETS.slice(0, 4), ...AVOID_PRESETS.slice(0, 2)].filter((p) => all.includes(p))
   const presets = (
     <div className="flex flex-wrap justify-center gap-2">
       {ideas.map((p, i) => (
@@ -159,17 +164,17 @@ export function TrackersView() {
     </div>
   )
   return (
-    <Page wide>
-      <PageHeader
-        icon={<SectionIcon def={section('trackers')} size={40} />}
-        title="Última vez"
-        subtitle={due ? `Toca hacer ${due} ${due === 1 ? 'cosa' : 'cosas'}.` : '¿Cuándo fue la última vez que…? Apúntalo con un toque y LUNO te avisa cuando toque. También cuenta los días sin lo que quieres dejar.'}
-        actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'tracker' })}>
-            <Plus size={16} strokeWidth={2.6} /> Nuevo
-          </Button>
-        }
-      />
+    <section id="ultima-vez" className="mt-10 scroll-mt-20" aria-labelledby="ultima-vez-titulo">
+      <div className="mb-1 flex min-h-8 items-center gap-2 px-1">
+        <h2 id="ultima-vez-titulo" className="text-[22px] font-bold tracking-tight">
+          Última vez
+        </h2>
+        {due > 0 && <span className="text-[15px] font-semibold text-blue">Toca {due === 1 ? '1 cosa' : `${due} cosas`}</span>}
+        <Button size="sm" variant="tinted" className="ml-auto" onClick={() => setUI({ creating: 'tracker' })}>
+          <Plus size={14} strokeWidth={2.6} /> Apuntar
+        </Button>
+      </div>
+      <p className="mb-4 px-1 text-[14px] text-muted">Lo que haces de vez en cuando (y te avisa cuando toca) y los días sin lo que quieres dejar.</p>
       {cleaning > 0 && (
         <a href={href('/house')} className="glass mb-5 flex items-center gap-3 rounded-[16px] px-4 py-3 text-[14.5px]">
           <SprayCan size={17} className="shrink-0" />
@@ -200,6 +205,6 @@ export function TrackersView() {
       )}
       <TrackerForm open={creating} onClose={() => setUI({ creating: null })} />
       <TrackerForm tracker={editing} open={!!editing} onClose={() => setEditing(undefined)} />
-    </Page>
+    </section>
   )
 }

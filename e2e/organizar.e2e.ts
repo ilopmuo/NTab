@@ -23,9 +23,9 @@ test('«algún día» y fecha límite: fuera de la Bandeja, cada una en su sitio
   await expect(page.getByText('Fecha límite', { exact: true })).toBeVisible()
 })
 
-test('listas inteligentes: una idea de inicio, en la barra lateral y al día', async ({ page }) => {
+test('filtros: una idea de inicio, en Listas, en la barra lateral y al día', async ({ page }) => {
   await openApp(page, '/lists')
-  await expect(page.getByText('Aún no tienes listas')).toBeVisible()
+  await expect(page.getByText('Aún no tienes filtros')).toBeVisible()
   await page.getByRole('button', { name: /^Prioridad alta/ }).click()
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
   await expect(nav.getByRole('link', { name: 'Prioridad alta' })).toBeVisible()
@@ -39,7 +39,7 @@ test('listas inteligentes: una idea de inicio, en la barra lateral y al día', a
 
   // Editarla: solo las de 15 minutos o menos
   await page.getByRole('button', { name: 'Opciones de Prioridad alta' }).click()
-  await page.getByRole('menuitem', { name: 'Editar la lista' }).click()
+  await page.getByRole('menuitem', { name: 'Editar el filtro' }).click()
   await page.getByRole('button', { name: '≤ 15 min', exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText('Ahora mismo, ninguna tarea')
   await page.getByRole('button', { name: 'Guardar' }).click()
@@ -130,17 +130,20 @@ test('notas enlazadas: [[…]] crea la otra nota y sale «Mencionada en»', asyn
   await expect(page.locator('a', { hasText: 'Lista de la compra' }).first()).toBeVisible()
 })
 
-test('barra lateral: Matriz y Plantillas, dentro de sus espacios', async ({ page }) => {
+test('barra lateral: Matriz y Plantillas viven dentro de su lugar, con «‹ Atrás»', async ({ page }) => {
   await openApp(page)
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
   await expect(nav.getByRole('link', { name: 'Matriz de Eisenhower' })).toHaveCount(0)
-  await nav.getByRole('link', { name: 'Etiquetas y filtros' }).click()
-  await expect(page.locator('#main h1')).toHaveText('Etiquetas')
-  await page.getByRole('navigation', { name: 'Etiquetas y filtros' }).getByRole('link', { name: 'Matriz' }).click()
+  await nav.getByRole('link', { name: 'Listas' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Listas')
+  await page.locator('#main').getByRole('link', { name: /Matriz/ }).click()
   await expect(page.locator('#main h1')).toHaveText('Matriz de Eisenhower')
+  await page.getByRole('button', { name: 'Volver a Listas' }).click()
+  await expect(page.locator('#main h1')).toHaveText('Listas')
   await nav.getByRole('link', { name: 'Proyectos' }).click()
-  await page.getByRole('navigation', { name: 'Proyectos' }).getByRole('link', { name: 'Plantillas' }).click()
+  await page.locator('#main').getByRole('link', { name: /Plantillas/ }).click()
   await expect(page.locator('#main h1')).toHaveText('Plantillas')
+  await expect(page.getByRole('button', { name: 'Volver a Proyectos' })).toBeVisible()
 })
 
 test('renombrar una nota actualiza sus enlaces', async ({ page }) => {

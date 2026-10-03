@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { m as motion } from 'motion/react'
 import { CalendarOff, Check, Flame, MoreHorizontal, Pause, Pencil, Play, Plus, Trophy } from 'lucide-react'
 import type { Habit } from '@/db/types'
@@ -16,6 +16,8 @@ import { HabitForm } from './HabitForm'
 import { StreakMilestones } from './StreakMilestones'
 import { useHabits } from './useHabits'
 import { haptic } from '@/lib/haptics'
+import { useFeatures } from '@/app/features'
+import { TrackersBlock } from '../trackers/TrackersView'
 
 const PRESETS: (Partial<Habit> & { name: string; icon: string })[] = [
   { name: 'Beber agua', icon: 'droplet', color: '#40C8E0', target: 8, unit: 'vasos' },
@@ -28,11 +30,30 @@ const PRESETS: (Partial<Habit> & { name: string; icon: string })[] = [
 
 const WEEKS = 18
 
-export function HabitsView() {
+/**
+ * Hábitos: lo de cada día (o N veces por semana) y, debajo, Última vez (lo de
+ * vez en cuando y los «Días sin…»). `focus`: abrir ya en Última vez.
+ */
+export function HabitsView({ focus }: { focus?: 'trackers' }) {
   const { habits, byHabit, counts, today } = useHabits(WEEKS * 7 + 7)
   const creating = useUI((s) => s.creating === 'habit')
   const [editing, setEditing] = useState<Habit | undefined>()
+  const { on } = useFeatures()
+  // Al venir de un enlace de Última vez, se baja hasta ella (después de que la pantalla se ponga arriba)
+  useEffect(() => {
+    if (focus !== 'trackers' || !habits) return
+    const id = setTimeout(() => document.getElementById('ultima-vez')?.scrollIntoView({ block: 'start' }), 80)
+    return () => clearTimeout(id)
+  }, [focus, !habits])
   if (!habits) return null
+  // Con los hábitos apagados, solo Última vez
+  if (!on('habits'))
+    return (
+      <Page wide>
+        <PageHeader icon={<SectionIcon def={section('trackers')} size={40} />} title="Última vez" subtitle="¿Cuándo fue la última vez que…? Apúntalo con un toque y LUNO te avisa cuando toque." />
+        <TrackersBlock />
+      </Page>
+    )
 
   const last7 = Array.from({ length: 7 }, (_, i) => addDaysYmd(today, i - 6))
   const scheduledToday = habits.filter((h) => isDue(h, byHabit.get(h.id) ?? new Set(), today))
@@ -210,6 +231,7 @@ export function HabitsView() {
       )}
 
       {habits.length > 0 && <StreakMilestones />}
+      {on('trackers') && <TrackersBlock />}
       <HabitForm open={creating} onClose={() => setUI({ creating: null })} />
       <HabitForm habit={editing} open={!!editing} onClose={() => setEditing(undefined)} />
     </Page>

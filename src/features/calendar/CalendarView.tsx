@@ -11,6 +11,9 @@ import { sortTasks } from '@/lib/tasks'
 import { SectionIcon, section } from '@/app/sections'
 import { ui } from '@/app/store'
 import { TaskList } from '@/components/TaskList'
+import { useOpenTasks } from '@/db/hooks'
+import { SelectButton } from '@/features/select/SelectButton'
+import { UpcomingList, scheduledFrom } from '../Upcoming'
 import { Progressive } from '@/components/Progressive'
 import { Button, Card, IconButton, PageHeader, Section, Segmented, cx, spring, useIsMobile, useMediaQuery } from '@/components/ui'
 import { dragToDay, useDropOver } from '@/components/dayDrag'
@@ -21,12 +24,36 @@ import { DayTimeline } from '../plan/DayTimeline'
 import { LoadMeter } from './LoadMeter'
 import { WeekGrid } from './WeekGrid'
 
-type Mode = 'month' | 'week' | 'day'
+type Mode = 'list' | 'month' | 'week' | 'day'
 const HEAD = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
-export function CalendarView() {
+// La vista elegida se recuerda en cada dispositivo
+const MODE_KEY = 'ntab-calendar-mode'
+function storedMode(): Mode | undefined {
+  try {
+    const v = localStorage.getItem(MODE_KEY)
+    return v === 'list' || v === 'month' || v === 'week' || v === 'day' ? v : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Calendario: lo que viene en lista (lo que antes era «Próximo», como en
+ * Things), o el día, la semana o el mes. Un solo sitio para todo lo que tiene fecha.
+ */
+export function CalendarView({ initial }: { initial?: Mode }) {
   const t = today()
-  const [mode, setMode] = useState<Mode>(() => (window.innerWidth < 640 ? 'week' : 'month'))
+  const [mode, setModeState] = useState<Mode>(() => initial ?? storedMode() ?? (window.innerWidth < 640 ? 'list' : 'month'))
+  const setMode = (m: Mode) => {
+    setModeState(m)
+    try {
+      localStorage.setItem(MODE_KEY, m)
+    } catch {
+      /* sin almacenamiento */
+    }
+  }
+  const open = useOpenTasks()
   const [cursor, setCursor] = useState(t)
   const [selected, setSelected] = useState(t)
   const [dir, setDir] = useState(0)
@@ -68,7 +95,9 @@ export function CalendarView() {
   const wide = useMediaQuery('(min-width: 1100px)')
   const weekEnd = range.days[6] ?? cursor
   const title =
-    mode === 'day'
+    mode === 'list'
+      ? 'Próximo'
+      : mode === 'day'
       ? capitalize(fmt(cursor, mobile ? "EEE d MMM" : "EEEE, d 'de' MMMM"))
       : mode === 'month'
       ? capitalize(fmt(cursor, 'MMMM'))
@@ -76,18 +105,30 @@ export function CalendarView() {
         ? `${fmt(range.start, 'd')} – ${fmt(weekEnd, 'd MMM')}`
         : `${fmt(range.start, 'd MMM')} – ${fmt(weekEnd, 'd MMM')}`
   // En el móvil el año solo si no es el de ahora (si no, el título no cabe)
-  const showYear = !mobile || cursor.slice(0, 4) !== t.slice(0, 4)
-  const controls = (
+  const showYear = mode !== 'list' && (!mobile || cursor.slice(0, 4) !== t.slice(0, 4))
+  const views = (
+    <Segmented
+      value={mode}
+      onChange={setMode}
+      options={[
+        { value: 'list', label: 'Lista' },
+        { value: 'day', label: 'Día' },
+        { value: 'week', label: 'Semana' },
+        { value: 'month', label: 'Mes' },
+      ]}
+    />
+  )
+  const controls =
+    mode === 'list' ? (
+      <>
+        {views}
+        <span className="ml-auto sm:ml-1">
+          <SelectButton />
+        </span>
+      </>
+    ) : (
     <>
-      <Segmented
-        value={mode}
-        onChange={setMode}
-        options={[
-          { value: 'month', label: 'Mes' },
-          { value: 'week', label: 'Semana' },
-          { value: 'day', label: 'Día' },
-        ]}
-      />
+      {views}
       <Button
         size="sm"
         variant="tinted"
@@ -106,7 +147,7 @@ export function CalendarView() {
         <ChevronRight size={18} strokeWidth={2.4} />
       </IconButton>
     </>
-  )
+    )
   const month = cursor.slice(0, 7)
   const selectedTasks = byDay.get(selected) ?? []
   const selectedBirthdays = birthdays.filter((b) => b.date === selected)
@@ -120,12 +161,15 @@ export function CalendarView() {
             {title} {showYear && <span className="font-num text-muted">{fmt(cursor, 'yyyy')}</span>}
           </>
         }
+        subtitle={mode === 'list' && open ? `${scheduledFrom(open, t)} ${scheduledFrom(open, t) === 1 ? 'tarea programada' : 'tareas programadas'} a partir de hoy` : undefined}
         actions={mobile ? undefined : controls}
       />
       {/* En el móvil los controles van debajo, para que el título quepa entero */}
       {mobile && <div className="-mt-3 mb-5 flex items-center gap-1.5">{controls}</div>}
 
-      {mode === 'day' ? (
+      {mode === 'list' ? (
+        <UpcomingList />
+      ) : mode === 'day' ? (
         <DayView day={cursor} tasks={byDay.get(cursor) ?? []} events={evByDay.get(cursor) ?? []} birthdays={birthdays.filter((b) => b.date === cursor).map((b) => b.person)} names={cal.names} />
       ) : mode === 'month' ? (
         <div className="grid gap-6 @[1100px]:grid-cols-[minmax(0,1fr)_340px]">

@@ -13,8 +13,8 @@ import {
   House,
   Inbox,
   Layers,
+  LayoutList,
   ListChecks,
-  ListFilter,
   type LucideIcon,
   Moon,
   Pill,
@@ -71,14 +71,14 @@ export const SECTIONS: SectionDef[] = [
   { id: 'people', path: '/people', label: 'Personas', short: 'Personas', icon: Users, tint: 'blue', key: 'P' },
   { id: 'projects', path: '/projects', label: 'Proyectos', short: 'Proyectos', icon: Layers, tint: 'blue', key: 'J' },
   { id: 'tags', path: '/tags', label: 'Etiquetas', short: 'Etiquetas', icon: Tags, tint: 'blue', key: 'Y' },
-  { id: 'lists', path: '/lists', label: 'Listas inteligentes', short: 'Listas', icon: ListFilter, tint: 'blue', key: '' },
+  { id: 'lists', path: '/lists', label: 'Listas', short: 'Listas', icon: LayoutList, tint: 'blue', key: '' },
   { id: 'matrix', path: '/matrix', label: 'Matriz de Eisenhower', short: 'Matriz', icon: Grid2x2, tint: 'blue', key: '' },
   { id: 'someday', path: '/someday', label: 'Algún día', short: 'Algún día', icon: Telescope, tint: 'blue', key: '' },
   { id: 'waiting', path: '/waiting', label: 'A la espera', short: 'A la espera', icon: UserRoundCheck, tint: 'blue', key: '' },
   { id: 'templates', path: '/templates', label: 'Plantillas', short: 'Plantillas', icon: ClipboardList, tint: 'blue', key: 'M' },
   { id: 'goals', path: '/goals', label: 'Objetivos', short: 'Objetivos', icon: Target, tint: 'blue', key: 'T' },
   { id: 'expenses', path: '/expenses', label: 'Gastos', short: 'Gastos', icon: Receipt, tint: 'blue', key: 'W' },
-  { id: 'finance', path: '/finance', label: 'Pagos', short: 'Pagos', icon: Wallet, tint: 'blue', key: 'F' },
+  { id: 'finance', path: '/finance', label: 'Pagos fijos', short: 'Fijos', icon: Wallet, tint: 'blue', key: 'F' },
   { id: 'plan', path: '/plan', label: 'Planificar el día', short: 'Planificar', icon: Sun, tint: 'blue', key: '' },
   { id: 'shutdown', path: '/shutdown', label: 'Cerrar el día', short: 'Cerrar el día', icon: Moon, tint: 'blue', key: '' },
   { id: 'review', path: '/review', label: 'Revisión semanal', short: 'Revisión', icon: RefreshCcw, tint: 'blue', key: 'R' },
@@ -113,27 +113,53 @@ const hubDef = (id: string, label: string, short: string, icon: HubDef['icon'], 
   tabs: tabs.map(([id, label]) => ({ id, label })),
 })
 
+/**
+ * Diez lugares, cada cosa en uno solo. Lo que antes eran pestañas que hacían
+ * casi lo mismo ahora vive dentro de su lugar: Próximo es una vista del
+ * Calendario; Algún día, A la espera, Completadas, la Matriz, los filtros y
+ * las etiquetas están en Listas; Objetivos y Plantillas, en Proyectos;
+ * Planificar, Foco, Cerrar el día y la Revisión salen de Hoy; Última vez está
+ * en Hábitos. Solo llevan pestañas los lugares con cosas distintas de verdad.
+ */
 export const HUBS: HubDef[] = [
   hubDef('today', 'Hoy', 'Hoy', 'today', [['today', 'Hoy']]),
-  hubDef('inbox', 'Bandeja de entrada', 'Bandeja', Inbox, [['inbox', 'Bandeja'], ['someday', 'Algún día'], ['waiting', 'A la espera']]),
-  hubDef('calendar', 'Calendario', 'Calendario', CalendarDays, [['calendar', 'Calendario'], ['upcoming', 'Próximo']]),
-  hubDef('plan', 'Planificar', 'Planificar', Sun, [['plan', 'Día'], ['focus', 'Foco'], ['shutdown', 'Cierre'], ['review', 'Semana']]),
-  hubDef('projects', 'Proyectos', 'Proyectos', Layers, [['projects', 'Proyectos'], ['goals', 'Objetivos'], ['templates', 'Plantillas']]),
-  hubDef('filters', 'Etiquetas y filtros', 'Filtros', Tags, [['tags', 'Etiquetas'], ['lists', 'Filtros'], ['matrix', 'Matriz']]),
+  hubDef('inbox', 'Bandeja de entrada', 'Bandeja', Inbox, [['inbox', 'Bandeja']]),
+  hubDef('calendar', 'Calendario', 'Calendario', CalendarDays, [['calendar', 'Calendario']]),
+  hubDef('projects', 'Proyectos', 'Proyectos', Layers, [['projects', 'Proyectos']]),
+  hubDef('filters', 'Listas', 'Listas', LayoutList, [['lists', 'Listas']]),
   hubDef('notes', 'Notas', 'Notas', StickyNote, [['notes', 'Notas'], ['journal', 'Diario']]),
-  hubDef('habits', 'Hábitos', 'Hábitos', Flame, [['habits', 'Hábitos'], ['routines', 'Rutinas'], ['trackers', 'Última vez'], ['meds', 'Medicación']]),
+  hubDef('habits', 'Hábitos', 'Hábitos', Flame, [['habits', 'Hábitos'], ['routines', 'Rutinas'], ['meds', 'Medicación']]),
   hubDef('people', 'Personas', 'Personas', Users, [['people', 'Personas']]),
   hubDef('home', 'Casa', 'Casa', House, [['house', 'Tareas'], ['shopping', 'Compra'], ['menu', 'Menú'], ['things', 'Cosas']]),
-  hubDef('money', 'Dinero', 'Dinero', Wallet, [['expenses', 'Gastos'], ['finance', 'Pagos']]),
+  hubDef('money', 'Dinero', 'Dinero', Wallet, [['expenses', 'Gastos'], ['finance', 'Fijos']]),
 ]
 
 export const hub = (id: string) => HUBS.find((h) => h.id === id) ?? HUBS[0]
 
-/** La sección de una ruta: la página de una etiqueta o de una lista inteligente cuenta como la suya */
-const OWNER: Record<string, string> = { tag: 'tags', list: 'lists' }
+/**
+ * La sección de una ruta: lo que vive dentro de otro lugar cuenta como ese
+ * lugar (para la barra lateral, las pestañas y la última pestaña de cada uno)
+ */
+const OWNER: Record<string, string> = {
+  tag: 'lists',
+  tags: 'lists',
+  list: 'lists',
+  someday: 'lists',
+  waiting: 'lists',
+  logbook: 'lists',
+  matrix: 'lists',
+  upcoming: 'calendar',
+  goals: 'projects',
+  templates: 'projects',
+  trackers: 'habits',
+  plan: 'today',
+  focus: 'today',
+  shutdown: 'today',
+  review: 'today',
+}
 export const sectionOfRoute = (first: string | undefined) => (first ? (OWNER[first] ?? first) : 'today')
 
-/** El espacio de una sección (las del pie, Completadas, Papelera y Ajustes, no tienen) */
+/** El espacio de una sección (las del pie, Papelera y Ajustes, no tienen) */
 export const hubOf = (sectionId: string) => HUBS.find((h) => h.tabs.some((t) => t.id === sectionId))
 
 /** Color de la vista actual (para el halo del fondo y la barra superior) */
