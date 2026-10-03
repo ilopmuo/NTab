@@ -306,6 +306,19 @@ function Workspace() {
   // #/task/<id>/done o /snooze viene de los botones con la app cerrada
   useEffect(() => {
     // Atajo del icono de la app: «Nueva tarea»
+    // Compartido desde otra app: a la captura, con el texto o el enlace
+    if (parts[0] === 'shared') {
+      let text = ''
+      try {
+        text = sessionStorage.getItem('ntab-shared') ?? ''
+        sessionStorage.removeItem('ntab-shared')
+      } catch {
+        /* sin almacenamiento */
+      }
+      navigate('/inbox')
+      if (text) ui.quickAdd(undefined, text)
+      return
+    }
     if (parts[0] === 'new') {
       navigate('/today')
       ui.quickAdd()

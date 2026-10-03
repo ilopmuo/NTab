@@ -55,6 +55,8 @@ export default defineConfig({
           { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
+        // «Compartir» desde otras apps (Android y la app instalada en el ordenador): llega a la captura
+        share_target: { action: './', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } },
         // Pulsación larga en el icono (Android, Windows, macOS con Chrome/Edge)
         shortcuts: [
           { name: 'Nueva tarea', short_name: 'Nueva', url: './#/new', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },

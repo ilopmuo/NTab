@@ -20,6 +20,7 @@ import { houseSummary, type HouseCtx } from './casa.ts'
 import { bestWindow, focusStreak, lastDays, minutesByDay, minutesByHour, windowLabel, type FocusGoal, type FocusLogLike } from '../_shared/focus.ts'
 import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
 import { WAIT_DAYS } from '../_shared/parse.ts'
+import { findUrl, linkTask } from '../_shared/links.ts'
 import { captureMed, medLines } from './meds.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
@@ -1677,6 +1678,8 @@ export interface CaptureInput {
   comercio?: string
   /** viene de la automatización de Apple Pay (trae los campos, aunque vengan vacíos) */
   pago?: boolean
+  /** título de lo compartido (de la hoja de compartir, o leído de la página) */
+  titulo?: string
 }
 
 /** Los campos de un JSON o formulario, con los nombres en español o en inglés */
@@ -1697,6 +1700,7 @@ export function captureFields(b: Record<string, unknown> | null | undefined): Ca
     gasto: pick('gasto', 'expense') as string | undefined,
     importe,
     comercio: pick('comercio', 'merchant', 'concepto', 'tienda') as string | undefined,
+    titulo: pick('titulo', 'title', 'nombre') as string | undefined,
   }
 }
 
@@ -1797,18 +1801,20 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env): Wr
 
   const ix = new Index(rows)
   const target = (d: Data) => ({ id: String(d.id), name: str(d.name), areaId: d.areaId ? String(d.areaId) : undefined })
-  const parsed = parseQuickAdd(text, {
+  // Un enlace (compartido desde Safari, por ejemplo): a las notas, con el título de la página
+  const link = findUrl(text)
+  const parsed = parseQuickAdd(link ? link.rest : text, {
     today,
     time: hhmmIn(env.now, env.tz),
     projects: ix.projects.filter((p) => p.status !== 'done' && p.status !== 'archived').map(target),
     areas: ix.areas.map(target),
     people: ix.people.map(target),
   })
-  if (!parsed.title) return { writes: [], report: ['No he entendido qué apuntar.'] }
+  if (!parsed.title && !link) return { writes: [], report: ['No he entendido qué apuntar.'] }
   let task: Task = {
     id: env.newId(),
-    title: parsed.title,
-    notes: '',
+    title: link ? linkTask(parsed.title, link.url, fields.titulo).title : parsed.title,
+    notes: link ? link.url : '',
     done: 0,
     priority: parsed.priority,
     tags: parsed.tags,

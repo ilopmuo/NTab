@@ -141,3 +141,16 @@ describe('captura con Siri', () => {
     expect(capture(rows, '   ', env())).toEqual({ writes: [], report: ['No he oído nada que apuntar.'] })
   })
 })
+
+describe('captura con Siri: enlaces compartidos', () => {
+  it('un enlace solo: el título de la página (o la dirección legible) y el enlace en las notas', () => {
+    const r = capture(rows, { texto: 'https://www.elpais.com/economia/la-vivienda-sube.html', titulo: 'La vivienda sube un 10 %' }, env())
+    expect(r.writes[0].data).toMatchObject({ title: 'La vivienda sube un 10 %', notes: 'https://www.elpais.com/economia/la-vivienda-sube.html' })
+    expect(r.report[0]).toContain('La vivienda sube un 10 %')
+    expect(capture(rows, 'https://www.elpais.com/economia/la-vivienda-sube.html', env()).writes[0].data.title).toBe('elpais.com · la vivienda sube')
+  })
+  it('con texto: lo escrito (con su fecha) y el enlace en las notas', () => {
+    const r = capture(rows, 'leer mañana https://blog.ejemplo.com/a#parte', env())
+    expect(r.writes[0].data).toMatchObject({ title: 'Leer', dueDate: '2026-09-25', notes: 'https://blog.ejemplo.com/a#parte', tags: [] })
+  })
+})

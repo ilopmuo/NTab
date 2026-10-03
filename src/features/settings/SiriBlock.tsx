@@ -64,6 +64,12 @@ export function SiriBlock() {
               Lanzada a mano no apunta nada, porque no hay ningún pago detrás. Para probarla sin pagar, cambia un momento las variables por un importe fijo (1,50) y un comercio
               (Prueba), dale a ▶︎ y mira Gastos; luego vuelve a poner las variables.
             </p>
+            <p className="mt-3 font-semibold text-fg">Compartir con LUNO desde cualquier app</p>
+            <p className="mt-1">
+              Crea otro atajo, «Enviar a LUNO», y en sus ajustes (ⓘ) activa <b className="font-semibold text-fg">Mostrar en la hoja de compartir</b> para URL y texto. Con dos acciones:{' '}
+              <b className="font-semibold text-fg">Obtener contenido de URL</b> (la misma URL, POST, JSON con <code>texto</code> = Entrada del atajo) y{' '}
+              <b className="font-semibold text-fg">Mostrar notificación</b> con el resultado. Desde Safari, YouTube o cualquier app, en <i>Compartir → Enviar a LUNO</i>: un enlace se apunta en la Bandeja con el título de la página y el enlace en las notas.
+            </p>
             <p className="mt-2">Es la misma URL privada que la del conector de Claude: si la cambias, cambia en los dos sitios.</p>
           </>
         ) : (

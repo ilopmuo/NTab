@@ -14,6 +14,21 @@ import { rollSubscriptions } from './db/actions'
 import { purgeTrash } from './db/trash'
 import { interceptLinks } from './app/router'
 
+// Compartido desde otra app (Android, o la app instalada en el ordenador: ver
+// share_target en vite.config.ts): llega en la dirección y va a la captura
+try {
+  const q = new URLSearchParams(location.search)
+  const shared = [...new Set(['title', 'text', 'url'].map((k) => q.get(k)?.trim()).filter((v): v is string => !!v))]
+  if (shared.length) {
+    // Android suele mandar el enlace también dentro del texto: una vez basta
+    const text = shared.filter((v, i) => !shared.some((o, j) => j !== i && o.length > v.length && o.includes(v))).join(' ')
+    sessionStorage.setItem('ntab-shared', text)
+    history.replaceState(null, '', `${location.pathname}#/shared`)
+  }
+} catch {
+  /* sin almacenamiento */
+}
+
 // El piso de un compañero sin cuenta (ver src/features/house/store.ts): al
 // abrir la app desde su pantalla de inicio, que no lleva el enlace, va a su piso
 try {

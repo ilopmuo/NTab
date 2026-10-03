@@ -16,6 +16,8 @@ import { loadEvents } from '../_shared/loadEvents.ts'
 import { applyHouseOps, findHouse, houseItems } from '../_shared/houseStore.ts'
 import { houseAdd, pisoText } from './casa.ts'
 import { ymdIn } from '../_shared/time.ts'
+import { findUrl } from '../_shared/links.ts'
+import { fetchTitle } from '../_shared/fetchPage.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -142,6 +144,9 @@ Deno.serve(async (req) => {
         if (r.ops.length) await store.houseOps!(r.ops)
         return text(r.report)
       }
+      // Un enlace solo (de la hoja de compartir): se lee el título de la página
+      const link = typeof input.texto === 'string' && !input.titulo ? findUrl(input.texto) : undefined
+      if (link && !link.rest) input.titulo = await fetchTitle(link.url)
       const r = capture(await store.load(), input, env)
       if (r.writes.length || r.deletes?.length) await store.save(r.writes, r.deletes)
       return text(r.report.join(' '))

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   BellRing,
@@ -31,6 +31,7 @@ import {
   CalendarClock,
   Trash2,
   Upload,
+  FileUp,
   Volume2,
   Wind,
 } from 'lucide-react'
@@ -46,6 +47,8 @@ import { SectionIcon, section, type Tint } from '@/app/sections'
 import { setUI, toast, ui, useUI } from '@/app/store'
 import { a11yPrefs, setContrastPref, setMotionPref, setTheme, useA11yPrefs, useTheme } from '@/app/theme'
 import { AccentPicker } from './AccentPicker'
+// Se carga al abrirla: los importadores no hacen falta para ver Ajustes
+const ImportSheet = lazy(() => import('./ImportSheet').then((m) => ({ default: m.ImportSheet })))
 import { LunoLockup } from '@/components/Brand'
 import { FEATURES } from '@/lib/features'
 import { useFeatures } from '@/app/features'
@@ -377,6 +380,7 @@ export function SettingsView() {
   const creatingArea = useUI((s) => s.creating === 'area')
   const [editing, setEditing] = useState<Area | undefined>()
   const fileRef = useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = useState(false)
 
   const move = async (i: number, dir: -1 | 1) => {
     const a = areas[i]
@@ -580,6 +584,16 @@ export function SettingsView() {
         />
         <Row
           glyph={
+            <Glyph c="indigo">
+              <FileUp size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Traer de otra app"
+          detail="Todoist, TickTick, Google Tasks o una lista pegada"
+          onClick={() => setImporting(true)}
+        />
+        <Row
+          glyph={
             <Glyph c="red">
               <Trash2 size={15} strokeWidth={2.4} />
             </Glyph>
@@ -593,6 +607,11 @@ export function SettingsView() {
             toast('Datos borrados')
           }}
         />
+        {importing && (
+          <Suspense fallback={null}>
+            <ImportSheet open={importing} onClose={() => setImporting(false)} />
+          </Suspense>
+        )}
         <input
           ref={fileRef}
           type="file"

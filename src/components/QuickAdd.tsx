@@ -1,13 +1,16 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { m as motion } from 'motion/react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, AtSign, Folder, Hash, Inbox, Mic } from 'lucide-react'
+import { ArrowUp, AtSign, Folder, Hash, Inbox, Link2, ListPlus, Mic, X } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import { applySuggestion, suggest, type Suggestion } from '@/lib/autocomplete'
 import { createTask } from '@/db/actions'
-import { parseQuickAdd } from '@/lib/parse'
+import { parseQuickAdd, type ParsedTask } from '@/lib/parse'
+import { fetchLinkTitle, findUrl, hostOf, linkTask } from '@/lib/links'
+import { listLines } from '@/lib/lines'
+import { useSync } from '@/sync/service'
 import { dateLabel, today } from '@/lib/dates'
 import { toast, ui, useUI } from '@/app/store'
 import { ParsedChips } from './ParsedChips'
@@ -34,11 +37,19 @@ export function QuickAdd() {
 }
 
 function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial?: string }) {
-  const [value, setValue] = useState(initial ?? '')
+  // Lo compartido con varias líneas (una nota, una lista): una tarea por línea
+  const initialLines = useMemo(() => (initial?.includes('\n') ? listLines(initial).filter((l) => !l.done).map((l) => l.text) : []), [initial])
+  const [value, setValue] = useState(initialLines.length > 1 ? '' : (initial ?? '').replace(/\s+/g, ' ').trim())
   const [notes, setNotes] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const { areas, projects, people, project, area } = useLookup()
-  const parsed = useMemo(() => parseQuickAdd(value, { areas, projects, people }), [value, areas, projects, people])
+  const { user } = useSync()
+  // Un enlace va a las notas; el título es lo escrito o el de la página
+  const link = useMemo(() => findUrl(value), [value])
+  const parsed = useMemo(() => parseQuickAdd(link ? link.rest : value, { areas, projects, people }), [value, link, areas, projects, people])
+  // Una lista pegada: una tarea por línea
+  const [bulk, setBulk] = useState<string[] | null>(initialLines.length > 1 ? initialLines : null)
+  const bulkParsed = useMemo(() => bulk?.map((l) => ({ line: l, link: findUrl(l), p: parseQuickAdd(findUrl(l)?.rest ?? l, { areas, projects, people }) })), [bulk, areas, projects, people])
   const example = useMemo(() => EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)], [])
 
   // Autocompletar #etiqueta, +proyecto y @persona
@@ -70,6 +81,8 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
 
   useEffect(() => inputRef.current?.focus(), [])
 
+  const final = build(parsed)
+  function build(parsed: ParsedTask): Partial<Task> {
   const final: Partial<Task> = { ...defaults }
   if (parsed.dueDate) final.dueDate = parsed.dueDate
   if (parsed.dueTime) final.dueTime = parsed.dueTime
@@ -91,6 +104,8 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
     final.areaId = parsed.areaId
     final.projectId = undefined
   }
+  return final
+  }
   const destination = project(final.projectId)?.name ?? area(final.areaId)?.name
   const toInbox = !final.projectId && !final.areaId && !final.dueDate && !final.deadline && !final.someday
 
@@ -108,17 +123,38 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
     dictation.start()
   }
 
+  const [saving, setSaving] = useState(false)
+  /** La tarea de una línea: lo entendido y, si trae enlace, su título y el enlace en las notas */
+  const taskOf = async (p: ParsedTask, url: string | undefined, extraNotes: string, getTitle: boolean) => {
+    const title = url ? linkTask(p.title, url, !p.title && getTitle ? await fetchLinkTitle(url, !!user) : undefined).title : p.title
+    return {
+      ...build(p),
+      title,
+      notes: [extraNotes.trim(), url].filter(Boolean).join('\n'),
+      priority: (p.priority || defaults?.priority || 0) as Task['priority'],
+      tags: [...new Set([...(defaults?.tags ?? []), ...p.tags])],
+    }
+  }
   const submit = async (keepOpen: boolean) => {
-    if (!parsed.title) return
-    await createTask({
-      ...final,
-      title: parsed.title,
-      notes,
-      priority: parsed.priority || defaults?.priority || 0,
-      tags: [...new Set([...(defaults?.tags ?? []), ...parsed.tags])],
-    })
+    if (saving) return
+    if (bulk && bulkParsed) {
+      setSaving(true)
+      const list = await Promise.all(bulkParsed.filter((b) => b.p.title || b.link).map((b) => taskOf(b.p, b.link?.url, '', true)))
+      for (const t of list) await createTask(t)
+      setSaving(false)
+      toast(`${list.length} ${list.length === 1 ? 'tarea añadida' : 'tareas añadidas'}`)
+      setBulk(null)
+      setValue('')
+      if (!keepOpen) ui.closeQuickAdd()
+      return
+    }
+    if (!parsed.title && !link) return
+    setSaving(true)
+    const task = await taskOf(parsed, link?.url, notes, true)
+    setSaving(false)
+    await createTask(task)
     const where = toInbox ? 'la Bandeja' : final.dueDate ? dateLabel(final.dueDate) : final.someday ? 'Algún día' : destination
-    toast(`Tarea añadida${where ? ` · ${where}` : ''}`)
+    toast(`${link && !parsed.title ? `Añadido «${task.title}»` : 'Tarea añadida'}${where ? ` · ${where}` : ''}`)
     setValue('')
     setNotes('')
     if (!keepOpen) ui.closeQuickAdd()
@@ -150,6 +186,13 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
               setActive(0)
             }}
             onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? value.length)}
+            onPaste={(e) => {
+              // Varias líneas pegadas: una tarea por línea (como en Things)
+              const lines = listLines(e.clipboardData.getData('text')).filter((l) => !l.done)
+              if (lines.length < 2) return
+              e.preventDefault()
+              setBulk(lines.map((l) => l.text))
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault()
@@ -204,6 +247,35 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
               </span>
             </div>
           )}
+          {link && (
+            <p className="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-full bg-fill px-2.5 py-1 text-[13px] font-semibold">
+              <Link2 size={13} strokeWidth={2.4} className="shrink-0" />
+              <span className="truncate">{hostOf(link.url)}</span>
+              {!parsed.title && <span className="shrink-0 font-normal text-muted">· {user ? 'con el título de la página' : 'enlace en las notas'}</span>}
+            </p>
+          )}
+          {bulk && bulkParsed && (
+            <div className="mt-3 rounded-2xl bg-fill-2 p-3">
+              <div className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold">
+                <ListPlus size={15} strokeWidth={2.4} /> {bulk.length} tareas, una por línea
+                <button type="button" onClick={() => setBulk(null)} aria-label="No, solo una" className="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg">
+                  <X size={14} />
+                </button>
+              </div>
+              <ul className="max-h-56 space-y-1 overflow-y-auto" aria-label="Tareas que se van a crear">
+                {bulkParsed.map((b, i) => (
+                  <li key={i} className="flex items-baseline gap-2 text-[14.5px]">
+                    <span className="h-1.5 w-1.5 shrink-0 translate-y-[-2px] rounded-full bg-faint" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate">
+                      {b.p.title || (b.link ? hostOf(b.link.url) : b.line)}
+                      {b.p.title && b.link && <span className="text-muted"> · {hostOf(b.link.url)}</span>}
+                    </span>
+                    {b.p.dueDate && <span className="shrink-0 text-[12.5px] font-semibold text-muted">{dateLabel(b.p.dueDate)}{b.p.dueTime ? ` ${b.p.dueTime}` : ''}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <ParsedChips parsed={parsed} className="mt-3" />
           {(dictation.listening || dictation.error) && (
             <p className={cx('mt-2 text-[13px] font-medium', dictation.error ? 'text-muted' : 'text-fg')}>{dictation.error ?? 'Te escucho… di la tarea como la escribirías: «llamar a Ana mañana a las 10»'}</p>
@@ -240,8 +312,8 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
         )}
         <button
           type="submit"
-          disabled={!parsed.title}
-          aria-label="Añadir"
+          disabled={(!parsed.title && !link && !bulk) || saving}
+          aria-label={bulk ? `Añadir ${bulk.length} tareas` : 'Añadir'}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none"
         >
           <ArrowUp size={18} strokeWidth={2.8} />

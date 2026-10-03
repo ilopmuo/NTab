@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { m as motion, useTransform, type MotionValue } from 'motion/react'
-import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, ListChecks, Repeat, RotateCcw, Star, StickyNote, Sunrise, Telescope, UserRoundCheck } from 'lucide-react'
+import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, Link2, ListChecks, Repeat, RotateCcw, Star, StickyNote, Sunrise, Telescope, UserRoundCheck } from 'lucide-react'
 import { durationLabel } from '@/lib/duration'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
@@ -340,7 +340,25 @@ export const TaskItem = memo(function TaskItem({
       </span>,
     )
   }
-  if (task.notes.trim()) meta.push(<StickyNote key="n" size={11} strokeWidth={2.4} />)
+  // Un enlace en las notas se abre desde la propia fila (como en Todoist)
+  const url = task.notes.match(/https?:\/\/[^\s<>"']+/)?.[0]
+  if (url) {
+    meta.push(
+      <a
+        key="u"
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-[1] inline-flex max-w-[12rem] items-center gap-1 font-medium text-blue hover:underline"
+        title={url}
+      >
+        <Link2 size={11} strokeWidth={2.4} aria-hidden />
+        <span className="truncate">{url.replace(/^https?:\/\/(www\.)?/, '').split(/[/?#]/)[0]}</span>
+      </a>,
+    )
+  }
+  if (task.notes.trim() && task.notes.trim() !== url) meta.push(<StickyNote key="n" size={11} strokeWidth={2.4} />)
   if (!hideProject && (project || area)) {
     meta.push(
       <span key="p" className="inline-flex items-center gap-1.5">
