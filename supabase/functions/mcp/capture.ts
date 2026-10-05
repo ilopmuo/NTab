@@ -15,9 +15,10 @@
 import { MONTHS, WEEKDAYS, addDays, diffDays, hhmmIn, weekday, ymdIn, zonedToUtc } from '../_shared/time.ts'
 import { parseQuickAdd } from '../_shared/parse.ts'
 import { findUrl, linkTask } from '../_shared/links.ts'
-import { money, monthSummary, parseExpense, searchExpenses } from '../_shared/expenses.ts'
+import { money, monthSummary, searchExpenses } from '../_shared/expenses.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { captureMed } from './meds.ts'
+import { ASKING, classify, cleanDictation, closest, infinitive } from '../_shared/intent.ts'
 import {
   Index,
   addExpenseTool,
@@ -129,15 +130,9 @@ export function captureCardPayment(rows: Row[], input: CaptureInput, env: Env): 
 
 // ── El dictado ────────────────────────────────────────────────
 
-/**
- * El dictado del iPhone pone mayúscula al principio y puntuación al final
- * («Compra leche y pan.», «¿Qué tengo mañana?»): se quita, y se recuerda si
- * era una pregunta.
- */
-export function cleanDictation(raw: string): { text: string; question: boolean } {
-  const t = raw.replace(/\s+/g, ' ').trim().slice(0, 500)
-  return { text: t.replace(/^[¿¡\s]+/, '').replace(/[\s.,;:!?¡¿…]+$/u, ''), question: /^¿|\?$/.test(t) }
-}
+// La limpieza del dictado, los parecidos y a dónde va cada cosa, en
+// _shared/intent.ts (la captura de la app usa lo mismo)
+export { cleanDictation, likeness } from '../_shared/intent.ts'
 
 /** Para leer en voz alta: «hoy», «mañana», «el jueves 8», «el lunes 12 de octubre» */
 export function spokenDay(date: string, today: string) {
@@ -163,71 +158,10 @@ function spokenAgo(date: string, today: string) {
   return n <= 1 ? spokenDay(date, today) : `hace ${n} días, ${spokenDay(date, today)}`
 }
 
-// ── Parecidos: «he llamado al dentista» ≈ «Llamar al dentista» ──
-
-const STOP = new Set('a al el la los las lo le les de del un una unos unas en con por para y e o u mi mis tu tus su sus que ya hoy he has ha hemos me te se'.split(' '))
-// Participios y pasados irregulares → la raíz de su infinitivo
-const IRREGULAR: Record<string, string> = { hech: 'hace', hice: 'hace', hizo: 'hace', pues: 'pone', puse: 'pone', vist: 'ver', vi: 'ver', vuel: 'volv', devu: 'devo', dich: 'deci', dije: 'deci', abie: 'abri', roto: 'romp', ido: 'ir', fui: 'ir', fue: 'ir', resu: 'reso' }
-// Participios en -ido de verbos en -ir (los demás en -ido son de -er: comido, bebido…)
-const IR_VERBS = new Set('pedir salir subir escribir recibir vivir decidir dormir servir seguir sentir elegir repetir medir anadir imprimir cumplir compartir describir discutir dividir incluir construir destruir sufrir unir permitir partir preferir prohibir reunir sacudir consumir conducir traducir producir reducir venir mentir hervir freir reir sonreir corregir dirigir exigir fingir surgir invadir aplaudir abrir cubrir descubrir resumir asistir insistir existir ocurrir'.split(' '))
-/**
- * El infinitivo de un participio o un pasado («llamado», «llamé» → llamar;
- * «bebido», «bebí» → beber; «regué» → regar), para comparar por la raíz.
- * Se aplica igual a lo dicho y a los nombres, así que lo que no es un verbo
- * («café») también casa consigo mismo.
- */
-function lemma(w: string) {
-  if (w.length < 4) return w
-  const root = (n: number) => w.slice(0, -n)
-  const er = (r: string) => (IR_VERBS.has(fold(`${r}ir`)) ? `${r}ir` : `${r}er`)
-  if (w.endsWith('ado') && w.length > 4) return `${root(3)}ar`
-  if (w.endsWith('ido') && w.length > 4) return er(root(3))
-  if (w.endsWith('gué')) return `${root(3)}gar`
-  if (w.endsWith('qué')) return `${root(3)}car`
-  if (w.endsWith('cé')) return `${root(2)}zar`
-  if (w.endsWith('é')) return `${root(1)}ar`
-  if (w.endsWith('í')) return er(root(1))
-  return w
-}
-const stem = (w: string) => {
-  const s = w.length > 4 ? w.slice(0, 4) : w
-  return IRREGULAR[s] ?? s
-}
-const words = (s: string) =>
-  s
-    .toLowerCase()
-    .split(/[^\p{L}\d]+/u)
-    .map((w) => fold(lemma(w)))
-    .filter((w) => w && !STOP.has(w))
-
-/**
- * ¿Lo dicho es esto? Todo lo dicho tiene que estar (el verbo también: «he
- * llamado al dentista» no es «Pedir cita al dentista»). 0 si no; 1 o más, si
- * lo dice entero; entre medias, si se queda corto.
- */
-export function likeness(said: string, name: string) {
-  if (fold(said) === fold(name)) return 2
-  const a = words(said).map(stem)
-  const b = new Set(words(name).map(stem))
-  if (!a.length || !b.size || !a.every((w) => b.has(w))) return 0
-  return new Set(a).size / b.size
-}
-
-/** Lo más parecido de una lista (si hay empate entre varias, todas) */
-function best<T>(items: T[], said: string, name: (x: T) => string, rank: (x: T) => number = () => 0): { hit?: T; tie?: T[] } {
-  const scored = items
-    .map((x) => ({ x, s: likeness(said, name(x)), r: rank(x) }))
-    .filter((y) => y.s >= 0.5)
-    .sort((p, q) => q.s - p.s || q.r - p.r)
-  if (!scored.length) return {}
-  const top = scored.filter((y) => y.s === scored[0].s && y.r === scored[0].r)
-  return top.length > 1 && new Set(top.map((y) => fold(name(y.x)))).size > 1 ? { tie: top.map((y) => y.x) } : { hit: scored[0].x }
-}
-
 /** Una tarea pendiente por cómo se dice: primero lo de hoy y lo atrasado */
 function openTask(rows: Row[], said: string, today: string) {
   const open = new Index(rows).tasks.filter((t) => !t.done)
-  return best(open, said, (t) => t.title, (t) => (t.dueDate && t.dueDate <= today ? 2 : t.dueDate ? 1 : 0))
+  return closest(open, said, (t) => t.title, (t) => (t.dueDate && t.dueDate <= today ? 2 : t.dueDate ? 1 : 0))
 }
 
 /** Para entender solo fechas y horas («a mañana a las 5»), sin listas ni personas */
@@ -290,19 +224,6 @@ function complete(rows: Row[], task: Task, env: Env): CaptureResult {
   return remember(rows, { writes: r.writes, report: [`Hecho: ${task.title}.${next ? ` La próxima vez, ${spokenDay(str(next.data.dueDate), today)}.` : ''}`] }, env, `«${task.title}» vuelve a estar pendiente`)
 }
 
-const PARTICIPLE: Record<string, string> = { hecho: 'hacer', puesto: 'poner', visto: 'ver', vuelto: 'volver', devuelto: 'devolver', dicho: 'decir', escrito: 'escribir', abierto: 'abrir', roto: 'romper', ido: 'ir', resuelto: 'resolver', cubierto: 'cubrir', frito: 'freír', muerto: 'morir' }
-
-/** «he cambiado las sábanas» → «Cambiar las sábanas» (para «Última vez») */
-function infinitive(said: string) {
-  const m = /^(?:ya\s+)?(?:he|hemos)\s+(\S+)\s*(.*)$/i.exec(said)
-  if (!m) return cap(said)
-  const p = fold(m[1])
-  let verb = PARTICIPLE[p]
-  if (!verb && p.endsWith('ado')) verb = `${p.slice(0, -3)}ar`
-  if (!verb && p.endsWith('ido')) verb = IR_VERBS.has(`${p.slice(0, -3)}ir`) ? `${p.slice(0, -3)}ir` : `${p.slice(0, -3)}er`
-  return cap([verb ?? m[1], m[2]].filter(Boolean).join(' '))
-}
-
 /**
  * «Hecho: …» o «he …»: una tarea pendiente se completa; un hábito se marca;
  * si no, a «Última vez» (con `log`, también algo nuevo).
@@ -313,14 +234,14 @@ function didIt(rows: Row[], said: string, env: Env, log: boolean): CaptureResult
   if (task.tie) return { writes: [], report: [tie(task.tie)] }
   if (task.hit) return complete(rows, task.hit, env)
   const habits = rows.filter((r) => r.tbl === 'habits' && !r.data.archived)
-  const habit = best(habits, said, (r) => str(r.data.name)).hit
+  const habit = closest(habits, said, (r) => str(r.data.name)).hit
   if (habit) {
     // Con cantidad («8 vasos de agua»), uno más
     const r = markHabit(rows, { habito: str(habit.data.name), ...(num(habit.data.target) > 1 ? { cantidad: 1 } : {}) }, env)
     return remember(rows, { ...r, report: r.report.map((x) => x.replaceAll(` el ${today}`, ' hoy')) }, env, `«${str(habit.data.name)}» de hoy`)
   }
   const trackers = rows.filter((r) => r.tbl === 'trackers' && !r.data.archived)
-  const tracker = best(trackers, said, (r) => str(r.data.name)).hit
+  const tracker = closest(trackers, said, (r) => str(r.data.name)).hit
   if (!tracker && !log) return undefined
   const name = tracker ? str(tracker.data.name) : infinitive(said)
   const r = logLastTime(rows, { cosa: name }, env)
@@ -353,34 +274,14 @@ function postpone(rows: Row[], text: string, env: Env): CaptureResult | undefine
   return remember(rows, { writes: r.writes, report: [`Pasada ${toDay(day, today)}${t.dueTime ? ` a las ${t.dueTime}` : ''}: ${task.title}.`] }, env, `«${task.title}» vuelve a ${task.dueDate ? spokenDay(task.dueDate, today) : 'no tener fecha'}`)
 }
 
-// «he dejado las llaves en el cajón», «apunta que el pasaporte está en el armario»
-const PLACE = '(en|dentro\\s+de|debajo\\s+de|encima\\s+de|detr[aá]s\\s+de|junto\\s+a|al\\s+lado\\s+de)\\s+(.+)'
-const LEFT = new RegExp(`^(?:(?:ya\\s+)?he\\s+(?:dejado|guardado|puesto)|dej[eé]|guard[eé]|puse)\\s+(?!a\\s)(.+?)\\s+${PLACE}$`, 'i')
-const LEFT_THAT = new RegExp(`^(?:guarda|apunta|recuerda|anota)\\s+que\\s+(.+?)\\s+est[aá]n?\\s+${PLACE}$`, 'i')
-// «le he prestado el taladro a Luis»
-const LENT = /^(?:le\s+|les\s+)?(?:he\s+prestado|prest[eé])\s+(.+?)\s+a\s+(.+)$/i
 const ARTICLE = /^(?:el|la|los|las|mi|mis|un|una|unos|unas)\s+/i
 
-function placeOf(prep: string, place: string) {
-  return /^en$/i.test(prep) ? place : `${prep.toLowerCase()} ${place}`
-}
-
-function leftThing(rows: Row[], text: string, env: Env): CaptureResult | undefined {
-  const lent = LENT.exec(text)
-  if (lent) {
-    const name = cap(lent[1].replace(ARTICLE, ''))
-    const r = saveThing(rows, { nombre: name, tipo: 'prestado', persona: lent[2] }, env)
-    if (!r.writes.length) return r
-    return remember(rows, { writes: r.writes, report: [`Apuntado: ${name}, lo tiene ${lent[2]}.`] }, env, `el préstamo de ${name}`)
-  }
-  const m = LEFT.exec(text) ?? LEFT_THAT.exec(text)
-  // «He puesto la lavadora en marcha» o con un día por delante, no es dónde está algo
-  if (!m || /^marcha$/i.test(m[3]) || parseQuickAdd(text, when(env)).dueDate) return undefined
-  const name = cap(m[1].replace(ARTICLE, ''))
-  const where = placeOf(m[2], m[3])
-  const r = saveThing(rows, { nombre: name, donde: where }, env)
+/** «he dejado las llaves en el cajón», «le he prestado el taladro a Luis» */
+function thing(rows: Row[], name: string, env: Env, where?: string, person?: string): CaptureResult {
+  const r = saveThing(rows, person ? { nombre: name, tipo: 'prestado', persona: person } : { nombre: name, donde: where }, env)
   if (!r.writes.length) return r
-  return remember(rows, { writes: r.writes, report: [`Apuntado: ${name}, ${/^en$/i.test(m[2]) ? 'en ' : ''}${where}.`] }, env, `dónde está ${name}`)
+  const said = person ? `lo tiene ${person}` : `${/^(?:debajo|encima|detr[aá]s|dentro|junto|al\s+lado)\b/i.test(where!) ? '' : 'en '}${where}`
+  return remember(rows, { writes: r.writes, report: [`Apuntado: ${name}, ${said}.`] }, env, person ? `el préstamo de ${name}` : `dónde está ${name}`)
 }
 
 // ── Preguntar ─────────────────────────────────────────────────
@@ -393,8 +294,6 @@ const NOW_Q = /^qu[eé]\s+(?:hago|puedo\s+hacer|deber[ií]a\s+hacer|me\s+pongo\s
 // «tengo 20 minutos», «tengo un rato, ¿qué hago?» (sin más: «tengo tiempo para leer el sábado» es otra cosa)
 const NOW_FREE = /^tengo\s+(?:un\s+rato|tiempo|\S+\s+(?:minutos|horas?))(?:\s+libres?)?(?:[\s,]+¿?qu[eé]\s+(?:hago|puedo\s+hacer))?$/i
 const AGENDA_Q = /^(?:qu[eé]\s+(?:tengo|hay|me\s+toca|me\s+queda)(?:\s+(?:que\s+hacer|pendiente|apuntado))?|c[oó]mo\s+(?:tengo|viene)\s+(?:el\s+d[ií]a|la\s+semana)|(?:mi\s+)?agenda(?:\s+de)?)(?=\s|$)\s*(.*)$/i
-// Una pregunta aunque el dictado no ponga «?»: con su tilde («Como con Ana el viernes» o «Tengo que llamar al banco» no lo son)
-const ASKING = /^(?:qué|cuándo|dónde|cuánt[oa]s?|quién|cómo|cuál(?:es)?)(?=\s|$)/i
 
 /** El día (o la semana) por el que se pregunta: «hoy», «mañana», «el jueves», «esta semana» */
 function askedDay(rest: string, env: Env): { day: string; week?: boolean } | undefined {
@@ -491,7 +390,7 @@ function whereIs(rows: Row[], what: string, env: Env): string {
   const today = ymdIn(env.now, env.tz)
   const q = what.replace(ARTICLE, '')
   const things = rows.filter((r) => r.tbl === 'things')
-  const found = best(things, q, (r) => str(r.data.name), (r) => (r.data.returned ? 0 : 1))
+  const found = closest(things, q, (r) => str(r.data.name), (r) => (r.data.returned ? 0 : 1))
   const hits = found.tie ?? (found.hit ? [found.hit] : things.filter((r) => fold([r.data.name, r.data.location, r.data.notes].map(str).join(' ')).includes(fold(q))))
   const are = /s$/.test(fold(q)) ? 'están' : 'está'
   if (!hits.length) return `No tengo apuntado dónde ${are} ${what}. Cuando lo sepas, dímelo así: «he dejado ${what} en el cajón».`
@@ -546,10 +445,10 @@ const PAST = /^(?:\S+[éí]|he\s+\S+(?:ado|ido|cho|to)|fui|fue|hice|hizo|puse|vi
 function lastTime(rows: Row[], rest: string, env: Env): string {
   const today = ymdIn(env.now, env.tz)
   const trackers = rows.filter((r) => r.tbl === 'trackers' && !r.data.archived && Array.isArray(r.data.log) && (r.data.log as string[]).length)
-  const tracker = best(trackers, rest, (r) => str(r.data.name)).hit
+  const tracker = closest(trackers, rest, (r) => str(r.data.name)).hit
   if (tracker) return `La última vez fue ${spokenAgo((tracker.data.log as string[])[0], today)}.`
   const done = new Index(rows).tasks.filter((t) => t.done && t.completedAt)
-  const task = best(done, rest, (t) => t.title, (t) => num(t.completedAt)).hit
+  const task = closest(done, rest, (t) => t.title, (t) => num(t.completedAt)).hit
   if (task) return `La última vez fue ${spokenAgo(ymdIn(task.completedAt!, env.tz), today)}.`
   return 'No lo tengo apuntado. La próxima vez, dime «hecho:» y lo que hayas hecho.'
 }
@@ -574,51 +473,10 @@ function answer(rows: Row[], text: string, env: Env, cal?: CaptureCalendar): str
 
 // ── Apuntar ───────────────────────────────────────────────────
 
-// «compra: leche», «compra leche y pan», «a la compra leche», «lista de la compra: …» (pero «comprar un regalo» es una tarea)
-const SHOPPING_PREFIX = /^\s*(?:(?:(?:a[nñ]ade|apunta|pon)\s+)?(?:(?:a|en)\s+)?(?:(?:la\s+)?lista\s+de\s+)?la\s+compra\s*[:,.-]?|compra(?:\s*[:,.-]|\s+(?=\S)))\s*/i
-// «añade leche y huevos a la lista de la compra», «pon pan en la compra»
-const SHOPPING_SUFFIX = /^(?:(?:a[nñ]ade|apunta|pon|mete|agrega|incluye)\s+)?(.+?)\s+(?:a|en)\s+(?:la\s+)?(?:lista\s+de\s+(?:la\s+)?)?compra$/i
-// «añade ibuprofeno a la lista de la farmacia», «añade llamar al seguro a la lista de Mudanza»
-const TO_LIST = /^(?:(?:a[nñ]ade|apunta|pon|mete|agrega|incluye)\s+)?(.+?)\s+(?:a|en)\s+la\s+lista\s+(?:del\s+|de\s+(?:la\s+|el\s+|los\s+|las\s+)?)?(.+)$/i
-// «gasto 12 café», «mete un gasto de quince euros en Mercadona», «me he gastado 20 en la cena», «he pagado 30 de luz»
-const EXPENSE_PREFIX = /^\s*(?:(?:(?:mete|meter|apunta|anota|a[nñ]ade|pon|registra)(?:me)?\s+(?:un\s+)?)?gasto(?:\s+de)?|gast[eé]|(?:me\s+)?he\s+gastado|pagu[eé]|he\s+pagado)\s*[:,.-]?\s+/i
-const NOTE_PREFIX = /^\s*(?:nota|apunta\s+una\s+nota)\s*[:,.-]?\s+/i
-// «a la nota maleta: crema solar», «añade a la nota de ideas: una bici»
-const NOTE_APPEND = /^\s*(?:(?:a[nñ]ade|apunta|pon|mete)\s+)?(?:a|en)\s+la\s+nota\s+(?:de\s+(?:la\s+|los\s+|las\s+|el\s+)?)?(.+?)\s*[:,]\s+(.+)$/i
-// Sin dos puntos, como sale del dictado: «añade a la nota maleta crema solar»…
-const NOTE_APPEND_LOOSE = /^(?:(?:a[nñ]ade|apunta|pon|mete|agrega)\s+)?(?:a|en)\s+la\s+nota\s+(?:de\s+(?:la\s+|los\s+|las\s+|el\s+)?)?(.+)$/i
-// …o «añade crema solar a la nota maleta»
-const NOTE_APPEND_AFTER = /^(?:a[nñ]ade|apunta|pon|mete|agrega)\s+(.+?)\s+(?:a|en)\s+la\s+nota\s+(?:de\s+(?:la\s+|los\s+|las\s+|el\s+)?)?(.+)$/i
-// «hecho: cambiar las sábanas»
-const DONE_PREFIX = /^\s*(?:lo\s+he\s+hecho|hecho|[uú]ltima\s+vez)\s*[:,.-]?\s+/i
 // «he llamado al dentista», «ya he regado las plantas»
 const DID = /^(?:ya\s+)?(?:he|hemos)\s+\S+(?:ado|ido|cho|to|sto|lto)\b/i
 // «Medité», «Llamé al dentista», «Cambié las sábanas» (solo si es algo que ya existe: «Café con Ana» es otra cosa)
 const DID_I = /^(?:ya\s+)?\S+[éí](?:\s|$)/i
-// «hábito: agua», «+1 agua», «+2 vasos de agua»
-const HABIT_PREFIX = /^\s*(?:h[aá]bito\s*[:,.-]?\s+|\+\s*(\d+)\s+)/i
-
-function noteAppend(rows: Row[], text: string, env: Env): WriteResult | undefined {
-  const m = NOTE_APPEND.exec(text)
-  if (m) return appendNoteTool(rows, { nota: m[1], texto: m[2] }, env)
-  const after = NOTE_APPEND_AFTER.exec(text)
-  if (after && !/^(?:a|en)\s+la\s+nota\b/i.test(after[1])) return appendNoteTool(rows, { nota: after[2], texto: after[1] }, env)
-  const loose = NOTE_APPEND_LOOSE.exec(text)
-  if (!loose) return undefined
-  // La nota que ya existe con el nombre más largo que encaje; si no, la primera palabra
-  const rest = loose[1]
-  const titles = rows
-    .filter((r) => r.tbl === 'notes')
-    .map((r) => str(r.data.title))
-    .filter(Boolean)
-    .sort((a, b) => b.length - a.length)
-  const hit = titles.find((t) => fold(rest).startsWith(`${fold(t)} `))
-  if (hit) return appendNoteTool(rows, { nota: hit, texto: rest.slice(hit.length).trim() }, env)
-  const [first, ...more] = rest.split(' ')
-  if (!more.length) return { writes: [], report: ['¿Qué añado a la nota? Dímelo así: «a la nota maleta: crema solar».'] }
-  return appendNoteTool(rows, { nota: first, texto: more.join(' ') }, env)
-}
-
 /** Una tarea, como en la captura rápida de la app (con `projectId`, en esa lista) */
 function newTask(rows: Row[], text: string, fields: CaptureInput, env: Env, projectId?: string): CaptureResult {
   const ix = new Index(rows)
@@ -714,13 +572,16 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal
 
   if (UNDO.test(text)) return undoLast(rows, env)
 
-  const habit = HABIT_PREFIX.exec(text)
-  // El nombre exacto de un hábito («meditar») también lo marca
-  const habitNames = rows.filter((r) => r.tbl === 'habits' && !r.data.archived).map((r) => str(r.data.name))
-  if (habit || habitNames.some((n) => fold(n) === fold(text))) {
-    const name = habit ? text.slice(habit[0].length) : text
-    const r = markHabit(rows, { habito: name, ...(habit?.[1] ? { cantidad: Number(habit[1]) } : {}) }, env)
-    return remember(rows, { ...r, report: r.report.map(spoken) }, env, `«${cap(name)}» de hoy`)
+  const names = {
+    habits: rows.filter((r) => r.tbl === 'habits' && !r.data.archived).map((r) => str(r.data.name)),
+    notes: rows.filter((r) => r.tbl === 'notes').map((r) => str(r.data.title)),
+    lists: shoppingLists(rows).map((l) => l.name),
+    projects: new Index(rows).projects.filter((p) => p.status !== 'done' && p.status !== 'archived').map((p) => str(p.name)),
+  }
+  const intent = classify(said, names, today)
+  if (intent.kind === 'habit') {
+    const r = markHabit(rows, { habito: intent.name, ...(intent.qty ? { cantidad: intent.qty } : {}) }, env)
+    return remember(rows, { ...r, report: r.report.map(spoken) }, env, `«${cap(intent.name)}» de hoy`)
   }
   // «tomada: ibuprofeno», «¿me he tomado la pastilla?»
   const med = captureMed(rows, question ? `${text}?` : text, env)
@@ -733,53 +594,36 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal
     if (ASKING.test(text)) return { writes: [], report: [HELP] }
   }
 
-  const append = noteAppend(rows, text, env)
-  if (append) return remember(rows, append, env, 'lo añadido a la nota')
-  if (NOTE_PREFIX.test(text)) {
-    // El texto de la nota, tal cual (con su punto final)
-    const body = said.replace(/\s+/g, ' ').trim().slice(0, 2000).replace(NOTE_PREFIX, '')
-    // Título: la primera frase (como mucho 60 letras); el texto entero, en la nota
-    const first = body.split(/(?<=[.!?])\s/)[0]
-    const title = first.length > 60 ? `${first.slice(0, 57).trimEnd()}…` : first.replace(/[.!?]$/, '')
-    const r = createNote(rows, { titulo: cap(title), contenido: body }, env)
-    return remember(rows, { ...r, report: [r.report[0].replace('Nota creada', 'Nota guardada')] }, env, `la nota «${cap(title)}»`)
-  }
-  if (DONE_PREFIX.test(text)) return didIt(rows, text.replace(DONE_PREFIX, ''), env, true)!
-
-  const thing = leftThing(rows, text, env)
-  if (thing) return thing
-
-  const shopping = SHOPPING_PREFIX.exec(text)
-  // «Compra entradas para el viernes» (con día) es una tarea
-  if (shopping && !(/^compra\s/i.test(shopping[0]) && parseQuickAdd(text, when(env)).dueDate)) {
-    const r = addShopping(rows, { cosas: text.slice(shopping[0].length) }, env)
-    return remember(rows, r, env, shoppingWhat(r))
-  }
-  const shoppingAfter = SHOPPING_SUFFIX.exec(text)
-  if (shoppingAfter) {
-    const r = addShopping(rows, { cosas: shoppingAfter[1] }, env)
-    return remember(rows, r, env, shoppingWhat(r))
-  }
-  const toList = TO_LIST.exec(text)
-  if (toList) {
-    const name = fold(toList[2])
-    const shopList = shoppingLists(rows).find((l) => fold(l.name) === name || fold(l.name).includes(name))
-    if (shopList) {
-      const r = addShopping(rows, { cosas: toList[1], lista: shopList.name }, env)
+  switch (intent.kind) {
+    case 'noteAppend': {
+      if (!intent.text) return { writes: [], report: ['¿Qué añado a la nota? Dímelo así: «a la nota maleta: crema solar».'] }
+      return remember(rows, appendNoteTool(rows, { nota: intent.note, texto: intent.text }, env), env, 'lo añadido a la nota')
+    }
+    case 'note': {
+      const r = createNote(rows, { titulo: intent.title, contenido: intent.body }, env)
+      return remember(rows, { ...r, report: [r.report[0].replace('Nota creada', 'Nota guardada')] }, env, `la nota «${intent.title}»`)
+    }
+    case 'done':
+      return didIt(rows, intent.what, env, true)!
+    case 'lent':
+      return thing(rows, intent.name, env, undefined, intent.person)
+    case 'thing':
+      return thing(rows, intent.name, env, intent.where)
+    case 'shopping': {
+      const r = addShopping(rows, { cosas: intent.items, ...(intent.list ? { lista: intent.list } : {}) }, env)
       return remember(rows, r, env, shoppingWhat(r))
     }
-    const project = new Index(rows).projects.find((p) => p.status !== 'done' && p.status !== 'archived' && likeness(toList[2], str(p.name)) >= 1)
-    if (project) return newTask(rows, toList[1], fields, env, String(project.id))
-  }
-
-  const expense = EXPENSE_PREFIX.exec(text)
-  // «he pagado la luz» sin importe no es un gasto: es algo hecho
-  if (expense && (parseExpense(text.slice(expense[0].length)) || /gast/i.test(expense[0]))) {
-    const r = addExpenseTool(rows, { texto: text.slice(expense[0].length) }, env)
-    if (!r.writes.length) return { ...r, report: ['¿Cuánto has gastado? Dilo con el importe: «15 euros en el súper».'] }
-    // Para Siri, sin el resumen del mes
-    const amount = num(r.writes.find((w) => w.tbl === 'expenses')?.data.amount)
-    return remember(rows, { ...r, report: [r.report[0].split('. Este mes')[0] + '.'] }, env, `el gasto de ${money(amount)}`)
+    case 'projectTask': {
+      const project = new Index(rows).projects.find((p) => str(p.name) === intent.project)
+      return newTask(rows, intent.text, fields, env, project ? String(project.id) : undefined)
+    }
+    case 'expense': {
+      const r = addExpenseTool(rows, { texto: intent.text }, env)
+      if (!r.writes.length) return { ...r, report: ['¿Cuánto has gastado? Dilo con el importe: «15 euros en el súper».'] }
+      // Para Siri, sin el resumen del mes
+      const amount = num(r.writes.find((w) => w.tbl === 'expenses')?.data.amount)
+      return remember(rows, { ...r, report: [r.report[0].split('. Este mes')[0] + '.'] }, env, `el gasto de ${money(amount)}`)
+    }
   }
 
   const moved = postpone(rows, text, env)

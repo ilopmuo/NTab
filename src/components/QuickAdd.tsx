@@ -1,13 +1,15 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { m as motion } from 'motion/react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, AtSign, Folder, Hash, Inbox, Link2, ListPlus, Mic, X } from 'lucide-react'
+import { ArrowUp, AtSign, CheckCircle2, Folder, Hash, History, Inbox, Link2, ListPlus, Mic, Package, Repeat, ShoppingCart, StickyNote, Wallet, X } from 'lucide-react'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import { applySuggestion, suggest, type Suggestion } from '@/lib/autocomplete'
 import { createTask } from '@/db/actions'
 import { parseQuickAdd, type ParsedTask } from '@/lib/parse'
+import { classify, type Intent } from '@/lib/intent'
+import { planCapture, type CapturePlan } from './capturePlan'
 import { fetchLinkTitle, findUrl, hostOf, linkTask } from '@/lib/links'
 import { listLines } from '@/lib/lines'
 import { useSync } from '@/sync/service'
@@ -21,6 +23,8 @@ import { haptic } from '@/lib/haptics'
 
 const EXAMPLES = [
   'Llamar al dentista mañana a las 10 !alta',
+  'Compra leche, huevos y pan',
+  'Gasto 12,50 comida con Ana',
   'Pagar el alquiler el 1 de cada mes +Finanzas',
   'Gimnasio cada lunes y jueves a las 19',
   'Revisar presupuesto el viernes ~1h #trabajo',
@@ -46,7 +50,18 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
   const { user } = useSync()
   // Un enlace va a las notas; el título es lo escrito o el de la página
   const link = useMemo(() => findUrl(value), [value])
-  const parsed = useMemo(() => parseQuickAdd(link ? link.rest : value, { areas, projects, people }), [value, link, areas, projects, people])
+  // A dónde va lo escrito, como con Siri: «compra leche» a la compra, «gasto 12 café» a gastos…
+  const names = useLiveQuery(loadNames, [])
+  const projectNames = useMemo(() => projects.filter((p) => p.status !== 'done').map((p) => p.name), [projects])
+  const intent: Intent = useMemo(() => (link || !names ? { kind: 'task' } : classify(value, { ...names, projects: projectNames }, today())), [value, link, names, projectNames])
+  const intentKey = JSON.stringify(intent)
+  const plan = useLiveQuery<CapturePlan | null>(() => planCapture(intent), [intentKey])
+  // En la lista de un proyecto («añade llamar al seguro a la lista de Mudanza»): una tarea allí
+  const listProject = intent.kind === 'projectTask' ? projects.find((p) => p.name === intent.project) : undefined
+  const parsed = useMemo(
+    () => parseQuickAdd(intent.kind === 'projectTask' ? intent.text : link ? link.rest : value, { areas, projects, people }),
+    [value, link, intent, areas, projects, people],
+  )
   // Una lista pegada: una tarea por línea
   const [bulk, setBulk] = useState<string[] | null>(initialLines.length > 1 ? initialLines : null)
   const bulkParsed = useMemo(() => bulk?.map((l) => ({ line: l, link: findUrl(l), p: parseQuickAdd(findUrl(l)?.rest ?? l, { areas, projects, people }) })), [bulk, areas, projects, people])
@@ -83,7 +98,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
 
   const final = build(parsed)
   function build(parsed: ParsedTask): Partial<Task> {
-  const final: Partial<Task> = { ...defaults }
+  const final: Partial<Task> = { ...defaults, ...(listProject ? { projectId: listProject.id, areaId: listProject.areaId } : {}) }
   if (parsed.dueDate) final.dueDate = parsed.dueDate
   if (parsed.dueTime) final.dueTime = parsed.dueTime
   if (parsed.deadline) final.deadline = parsed.deadline
@@ -146,6 +161,19 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
       setBulk(null)
       setValue('')
       if (!keepOpen) ui.closeQuickAdd()
+      return
+    }
+    // Con lo último de tus datos (por si se pulsa Intro antes de que se vea a dónde va)
+    const now = !bulk && !link ? await planCapture(classify(value, { ...(await loadNames()), projects: projectNames }, today())) : null
+    if (now) {
+      setSaving(true)
+      const r = await now.run()
+      setSaving(false)
+      haptic()
+      toast(r.message, r.undo ? { label: 'Deshacer', run: () => void r.undo!() } : undefined)
+      setValue('')
+      if (!keepOpen) ui.closeQuickAdd()
+      else inputRef.current?.focus()
       return
     }
     if (!parsed.title && !link) return
@@ -215,12 +243,14 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
             placeholder={example}
             className="w-full bg-transparent text-[20px] font-semibold tracking-tight placeholder:font-normal placeholder:text-faint"
           />
-          <input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notas"
-            className="mt-1 w-full bg-transparent text-[15px] text-muted placeholder:text-faint"
-          />
+          {!plan && (
+            <input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notas"
+              className="mt-1 w-full bg-transparent text-[15px] text-muted placeholder:text-faint"
+            />
+          )}
           {sug && (
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               <div id={listId} role="listbox" aria-label="Sugerencias" className="flex flex-wrap items-center gap-1.5">
@@ -276,7 +306,15 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
               </ul>
             </div>
           )}
-          <ParsedChips parsed={parsed} className="mt-3" />
+          {plan ? (
+            // A dónde va, si no es una tarea
+            <p className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full bg-fill px-2.5 py-1 text-[13px] font-semibold" data-capture-plan>
+              <PlanIcon icon={plan.icon} />
+              <span className="truncate">{plan.label}</span>
+            </p>
+          ) : (
+            <ParsedChips parsed={parsed} className="mt-3" />
+          )}
           {(dictation.listening || dictation.error) && (
             <p className={cx('mt-2 text-[13px] font-medium', dictation.error ? 'text-muted' : 'text-fg')}>{dictation.error ?? 'Te escucho… di la tarea como la escribirías: «llamar a Ana mañana a las 10»'}</p>
           )}
@@ -284,14 +322,14 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
       </div>
       <div className="flex items-center gap-3 px-5 pt-1 pb-4">
         <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-muted">
-          {toInbox ? (
+          {plan ? null : toInbox ? (
             <>
               <Inbox size={14} strokeWidth={2.3} /> Bandeja de entrada
             </>
           ) : (
             <span className="truncate">{[final.dueDate && `${dateLabel(final.dueDate)}${final.dueTime ? ` a las ${final.dueTime}` : ''}`, destination].filter(Boolean).join(' · ')}</span>
           )}
-          <span className="ml-auto hidden items-center gap-1 text-muted md:flex">
+          <span className={cx('ml-auto hidden items-center gap-1 text-muted', !plan && 'md:flex')}>
             <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>@</Kbd>persona <Kbd>!</Kbd>prioridad <Kbd>~</Kbd>duración
           </span>
         </div>
@@ -312,7 +350,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
         )}
         <button
           type="submit"
-          disabled={(!parsed.title && !link && !bulk) || saving}
+          disabled={(!plan && !parsed.title && !link && !bulk) || saving}
           aria-label={bulk ? `Añadir ${bulk.length} tareas` : 'Añadir'}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none"
         >
@@ -321,6 +359,20 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
       </div>
     </form>
   )
+}
+
+/** Los nombres que deciden a dónde va lo escrito: hábitos, notas y listas de la compra */
+async function loadNames() {
+  return {
+    habits: (await db.habits.toArray()).filter((h) => !h.archived).map((h) => h.name),
+    notes: (await db.notes.toArray()).map((n) => n.title).filter(Boolean),
+    lists: (((await db.settings.get('shoppingLists'))?.value as { name: string }[] | undefined) ?? []).map((l) => l.name),
+  }
+}
+
+function PlanIcon({ icon }: { icon: CapturePlan['icon'] }) {
+  const Glyph = { cart: ShoppingCart, wallet: Wallet, note: StickyNote, habit: Repeat, check: CheckCircle2, clock: History, box: Package }[icon]
+  return <Glyph size={14} strokeWidth={2.4} className="shrink-0" aria-hidden />
 }
 
 function SuggestIcon({ s }: { s: Suggestion }) {
