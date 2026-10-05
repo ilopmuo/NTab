@@ -90,3 +90,23 @@ test('semana por horas: una tarea sin hora a un hueco, luego a otro día y desha
   await page.keyboard.press('Shift+ArrowDown')
   await expect(block(today)).toContainText('11:15–12:00')
 })
+
+test('«Deshacer» nada más soltar: el clic es tuyo, no del arrastre', async ({ page }) => {
+  await openApp(page, '/calendar')
+  await quickAdd(page, 'Revisar el contrato hoy a las 11')
+  await page.locator('header').getByRole('button', { name: 'Semana', exact: true }).click()
+  const { today, days } = await week(page)
+  const col = (d: string) => page.locator(`[data-day="${d}"]`)
+  const block = (d: string) => col(d).getByRole('button', { name: /Revisar el contrato/ })
+  await expect(block(today)).toContainText('11:00')
+  await expect(page.getByRole('button', { name: 'Deshacer' })).toHaveCount(0, { timeout: 8000 })
+  const other = days[days.indexOf(today) === 6 ? 5 : days.indexOf(today) + 1]
+  const otherBox = (await col(other).boundingBox())!
+  const b = (await block(today).boundingBox())!
+  await drag(page, block(today), { x: otherBox.x + otherBox.width / 2, y: b.y + 8 })
+  // En cuanto aparece (antes, el clic de justo después de soltar se perdía)
+  const undo = page.getByRole('button', { name: 'Deshacer' })
+  await undo.waitFor()
+  await undo.click()
+  await expect(block(today)).toContainText('11:00', { timeout: 3000 })
+})

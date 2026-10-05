@@ -36,8 +36,20 @@ export function SiriBlock() {
                   <li>«+1 agua» o el nombre de un hábito, como «meditar» (hábitos)</li>
                   <li>«tomada: ibuprofeno» (medicación) · «¿me he tomado la pastilla?» (te lo dice)</li>
                   <li>«presupuesto del fontanero esperando a Luis» (a la espera: te lo recuerda en 3 días)</li>
+                  <li>«he dejado las llaves en el cajón» · «le he prestado el taladro a Luis» (cosas)</li>
                 </ul>
-                Siri te lee lo que ha apuntado.
+                Siri te lee lo que ha apuntado. No hace falta decir «dos puntos»: «compra leche y pan» o «añade huevos a la compra» también valen.
+              </li>
+              <li>
+                Con el mismo atajo, <b className="font-semibold text-fg">hacer</b>:
+                <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                  <li>«he llamado al dentista» o «hecho: llamar al dentista» (la tarea, hecha; si no es una tarea, un hábito o «última vez»)</li>
+                  <li>«pospón el dentista a mañana» · «deshaz» (quita lo último que has dictado)</li>
+                </ul>
+              </li>
+              <li>
+                Y <b className="font-semibold text-fg">preguntar</b>: «¿qué tengo hoy?» (también lo de tus calendarios), «¿qué tengo mañana?», «¿qué hago ahora?», «¿dónde está el pasaporte?», «¿qué
+                falta en la compra?», «¿cuánto llevo gastado este mes?» o «¿cuándo cambié las sábanas?».
               </li>
             </ol>
             <p className="mt-3 font-semibold text-fg">Gastos de un tirón</p>
@@ -73,7 +85,7 @@ export function SiriBlock() {
             <p className="mt-2">Es la misma URL privada que la del conector de Claude: si la cambias, cambia en los dos sitios.</p>
           </>
         ) : (
-          'Apunta tareas, compra y gastos diciéndoselo a Siri, sin abrir LUNO, y cada pago con Apple Pay en Gastos sin hacer nada. Se entiende igual que la captura rápida: fechas, horas, avisos, #etiquetas y +listas.'
+          'Apunta tareas, compra y gastos diciéndoselo a Siri, sin abrir LUNO; márcalas como hechas, pospónlas o pregúntale qué tienes hoy, y cada pago con Apple Pay en Gastos sin hacer nada. Se entiende igual que la captura rápida: fechas, horas, avisos, #etiquetas y +listas.'
         )
       }
     >

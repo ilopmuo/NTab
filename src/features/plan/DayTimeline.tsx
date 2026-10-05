@@ -149,10 +149,10 @@ export function DayTimeline({ tasks, events, day = today(), title = 'Hora a hora
       document.removeEventListener('touchmove', blockScroll)
       document.body.style.userSelect = ''
     }
-    const up = () => {
+    const up = (ev: PointerEvent) => {
       cleanup()
       if (!started) return
-      swallowNextClick()
+      swallowNextClick(ev)
       if (cur.start === it.start && cur.end === it.end) return setDrag(null)
       setDrag({ key: it.key, ...cur, saving: true })
       void commit(it, cur.start, cur.end).catch(() => setDrag(null))

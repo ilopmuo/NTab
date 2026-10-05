@@ -11,7 +11,8 @@
 // Responde una frase en texto plano, para que Siri la lea.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { handleMessage, type Store } from './server.ts'
-import { capture, captureFields, type CaptureInput, type Env, type Row } from './ntab.ts'
+import type { Env, Row } from './ntab.ts'
+import { calendarRange, capture, captureFields, cleanDictation, forgetUndo, type CaptureInput } from './capture.ts'
 import { loadEvents } from '../_shared/loadEvents.ts'
 import { applyHouseOps, findHouse, houseItems } from '../_shared/houseStore.ts'
 import { houseAdd, pisoText } from './casa.ts'
@@ -136,18 +137,25 @@ Deno.serve(async (req) => {
     try {
       const input = await captureInput(req, url)
       // «piso: leche y pan» → la compra del piso compartido
-      const piso = typeof input.texto === 'string' ? pisoText(input.texto) : null
+      const piso = typeof input.texto === 'string' ? pisoText(cleanDictation(input.texto).text) : null
       if (piso) {
         const house = await store.house!()
         if (!house) return text('No tienes piso compartido en LUNO: créalo en Casa → Tareas.')
         const r = houseAdd(house, { tipo: 'compra', texto: piso }, { now: env.now, today: ymdIn(env.now, env.tz), newId: env.newId })
-        if (r.ops.length) await store.houseOps!(r.ops)
+        if (r.ops.length) {
+          await store.houseOps!(r.ops)
+          // Lo del piso no se deshace por voz: que «deshaz» no quite lo de antes
+          await store.save([forgetUndo()])
+        }
         return text(r.report)
       }
       // Un enlace solo (de la hoja de compartir): se lee el título de la página
       const link = typeof input.texto === 'string' && !input.titulo ? findUrl(input.texto) : undefined
       if (link && !link.rest) input.titulo = await fetchTitle(link.url)
-      const r = capture(await store.load(), input, env)
+      // «¿Qué tengo hoy?»: también lo de tus calendarios
+      const range = calendarRange(input, env)
+      const cal = range ? await store.events!(range.from, range.to).catch(() => undefined) : undefined
+      const r = capture(await store.load(), input, env, cal)
       if (r.writes.length || r.deletes?.length) await store.save(r.writes, r.deletes)
       return text(r.report.join(' '))
     } catch {

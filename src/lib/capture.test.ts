@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { capture, captureFields, readAmount, type Env, type Row } from '../../supabase/functions/mcp/ntab'
+import type { Env, Row } from '../../supabase/functions/mcp/ntab'
+import { capture, captureFields, readAmount } from '../../supabase/functions/mcp/capture'
 import { zonedToUtc } from '../../supabase/functions/_shared/time'
 
 // Jueves 24 de septiembre de 2026, 00:30 en Madrid (aún miércoles 23 en UTC)
@@ -42,7 +43,7 @@ describe('captura con Siri', () => {
 
   it('«compra:» va a la lista de la compra', () => {
     const r = capture(rows, 'Compra: leche, 2 barras de pan y detergente', env())
-    expect(r.writes.map((w) => w.data.name)).toEqual(['Pan', 'Detergente'])
+    expect(r.writes.filter((w) => w.tbl === 'shopping').map((w) => w.data.name)).toEqual(['Pan', 'Detergente'])
     expect(r.report.join(' ')).toBe('Añadido a la compra: Pan (2 barras), Detergente. Ya estaba: Leche.')
     expect(capture(rows, 'a la compra huevos', env()).writes[0].data.name).toBe('Huevos')
     expect(capture(rows, 'Añade a la lista de la compra: café', env()).writes[0].data.name).toBe('Café')
@@ -64,8 +65,8 @@ describe('captura con Siri', () => {
     expect(capture(rows, 'apunta un gasto de 8,50 en la farmacia', env()).writes[0].data).toMatchObject({ amount: 8.5, note: 'Farmacia', category: 'salud' })
     expect(capture(rows, 'me he gastado veinte euros con cincuenta en la cena', env()).writes[0].data).toMatchObject({ amount: 20.5, note: 'Cena', category: 'comer' })
     expect(capture(rows, 'he pagado 30 de luz', env()).writes[0].data).toMatchObject({ amount: 30, note: 'Luz', category: 'casa' })
-    // Sin importe: «he pagado la luz» es una tarea; «gasto en el súper», una pregunta
-    expect(capture(rows, 'he pagado la luz', env()).writes[0].tbl).toBe('tasks')
+    // Sin importe: «he pagado la luz» es algo hecho (a «Última vez»); «gasto en el súper», una pregunta
+    expect(capture(rows, 'he pagado la luz', env()).writes[0]).toMatchObject({ tbl: 'trackers', data: { name: 'Pagar la luz' } })
     r = capture(rows, 'gasto en el súper', env())
     expect(r.writes).toEqual([])
     expect(r.report[0]).toContain('¿Cuánto has gastado?')
@@ -123,7 +124,7 @@ describe('captura con Siri', () => {
     const r = capture(rows, 'hecho: cambiar las sábanas', env())
     expect(r.writes[0]).toMatchObject({ tbl: 'trackers', id: 't1' })
     expect((r.writes[0].data.log as string[])[0]).toBe('2026-09-24')
-    expect(r.report[0]).toMatch(/^Apuntado: Cambiar las sábanas/)
+    expect(r.report[0]).toBe('Apuntado en «Última vez»: Cambiar las sábanas, hoy. Toca otra vez el jueves 8 de octubre.')
   })
 
   it('hábitos: «+2 agua», «hábito: meditar» o solo su nombre', () => {

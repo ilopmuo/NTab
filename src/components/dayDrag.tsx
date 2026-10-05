@@ -58,14 +58,21 @@ function targetAt(kind: Kind, x: number, y: number) {
   return { over: el?.getAttribute(`data-drop-${kind}`) ?? null, overLabel: el?.getAttribute('data-drop-label') ?? undefined }
 }
 
-/** Tras soltar, el clic que genera el navegador no debe abrir la tarea */
-export function swallowNextClick() {
-  const stop = (e: Event) => {
+/**
+ * Tras soltar, el clic que genera el navegador no debe abrir la tarea. Solo
+ * ese: el que cae donde se soltó. Uno en otro sitio (como «Deshacer» en el
+ * aviso, justo después) es tuyo y pasa.
+ */
+export function swallowNextClick(at: { clientX: number; clientY: number }) {
+  const off = () => window.removeEventListener('click', stop, { capture: true })
+  function stop(e: MouseEvent) {
+    off()
+    if (Math.hypot(e.clientX - at.clientX, e.clientY - at.clientY) > 16) return
     e.stopPropagation()
     e.preventDefault()
   }
-  window.addEventListener('click', stop, { capture: true, once: true })
-  setTimeout(() => window.removeEventListener('click', stop, { capture: true }), 400)
+  window.addEventListener('click', stop, { capture: true })
+  setTimeout(off, 400)
 }
 
 export async function moveTaskToDay(task: Task, day: string) {
@@ -164,13 +171,13 @@ function startDrag(e: React.PointerEvent, task: Task, { kind, from, drop }: Drop
     document.removeEventListener('touchmove', blockScroll)
     document.body.style.userSelect = ''
   }
-  const up = () => {
+  const up = (ev: PointerEvent) => {
     const over = state?.over
     const label = state?.overLabel
     cleanup()
     if (!started) return
     set(null)
-    swallowNextClick()
+    swallowNextClick(ev)
     // Con el dedo, mantener pulsado y soltar sin moverla es pedir su menú (como en iOS)
     if (touch && onHold && Math.hypot(x - sx, y - sy) < 12) return onHold()
     if (over && over !== from) drop(task, over, label ?? '')

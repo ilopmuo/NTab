@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { handleMessage, type Store } from '../../supabase/functions/mcp/server'
-import { capture, type Env, type Row } from '../../supabase/functions/mcp/ntab'
+import type { Env, Row } from '../../supabase/functions/mcp/ntab'
+import { capture } from '../../supabase/functions/mcp/capture'
 
 // Sábado 3 de octubre de 2026, 9:20 en Madrid
 const NOW = Date.parse('2026-10-03T07:20:00Z')
@@ -61,8 +62,8 @@ describe('a prueba de despistes, desde Siri', () => {
     const after = [...rows, ...r.writes.filter((w) => w.tbl === 'medLogs')]
     expect(capture(after, '¿me he tomado las pastillas?', env()).report).toEqual(['Sí: Ibuprofeno a las 9:20. Paracetamol: hoy no.'])
     expect(capture(rows, 'me he tomado un paracetamol', env()).report[0]).toBe('Paracetamol: tomada a las 9:20.')
-    // Sin medicamento que encaje, es una tarea más
-    expect(capture(rows, 'he tomado café con Ana', env()).writes[0].tbl).toBe('tasks')
+    // Sin medicamento que encaje, no es una toma: algo hecho, a «Última vez»
+    expect(capture(rows, 'he tomado café con Ana', env()).writes[0]).toMatchObject({ tbl: 'trackers', data: { name: 'Tomar café con Ana' } })
   })
 
   it('«esperando a Luis» se apunta a la espera, con cuándo volver a preguntar', () => {

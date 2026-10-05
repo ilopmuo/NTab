@@ -194,10 +194,10 @@ export function WeekGrid({ days, byDay, evByDay, birthdays }: { days: string[]; 
       document.removeEventListener('touchmove', blockScroll)
       document.body.style.userSelect = ''
     }
-    const up = () => {
+    const up = (ev: PointerEvent) => {
       cleanup()
       if (!started) return
-      swallowNextClick()
+      swallowNextClick(ev)
       setDrag({ ...cur, saving: true })
       void commit(task, cur).catch(() => setDrag(null))
     }

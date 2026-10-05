@@ -11,7 +11,6 @@ import { expandTemplate, planSections, type TemplateItemLike } from '../_shared/
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { CATEGORIES, budgetAlert, categoryBudgets, categoryFor, money, monthSummary, monthlyTotals, normTag, parseExpense, searchExpenses, tagTotals, type Budget, type ExpenseRules } from '../_shared/expenses.ts'
-import { parseQuickAdd } from '../_shared/parse.ts'
 import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
 import { logGoal, type GoalPoint } from '../_shared/goals.ts'
 import { appendToNote, checklistStats } from '../_shared/notes.ts'
@@ -20,8 +19,7 @@ import { houseSummary, type HouseCtx } from './casa.ts'
 import { bestWindow, focusStreak, lastDays, minutesByDay, minutesByHour, windowLabel, type FocusGoal, type FocusLogLike } from '../_shared/focus.ts'
 import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
 import { WAIT_DAYS } from '../_shared/parse.ts'
-import { findUrl, linkTask } from '../_shared/links.ts'
-import { captureMed, medLines } from './meds.ts'
+import { medLines } from './meds.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -167,7 +165,7 @@ export function relDay(date: string, today: string) {
   return `${WEEKDAYS[weekday(date)]} ${d}/${m}${n < 0 ? ` (hace ${-n} días)` : ''}`
 }
 
-class Index {
+export class Index {
   tasks: Task[]
   projects: Data[]
   areas: Data[]
@@ -1358,7 +1356,7 @@ export function logLastTime(rows: Row[], args: { cosa?: string; fecha?: string; 
 // ── Compra ────────────────────────────────────────────────────
 
 /** Otras listas de la compra además de la principal (ajuste `shoppingLists`) */
-function shoppingLists(rows: Row[]): { id: string; name: string }[] {
+export function shoppingLists(rows: Row[]): { id: string; name: string }[] {
   const v = rows.find((r) => r.tbl === 'settings' && r.id === 'shoppingLists')?.data.value
   return Array.isArray(v) ? (v as { id: string; name: string }[]).filter((l) => l && l.id && l.name) : []
 }
@@ -1482,14 +1480,14 @@ export function whatNow(rows: Row[], args: { minutos?: number; energia?: string 
 
 // ── Gastos ────────────────────────────────────────────────────
 
-function expenseRows(rows: Row[]) {
+export function expenseRows(rows: Row[]) {
   return rows
     .filter((r) => r.tbl === 'expenses' && typeof r.data.amount === 'number' && isYmd(r.data.date))
     .map((r) => ({ amount: r.data.amount as number, category: str(r.data.category) || 'otros', date: r.data.date as string, note: str(r.data.note), tags: Array.isArray(r.data.tags) ? (r.data.tags as unknown[]).map(str).filter(Boolean) : undefined }))
 }
-const catLabel = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Otros'
+export const catLabel = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Otros'
 const setting = (rows: Row[], id: string) => rows.find((r) => r.tbl === 'settings' && r.id === id)?.data.value as Data | undefined
-function budgetOf(rows: Row[]): Budget {
+export function budgetOf(rows: Row[]): Budget {
   const b = setting(rows, 'budget')
   const cats = b?.categories && typeof b.categories === 'object' ? (b.categories as Record<string, unknown>) : {}
   return { monthly: num(b?.monthly), categories: Object.fromEntries(Object.entries(cats).filter(([, v]) => typeof v === 'number' && v > 0)) as Record<string, number> }
@@ -1651,200 +1649,5 @@ export function addCountdown(rows: Row[], args: { nombre?: string; fecha?: strin
   return {
     writes: [{ tbl: 'countdowns', id, data: { id, name, date: args.fecha, icon: str(existing?.data.icon) || 'sparkles', createdAt: num(existing?.data.createdAt) || env.now } }],
     report: [`Cuenta atrás ${existing ? 'cambiada' : 'creada'}: ${name}, ${relDay(args.fecha, today)} (faltan ${diffDays(args.fecha, today)} días). La verá en Hoy.`],
-  }
-}
-
-// ── Captura rápida (Siri y atajos) ───────────────────────────
-
-// «compra: leche», «a la compra leche», «lista de la compra: …» (pero «comprar un regalo» es una tarea)
-const SHOPPING_PREFIX = /^\s*(?:(?:(?:a[nñ]ade|apunta|pon)\s+)?(?:(?:a|en)\s+)?(?:(?:la\s+)?lista\s+de\s+)?la\s+compra\s*[:,.-]?|compra\s*[:,.-])\s*/i
-// «gasto 12 café», «mete un gasto de quince euros en Mercadona», «me he gastado 20 en la cena», «he pagado 30 de luz»
-const EXPENSE_PREFIX = /^\s*(?:(?:(?:mete|meter|apunta|anota|a[nñ]ade|pon|registra)(?:me)?\s+(?:un\s+)?)?gasto(?:\s+de)?|gast[eé]|(?:me\s+)?he\s+gastado|pagu[eé]|he\s+pagado)\s*[:,.-]?\s+/i
-const NOTE_PREFIX = /^\s*(?:nota|apunta\s+una\s+nota)\s*[:,.-]?\s+/i
-// «a la nota maleta: crema solar», «añade a la nota de ideas: una bici»
-const NOTE_APPEND = /^\s*(?:(?:a[nñ]ade|apunta|pon|mete)\s+)?(?:a|en)\s+la\s+nota\s+(?:de\s+(?:la\s+|los\s+|las\s+|el\s+)?)?(.+?)\s*[:,]\s+(.+)$/i
-// «hecho: cambiar las sábanas» → Última vez
-const DONE_PREFIX = /^\s*(?:lo\s+he\s+hecho|hecho|[uú]ltima\s+vez)\s*[:,.-]?\s+/i
-// «hábito: agua», «+1 agua», «+2 vasos de agua»
-const HABIT_PREFIX = /^\s*(?:h[aá]bito\s*[:,.-]?\s+|\+\s*(\d+)\s+)/i
-
-/** Lo que manda un atajo: el texto dictado, un gasto dictado o un pago de Apple Pay (importe y comercio) */
-export interface CaptureInput {
-  texto?: string
-  /** lo dictado en el atajo de gastos: «quince euros en el súper» */
-  gasto?: string
-  /** de la automatización de Apple Pay: «15,30 €», «€15.30» o un número */
-  importe?: string | number
-  comercio?: string
-  /** viene de la automatización de Apple Pay (trae los campos, aunque vengan vacíos) */
-  pago?: boolean
-  /** título de lo compartido (de la hoja de compartir, o leído de la página) */
-  titulo?: string
-}
-
-/** Los campos de un JSON o formulario, con los nombres en español o en inglés */
-export function captureFields(b: Record<string, unknown> | null | undefined): CaptureInput {
-  const pick = (...keys: string[]) => {
-    for (const k of keys) {
-      const v = b?.[k]
-      if (typeof v === 'number') return v
-      if (typeof v === 'string' && v.trim()) return v.trim()
-    }
-    return undefined
-  }
-  const importe = pick('importe', 'amount', 'cantidad')
-  const PAYMENT_KEYS = ['importe', 'amount', 'cantidad', 'comercio', 'merchant']
-  return {
-    pago: !!b && typeof b === 'object' && PAYMENT_KEYS.some((k) => k in b),
-    texto: pick('texto', 'text', 'input') as string | undefined,
-    gasto: pick('gasto', 'expense') as string | undefined,
-    importe,
-    comercio: pick('comercio', 'merchant', 'concepto', 'tienda') as string | undefined,
-    titulo: pick('titulo', 'title', 'nombre') as string | undefined,
-  }
-}
-
-/** «15,30 €», «€15.30», «1.234,56 EUR», «-4,99 €» → número (negativo si es una devolución) */
-export function readAmount(v: string | number | undefined): number | undefined {
-  if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v * 100) / 100 : undefined
-  if (!v) return undefined
-  const neg = /[-−]\s*[\d€$£]|\(\s*[\d€$£]/.test(v)
-  let n = v.replace(/[^\d.,]/g, '')
-  if (!/\d/.test(n)) return undefined
-  const lastComma = n.lastIndexOf(',')
-  const lastDot = n.lastIndexOf('.')
-  // El separador decimal es el último, si le siguen 1 o 2 cifras
-  const dec = Math.max(lastComma, lastDot)
-  if (dec >= 0 && n.length - dec - 1 <= 2) n = `${n.slice(0, dec).replace(/[.,]/g, '')}.${n.slice(dec + 1)}`
-  else n = n.replace(/[.,]/g, '')
-  const x = Math.round(Number(n) * 100) / 100
-  return Number.isFinite(x) ? (neg ? -x : x) : undefined
-}
-
-/** «MERCADONA S.A.» → «Mercadona S.A.»; lo que ya viene bien escrito se queda igual */
-const niceName = (s: string) => (/[a-zà-ÿ]/.test(s) ? s : s.toLowerCase().replace(/(^|[\s\-/&.])(\p{L})/gu, (_, a: string, b: string) => a + b.toUpperCase()))
-
-/**
- * Un pago con Apple Pay, desde la automatización «Transacción» de Atajos
- * (iOS 17 o posterior): se apunta como gasto con el comercio como concepto y
- * la categoría que toque (también la aprendida). Las devoluciones no se apuntan.
- */
-export function captureCardPayment(rows: Row[], input: CaptureInput, env: Env): WriteResult {
-  const amount = readAmount(input.importe)
-  if (amount === undefined || amount === 0) return { writes: [], report: ['No me ha llegado el importe del pago.'] }
-  if (amount < 0) return { writes: [], report: ['Es una devolución: no la apunto como gasto.'] }
-  const r = addExpenseTool(rows, { importe: amount, concepto: niceName(str(input.comercio).trim()) || 'Pago con tarjeta' }, env)
-  return { ...r, report: r.writes.length ? [r.report[0].split('. Este mes')[0] + '.'] : r.report }
-}
-
-/**
- * Lo que se dicta a Siri, escrito como en la captura rápida de la app:
- * «llamar al dentista mañana a las 10 !alta» → tarea con fecha, hora y aviso;
- * «compra: leche y pan» → lista de la compra; «gasto 12,50 café» → gastos.
- * El texto de `report` es corto: Siri lo lee en voz alta.
- */
-export function capture(rows: Row[], input: string | CaptureInput, env: Env): WriteResult & { deletes?: Row[] } {
-  const fields = typeof input === 'string' ? { texto: input } : input
-  if (fields.importe !== undefined) return captureCardPayment(rows, fields, env)
-  // La automatización lanzada a mano (o con el importe sin elegir): no hay pago que apuntar
-  if (fields.pago && !fields.texto && !fields.gasto)
-    return {
-      writes: [],
-      report: [
-        fields.comercio
-          ? `Ha llegado el comercio (${fields.comercio}) pero no el importe: en «Obtener contenido de URL», el campo importe tiene que ser la variable Importe de la transacción.`
-          : 'La automatización llega bien a LUNO, pero sin ningún pago: se apunta sola cuando pagas con Apple Pay. Para probarla sin pagar, pon un importe fijo (como 1,50) y un comercio.',
-      ],
-    }
-  // El atajo de gastos manda solo lo dictado: «quince euros en el súper»
-  const raw = fields.gasto ? `gasto ${fields.gasto}` : (fields.texto ?? '')
-  const text = raw.replace(/\s+/g, ' ').trim().slice(0, 500)
-  if (!text) return { writes: [], report: ['No he oído nada que apuntar.'] }
-  const today = ymdIn(env.now, env.tz)
-  // Para Siri: «hoy» mejor que la fecha
-  const spoken = (r: string) => r.replaceAll(` el ${today}`, ' hoy')
-
-  const habit = HABIT_PREFIX.exec(text)
-  // El nombre exacto de un hábito («meditar») también lo marca
-  const habitNames = rows.filter((r) => r.tbl === 'habits' && !r.data.archived).map((r) => str(r.data.name))
-  if (habit || habitNames.some((n) => fold(n) === fold(text))) {
-    const name = habit ? text.slice(habit[0].length) : text
-    const r = markHabit(rows, { habito: name, ...(habit?.[1] ? { cantidad: Number(habit[1]) } : {}) }, env)
-    return { ...r, report: r.report.map(spoken) }
-  }
-  // «tomada: ibuprofeno», «¿me he tomado la pastilla?»
-  const med = captureMed(rows, text, env)
-  if (med) return med
-  const append = NOTE_APPEND.exec(text)
-  if (append) return appendNoteTool(rows, { nota: append[1], texto: append[2] }, env)
-  if (NOTE_PREFIX.test(text)) {
-    const body = text.replace(NOTE_PREFIX, '')
-    // Título: la primera frase (como mucho 60 letras); el texto entero, en la nota
-    const first = body.split(/(?<=[.!?])\s/)[0]
-    const title = first.length > 60 ? `${first.slice(0, 57).trimEnd()}…` : first.replace(/[.!?]$/, '')
-    const r = createNote(rows, { titulo: title.charAt(0).toUpperCase() + title.slice(1), contenido: body }, env)
-    return { ...r, report: [r.report[0].replace('Nota creada', 'Nota guardada')] }
-  }
-  if (DONE_PREFIX.test(text)) {
-    const r = logLastTime(rows, { cosa: text.replace(DONE_PREFIX, '').replace(/[.!]$/, '') }, env)
-    return { ...r, report: r.report.map(spoken) }
-  }
-  if (SHOPPING_PREFIX.test(text)) return addShopping(rows, { cosas: text.replace(SHOPPING_PREFIX, '') }, env)
-  const expense = EXPENSE_PREFIX.exec(text)
-  // «he pagado la luz» sin importe es una tarea hecha, no un gasto
-  if (expense && (parseExpense(text.slice(expense[0].length)) || /gast/i.test(expense[0]))) {
-    const r = addExpenseTool(rows, { texto: text.slice(expense[0].length) }, env)
-    if (!r.writes.length) return { ...r, report: ['¿Cuánto has gastado? Dilo con el importe: «15 euros en el súper».'] }
-    // Para Siri, sin el resumen del mes
-    return { ...r, report: [r.report[0].split('. Este mes')[0] + '.'] }
-  }
-
-  const ix = new Index(rows)
-  const target = (d: Data) => ({ id: String(d.id), name: str(d.name), areaId: d.areaId ? String(d.areaId) : undefined })
-  // Un enlace (compartido desde Safari, por ejemplo): a las notas, con el título de la página
-  const link = findUrl(text)
-  const parsed = parseQuickAdd(link ? link.rest : text, {
-    today,
-    time: hhmmIn(env.now, env.tz),
-    projects: ix.projects.filter((p) => p.status !== 'done' && p.status !== 'archived').map(target),
-    areas: ix.areas.map(target),
-    people: ix.people.map(target),
-  })
-  if (!parsed.title && !link) return { writes: [], report: ['No he entendido qué apuntar.'] }
-  let task: Task = {
-    id: env.newId(),
-    title: link ? linkTask(parsed.title, link.url, fields.titulo).title : parsed.title,
-    notes: link ? link.url : '',
-    done: 0,
-    priority: parsed.priority,
-    tags: parsed.tags,
-    subtasks: [],
-    order: env.now,
-    createdAt: env.now,
-  }
-  if (parsed.dueDate) task.dueDate = parsed.dueDate
-  if (parsed.dueTime) task.dueTime = parsed.dueTime
-  if (parsed.projectId) task.projectId = parsed.projectId
-  if (parsed.areaId) task.areaId = parsed.areaId
-  if (parsed.people?.length) task.people = parsed.people
-  if (parsed.recurrence) task.recurrence = parsed.recurrence
-  if (parsed.reminder) task.reminder = parsed.reminder
-  if (parsed.estimate) task.estimate = parsed.estimate
-  if (parsed.nag) task.nag = parsed.nag
-  if (parsed.waitingFor) {
-    task.waitingFor = parsed.waitingFor
-    task.waitingSince = today
-  }
-  task = withReminder(task, env)
-
-  const when = task.waitingFor
-    ? `, esperando a ${task.waitingFor}; te lo recuerdo ${relDay(task.dueDate!, today)}`
-    : task.dueDate
-      ? `, ${relDay(task.dueDate, today)}${task.dueTime ? ` a las ${task.dueTime}` : ''}`
-      : ''
-  const where = task.projectId ? ix.projectName(task.projectId) : task.areaId ? ix.areaName(task.areaId) : task.dueDate ? '' : 'la bandeja'
-  return {
-    writes: [{ tbl: 'tasks', id: task.id, data: task as unknown as Data }],
-    report: [`Apuntado: ${task.title}${when}${where ? ` (en ${where})` : ''}${task.remindAt ? '. Te avisaré' : ''}.`],
   }
 }
