@@ -26,6 +26,11 @@ test('la captura entiende lo mismo que Siri: a la compra, a gastos, a notas y a 
   await page.evaluate(() => (location.hash = '/shopping'))
   await expect(page.locator('#main')).toContainText('Huevos')
   await expect(page.locator('#main')).not.toContainText('Leche')
+  // Y se tacha
+  await type(page, 'Quita los huevos de la compra')
+  await expect(plan).toHaveText('Tachar de la compra: Huevos')
+  await page.keyboard.press('Enter')
+  await expect(toast(page, 'Tachado: Huevos')).toBeVisible()
 
   // A gastos, con su categoría
   await type(page, 'Gasto 12,50 comida con Ana')

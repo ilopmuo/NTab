@@ -17,7 +17,9 @@ import { parseQuickAdd } from '../_shared/parse.ts'
 import { findUrl, linkTask } from '../_shared/links.ts'
 import { money, monthSummary, searchExpenses } from '../_shared/expenses.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
-import { captureMed } from './meds.ts'
+import { captureMed, medsLeft } from './meds.ts'
+import { houseVoice, type HouseCtx } from './casa.ts'
+import { itemKey, parseItems } from '../_shared/shopping.ts'
 import { ASKING, classify, cleanDictation, closest, infinitive } from '../_shared/intent.ts'
 import {
   Index,
@@ -29,8 +31,10 @@ import {
   createNote,
   expenseRows,
   fold,
+  habitsToday,
   logLastTime,
   markHabit,
+  menuName,
   saveThing,
   shoppingLists,
   updateTasks,
@@ -51,10 +55,13 @@ const list = (xs: string[]) => (xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -
 
 export type CaptureResult = WriteResult & { deletes?: Row[] }
 
-/** Los eventos de tus calendarios, para responder «¿qué tengo hoy?» */
-export interface CaptureCalendar {
-  events: EventLike[]
-  names: Record<string, string>
+/** Lo que no está en tus registros y a veces hace falta para responder */
+export interface CaptureContext {
+  /** los eventos de tus calendarios («¿qué tengo hoy?») */
+  events?: EventLike[]
+  names?: Record<string, string>
+  /** la casa compartida («¿qué me toca en casa?»); null si no tienes */
+  house?: HouseCtx | null
 }
 
 // ── Lo que manda el atajo ─────────────────────────────────────
@@ -179,6 +186,8 @@ const UNDO = /^(?:desh[aá]z(?:lo)?|deshacer|anula(?:r)?(?:\s+lo\s+[uú]ltimo)?|
 interface UndoState {
   at: number
   what: string
+  /** lo que contestó Siri */
+  said?: string
   items: { tbl: string; id: string; before: Data | null }[]
 }
 
@@ -195,7 +204,7 @@ function remember(rows: Row[], r: CaptureResult, env: Env, what: string): Captur
     seen.add(k)
     items.push({ tbl: x.tbl, id: x.id, before: before.get(k) ?? null })
   }
-  const value: UndoState = { at: env.now, what, items }
+  const value: UndoState = { at: env.now, what, said: r.report[0], items }
   return { ...r, writes: [...r.writes, { tbl: 'settings', id: UNDO_KEY, data: { key: UNDO_KEY, value } }] }
 }
 
@@ -267,14 +276,32 @@ function postpone(rows: Row[], text: string, env: Env): CaptureResult | undefine
   if (found.tie) return { writes: [], report: [tie(found.tie)] }
   if (!found.hit) return strong ? { writes: [], report: [`No encuentro «${said.charAt(0).toLowerCase()}${said.slice(1)}» entre lo pendiente.`] } : undefined
   const task = found.hit
-  // Sin día, a mañana (o al día siguiente del que tenía)
-  const day = p.dueDate ?? addDays(task.dueDate && task.dueDate > today ? task.dueDate : today, 1)
+  // Con solo una hora («a las 5»), ese mismo día; sin nada, a mañana (o al día siguiente del que tenía)
+  const day = p.dueDate ?? (p.dueTime ? (task.dueDate && task.dueDate > today ? task.dueDate : today) : addDays(task.dueDate && task.dueDate > today ? task.dueDate : today, 1))
   const r = updateTasks(rows, [{ id: task.id, fecha: day, ...(p.dueTime ? { hora: p.dueTime } : {}) }], env)
   const t = r.writes[0].data as unknown as Task
   return remember(rows, { writes: r.writes, report: [`Pasada ${toDay(day, today)}${t.dueTime ? ` a las ${t.dueTime}` : ''}: ${task.title}.`] }, env, `«${task.title}» vuelve a ${task.dueDate ? spokenDay(task.dueDate, today) : 'no tener fecha'}`)
 }
 
 const ARTICLE = /^(?:el|la|los|las|mi|mis|un|una|unos|unas)\s+/i
+
+// «he comprado leche y pan», «ya tengo pan» (si está en la compra: si no, es otra cosa)
+const BOUGHT_SAID = /^(?:ya\s+(?:he\s+comprado|tengo|compr[eé])|he\s+comprado|compr[eé])\s+(.+)$/i
+
+/** Tacha de la compra lo que ya tienes («quita la leche de la compra», «he comprado pan») */
+function tick(rows: Row[], items: string, env: Env, strict: boolean): CaptureResult | undefined {
+  const wanted = parseItems(items.replace(ARTICLE, '')).map((i) => i.name)
+  const open = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
+  const hits: Row[] = []
+  for (const w of wanted) {
+    const k = itemKey(w)
+    const hit = open.find((r) => itemKey(str(r.data.name)) === k) ?? open.find((r) => fold(str(r.data.name)).includes(fold(w)) || fold(w).includes(fold(str(r.data.name))))
+    if (hit && !hits.includes(hit)) hits.push(hit)
+  }
+  if (!hits.length) return strict ? { writes: [], report: [`No veo ${list(wanted.map((w) => w.toLowerCase()))} en la compra.`] } : undefined
+  const names = hits.map((r) => str(r.data.name))
+  return remember(rows, { writes: hits.map((r) => ({ tbl: 'shopping', id: r.id, data: { ...r.data, checked: 1 } })), report: [`Tachado de la compra: ${list(names)}.`] }, env, `${list(names)}, otra vez en la compra`)
+}
 
 /** «he dejado las llaves en el cajón», «le he prestado el taladro a Luis» */
 function thing(rows: Row[], name: string, env: Env, where?: string, person?: string): CaptureResult {
@@ -295,29 +322,53 @@ const NOW_Q = /^qu[eé]\s+(?:hago|puedo\s+hacer|deber[ií]a\s+hacer|me\s+pongo\s
 const NOW_FREE = /^tengo\s+(?:un\s+rato|tiempo|\S+\s+(?:minutos|horas?))(?:\s+libres?)?(?:[\s,]+¿?qu[eé]\s+(?:hago|puedo\s+hacer))?$/i
 const AGENDA_Q = /^(?:qu[eé]\s+(?:tengo|hay|me\s+toca|me\s+queda)(?:\s+(?:que\s+hacer|pendiente|apuntado))?|c[oó]mo\s+(?:tengo|viene)\s+(?:el\s+d[ií]a|la\s+semana)|(?:mi\s+)?agenda(?:\s+de)?)(?=\s|$)\s*(.*)$/i
 
-/** El día (o la semana) por el que se pregunta: «hoy», «mañana», «el jueves», «esta semana» */
-function askedDay(rest: string, env: Env): { day: string; week?: boolean } | undefined {
+type Part = 'mañana' | 'tarde' | 'noche'
+/** De qué hora a qué hora es cada parte del día */
+const PART_HOURS: Record<Part, [string, string]> = { mañana: ['00:00', '14:00'], tarde: ['14:00', '21:00'], noche: ['20:00', '24:00'] }
+const partOf = (s: string): Part => (fold(s) === 'manana' ? 'mañana' : (fold(s) as Part))
+type Asked = { day: string; week?: boolean; part?: Part }
+
+/** El día (o la semana) por el que se pregunta: «hoy», «mañana», «el jueves», «esta tarde», «mañana por la noche», «esta semana» */
+function askedDay(rest: string, env: Env): Asked | undefined {
   const today = ymdIn(env.now, env.tz)
-  const r = rest.replace(/^(?:(?:que\s+hacer|pendiente|apuntado|para|en|de)\s+)+/i, '').trim()
+  let r = rest.replace(/^(?:(?:que\s+hacer|pendiente|apuntado|para|en|de)\s+)+/i, '').trim()
+  let part: Part | undefined
+  const tail = /\s*por\s+la\s+(mañana|manana|tarde|noche)$/i.exec(r)
+  if (tail) {
+    part = partOf(tail[1])
+    r = r.slice(0, tail.index).trim()
+  }
   const f = fold(r)
-  if (!f || /^(?:hoy|ahora|esta\s+(?:manana|tarde|noche)|el\s+dia|el\s+dia\s+de\s+hoy)$/.test(f)) return { day: today }
+  const own = /^esta\s+(manana|tarde|noche)$/.exec(f)
+  if (own) return { day: today, part: partOf(own[1]) }
+  if (!f || /^(?:hoy|ahora|el\s+dia|el\s+dia\s+de\s+hoy)$/.test(f)) return { day: today, part }
   if (/^(?:esta\s+semana|la\s+semana)$/.test(f)) return { day: today, week: true }
   const p = parseQuickAdd(`x ${r}`, when(env))
-  return p.dueDate && fold(p.title) === 'x' ? { day: p.dueDate } : undefined
+  return p.dueDate && fold(p.title) === 'x' ? { day: p.dueDate, part } : undefined
 }
 
 /** ¿Hace falta mirar los calendarios para responder? Las horas (en ms) que hay que leer */
 export function calendarRange(input: CaptureInput, env: Env): { from: number; to: number } | undefined {
   const { text } = cleanDictation(input.texto ?? '')
+  const today = ymdIn(env.now, env.tz)
+  const span = (day: string, days = 1) => ({ from: zonedToUtc(day, '00:00', env.tz), to: zonedToUtc(addDays(day, days), '00:00', env.tz) })
+  if (BRIEF.test(text)) return span(today)
+  if (NIGHT.test(text)) return span(addDays(today, 1))
   const m = AGENDA_Q.exec(text)
   const asked = m && !SHOP_Q.test(text) ? askedDay(m[1], env) : undefined
   if (!asked) return undefined
-  return { from: zonedToUtc(asked.day, '00:00', env.tz), to: zonedToUtc(addDays(asked.day, asked.week ? 7 : 1), '00:00', env.tz) }
+  return span(asked.day, asked.week ? 7 : 1)
+}
+
+/** ¿Hace falta la casa compartida para responder? («¿qué me toca en casa?», «buenos días») */
+export function needsHouse(input: CaptureInput) {
+  const { text } = cleanDictation(input.texto ?? '')
+  return HOUSE_Q.test(text) || BRIEF.test(text)
 }
 
 const eventDay = (e: EventLike, tz: string) => (e.allDay ? e.start.slice(0, 10) : ymdIn(Date.parse(e.start), tz))
 
-function agenda(rows: Row[], asked: { day: string; week?: boolean }, env: Env, cal?: CaptureCalendar): string {
+function agenda(rows: Row[], asked: Asked, env: Env, cal?: CaptureContext): string {
   const today = ymdIn(env.now, env.tz)
   const open = new Index(rows).tasks.filter((t) => !t.done && !t.someday && !t.waitingFor)
   const events = (cal?.events ?? []).filter((e) => e.allDay || Date.parse(e.end) > env.now)
@@ -333,18 +384,28 @@ function agenda(rows: Row[], asked: { day: string; week?: boolean }, env: Env, c
   }
 
   const day = asked.day
+  const part = asked.part
+  const inPart = (time: string) => !part || (time >= PART_HOURS[part][0] && time < PART_HOURS[part][1])
   const tasks = open.filter((t) => t.dueDate === day)
   const dayEvents = events.filter((e) => eventDay(e, env.tz) === day || (e.allDay && e.start.slice(0, 10) < day && e.end.slice(0, 10) > day))
   const timed = [
     ...tasks.filter((t) => t.dueTime).map((t) => ({ time: t.dueTime!, what: t.title })),
     ...dayEvents.filter((e) => !e.allDay).map((e) => ({ time: hhmmIn(Date.parse(e.start), env.tz), what: e.title })),
-  ].sort((a, b) => a.time.localeCompare(b.time))
+  ]
+    .filter((x) => inPart(x.time))
+    .sort((a, b) => a.time.localeCompare(b.time))
   const allDay = dayEvents.filter((e) => e.allDay).map((e) => e.title)
   const untimed = tasks
     .filter((t) => !t.dueTime)
     .sort((a, b) => Number(b.important === day) - Number(a.important === day) || b.priority - a.priority || a.order - b.order)
+  const label = part ? (day === today ? `esta ${part}` : `${spokenDay(day, today)} por la ${part}`) : spokenDay(day, today)
+  if (part) {
+    // Una parte del día: lo que tiene hora entonces, y cuánto hay sin hora
+    const rest = untimed.length ? ` Sin hora tienes ${untimed.length === 1 ? 'una cosa' : `${untimed.length} cosas`} más.` : ''
+    if (!timed.length) return `${cap(label)} no tienes nada con hora.${rest}`
+    return `${cap(label)} tienes ${timed.length === 1 ? 'una cosa' : `${timed.length} cosas`}: ${timed.slice(0, 5).map((x) => `a las ${x.time}, ${x.what}`).join('; ')}${timed.length > 5 ? ` y ${timed.length - 5} más` : ''}.${rest}`
+  }
   const total = timed.length + allDay.length + untimed.length
-  const label = spokenDay(day, today)
   if (!total) return `${cap(label)} no tienes nada apuntado.${lateLine}`
 
   const parts = [
@@ -453,15 +514,171 @@ function lastTime(rows: Row[], rest: string, env: Env): string {
   return 'No lo tengo apuntado. La próxima vez, dime «hecho:» y lo que hayas hecho.'
 }
 
-const HELP = 'Puedo decirte qué tienes hoy o mañana, qué hacer ahora, dónde está algo, qué falta en la compra, cuánto llevas gastado o cuándo hiciste algo por última vez.'
+// «buenos días», «¿qué tal mi día?»: el día de un vistazo; «buenas noches»: cómo ha ido y lo de mañana
+const BRIEF = /^(?:buen(?:os|as)?\s+(?:d[ií]as?|tardes)|qu[eé]\s+tal\s+(?:mi|el)\s+d[ií]a|c[oó]mo\s+(?:viene|pinta|es|se\s+presenta)\s+(?:el|mi)\s+d[ií]a|resumen(?:\s+del?\s+d[ií]a)?|mi\s+d[ií]a|empieza\s+el\s+d[ií]a|cu[eé]ntame\s+(?:mi|el)\s+d[ií]a)$/i
+const NIGHT = /^(?:buenas\s+noches|c[oó]mo\s+(?:ha\s+ido|me\s+ha\s+ido|fue)\s+(?:el|mi)\s+d[ií]a|cierra\s+el\s+d[ií]a|cerrar\s+el\s+d[ií]a|qu[eé]\s+he\s+hecho\s+hoy)$/i
+// «¿qué he apuntado?», «repite»
+const LAST_SAID = /^(?:qu[eé]\s+(?:he\s+apuntado|has\s+apuntado|acabo\s+de\s+(?:apuntar|decir)|te\s+he\s+dicho)|repite(?:lo)?|lo\s+[uú]ltimo(?:\s+que\s+he\s+(?:dicho|apuntado))?)$/i
+// «¿qué hay de cenar?», «¿qué como mañana?»
+const MENU_Q = /^qu[eé]\s+(?:hay\s+(?:de|para)\s+|tengo\s+(?:de|para)\s+|toca\s+(?:de\s+)?|vamos\s+a\s+)?(comer|cenar|como|ceno|comemos|cenamos)(?=\s|$)\s*(.*)$/i
+// «¿qué me toca en casa?», «¿a quién le toca sacar la basura?»
+const HOUSE_Q = /^(?:qu[eé]\s+(?:me\s+toca|toca|hay\s+que\s+hacer|tengo\s+que\s+hacer)(?:\s+hoy)?\s+en\s+(?:casa|el\s+piso)(?:\s+hoy)?|a\s+qui[eé]n\s+le\s+toca\s+(.+))$/i
+// «¿cuándo es el cumpleaños de Ana?»; «¿qué cumpleaños hay esta semana?»
+const BDAY_Q = /^cu[aá]ndo\s+es\s+el\s+(cumplea[nñ]os|santo|aniversario)\s+de\s+(.+)$/i
+const BDAYS_Q = /^qu[eé]\s+cumplea[nñ]os\s+hay\s*(.*)$/i
+// «¿qué estoy esperando?», «¿qué espero de Luis?»
+const WAIT_Q = /^qu[eé]\s+(?:estoy\s+esperando|tengo\s+a\s+la\s+espera|espero)(?:\s+de\s+(.+))?$/i
+// «¿qué hábitos me quedan?», «¿cómo voy con los hábitos?»
+const HABITS_Q = /^(?:(?:qu[eé]|cu[aá]ntos)\s+(?:h[aá]bitos\s+(?:me\s+)?(?:quedan|faltan|tengo|tocan)|me\s+(?:quedan?|faltan?)\s+de\s+h[aá]bitos)|c[oó]mo\s+voy\s+(?:con\s+)?(?:los\s+)?h[aá]bitos)(?:\s+hoy)?$/i
+// «¿qué pastillas me tocan hoy?», «¿qué me toca tomar?»
+const MEDS_Q = /^qu[eé]\s+(?:medicaci[oó]n|medicinas?|pastillas?|me\s+toca\s+tomar|tengo\s+que\s+tomar)(?:\s+(?:me\s+)?(?:toca|tocan|tengo|queda|quedan|falta|faltan))?(?:\s+(?:tomar|hoy))*$/i
+
+/** «hace un momento», «hace 5 minutos», «hace 2 horas» */
+function agoMin(ms: number, now: number) {
+  const min = Math.round((now - ms) / 60_000)
+  if (min < 2) return 'hace un momento'
+  if (min < 60) return `hace ${min} minutos`
+  const h = Math.round(min / 60)
+  return h < 24 ? `hace ${h === 1 ? 'una hora' : `${h} horas`}` : `hace ${Math.round(h / 24)} días`
+}
+
+function lastSaid(rows: Row[], env: Env): string {
+  const v = rows.find((r) => r.tbl === 'settings' && r.id === UNDO_KEY)?.data.value as UndoState | null | undefined
+  if (!v?.said) return 'No has apuntado nada por voz últimamente.'
+  return `${cap(agoMin(v.at, env.now))}: ${v.said}`
+}
+
+/** La próxima vez que cae una fecha que vuelve cada año («1990-03-12» o «03-12») */
+function nextYearly(date: string, today: string): { date: string; years?: number } | undefined {
+  const m = /^(?:(\d{4})-)?(\d{2})-(\d{2})$/.exec(date)
+  if (!m) return undefined
+  let next = `${today.slice(0, 4)}-${m[2]}-${m[3]}`
+  if (next < today) next = `${Number(today.slice(0, 4)) + 1}-${m[2]}-${m[3]}`
+  return { date: next, ...(m[1] ? { years: Number(next.slice(0, 4)) - Number(m[1]) } : {}) }
+}
+
+/** Los cumpleaños de tus personas en los próximos días */
+function birthdaysWithin(rows: Row[], today: string, days: number) {
+  return rows
+    .filter((r) => r.tbl === 'people' && r.data.birthday)
+    .flatMap((r) => {
+      const n = nextYearly(str(r.data.birthday), today)
+      return n && diffDays(n.date, today) <= days ? [{ name: str(r.data.name).split(' ')[0], ...n }] : []
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+function birthday(rows: Row[], what: string, who: string, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const people = rows.filter((r) => r.tbl === 'people')
+  const p = closest(people, who.replace(ARTICLE, ''), (r) => str(r.data.name)).hit
+  if (!p) return `No tengo a ${who} entre tus personas.`
+  const name = str(p.data.name).split(' ')[0]
+  const kind = fold(what).startsWith('cumple') ? 'cumpleaños' : what.toLowerCase()
+  const dates = Array.isArray(p.data.dates) ? (p.data.dates as { label?: string; date?: string }[]) : []
+  const date = kind === 'cumpleaños' ? str(p.data.birthday) : str(dates.find((d) => fold(str(d.label)).includes(fold(what)))?.date)
+  const next = date ? nextYearly(date, today) : undefined
+  if (!next) return `No tengo apuntado el ${kind} de ${name}.`
+  const n = diffDays(next.date, today)
+  return `El ${kind} de ${name} es ${spokenDay(next.date, today)}${n > 2 ? `, dentro de ${n} días` : ''}${next.years && kind === 'cumpleaños' ? ` (cumple ${next.years})` : ''}.`
+}
+
+function birthdaysSoon(rows: Row[], rest: string, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const month = /mes/i.test(rest)
+  const soon = birthdaysWithin(rows, today, month ? 31 : 7)
+  const when = month ? 'Este mes' : 'Esta semana'
+  if (!soon.length) return `${when} no hay ningún cumpleaños.`
+  return `${when}: ${list(soon.map((b) => `${b.name} ${spokenDay(b.date, today)}`))}.`
+}
+
+function waiting(rows: Row[], who: string | undefined, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const all = new Index(rows).tasks.filter((t) => !t.done && t.waitingFor && (!who || fold(t.waitingFor).includes(fold(who.replace(ARTICLE, '')))))
+  if (!all.length) return who ? `No esperas nada de ${who}.` : 'No estás esperando nada de nadie.'
+  const since = (t: Task) => (t.waitingSince ? (t.waitingSince === today ? ', desde hoy' : `, desde hace ${diffDays(today, t.waitingSince)} días`) : '')
+  return `Esperas ${all.length === 1 ? 'una cosa' : `${all.length} cosas`}: ${list(all.slice(0, 4).map((t) => `${t.title}, de ${t.waitingFor}${since(t)}`))}${all.length > 4 ? ` y ${all.length - 4} más` : ''}.`
+}
+
+function habitsLeft(rows: Row[], env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const due = habitsToday(rows, today)
+  if (!due.length) return 'Hoy no te toca ningún hábito.'
+  const left = due.filter((h) => !h.done)
+  if (!left.length) return `Ya has hecho ${due.length === 1 ? 'el hábito' : `los ${due.length} hábitos`} de hoy.`
+  return `${left.length === 1 ? 'Te queda' : `Te quedan ${left.length}`}: ${list(left.map((h) => (h.progress ? `${h.name} (llevas ${h.progress})` : h.name)))}.`
+}
+
+function menuFor(rows: Row[], verb: string, rest: string, env: Env): string {
+  const today = ymdIn(env.now, env.tz)
+  const day = askedDay(rest, env)?.day ?? today
+  const meal = /cen/i.test(verb) ? 'cena' : 'comida'
+  const what = meal === 'cena' ? 'cenar' : 'comer'
+  const r = rows.find((x) => x.tbl === 'menu' && x.id === `${day}:${meal}`)
+  return r ? `${cap(spokenDay(day, today))} para ${what}: ${menuName(rows, r.data)}.` : `${cap(spokenDay(day, today))} no hay nada apuntado para ${what}.`
+}
+
+/** «Buenos días»: el día de un vistazo */
+function brief(rows: Row[], env: Env, cx?: CaptureContext): string {
+  const today = ymdIn(env.now, env.tz)
+  const hour = Number(hhmmIn(env.now, env.tz).slice(0, 2))
+  const out = [`${hour < 14 ? 'Buenos días' : hour < 21 ? 'Buenas tardes' : 'Buenas noches'}.`, agenda(rows, { day: today }, env, cx)]
+  const meds = medsLeft(rows, env)
+  if (meds) out.push(meds)
+  const habits = habitsToday(rows, today).filter((h) => !h.done)
+  if (habits.length) out.push(`${habits.length === 1 ? 'Te queda un hábito' : `Te quedan ${habits.length} hábitos`}: ${list(habits.slice(0, 4).map((h) => h.name))}${habits.length > 4 ? ' y más' : ''}.`)
+  for (const b of birthdaysWithin(rows, today, 1)) out.push(`${cap(spokenDay(b.date, today))} es el cumpleaños de ${b.name}.`)
+  const ask = new Index(rows).tasks.filter((t) => !t.done && t.waitingFor && t.dueDate && t.dueDate <= today)
+  if (ask.length) out.push(`Hoy toca preguntar: ${list(ask.slice(0, 3).map((t) => `a ${t.waitingFor} por ${t.title.charAt(0).toLowerCase()}${t.title.slice(1)}`))}.`)
+  if (cx?.house) {
+    const home = houseVoice(cx.house, today)
+    if (!home.startsWith('Hoy no te toca')) out.push(home)
+  }
+  return out.join(' ')
+}
+
+/** «Buenas noches»: lo hecho, lo que queda y lo de mañana */
+function night(rows: Row[], env: Env, cx?: CaptureContext): string {
+  const today = ymdIn(env.now, env.tz)
+  const tasks = new Index(rows).tasks
+  const done = tasks.filter((t) => t.done && t.completedAt && ymdIn(t.completedAt, env.tz) === today)
+  const left = tasks.filter((t) => !t.done && !t.someday && !t.waitingFor && t.dueDate && t.dueDate <= today)
+  const some = (xs: Task[]) => list([...xs.slice(0, 3).map((t) => t.title), ...(xs.length > 3 ? [`${xs.length - 3} más`] : [])])
+  const out = ['Buenas noches.']
+  out.push(done.length ? `Hoy has hecho ${done.length === 1 ? 'una cosa' : `${done.length} cosas`}: ${some(done)}.` : 'Hoy no has marcado nada como hecho.')
+  if (left.length) out.push(`${left.length === 1 ? 'Te queda una' : `Te quedan ${left.length}`} sin hacer: ${some(left)}. Si quieres, dime «pospón» y lo que sea.`)
+  const habits = habitsToday(rows, today).filter((h) => !h.done)
+  if (habits.length) out.push(`${habits.length === 1 ? 'Te queda un hábito' : `Te quedan ${habits.length} hábitos`}: ${list(habits.slice(0, 3).map((h) => h.name))}.`)
+  out.push(agenda(rows, { day: addDays(today, 1) }, env, cx))
+  return out.join(' ')
+}
+
+const HELP = 'Puedo decirte qué tienes hoy, mañana o esta tarde, qué hacer ahora, dónde está algo, qué falta en la compra, qué hay de cenar, cuánto llevas gastado, qué estás esperando o cuándo hiciste algo por última vez. Y dime «buenos días» para el resumen del día.'
+/** Lo que se responde aunque el dictado no ponga «?» ni empiece por «qué», «cuándo»… */
+const SPOKEN = [/^tengo\s+(?:un\s+rato|tiempo|\S+\s+(?:minutos|horas?))/i, /^(?:mi\s+)?agenda(?:\s|$)/i, /lista\s+de\s+la\s+compra$/i, /^a\s+qui[eé]n\s+le\s+toca\s/i]
 
 /** La respuesta a una pregunta (o `undefined` si no es una de las que se saben) */
-function answer(rows: Row[], text: string, env: Env, cal?: CaptureCalendar): string | undefined {
+function answer(rows: Row[], text: string, env: Env, cal?: CaptureContext): string | undefined {
+  if (BRIEF.test(text)) return brief(rows, env, cal)
+  if (NIGHT.test(text)) return night(rows, env, cal)
+  if (LAST_SAID.test(text)) return lastSaid(rows, env)
   if (SHOP_Q.test(text)) return shoppingNow(rows)
   const sp = SPENT_Q.exec(text)
   if (sp) return spent(rows, sp[1], env)
   const wh = WHERE_Q.exec(text)
   if (wh) return whereIs(rows, wh[1], env)
+  if (MEDS_Q.test(text)) return medsLeft(rows, env) ?? (rows.some((r) => r.tbl === 'meds' && !r.data.archived) ? 'Hoy ya no te queda nada por tomar.' : 'No tienes medicación apuntada.')
+  if (HABITS_Q.test(text)) return habitsLeft(rows, env)
+  const menu = MENU_Q.exec(text)
+  if (menu) return menuFor(rows, menu[1], menu[2], env)
+  const house = HOUSE_Q.exec(text)
+  if (house) return cal?.house ? houseVoice(cal.house, ymdIn(env.now, env.tz), house[1]) : 'No tienes casa compartida en LUNO: se crea en Casa → Tareas.'
+  const bday = BDAY_Q.exec(text)
+  if (bday) return birthday(rows, bday[1], bday[2], env)
+  const bdays = BDAYS_Q.exec(text)
+  if (bdays) return birthdaysSoon(rows, bdays[1], env)
+  const wait = WAIT_Q.exec(text)
+  if (wait) return waiting(rows, wait[1], env)
   if (NOW_Q.test(text) || NOW_FREE.test(text)) return whatNow(rows, text, env)
   const ag = AGENDA_Q.exec(text)
   const asked = ag ? askedDay(ag[1], env) : undefined
@@ -549,7 +766,7 @@ const shoppingWhat = (r: WriteResult) => `${list(r.writes.map((w) => str(w.data.
  * Lo que se dicta a Siri: una pregunta, algo que hacer o algo que apuntar.
  * El texto de `report` es corto: Siri lo lee en voz alta.
  */
-export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal?: CaptureCalendar): CaptureResult {
+export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal?: CaptureContext): CaptureResult {
   const fields = typeof input === 'string' ? { texto: input } : input
   if (fields.importe !== undefined) return captureCardPayment(rows, fields, env)
   // La automatización lanzada a mano (o con el importe sin elegir): no hay pago que apuntar
@@ -587,7 +804,7 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal
   const med = captureMed(rows, question ? `${text}?` : text, env)
   if (med) return remember(rows, med, env, 'la toma')
 
-  if (question || ASKING.test(text) || NOW_FREE.test(text) || SHOP_Q.test(text) || /^(?:mi\s+)?agenda(?:\s|$)/i.test(text)) {
+  if (question || ASKING.test(text) || BRIEF.test(text) || NIGHT.test(text) || LAST_SAID.test(text) || SPOKEN.some((r) => r.test(text))) {
     const reply = answer(rows, text, env, cal)
     if (reply) return { writes: [], report: [reply] }
     // Una pregunta que no se sabe responder no se apunta como tarea («¿Qué tengo ?»)
@@ -609,6 +826,8 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal
       return thing(rows, intent.name, env, undefined, intent.person)
     case 'thing':
       return thing(rows, intent.name, env, intent.where)
+    case 'bought':
+      return tick(rows, intent.items, env, true)!
     case 'shopping': {
       const r = addShopping(rows, { cosas: intent.items, ...(intent.list ? { lista: intent.list } : {}) }, env)
       return remember(rows, r, env, shoppingWhat(r))
@@ -624,6 +843,12 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal
       const amount = num(r.writes.find((w) => w.tbl === 'expenses')?.data.amount)
       return remember(rows, { ...r, report: [r.report[0].split('. Este mes')[0] + '.'] }, env, `el gasto de ${money(amount)}`)
     }
+  }
+
+  const got = BOUGHT_SAID.exec(text)
+  if (got) {
+    const r = tick(rows, got[1], env, false)
+    if (r) return r
   }
 
   const moved = postpone(rows, text, env)

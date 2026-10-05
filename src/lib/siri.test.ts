@@ -191,3 +191,84 @@ describe('Siri: preguntar', () => {
     expect(r.report[0]).toMatch(/^Puedo decirte qué tienes hoy/)
   })
 })
+
+describe('Siri de día a día', () => {
+  const T = '2026-10-05'
+  const day: Row[] = [
+    ...rows,
+    task('w1', 'Presupuesto del fontanero', { waitingFor: 'Luis', waitingSince: '2026-10-01', dueDate: '2026-10-05' }),
+    task('e1', 'Reunión con el banco', { dueDate: T, dueTime: '18:30' }),
+    task('d1', 'Enviar la factura', { done: 1, completedAt: Date.parse('2026-10-05T07:00:00Z'), dueDate: T }),
+    { tbl: 'people', id: 'p1', data: { id: 'p1', name: 'Ana López', birthday: '1992-10-06', dates: [{ id: 'x', label: 'Aniversario', date: '2015-03-14' }] } },
+    { tbl: 'menu', id: `${T}:cena`, data: { id: `${T}:cena`, date: T, meal: 'cena', text: 'Tortilla de patatas' } },
+    { tbl: 'meds', id: 'ibu', data: { id: 'ibu', name: 'Ibuprofeno', times: ['09:00', '21:00'], archived: 0 } },
+    { tbl: 'shopping', id: 's3', data: { id: 's3', name: 'Pan', checked: 0 } },
+  ]
+  const ask = (text: string, cx?: Parameters<typeof capture>[3]) => capture(day, text, env(), cx).report[0]
+
+  it('«buenos días»: el día de un vistazo', () => {
+    const r = ask('Buenos días.')
+    expect(r).toMatch(/^Buenos días\. Hoy tienes 3 cosas: a las 17:00, Llamar al dentista; a las 18:30, Reunión con el banco; y sin hora, Comprar pilas\. Lo importante: Comprar pilas\. Además, una atrasada\./)
+    expect(r).toContain('Sin tomar: Ibuprofeno de las 9:00. Te queda: Ibuprofeno de las 21:00.')
+    expect(r).toContain('Te quedan 2 hábitos: Beber agua y Meditar.')
+    expect(r).toContain('Mañana es el cumpleaños de Ana.')
+    expect(r).toContain('Hoy toca preguntar: a Luis por presupuesto del fontanero.')
+  })
+
+  it('«buenas noches»: lo hecho, lo que queda y lo de mañana', () => {
+    const r = ask('Buenas noches')
+    expect(r).toContain('Hoy has hecho una cosa: Enviar la factura.')
+    expect(r).toContain('Te quedan 4 sin hacer: Llamar al dentista, Comprar pilas, Pagar el seguro y 1 más.')
+    expect(r).toContain('Mañana tienes una cosa: Renovar el DNI.')
+  })
+
+  it('partes del día, menú, cumpleaños, a la espera, hábitos y medicación', () => {
+    expect(ask('¿Qué tengo esta tarde?')).toBe('Esta tarde tienes 2 cosas: a las 17:00, Llamar al dentista; a las 18:30, Reunión con el banco. Sin hora tienes una cosa más.')
+    expect(ask('¿Qué tengo mañana por la mañana?')).toBe('Mañana por la mañana no tienes nada con hora. Sin hora tienes una cosa más.')
+    expect(ask('¿Qué hay de cenar?')).toBe('Hoy para cenar: Tortilla de patatas.')
+    expect(ask('¿Qué como mañana?')).toBe('Mañana no hay nada apuntado para comer.')
+    expect(ask('¿Cuándo es el cumpleaños de Ana?')).toBe('El cumpleaños de Ana es mañana (cumple 34).')
+    expect(ask('¿Cuándo es el aniversario de Ana?')).toBe('El aniversario de Ana es el domingo 14 de marzo de 2027, dentro de 160 días.')
+    expect(ask('¿Qué cumpleaños hay esta semana?')).toBe('Esta semana: Ana mañana.')
+    expect(ask('¿Qué estoy esperando?')).toBe('Esperas una cosa: Presupuesto del fontanero, de Luis, desde hace 4 días.')
+    expect(ask('¿Qué hábitos me quedan?')).toBe('Te quedan 2: Beber agua (llevas 0 de 8 vasos) y Meditar.')
+    expect(ask('¿Qué pastillas me tocan hoy?')).toBe('Sin tomar: Ibuprofeno de las 9:00. Te queda: Ibuprofeno de las 21:00.')
+  })
+
+  it('la casa compartida, si la hay', () => {
+    const house = {
+      name: 'Piso',
+      me: 'yo',
+      items: [
+        { id: 'yo', kind: 'member', data: { name: 'Ignacio', order: 0 } },
+        { id: 'ana', kind: 'member', data: { name: 'Ana', order: 1 } },
+        { id: 'basura', kind: 'chore', data: { title: 'Sacar la basura', every: 2, rotation: ['yo', 'ana'], turn: 0, due: T, at: 0 } },
+        { id: 'baño', kind: 'chore', data: { title: 'Limpiar el baño', every: 7, rotation: ['ana', 'yo'], turn: 0, due: T, at: 0 } },
+      ],
+    } as unknown as NonNullable<NonNullable<Parameters<typeof capture>[3]>['house']>
+    expect(ask('¿Qué me toca en casa?', { house })).toBe('En casa te toca: Sacar la basura.')
+    expect(ask('¿A quién le toca limpiar el baño?', { house })).toBe('Le toca a Ana.')
+    expect(ask('¿Qué me toca en casa?')).toMatch(/^No tienes casa compartida/)
+    expect(ask('Buenos días', { house })).toContain('En casa te toca: Sacar la basura.')
+  })
+
+  it('tachar de la compra por voz', () => {
+    let r = capture(day, 'He comprado leche y pan.', env())
+    expect(saved(r).map((w) => [w.id, w.data.checked])).toEqual([['s1', 1], ['s3', 1]])
+    expect(r.report[0]).toBe('Tachado de la compra: Leche y Pan.')
+    r = capture(day, 'Quita las tiritas de la compra', env())
+    expect(saved(r)[0]).toMatchObject({ id: 's2', data: { checked: 1 } })
+    expect(capture(day, 'Quita el café de la compra', env()).report[0]).toBe('No veo café en la compra.')
+    // Lo que no está en la compra: «he comprado las pilas» completa la tarea
+    expect(saved(capture(day, 'He comprado las pilas.', env()))[0]).toMatchObject({ id: 't2', data: { done: 1 } })
+  })
+
+  it('«¿qué he apuntado?» y posponer a una hora (el mismo día)', () => {
+    const added = capture(day, 'Llamar al fontanero mañana a las 9', env())
+    const now = apply(day, added)
+    expect(capture(now, '¿Qué he apuntado?', env(NOW + 3 * 60_000)).report[0]).toBe('Hace 3 minutos: Apuntado: Llamar al fontanero, mañana a las 09:00. Te avisaré.')
+    const r = capture(day, 'Pospón llamar al dentista a las 19:00', env())
+    expect(saved(r)[0]).toMatchObject({ id: 't1', data: { dueDate: T, dueTime: '19:00' } })
+    expect(r.report[0]).toBe('Pasada a hoy a las 19:00: Llamar al dentista.')
+  })
+})

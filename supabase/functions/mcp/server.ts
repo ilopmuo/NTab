@@ -10,7 +10,8 @@ import { takeMed, viewMeds } from './meds.ts'
 import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
-  load(): Promise<Row[]>
+  /** los registros del usuario (con `tables`, solo de esas tablas) */
+  load(tables?: string[]): Promise<Row[]>
   save(rows: Row[], deletes?: Row[]): Promise<void>
   /** eventos de los calendarios externos entre dos instantes (ms) */
   events?(from: number, to: number): Promise<{ events: EventLike[]; names: Record<string, string> }>

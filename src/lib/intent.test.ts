@@ -11,6 +11,7 @@ describe('a dónde va lo que se apunta (Siri y la captura de la app)', () => {
     expect(say('Compra leche y pan.')).toEqual({ kind: 'shopping', items: 'leche y pan' })
     expect(say('Añade huevos a la lista de la compra')).toEqual({ kind: 'shopping', items: 'huevos' })
     expect(say('Añade ibuprofeno a la lista de la farmacia')).toEqual({ kind: 'shopping', items: 'ibuprofeno', list: 'Farmacia' })
+    expect(say('Quita la leche de la compra')).toEqual({ kind: 'bought', items: 'la leche' })
     // «comprar…» y «compra…» con día son tareas
     expect(say('Comprar un regalo para Ana').kind).toBe('task')
     expect(say('Compra entradas para el concierto el viernes').kind).toBe('task')

@@ -68,6 +68,24 @@ export function houseSummary(h: HouseCtx, today: string): string[] {
   return lines
 }
 
+/** Para Siri: lo que te toca en casa (y, con `chore`, a quién le toca eso) */
+export function houseVoice(h: HouseCtx, today: string, chore?: string): string {
+  const name = namer(h)
+  const ids = members(h.items).map((m) => m.id)
+  const list = (xs: string[]) => (xs.length < 2 ? xs[0] : `${xs.slice(0, -1).join(', ')} y ${xs.at(-1)}`)
+  const when = (c: Chore) => (c.due && c.due < today ? ' (atrasada)' : '')
+  if (chore) {
+    const c = choreByTitle(h, chore)
+    if (!c) return `No hay ninguna tarea de casa que se parezca a «${chore}».`
+    const who = whoseTurn(c.data, ids)
+    return who === h.me ? `Te toca a ti${when(c.data)}.` : who ? `Le toca a ${name(who)}${when(c.data)}.` : 'Le toca a quien pueda.'
+  }
+  const urgent = chores(h.items).filter((c) => !c.data.done && ['overdue', 'today'].includes(choreStatus(c.data, today)))
+  const mine = urgent.filter((c) => whoseTurn(c.data, ids) === h.me)
+  const shop = shopItems(h.items).filter((i) => !i.data.done).length
+  return `${mine.length ? `En casa te toca: ${list(mine.map((c) => `${c.data.title}${when(c.data)}`))}.` : 'Hoy no te toca nada en casa.'}${shop ? ` En la compra del piso hay ${shop === 1 ? 'una cosa' : `${shop} cosas`}.` : ''}`
+}
+
 /** Todo el piso para ver_casa */
 export function houseView(h: HouseCtx, today: string, now: number): string {
   const name = namer(h)

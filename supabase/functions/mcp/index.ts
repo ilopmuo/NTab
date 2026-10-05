@@ -12,7 +12,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { handleMessage, type Store } from './server.ts'
 import type { Env, Row } from './ntab.ts'
-import { calendarRange, capture, captureFields, cleanDictation, forgetUndo, type CaptureInput } from './capture.ts'
+import { calendarRange, capture, captureFields, cleanDictation, forgetUndo, needsHouse, type CaptureInput } from './capture.ts'
 import { loadEvents } from '../_shared/loadEvents.ts'
 import { applyHouseOps, findHouse, houseItems } from '../_shared/houseStore.ts'
 import { houseAdd, pisoText } from './casa.ts'
@@ -28,6 +28,10 @@ const CORS = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
 const TOKEN = /^[a-f0-9]{32,128}$/
+
+// Lo que puede hacer falta para apuntar o responder por voz: sin papelera, foco,
+// diario, rutinas… (cuantos menos registros, antes contesta Siri)
+const CAPTURE_TABLES = ['tasks', 'projects', 'areas', 'people', 'settings', 'habits', 'habitLogs', 'notes', 'trackers', 'things', 'shopping', 'pantry', 'expenses', 'meds', 'medLogs', 'menu', 'recipes']
 
 function tokenFrom(url: URL) {
   const fromQuery = url.searchParams.get('token')
@@ -79,28 +83,27 @@ Deno.serve(async (req) => {
 
   const env: Env = { tz: connector.tz || 'Europe/Madrid', now: Date.now(), autoRemind: true, newId: () => crypto.randomUUID() }
 
-  // Los registros del usuario, leídos una vez por petición
-  let cache: Row[] | null = null
+  // Los registros del usuario, leídos una vez por petición (todos, o solo de unas tablas)
+  const cache = new Map<string, Row[]>()
   const store: Store = {
-    async load() {
-      if (cache) return cache
+    async load(tables) {
+      const key = tables ? tables.join(',') : '*'
+      const hit = cache.get(key)
+      if (hit) return hit
       const rows: Row[] = []
       for (let from = 0; ; from += 1000) {
-        const { data, error: e } = await admin
-          .from('records')
-          .select('tbl,id,data')
-          .eq('user_id', userId)
-          .eq('deleted', false)
-          .order('tbl')
-          .order('id')
-          .range(from, from + 999)
+        let q = admin.from('records').select('tbl,id,data').eq('user_id', userId).eq('deleted', false)
+        if (tables) q = q.in('tbl', tables)
+        const { data, error: e } = await q.order('tbl').order('id').range(from, from + 999)
         if (e) throw new Error(e.message)
         rows.push(...((data ?? []) as Row[]))
         if (!data || data.length < 1000) break
       }
-      const setting = rows.find((r) => r.tbl === 'settings' && r.id === 'autoRemind')
-      env.autoRemind = setting?.data?.value !== false
-      cache = rows
+      if (!tables || tables.includes('settings')) {
+        const setting = rows.find((r) => r.tbl === 'settings' && r.id === 'autoRemind')
+        env.autoRemind = setting?.data?.value !== false
+      }
+      cache.set(key, rows)
       return rows
     },
     async events(from, to) {
@@ -109,13 +112,13 @@ Deno.serve(async (req) => {
     },
     // La casa compartida (ajuste `household`: el enlace del piso y quién es en él)
     async house() {
-      const mine = (await store.load()).find((r) => r.tbl === 'settings' && r.id === 'household')?.data.value as { token?: string; me?: string } | null | undefined
+      const mine = (await store.load(['settings'])).find((r) => r.tbl === 'settings' && r.id === 'household')?.data.value as { token?: string; me?: string } | null | undefined
       if (!mine?.token || !mine.me) return null
       const h = await findHouse(admin, mine.token)
       return h ? { name: h.name, items: await houseItems(admin, h.id), me: mine.me } : null
     },
     async houseOps(ops) {
-      const mine = (await store.load()).find((r) => r.tbl === 'settings' && r.id === 'household')?.data.value as { token?: string } | null | undefined
+      const mine = (await store.load(['settings'])).find((r) => r.tbl === 'settings' && r.id === 'household')?.data.value as { token?: string } | null | undefined
       const h = mine?.token ? await findHouse(admin, mine.token) : null
       if (h) await applyHouseOps(admin, h, ops)
     },
@@ -126,7 +129,7 @@ Deno.serve(async (req) => {
       ]
       const { error: e } = await admin.from('records').upsert(upserts, { onConflict: 'user_id,tbl,id' })
       if (e) throw new Error(e.message)
-      cache = null
+      cache.clear()
     },
   }
 
@@ -152,10 +155,14 @@ Deno.serve(async (req) => {
       // Un enlace solo (de la hoja de compartir): se lee el título de la página
       const link = typeof input.texto === 'string' && !input.titulo ? findUrl(input.texto) : undefined
       if (link && !link.rest) input.titulo = await fetchTitle(link.url)
-      // «¿Qué tengo hoy?»: también lo de tus calendarios
+      // «¿Qué tengo hoy?»: también lo de tus calendarios; «¿qué me toca en casa?», el piso
       const range = calendarRange(input, env)
-      const cal = range ? await store.events!(range.from, range.to).catch(() => undefined) : undefined
-      const r = capture(await store.load(), input, env, cal)
+      const [cal, house, rows] = await Promise.all([
+        range ? store.events!(range.from, range.to).catch(() => undefined) : undefined,
+        needsHouse(input) ? store.house!().catch(() => null) : undefined,
+        store.load(CAPTURE_TABLES),
+      ])
+      const r = capture(rows, input, env, { ...cal, house })
       if (r.writes.length || r.deletes?.length) await store.save(r.writes, r.deletes)
       return text(r.report.join(' '))
     } catch {

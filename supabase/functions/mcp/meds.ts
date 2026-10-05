@@ -4,7 +4,7 @@
  * la sincronización.
  */
 import { addDays, hhmmIn, ymdIn } from '../_shared/time.ts'
-import { adherence, asNeeded, doseToTake, dosesOn, extraTaken, findMed, medsSummary, minutesOf, needsRefill, daysLeft, stockAfter, takeLog, type MedLike, type MedLogLike } from '../_shared/meds.ts'
+import { activeOn, adherence, asNeeded, doseToTake, dosesOn, extraTaken, findMed, medsSummary, minutesOf, needsRefill, daysLeft, stockAfter, takeLog, type MedLike, type MedLogLike } from '../_shared/meds.ts'
 import type { Env, Row, WriteResult } from './ntab.ts'
 
 type Med = MedLike & Record<string, unknown>
@@ -21,6 +21,23 @@ export function medLines(rows: Row[], env: Env, today: string): string[] {
   const lines = medsSummary(meds, logsOf(rows, today), today, hhmmIn(env.now, env.tz), env.tz)
   if (!lines.length) return []
   return ['\nMEDICACIÓN DE HOY (ante «¿me la he tomado?», mira aquí; para marcarla, tomar_medicacion):', ...lines.map((l) => `- ${l}`)]
+}
+
+/**
+ * Para Siri: lo que queda por tomar hoy («ibuprofeno a las 21:00») o, si ya
+ * no queda nada, `undefined`. Lo que se pasó sin tomar va primero.
+ */
+export function medsLeft(rows: Row[], env: Env): string | undefined {
+  const today = ymdIn(env.now, env.tz)
+  const now = hhmmIn(env.now, env.tz)
+  const meds = medsOf(rows).filter((m) => !asNeeded(m) && activeOn(m, today))
+  const doses = dosesOn(meds, logsOf(rows, today), today, today, now).filter((d) => d.state !== 'taken' && d.state !== 'skipped')
+  if (!doses.length) return undefined
+  const late = doses.filter((d) => d.state === 'late' || d.state === 'missed' || d.state === 'due')
+  const later = doses.filter((d) => d.state === 'upcoming')
+  const say = (xs: typeof doses) => xs.map((d) => `${d.med.name} de las ${short(d.time)}`)
+  const list = (xs: string[]) => (xs.length < 2 ? xs[0] : `${xs.slice(0, -1).join(', ')} y ${xs.at(-1)}`)
+  return [late.length ? `Sin tomar: ${list(say(late))}.` : '', later.length ? `Te queda: ${list(say(later))}.` : ''].filter(Boolean).join(' ')
 }
 
 /** ver_medicacion: hoy, lo que queda y cómo va las dos últimas semanas */

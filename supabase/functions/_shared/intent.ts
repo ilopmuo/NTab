@@ -110,6 +110,8 @@ const SHOPPING_PREFIX = /^\s*(?:(?:(?:a[nñ]ade|apunta|pon)\s+)?(?:(?:a|en)\s+)?
 const SHOPPING_SUFFIX = /^(?:(?:a[nñ]ade|apunta|pon|mete|agrega|incluye)\s+)?(.+?)\s+(?:a|en)\s+(?:la\s+)?(?:lista\s+de\s+(?:la\s+)?)?compra$/i
 // «añade ibuprofeno a la lista de la farmacia», «añade llamar al seguro a la lista de Mudanza»
 const TO_LIST = /^(?:(?:a[nñ]ade|apunta|pon|mete|agrega|incluye)\s+)?(.+?)\s+(?:a|en)\s+la\s+lista\s+(?:del\s+|de\s+(?:la\s+|el\s+|los\s+|las\s+)?)?(.+)$/i
+// «quita la leche de la compra», «tacha el pan de la lista de la compra»
+const BOUGHT = /^(?:quita|tacha|borra|elimina)\s+(.+?)\s+de\s+la\s+(?:lista\s+de\s+la\s+)?compra$/i
 // «gasto 12 café», «mete un gasto de quince euros en Mercadona», «me he gastado 20 en la cena», «he pagado 30 de luz»
 export const EXPENSE_PREFIX = /^\s*(?:(?:(?:mete|meter|apunta|anota|a[nñ]ade|pon|registra)(?:me)?\s+(?:un\s+)?)?gasto(?:\s+de)?|gast[eé]|(?:me\s+)?he\s+gastado|pagu[eé]|he\s+pagado)\s*[:,.-]?\s+/i
 const NOTE_PREFIX = /^\s*(?:nota|apunta\s+una\s+nota)\s*[:,.-]?\s+/i
@@ -152,6 +154,8 @@ export type Intent =
   | { kind: 'thing'; name: string; where: string }
   /** a quién se lo has prestado */
   | { kind: 'lent'; name: string; person: string }
+  /** tachar de la compra lo que ya está en ella */
+  | { kind: 'bought'; items: string }
   /** a la compra (`list`: el nombre de otra lista) */
   | { kind: 'shopping'; items: string; list?: string }
   /** una tarea en la lista de un proyecto */
@@ -203,6 +207,8 @@ export function classify(raw: string, names: IntentNames, today: string): Intent
   // «He puesto la lavadora en marcha» o con un día por delante, no es dónde está algo
   if (left && !/^marcha$/i.test(left[3]) && !dated(text)) return { kind: 'thing', name: cap(left[1].replace(ARTICLE, '')), where: /^en$/i.test(left[2]) ? left[3] : `${left[2].toLowerCase()} ${left[3]}` }
 
+  const got = BOUGHT.exec(text)
+  if (got) return { kind: 'bought', items: got[1] }
   const shopping = SHOPPING_PREFIX.exec(text)
   // «Compra entradas para el viernes» (con día) es una tarea
   if (shopping && !(/^compra\s/i.test(shopping[0]) && dated(text))) return { kind: 'shopping', items: text.slice(shopping[0].length) }

@@ -876,6 +876,18 @@ function habitState(rows: Row[]) {
   return { habits, counts, done }
 }
 
+/** Los hábitos que tocan hoy y cuáles quedan (con lo que llevas, si son de cantidad) */
+export function habitsToday(rows: Row[], today: string): { name: string; done: boolean; progress?: string }[] {
+  const { habits, counts, done } = habitState(rows)
+  return habits
+    .filter((h) => isDue(h.rule, done.get(h.id) ?? new Set(), today))
+    .map((h) => {
+      const has = counts.get(h.id)?.get(today) ?? 0
+      const target = targetOf(h.rule)
+      return { name: h.name, done: !!done.get(h.id)?.has(today), ...(isCounted(h.rule) ? { progress: `${has} de ${target}${h.rule.unit ? ` ${h.rule.unit}` : ''}` } : {}) }
+    })
+}
+
 export function markHabit(rows: Row[], args: { habito?: string; fecha?: string; hecho?: boolean; cantidad?: number }, env: Env): WriteResult & { deletes: Row[] } {
   const habits: Data[] = rows.filter((r) => r.tbl === 'habits' && !r.data.archived).map((r) => ({ ...r.data, id: r.id }))
   const habit = findByName(habits, str(args.habito))
@@ -1580,7 +1592,7 @@ export function listExpenses(rows: Row[], args: { mes?: string; buscar?: string 
 
 // ── Menú ──────────────────────────────────────────────────────
 
-function menuName(rows: Row[], d: Data) {
+export function menuName(rows: Row[], d: Data) {
   if (d.recipeId) return str(rows.find((r) => r.tbl === 'recipes' && r.id === d.recipeId)?.data.name) || str(d.text) || '?'
   return str(d.text)
 }

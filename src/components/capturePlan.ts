@@ -82,6 +82,22 @@ export async function planCapture(intent: Intent): Promise<CapturePlan | null> {
         },
       }
     }
+    case 'bought': {
+      // Tachar de la compra lo que ya está en ella
+      const open = await db.shopping.where('checked').equals(0).toArray()
+      const hits = parseItems(intent.items.replace(/^(?:el|la|los|las)\s+/i, ''))
+        .map((i) => open.find((x) => fold(x.name) === fold(i.name)) ?? open.find((x) => fold(x.name).includes(fold(i.name)) || fold(i.name).includes(fold(x.name))))
+        .filter((x, i, all): x is NonNullable<typeof x> => !!x && all.indexOf(x) === i)
+      if (!hits.length) return { icon: 'cart', label: 'No está en la compra', run: async () => ({ message: 'Eso no está en la compra' }) }
+      return {
+        icon: 'cart',
+        label: `Tachar de la compra: ${list(hits.map((x) => x.name))}`,
+        run: async () => {
+          await db.shopping.bulkUpdate(hits.map((x) => ({ key: x.id, changes: { checked: 1 as const } })))
+          return { message: `Tachado: ${list(hits.map((x) => x.name))}`, undo: () => db.shopping.bulkUpdate(hits.map((x) => ({ key: x.id, changes: { checked: 0 as const } }))) }
+        },
+      }
+    }
     case 'expense': {
       const rules = ((await db.settings.get('expenseRules'))?.value as ExpenseRules | undefined) ?? {}
       const p = parseExpense(intent.text, rules)

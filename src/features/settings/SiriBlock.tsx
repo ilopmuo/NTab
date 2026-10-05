@@ -89,12 +89,13 @@ export function SiriBlock() {
                 esperando a Luis».
               </li>
               <li>
-                <b className="font-semibold text-fg">Hacer</b>: «he llamado al dentista» (la marca como hecha; si no es una tarea, el hábito o «última vez»), «pospón el dentista a mañana» o
-                «deshaz» (quita lo último que has dictado).
+                <b className="font-semibold text-fg">Hacer</b>: «he llamado al dentista» (la marca como hecha; si no es una tarea, el hábito o «última vez»), «pospón el dentista a mañana»,
+                «he comprado leche y pan» (las tacha de la compra) o «deshaz» (quita lo último que has dictado).
               </li>
               <li>
-                <b className="font-semibold text-fg">Preguntar</b>: «¿qué tengo hoy?» (también lo de tus calendarios), «¿qué hago ahora?», «¿dónde está el pasaporte?», «¿qué falta en la
-                compra?», «¿cuánto llevo gastado?», «¿cuándo cambié las sábanas?».
+                <b className="font-semibold text-fg">Preguntar</b>: «buenos días» (el día de un vistazo) y «buenas noches» (lo hecho y lo de mañana), «¿qué tengo esta tarde?» (también lo de tus
+                calendarios), «¿qué hago ahora?», «¿dónde está el pasaporte?», «¿qué falta en la compra?», «¿qué hay de cenar?», «¿qué me toca en casa?», «¿qué pastillas me tocan?», «¿qué
+                hábitos me quedan?», «¿qué estoy esperando?», «¿cuándo es el cumpleaños de Ana?», «¿cuánto llevo gastado?», «¿cuándo cambié las sábanas?» o «¿qué he apuntado?».
               </li>
             </ul>
             <details className="mt-3">
