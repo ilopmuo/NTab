@@ -36,8 +36,8 @@ test.describe('en el móvil', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
   test('elegir las pestañas de la barra inferior', async ({ page }) => {
-    await openApp(page, '/settings')
-    await page.getByText('Pestañas del móvil').click()
+    await openApp(page, '/settings/funciones')
+    await page.getByRole('button', { name: /^Pestañas del móvil/ }).click()
     await page.getByLabel('Pestaña 2').selectOption('home')
     await page.getByRole('button', { name: 'Listo' }).click()
     // Las cuatro pestañas y «Más»

@@ -25,7 +25,7 @@ import { closeAuth, useSync } from '@/sync/service'
 // Los avisos con la app abierta se cargan aparte (ver main.tsx)
 const reminders = () => import('@/reminders/local')
 import { ReauthBanner } from '@/sync/ReauthBanner'
-import { TITLES } from './titles'
+import { SETTINGS_PAGES, TITLES } from './titles'
 
 pageTop.Component = PageTop
 pageTop.Back = BackButton
@@ -295,7 +295,7 @@ function Screen() {
     case 'templates':
       return <TemplatesView />
     case 'settings':
-      return <SettingsView />
+      return <SettingsView page={id} />
     default:
       return <TodayView />
   }
@@ -420,7 +420,8 @@ function Workspace() {
   }, [parts])
 
   useEffect(() => {
-    const title = TITLES[parts[0]] ?? 'LUNO'
+    // Un apartado de Ajustes, con su nombre («Apariencia · LUNO»)
+    const title = (parts[0] === 'settings' && SETTINGS_PAGES[parts[1] as keyof typeof SETTINGS_PAGES]) || (TITLES[parts[0]] ?? 'LUNO')
     document.title = `${title} · LUNO`
     const main = document.getElementById('main')
     placeScroll(`/${parts.join('/')}`)

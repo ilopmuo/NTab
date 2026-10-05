@@ -1,7 +1,11 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
+  Bell,
   BellRing,
+  CalendarDays,
+  Shapes,
+  Sparkles,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -45,6 +49,8 @@ import { downloadBackup, importData, isBackup, wipeData } from '@/db/backup'
 import { seedIfEmpty } from '@/db/seed'
 import { SectionIcon, section, type Tint } from '@/app/sections'
 import { setUI, toast, ui, useUI } from '@/app/store'
+import { navigate } from '@/app/router'
+import { SETTINGS_PAGES } from '@/app/titles'
 import { a11yPrefs, setContrastPref, setMotionPref, setTheme, useA11yPrefs, useTheme } from '@/app/theme'
 import { AccentPicker } from './AccentPicker'
 // Se carga al abrirla: los importadores no hacen falta para ver Ajustes
@@ -374,53 +380,127 @@ function NotificationsBlock() {
   )
 }
 
-export function SettingsView() {
+/** Los apartados de Ajustes: cada uno, su página (como los Ajustes de iOS) */
+const PAGES = [
+  { id: 'avisos', detail: 'Notificaciones, resumen de la mañana y fechas límite', icon: Bell, c: 'red' },
+  { id: 'apariencia', detail: 'Tema, color, contraste y movimiento', icon: Palette, c: 'indigo' },
+  { id: 'funciones', detail: 'Qué ves en Hoy, en la barra lateral y en el móvil', icon: LayoutGrid, c: 'blue' },
+  { id: 'areas', detail: 'Las grandes parcelas: trabajo, casa, salud…', icon: Shapes, c: 'blue' },
+  { id: 'calendarios', detail: 'Tus calendarios en LUNO y LUNO en tu calendario', icon: CalendarDays, c: 'blue' },
+  { id: 'conectar', detail: 'Apuntar y preguntar sin abrir la app', icon: Sparkles, c: 'gray' },
+  { id: 'datos', detail: 'Copia, traer de otra app o borrarlo todo', icon: Cloud, c: 'teal' },
+] as const satisfies readonly { id: keyof typeof SETTINGS_PAGES; detail: string; icon: typeof Bell; c: Tint }[]
+
+/**
+ * Ajustes: una portada corta (tu cuenta y los apartados) y cada apartado en su
+ * página, con «‹ Ajustes» para volver. Antes era una sola página muy larga.
+ */
+export function SettingsView({ page }: { page?: string }) {
+  const def = PAGES.find((x) => x.id === page)
+  if (!def)
+    return (
+      <Page>
+        <PageHeader icon={<SectionIcon def={section('settings')} size={40} />} title="Ajustes" />
+        <AccountCard />
+        <Block>
+          {PAGES.map((x) => (
+            <Row
+              key={x.id}
+              glyph={
+                <Glyph c={x.c}>
+                  <x.icon size={15} strokeWidth={2.4} />
+                </Glyph>
+              }
+              label={SETTINGS_PAGES[x.id]}
+              detail={x.detail}
+              onClick={() => navigate(`/settings/${x.id}`)}
+            />
+          ))}
+        </Block>
+        <Block>
+          <Row
+            glyph={
+              <Glyph c="gray">
+                <Keyboard size={15} strokeWidth={2.4} />
+              </Glyph>
+            }
+            label="Atajos de teclado"
+            onClick={() => ui.help()}
+          />
+        </Block>
+        <div className="flex flex-col items-center gap-2 pt-2 text-muted">
+          <LunoLockup height={10} />
+          <p className="text-[12px]">Versión {__APP_VERSION__}</p>
+        </div>
+      </Page>
+    )
+  return (
+    <Page>
+      <PageHeader
+        icon={
+          <Glyph c={def.c}>
+            <def.icon size={18} strokeWidth={2.4} />
+          </Glyph>
+        }
+        title={SETTINGS_PAGES[def.id]}
+      />
+      {def.id === 'avisos' && <NotificationsBlock />}
+      {def.id === 'apariencia' && <AppearancePage />}
+      {def.id === 'funciones' && <FeaturesPage />}
+      {def.id === 'areas' && <AreasPage />}
+      {def.id === 'calendarios' && (
+        <>
+          <CalendarSourcesBlock />
+          <CalendarBlock />
+        </>
+      )}
+      {def.id === 'conectar' && (
+        <>
+          <ClaudeBlock />
+          <SiriBlock />
+        </>
+      )}
+      {def.id === 'datos' && <DataPage />}
+    </Page>
+  )
+}
+
+function AppearancePage() {
   const theme = useTheme()
-  const areas = useAreas()
-  const creatingArea = useUI((s) => s.creating === 'area')
-  const [editing, setEditing] = useState<Area | undefined>()
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [importing, setImporting] = useState(false)
-
-  const move = async (i: number, dir: -1 | 1) => {
-    const a = areas[i]
-    const b = areas[i + dir]
-    if (!a || !b) return
-    await db.transaction('rw', db.areas, async () => {
-      await db.areas.update(a.id, { order: b.order })
-      await db.areas.update(b.id, { order: a.order })
-    })
-  }
-
-  const [todayCards, setTodayCards] = useState(false)
-  const features = useFeatures()
   useA11yPrefs()
   const a11y = a11yPrefs()
   return (
-    <Page>
-      <PageHeader icon={<SectionIcon def={section('settings')} size={40} />} title="Ajustes" />
-
-      <AccountCard />
-
-      <NotificationsBlock />
-      <ClaudeBlock />
-      <SiriBlock />
-      <CalendarSourcesBlock />
-      <CalendarBlock />
-
-      <Block title="Funciones" footer="Apaga lo que no uses: la barra lateral, ⌘K y Hoy se quedan con lo tuyo.">
+    <>
+      <Block title="Apariencia">
+        <Row
+          glyph={
+            <Glyph c="indigo">
+              <Palette size={15} strokeWidth={2.4} />
+            </Glyph>
+          }
+          label="Tema"
+          right={
+            <Segmented
+              value={theme}
+              onChange={setTheme}
+              options={[
+                { value: 'dark', label: <Moon size={14} strokeWidth={2.3} />, title: 'Oscuro' },
+                { value: 'light', label: <Sun size={14} strokeWidth={2.3} />, title: 'Claro' },
+                { value: 'system', label: <Monitor size={14} strokeWidth={2.3} />, title: 'Automático' },
+              ]}
+            />
+          }
+        />
         <Row
           glyph={
             <Glyph c="blue">
-              <LayoutGrid size={15} strokeWidth={2.4} />
+              <Droplet size={15} strokeWidth={2.4} />
             </Glyph>
           }
-          label="Elegir funciones"
-          detail={`${FEATURES.filter((f) => features.on(f.id)).length} de ${FEATURES.length} encendidas`}
-          onClick={() => ui.features()}
+          label="Color"
+          right={<AccentPicker />}
         />
       </Block>
-
       <Block title="Accesibilidad" footer="«Automático» sigue a lo que tengas en el sistema. Con «Sí», en este dispositivo siempre.">
         <Row
           glyph={
@@ -462,34 +542,25 @@ export function SettingsView() {
         />
       </Block>
 
-      <Block title="Apariencia">
-        <Row
-          glyph={
-            <Glyph c="indigo">
-              <Palette size={15} strokeWidth={2.4} />
-            </Glyph>
-          }
-          label="Tema"
-          right={
-            <Segmented
-              value={theme}
-              onChange={setTheme}
-              options={[
-                { value: 'dark', label: <Moon size={14} strokeWidth={2.3} />, title: 'Oscuro' },
-                { value: 'light', label: <Sun size={14} strokeWidth={2.3} />, title: 'Claro' },
-                { value: 'system', label: <Monitor size={14} strokeWidth={2.3} />, title: 'Automático' },
-              ]}
-            />
-          }
-        />
+    </>
+  )
+}
+
+function FeaturesPage() {
+  const [todayCards, setTodayCards] = useState(false)
+  const features = useFeatures()
+  return (
+    <>
+      <Block footer="Apaga lo que no uses y elige qué ves en Hoy, en la barra lateral y en las pestañas del móvil: el resto de la app se queda solo con lo tuyo. Tus datos no se borran.">
         <Row
           glyph={
             <Glyph c="blue">
-              <Droplet size={15} strokeWidth={2.4} />
+              <LayoutGrid size={15} strokeWidth={2.4} />
             </Glyph>
           }
-          label="Color"
-          right={<AccentPicker />}
+          label="Elegir funciones"
+          detail={`${FEATURES.filter((f) => features.on(f.id)).length} de ${FEATURES.length} encendidas`}
+          onClick={() => ui.features()}
         />
         <Row
           glyph={
@@ -523,7 +594,25 @@ export function SettingsView() {
         />
       </Block>
       <TodayCardsEditor open={todayCards} onClose={() => setTodayCards(false)} />
+    </>
+  )
+}
 
+function AreasPage() {
+  const areas = useAreas()
+  const creatingArea = useUI((s) => s.creating === 'area')
+  const [editing, setEditing] = useState<Area | undefined>()
+  const move = async (i: number, dir: -1 | 1) => {
+    const a = areas[i]
+    const b = areas[i + dir]
+    if (!a || !b) return
+    await db.transaction('rw', db.areas, async () => {
+      await db.areas.update(a.id, { order: b.order })
+      await db.areas.update(b.id, { order: a.order })
+    })
+  }
+  return (
+    <>
       <Block title="Áreas de vida" footer="Las grandes parcelas de tu vida. Cada tarea, proyecto y nota puede pertenecer a una.">
         {areas.map((a, i) => (
           <div key={a.id} className={rowCls}>
@@ -558,6 +647,16 @@ export function SettingsView() {
         </button>
       </Block>
 
+      <AreaForm open={creatingArea} onClose={() => setUI({ creating: null })} />
+      <AreaForm area={editing} open={!!editing} onClose={() => setEditing(undefined)} />
+    </>
+  )
+}
+
+function DataPage() {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = useState(false)
+  return (
       <Block
         title="Tus datos"
         footer="Con sesión iniciada, tus datos ya están en la nube. La copia en archivo es un respaldo extra; importarla sustituye todos los datos."
@@ -633,26 +732,5 @@ export function SettingsView() {
           }}
         />
       </Block>
-
-      <Block>
-        <Row
-          glyph={
-            <Glyph c="gray">
-              <Keyboard size={15} strokeWidth={2.4} />
-            </Glyph>
-          }
-          label="Atajos de teclado"
-          onClick={() => ui.help()}
-        />
-      </Block>
-
-      <div className="flex flex-col items-center gap-2 pt-2 text-muted">
-        <LunoLockup height={10} />
-        <p className="text-[12px]">Versión {__APP_VERSION__}</p>
-      </div>
-
-      <AreaForm open={creatingArea} onClose={() => setUI({ creating: null })} />
-      <AreaForm area={editing} open={!!editing} onClose={() => setEditing(undefined)} />
-    </Page>
   )
 }

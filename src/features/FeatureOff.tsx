@@ -11,7 +11,7 @@ export function FeatureOff({ id, feature }: { id: string; /** si no es la de la 
   return (
     <Page>
       <h1 className="sr-only">{def.label}</h1>
-      <Empty icon={<SectionIcon def={def} size={40} />} title={`${f?.label ?? def.label} está apagada`} hint="La apagaste en Ajustes → Funciones. Lo que apuntaste sigue guardado.">
+      <Empty icon={<SectionIcon def={def} size={40} />} title={`${f?.label ?? def.label} está apagada`} hint="La apagaste en Ajustes → Funciones y navegación. Lo que apuntaste sigue guardado.">
         <Button variant="primary" onClick={() => f && void setFeature(f.id, true)}>
           Encender {f?.label ?? def.label}
         </Button>

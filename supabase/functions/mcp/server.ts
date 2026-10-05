@@ -618,7 +618,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       const from = isDate(args.desde) ? Date.parse(`${args.desde}T00:00:00Z`) - 864e5 : env.now - 864e5
       const to = isDate(args.hasta) ? Date.parse(`${args.hasta}T00:00:00Z`) + 2 * 864e5 : env.now + 8 * 864e5
       const cal = await store.events(from, Math.min(to, from + 95 * 864e5))
-      if (!Object.keys(cal.names).length) return text('No hay calendarios conectados. Se conectan en LUNO → Ajustes → Tus calendarios.')
+      if (!Object.keys(cal.names).length) return text('No hay calendarios conectados. Se conectan en LUNO → Ajustes → Calendarios.')
       const lines = eventLines(cal.events, cal.names, env).filter((l) => {
         const m = l.match(/\((\d{4}-\d{2}-\d{2})\)/)
         return !m || ((!isDate(args.desde) || m[1] >= (args.desde as string)) && (!isDate(args.hasta) || m[1] <= (args.hasta as string)))

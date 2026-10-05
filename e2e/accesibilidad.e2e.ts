@@ -7,7 +7,7 @@ import { expect, openApp, quickAdd, test } from './fixtures'
  * sin nombre, controles anidados…
  */
 // Todas las secciones (las de src/app/sections.tsx), «Más» y Planificar
-const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/lists', '/matrix', '/someday', '/waiting', '/meds', '/templates', '/goals', '/expenses', '/finance', '/review', '/trash', '/logbook', '/settings', '/plan', '/more']
+const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/lists', '/matrix', '/someday', '/waiting', '/meds', '/templates', '/goals', '/expenses', '/finance', '/review', '/trash', '/logbook', '/settings', '/settings/avisos', '/settings/apariencia', '/settings/funciones', '/settings/areas', '/settings/calendarios', '/settings/conectar', '/settings/datos', '/plan', '/more']
 
 for (const theme of ['dark', 'light'] as const) {
   test(`sin problemas serios de accesibilidad (tema ${theme === 'dark' ? 'oscuro' : 'claro'})`, async ({ page }) => {
@@ -50,7 +50,7 @@ for (const theme of ['dark', 'light'] as const) {
     await scan('captura con sugerencias')
     await page.keyboard.press('Escape')
     // Diálogos y menús: funciones, atajos, editor de la barra lateral, un menú abierto
-    await page.evaluate(() => (location.hash = '/settings'))
+    await page.evaluate(() => (location.hash = '/settings/funciones'))
     await page.getByRole('button', { name: /Elegir funciones/ }).click()
     await page.waitForTimeout(500)
     await scan('funciones')
@@ -96,7 +96,7 @@ for (const [theme, accent, contrast] of [['light', 'pink', ''], ['dark', 'graphi
     // Que se vaya el aviso (a medio desvanecer no tiene su color final)
     await expect(page.locator('.z-\\[60\\] .glass-thick')).toHaveCount(0, { timeout: 8000 })
     const found: string[] = []
-    for (const path of ['/today', '/plan', '/calendar', '/inbox', '/settings']) {
+    for (const path of ['/today', '/plan', '/calendar', '/inbox', '/settings', '/settings/apariencia']) {
       await page.evaluate((p) => (location.hash = p), path)
       await expect(page.locator('#main h1').first()).toBeVisible()
       await page.waitForTimeout(600)

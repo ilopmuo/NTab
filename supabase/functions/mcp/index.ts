@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   const capturing = isCapture(url)
   const token = tokenFrom(url)
   if (!TOKEN.test(token)) {
-    if (capturing) return text('Enlace no válido: cópialo de nuevo en LUNO → Ajustes → Siri.', 404)
+    if (capturing) return text('Enlace no válido: cópialo de nuevo en LUNO → Ajustes → Claude y Siri.', 404)
     return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Enlace del conector no válido' } }, 404)
   }
 
@@ -70,8 +70,8 @@ Deno.serve(async (req) => {
   const { data: connector, error } = await admin.from('mcp_connectors').select('user_id,tz').eq('token', token).maybeSingle()
   if (error) return capturing ? text('No he podido apuntarlo: error del servidor.', 500) : json({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'Error interno' } }, 500)
   if (!connector) {
-    if (capturing) return text('Este enlace ya no es válido: cópialo de nuevo en LUNO → Ajustes → Siri.', 404)
-    return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Este enlace ya no es válido: crea uno nuevo en LUNO → Ajustes → Claude' } }, 404)
+    if (capturing) return text('Este enlace ya no es válido: cópialo de nuevo en LUNO → Ajustes → Claude y Siri.', 404)
+    return json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Este enlace ya no es válido: crea uno nuevo en LUNO → Ajustes → Claude y Siri' } }, 404)
   }
   const userId = connector.user_id as string
 

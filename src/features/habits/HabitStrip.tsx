@@ -20,6 +20,8 @@ export function HabitStrip() {
   if (!habits) return null
   const todays = habits.filter((h) => isDue(h, byHabit.get(h.id) ?? new Set(), today))
   const doneCount = todays.filter((h) => byHabit.get(h.id)?.has(today)).length
+  // Si hoy no toca ninguno (o aún no hay), Hoy no enseña una tarjeta vacía
+  if (!todays.length) return null
 
   return (
     <Card className="p-4">

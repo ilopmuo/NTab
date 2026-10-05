@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, Reorder, m as motion, useDragControls } from 'motion/react'
-import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, UserRoundCheck, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, Timer, Trash2, UserRoundCheck, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Subtask, Task } from '@/db/types'
@@ -24,6 +24,20 @@ import { DatePicker } from './DatePicker'
 import { Button, Group, IconButton, Modal, ProgressBar, Segmented, Switch, Textarea, cx, spring, useMediaQuery } from './ui'
 import { focus } from '@/features/focus/focus'
 import { toastTrashed } from '@/features/trash/undo'
+
+type Field = 'time' | 'reminder' | 'repeat' | 'deadline' | 'estimate' | 'priority' | 'tags' | 'people' | 'waiting'
+/** Lo que no hace falta ver hasta que se usa, en el orden de «Añadir» */
+const FIELDS: { id: Field; label: string; icon: typeof Clock }[] = [
+  { id: 'time', label: 'Hora', icon: Clock },
+  { id: 'reminder', label: 'Aviso', icon: Bell },
+  { id: 'repeat', label: 'Repetir', icon: Repeat },
+  { id: 'deadline', label: 'Fecha límite', icon: CalendarClock },
+  { id: 'estimate', label: 'Duración', icon: Hourglass },
+  { id: 'priority', label: 'Prioridad', icon: Flag },
+  { id: 'tags', label: 'Etiquetas', icon: Hash },
+  { id: 'people', label: 'Personas', icon: AtSign },
+  { id: 'waiting', label: 'A la espera', icon: UserRoundCheck },
+]
 
 /**
  * Detalle de tarea. En pantallas anchas es un inspector lateral de cristal;
@@ -101,6 +115,7 @@ function Row({
   value,
   children,
   onClear,
+  field,
 }: {
   icon: React.ReactNode
   color: string
@@ -109,9 +124,11 @@ function Row({
   children?: React.ReactNode
   /** botón "quitar" a la derecha de la fila */
   onClear?: () => void
+  /** qué dato es (para llevar el foco a la fila al añadirla) */
+  field?: string
 }) {
   return (
-    <div className="relative px-3.5 py-2.5 after:absolute after:right-0 after:bottom-0 after:left-[58px] after:h-px after:bg-line last:after:hidden">
+    <div data-field={field} className="relative px-3.5 py-2.5 after:absolute after:right-0 after:bottom-0 after:left-[58px] after:h-px after:bg-line last:after:hidden">
       <div className="flex min-h-[30px] items-center gap-3">
         <Glyph color={color}>{icon}</Glyph>
         <div className="min-w-0 flex-1">
@@ -139,7 +156,7 @@ function WaitingRow({ task, names }: { task: Task; names: string[] }) {
   }
   if (task.waitingFor)
     return (
-      <Row icon={<UserRoundCheck size={15} strokeWidth={2.6} />} color="var(--c-text)" label="A la espera" value={waitingLabel(task, today())} onClear={() => run(() => stopWaiting(task))}>
+      <Row field="waiting" icon={<UserRoundCheck size={15} strokeWidth={2.6} />} color="var(--c-text)" label="A la espera" value={waitingLabel(task, today())} onClear={() => run(() => stopWaiting(task))}>
         {!task.done && (
           <>
             <Pill tone="strong" onClick={() => run(() => nudge(task))}>
@@ -151,7 +168,7 @@ function WaitingRow({ task, names }: { task: Task; names: string[] }) {
       </Row>
     )
   return (
-    <Row icon={<UserRoundCheck size={15} strokeWidth={2.6} />} color="var(--c-gray)" label="A la espera de alguien">
+    <Row field="waiting" icon={<UserRoundCheck size={15} strokeWidth={2.6} />} color="var(--c-gray)" label="A la espera de alguien">
       <form
         className="flex items-center gap-1.5"
         onSubmit={(e) => {
@@ -319,6 +336,28 @@ function TaskDetail({ task }: { task: Task }) {
     setSubDraft('')
   }
 
+  // Lo justo a la vista (como Things): la fecha y la lista siempre; lo demás,
+  // solo si tiene algo o si se acaba de añadir desde «Añadir»
+  const [opened, setOpened] = useState<Set<Field>>(() => new Set())
+  const has: Record<Field, boolean> = {
+    time: !!task.dueTime,
+    reminder: !!task.reminder,
+    repeat: !!task.recurrence,
+    deadline: !!task.deadline,
+    estimate: !!task.estimate,
+    priority: task.priority > 0,
+    tags: task.tags.length > 0,
+    people: (task.people?.length ?? 0) > 0,
+    waiting: !!task.waitingFor,
+  }
+  const shows = (f: Field) => has[f] || opened.has(f)
+  const addField = (f: Field) => {
+    setOpened((prev) => new Set(prev).add(f))
+    // Al aparecer, el foco va a su primer control
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-field="${f}"] :is(select, input, button)`)?.focus())
+  }
+  const missing = FIELDS.filter((f) => !shows(f.id) && !(f.id === 'waiting' && task.done))
+
   const assignValue = task.projectId ? `p:${task.projectId}` : task.areaId ? `a:${task.areaId}` : ''
   const where = project(task.projectId)?.name ?? area(task.areaId)?.name
   const subDone = task.subtasks.filter((s) => s.done).length
@@ -385,6 +424,39 @@ function TaskDetail({ task }: { task: Task }) {
       </div>
 
       <div className="space-y-4 px-3">
+        {/* Las notas, justo debajo del título (como en Things y Recordatorios) */}
+        <Group>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas" aria-label="Notas" rows={2} className="min-h-14 px-4 pt-3 pb-3" />
+        </Group>
+
+        <Group>
+          <div className="flex items-center gap-3 px-3.5 pt-3 pb-1">
+            <Glyph color="var(--c-green)">
+              <ListChecks size={16} strokeWidth={2.4} />
+            </Glyph>
+            <p className="flex-1 text-[15px]">Subtareas</p>
+            {task.subtasks.length > 0 && (
+              <span className="font-num text-[14px] font-semibold text-muted">
+                {subDone}/{task.subtasks.length}
+              </span>
+            )}
+          </div>
+          <SubtaskRows task={task} />
+          <div className="flex items-center gap-3 py-2 pr-3 pl-[58px]">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-fill text-white">
+              <Plus size={13} strokeWidth={3} />
+            </span>
+            <input
+              value={subDraft}
+              onChange={(e) => setSubDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addSub()}
+              onBlur={addSub}
+              placeholder="Añadir subtarea"
+              className="min-w-0 flex-1 bg-transparent text-[15px] placeholder:text-faint"
+            />
+          </div>
+        </Group>
+
         <Group>
           <Row
             icon={<Calendar size={16} strokeWidth={2.4} />}
@@ -423,46 +495,54 @@ function TaskDetail({ task }: { task: Task }) {
               </Pill>
             )}
           </Row>
-          <Row
-            icon={<CalendarClock size={16} strokeWidth={2.4} />}
-            color={task.done || !task.deadline ? 'var(--c-gray)' : dateColor(task.deadline)}
-            label="Fecha límite"
-            value={
-              task.deadline
-                ? `${dateLabel(task.deadline)} · ${task.deadline < t ? `venció ${relativeDays(task.deadline)}` : relativeDays(task.deadline)}`
-                : undefined
-            }
-            onClear={task.deadline ? () => set({ deadline: undefined }) : undefined}
-          >
-            <DateChoice kind="deadline" value={task.deadline} onChange={(deadline) => set({ deadline })} />
-          </Row>
-          <Row
-            icon={<Clock size={16} strokeWidth={2.4} />}
-            color="var(--c-teal)"
-            label="Hora"
-            value={task.dueTime}
-            onClear={task.dueTime ? () => set({ dueTime: undefined }) : undefined}
-          >
-            {QUICK_TIMES.map((h) => (
-              <Pill key={h} active={task.dueTime === h} onClick={() => set({ dueTime: h, dueDate: task.dueDate ?? t })}>
-                <span className="font-num">{h}</span>
-              </Pill>
-            ))}
-            <input
-              aria-label="Otra hora"
-              type="time"
-              value={task.dueTime && !QUICK_TIMES.includes(task.dueTime) ? task.dueTime : ''}
-              onChange={(e) => set({ dueTime: e.target.value || undefined, dueDate: task.dueDate ?? t })}
-              className={
-                task.dueTime && !QUICK_TIMES.includes(task.dueTime)
-                  ? 'h-8 rounded-full bg-accent-fill px-3 text-[13px] font-medium text-white [color-scheme:dark]'
-                  : fieldCls
+          {shows('time') && (
+            <Row
+              field="time"
+              icon={<Clock size={16} strokeWidth={2.4} />}
+              color="var(--c-teal)"
+              label="Hora"
+              value={task.dueTime}
+              onClear={task.dueTime ? () => set({ dueTime: undefined }) : undefined}
+            >
+              {QUICK_TIMES.map((h) => (
+                <Pill key={h} active={task.dueTime === h} onClick={() => set({ dueTime: h, dueDate: task.dueDate ?? t })}>
+                  <span className="font-num">{h}</span>
+                </Pill>
+              ))}
+              <input
+                aria-label="Otra hora"
+                type="time"
+                value={task.dueTime && !QUICK_TIMES.includes(task.dueTime) ? task.dueTime : ''}
+                onChange={(e) => set({ dueTime: e.target.value || undefined, dueDate: task.dueDate ?? t })}
+                className={
+                  task.dueTime && !QUICK_TIMES.includes(task.dueTime)
+                    ? 'h-8 rounded-full bg-accent-fill px-3 text-[13px] font-medium text-white [color-scheme:dark]'
+                    : fieldCls
+                }
+              />
+            </Row>
+          )}
+          {shows('deadline') && (
+            <Row
+              field="deadline"
+              icon={<CalendarClock size={16} strokeWidth={2.4} />}
+              color={task.done || !task.deadline ? 'var(--c-gray)' : dateColor(task.deadline)}
+              label="Fecha límite"
+              value={
+                task.deadline
+                  ? `${dateLabel(task.deadline)} · ${task.deadline < t ? `venció ${relativeDays(task.deadline)}` : relativeDays(task.deadline)}`
+                  : undefined
               }
-            />
-          </Row>
-          <EstimateRow value={task.estimate} onChange={(estimate) => set({ estimate })} />
+              onClear={task.deadline ? () => set({ deadline: undefined }) : undefined}
+            >
+              <DateChoice kind="deadline" value={task.deadline} onChange={(deadline) => set({ deadline })} />
+            </Row>
+          )}
+          {shows('estimate') && <EstimateRow value={task.estimate} onChange={(estimate) => set({ estimate })} />}
           <FocusRow taskId={task.id} estimate={task.estimate} />
-          <Row icon={<Repeat size={16} strokeWidth={2.4} />} color="var(--c-gray)" label="Repetir" value={task.recurrence ? recurrenceLabel(task.recurrence) : undefined}>
+          {shows('repeat') && (
+            <>
+          <Row field="repeat" icon={<Repeat size={16} strokeWidth={2.4} />} color="var(--c-gray)" label="Repetir" value={task.recurrence ? recurrenceLabel(task.recurrence) : undefined}>
             <select aria-label="Repetir" value={kind} onChange={(e) => setRepeat(e.target.value as RepeatKind)} className={cx(fieldCls, 'appearance-none pr-3')}>
               <option value="none">No se repite</option>
               <option value="day">Cada día</option>
@@ -495,6 +575,10 @@ function TaskDetail({ task }: { task: Task }) {
               </Button>
             </div>
           )}
+            </>
+          )}
+          {shows('reminder') && (
+            <>
           <ReminderRow task={task} onChange={(reminder) => set({ reminder, ...(reminder ? {} : { nag: undefined }) })} />
           {task.reminder && (
             <Row
@@ -513,26 +597,11 @@ function TaskDetail({ task }: { task: Task }) {
               </select>
             </Row>
           )}
+            </>
+          )}
         </Group>
 
         <Group>
-          <Row
-            icon={<Flag size={15} strokeWidth={2.4} />}
-            color={task.priority ? PRIORITY_COLOR[task.priority] : 'var(--c-orange)'}
-            label="Prioridad"
-            value={task.priority ? PRIORITY_LABEL[task.priority] : undefined}
-          >
-            <Segmented
-              value={task.priority}
-              onChange={(v) => set({ priority: v })}
-              options={[
-                { value: 0, label: 'Ninguna' },
-                { value: 1, label: '!' },
-                { value: 2, label: '!!' },
-                { value: 3, label: '!!!' },
-              ]}
-            />
-          </Row>
           <Row icon={<Folder size={15} strokeWidth={2.4} />} color="var(--c-indigo)" label="Lista" value={where ?? 'Bandeja de entrada'}>
             <select aria-label="Lista"
               value={assignValue}
@@ -595,111 +664,117 @@ function TaskDetail({ task }: { task: Task }) {
               </Row>
             )
           })()}
-          <Row icon={<AtSign size={15} strokeWidth={2.6} />} color="var(--c-text)" label="Personas">
-            {(task.people ?? []).map((id) => {
-              const p = person(id)
-              if (!p) return null
-              return (
-                <span key={id} className="inline-flex h-8 items-center gap-1 rounded-full bg-fill pr-1.5 pl-3 text-[13px] font-semibold">
-                  <a href={`#/people/${id}`} className="hover:underline">
-                    {p.name}
-                  </a>
+          {shows('priority') && (
+            <Row
+              field="priority"
+              icon={<Flag size={15} strokeWidth={2.4} />}
+              color={task.priority ? PRIORITY_COLOR[task.priority] : 'var(--c-orange)'}
+              label="Prioridad"
+              value={task.priority ? PRIORITY_LABEL[task.priority] : undefined}
+            >
+              <Segmented
+                value={task.priority}
+                onChange={(v) => set({ priority: v })}
+                options={[
+                  { value: 0, label: 'Ninguna' },
+                  { value: 1, label: '!' },
+                  { value: 2, label: '!!' },
+                  { value: 3, label: '!!!' },
+                ]}
+              />
+            </Row>
+          )}
+          {shows('tags') && (
+            <Row field="tags" icon={<Hash size={15} strokeWidth={2.6} />} color="var(--c-blue)" label="Etiquetas">
+              {task.tags.map((tag) => (
+                <span key={tag} className="inline-flex h-8 items-center gap-1 rounded-full bg-accent-soft pr-1.5 pl-3 text-[13px] font-semibold text-blue">
+                  #{tag}
                   <button
                     type="button"
-                    aria-label={`Quitar a ${p.name}`}
-                    className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-hover"
-                    onClick={() => mutateTask(task.id, (x) => void (x.people = (x.people ?? []).filter((y) => y !== id)))}
+                    aria-label={`Quitar ${tag}`}
+                    className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-accent-soft"
+                    onClick={() => mutateTask(task.id, (x) => void (x.tags = x.tags.filter((y) => y !== tag)))}
                   >
                     <X size={12} strokeWidth={2.6} />
                   </button>
                 </span>
-              )
-            })}
-            {people.length > 0 ? (
-              <select
-                value=""
-                onChange={(e) => e.target.value && void mutateTask(task.id, (x) => void (x.people = [...new Set([...(x.people ?? []), e.target.value])]))}
-                className="h-8 rounded-full bg-transparent px-2 text-[13px] text-muted"
-                aria-label="Añadir persona"
-              >
-                <option value="">Añadir…</option>
-                {people
-                  .filter((p) => !(task.people ?? []).includes(p.id))
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
+              ))}
+              <input
+                value={tagDraft}
+                onChange={(e) => setTagDraft(e.target.value)}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ',') && (e.preventDefault(), addTag())}
+                onBlur={addTag}
+                placeholder="Añadir…"
+                className="h-8 w-24 bg-transparent px-1 text-[13px] placeholder:text-faint"
+              />
+            </Row>
+          )}
+          {shows('people') && (
+            <Row field="people" icon={<AtSign size={15} strokeWidth={2.6} />} color="var(--c-text)" label="Personas">
+              {(task.people ?? []).map((id) => {
+                const p = person(id)
+                if (!p) return null
+                return (
+                  <span key={id} className="inline-flex h-8 items-center gap-1 rounded-full bg-fill pr-1.5 pl-3 text-[13px] font-semibold">
+                    <a href={`#/people/${id}`} className="hover:underline">
                       {p.name}
-                    </option>
-                  ))}
-              </select>
-            ) : (
-              <a href="#/people" className="px-1 text-[13px] text-muted">
-                Crea personas en Personas
-              </a>
-            )}
-          </Row>
-          <WaitingRow task={task} names={people.map((p) => p.name)} />
-          <Row icon={<Hash size={15} strokeWidth={2.6} />} color="var(--c-blue)" label="Etiquetas">
-            {task.tags.map((tag) => (
-              <span key={tag} className="inline-flex h-8 items-center gap-1 rounded-full bg-accent-soft pr-1.5 pl-3 text-[13px] font-semibold text-blue">
-                #{tag}
-                <button
-                  type="button"
-                  aria-label={`Quitar ${tag}`}
-                  className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-accent-soft"
-                  onClick={() => mutateTask(task.id, (x) => void (x.tags = x.tags.filter((y) => y !== tag)))}
+                    </a>
+                    <button
+                      type="button"
+                      aria-label={`Quitar a ${p.name}`}
+                      className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-hover"
+                      onClick={() => mutateTask(task.id, (x) => void (x.people = (x.people ?? []).filter((y) => y !== id)))}
+                    >
+                      <X size={12} strokeWidth={2.6} />
+                    </button>
+                  </span>
+                )
+              })}
+              {people.length > 0 ? (
+                <select
+                  value=""
+                  onChange={(e) => e.target.value && void mutateTask(task.id, (x) => void (x.people = [...new Set([...(x.people ?? []), e.target.value])]))}
+                  className="h-8 rounded-full bg-transparent px-2 text-[13px] text-muted"
+                  aria-label="Añadir persona"
                 >
-                  <X size={12} strokeWidth={2.6} />
+                  <option value="">Añadir…</option>
+                  {people
+                    .filter((p) => !(task.people ?? []).includes(p.id))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              ) : (
+                <a href="#/people" className="px-1 text-[13px] text-muted">
+                  Crea personas en Personas
+                </a>
+              )}
+            </Row>
+          )}
+          {shows('waiting') && <WaitingRow task={task} names={people.map((p) => p.name)} />}
+        </Group>
+
+        {/* Lo demás, solo si hace falta: un toque y aparece su fila */}
+        {missing.length > 0 && (
+          <div className="px-1" role="group" aria-label="Añadir a la tarea">
+            <p className="mb-2 px-1 text-[13px] font-semibold text-muted">Añadir</p>
+            <div className="flex flex-wrap gap-1.5">
+              {missing.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-label={`Añadir ${f.label.toLowerCase()}`}
+                  onClick={() => addField(f.id)}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-fill px-3 text-[13px] font-medium text-fg transition-colors hover:bg-press active:scale-95"
+                >
+                  <f.icon size={13} strokeWidth={2.4} aria-hidden /> {f.label}
                 </button>
-              </span>
-            ))}
-            <input
-              value={tagDraft}
-              onChange={(e) => setTagDraft(e.target.value)}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ',') && (e.preventDefault(), addTag())}
-              onBlur={addTag}
-              placeholder="Añadir…"
-              className="h-8 w-24 bg-transparent px-1 text-[13px] placeholder:text-faint"
-            />
-          </Row>
-        </Group>
-
-        <Group>
-          <div className="flex items-center gap-3 px-3.5 pt-3 pb-1">
-            <Glyph color="var(--c-green)">
-              <ListChecks size={16} strokeWidth={2.4} />
-            </Glyph>
-            <p className="flex-1 text-[15px]">Subtareas</p>
-            {task.subtasks.length > 0 && (
-              <span className="font-num text-[14px] font-semibold text-muted">
-                {subDone}/{task.subtasks.length}
-              </span>
-            )}
+              ))}
+            </div>
           </div>
-          <SubtaskRows task={task} />
-          <div className="flex items-center gap-3 py-2 pr-3 pl-[58px]">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-fill text-white">
-              <Plus size={13} strokeWidth={3} />
-            </span>
-            <input
-              value={subDraft}
-              onChange={(e) => setSubDraft(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addSub()}
-              onBlur={addSub}
-              placeholder="Añadir subtarea"
-              className="min-w-0 flex-1 bg-transparent text-[15px] placeholder:text-faint"
-            />
-          </div>
-        </Group>
-
-        <Group>
-          <div className="flex items-center gap-3 px-3.5 pt-3">
-            <Glyph color="var(--c-yellow)">
-              <StickyNote size={15} strokeWidth={2.4} />
-            </Glyph>
-            <p className="text-[15px]">Notas</p>
-          </div>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Detalles, enlaces, ideas…" rows={3} className="min-h-20 px-4 pt-2 pb-3" />
-        </Group>
+        )}
 
         <p className="px-2 text-center text-[12px] text-muted">
           Creada el {format(task.createdAt, "d 'de' MMMM 'de' yyyy", { locale: es })}
@@ -792,6 +867,7 @@ function EstimateRow({ value, onChange }: { value?: number; onChange: (v: number
   }
   return (
     <Row
+      field="estimate"
       icon={<Hourglass size={15} strokeWidth={2.4} />}
       color="var(--c-text)"
       label="Duración"
@@ -826,6 +902,7 @@ function ReminderRow({ task, onChange }: { task: Task; onChange: (r: Reminder | 
   const past = task.remindAt !== undefined && task.remindAt < Date.now() && !task.done
   return (
     <Row
+      field="reminder"
       icon={<Bell size={16} strokeWidth={2.4} />}
       color={task.remindAt ? 'var(--c-blue)' : 'var(--c-muted)'}
       label="Aviso"

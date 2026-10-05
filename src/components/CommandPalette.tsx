@@ -211,7 +211,7 @@ function Palette() {
     { when: on('lists'), value: 'nueva lista inteligente filtro busqueda guardada crear', label: 'Nuevo filtro', icon: <G c="blue"><ListFilter size={14} strokeWidth={2.4} /></G>, onSelect: run(() => (navigate('/lists'), ui.create('smartList'))) },
     { value: 'planificar el dia hoy organizar', label: 'Planificar el día', icon: <G c="blue"><Sun size={14} strokeWidth={2.4} /></G>, onSelect: run(() => navigate('/plan')) },
     { value: 'cerrar el dia cierre terminar desconectar noche', label: 'Cerrar el día', icon: <G c="blue"><Moon size={14} strokeWidth={2.4} /></G>, onSelect: run(() => navigate('/shutdown')) },
-    { value: 'conectar claude conector ia asistente', label: 'Conectar LUNO con Claude', icon: <G c="gray"><Sparkles size={14} strokeWidth={2.4} /></G>, onSelect: run(() => navigate('/settings')) },
+    { value: 'conectar claude conector ia asistente', label: 'Conectar LUNO con Claude', icon: <G c="gray"><Sparkles size={14} strokeWidth={2.4} /></G>, onSelect: run(() => navigate('/settings/conectar')) },
     { value: 'funciones elegir apagar encender modulos simplificar', label: 'Elegir funciones', icon: <G c="gray"><LayoutGrid size={14} strokeWidth={2.4} /></G>, onSelect: () => ui.features() },
     { value: 'personalizar barra lateral secciones ocultar pestañas movil navegacion menu', label: 'Personalizar la barra lateral', icon: <G c="gray"><PanelLeft size={14} strokeWidth={2.4} /></G>, onSelect: () => ui.navEditor('sidebar') },
     { value: 'cambiar tema oscuro claro', label: 'Cambiar tema claro / oscuro', icon: <G c="gray"><SunMoon size={14} strokeWidth={2.4} /></G>, onSelect: run(toggleTheme) },

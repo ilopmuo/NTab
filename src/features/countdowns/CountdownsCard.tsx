@@ -20,6 +20,16 @@ export function CountdownsCard() {
   const list = useLiveQuery(() => db.countdowns.where('date').aboveOrEqual(t).sortBy('date'), [t])
   const [editing, setEditing] = useState<Countdown | 'new' | null>(null)
   if (!list) return null
+  // Sin ninguna, Hoy no enseña una tarjeta vacía: solo un botón discreto para crearla
+  if (!list.length)
+    return (
+      <>
+        <button type="button" onClick={() => setEditing('new')} className="flex w-full items-center justify-center gap-1.5 rounded-full py-2 text-[13px] font-semibold text-muted transition-colors hover:text-fg">
+          <Plus size={13} strokeWidth={2.6} /> Cuenta atrás
+        </button>
+        <CountdownForm value={editing} onClose={() => setEditing(null)} />
+      </>
+    )
   return (
     <Card className="p-4">
       <div className="mb-2 flex items-center gap-2">
@@ -29,51 +39,45 @@ export function CountdownsCard() {
           <Plus size={15} strokeWidth={2.6} />
         </button>
       </div>
-      {list.length === 0 ? (
-        <button type="button" onClick={() => setEditing('new')} className="w-full rounded-xl bg-fill-2 px-3 py-3 text-left text-[14px] text-muted hover:text-fg">
-          ¿Esperas algo? Las vacaciones, un viaje, un cumpleaños…
-        </button>
-      ) : (
-        <div className="space-y-1.5">
-          {list.slice(0, 4).map((c, i) => {
-            const d = daysUntil(c.date, t)
-            // Como las tarjetas de Flighty: lejos, tranquila; esta semana, en el acento; hoy, en lima
-            const soon = d > 0 && d <= 7
-            const passed = elapsed(c, t)
-            return (
-              <motion.button
-                key={c.id}
-                type="button"
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ ...spring, delay: i * 0.04 }}
-                onClick={() => setEditing(c)}
-                className={cx('flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left', d === 0 ? 'bg-green text-on-green' : 'bg-fill-2')}
-              >
-                {/* Lo que ya ha pasado desde que empezaste a esperarlo */}
-                <span className="relative flex h-9 w-9 shrink-0 items-center justify-center" title={d === 0 ? undefined : `Llevas el ${Math.round(passed * 100)} % de la espera`}>
-                  {d > 0 && (
-                    <span className="absolute inset-0">
-                      <ProgressRing value={passed} size={36} stroke={3} color={soon ? 'var(--c-blue)' : 'var(--c-muted)'} track="var(--c-fill)" delay={0.1 + i * 0.04} />
-                    </span>
-                  )}
-                  <Icon name={c.icon} size={17} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14.5px] font-semibold">{c.name}</span>
-                  <span className={cx('block text-[12px]', d === 0 ? 'opacity-80' : 'text-muted')}>
-                    {d === 1 ? 'Mañana' : soon ? `El ${fmt(c.date, 'EEEE')}` : fmt(c.date, "EEEE d 'de' MMMM")}
+      <div className="space-y-1.5">
+        {list.slice(0, 4).map((c, i) => {
+          const d = daysUntil(c.date, t)
+          // Como las tarjetas de Flighty: lejos, tranquila; esta semana, en el acento; hoy, en lima
+          const soon = d > 0 && d <= 7
+          const passed = elapsed(c, t)
+          return (
+            <motion.button
+              key={c.id}
+              type="button"
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ ...spring, delay: i * 0.04 }}
+              onClick={() => setEditing(c)}
+              className={cx('flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left', d === 0 ? 'bg-green text-on-green' : 'bg-fill-2')}
+            >
+              {/* Lo que ya ha pasado desde que empezaste a esperarlo */}
+              <span className="relative flex h-9 w-9 shrink-0 items-center justify-center" title={d === 0 ? undefined : `Llevas el ${Math.round(passed * 100)} % de la espera`}>
+                {d > 0 && (
+                  <span className="absolute inset-0">
+                    <ProgressRing value={passed} size={36} stroke={3} color={soon ? 'var(--c-blue)' : 'var(--c-muted)'} track="var(--c-fill)" delay={0.1 + i * 0.04} />
                   </span>
+                )}
+                <Icon name={c.icon} size={17} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14.5px] font-semibold">{c.name}</span>
+                <span className={cx('block text-[12px]', d === 0 ? 'opacity-80' : 'text-muted')}>
+                  {d === 1 ? 'Mañana' : soon ? `El ${fmt(c.date, 'EEEE')}` : fmt(c.date, "EEEE d 'de' MMMM")}
                 </span>
-                <span className="text-right">
-                  <span className={cx('font-num block leading-none font-bold', d === 0 ? 'text-[19px]' : soon ? 'text-[26px] text-blue' : 'text-[22px]')}>{d === 0 ? '¡Hoy!' : d}</span>
-                  {d > 0 && <span className="block text-[11px] text-muted">{d === 1 ? 'día' : 'días'}</span>}
-                </span>
-              </motion.button>
-            )
-          })}
-        </div>
-      )}
+              </span>
+              <span className="text-right">
+                <span className={cx('font-num block leading-none font-bold', d === 0 ? 'text-[19px]' : soon ? 'text-[26px] text-blue' : 'text-[22px]')}>{d === 0 ? '¡Hoy!' : d}</span>
+                {d > 0 && <span className="block text-[11px] text-muted">{d === 1 ? 'día' : 'días'}</span>}
+              </span>
+            </motion.button>
+          )
+        })}
+      </div>
       <CountdownForm value={editing} onClose={() => setEditing(null)} />
     </Card>
   )

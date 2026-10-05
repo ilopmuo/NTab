@@ -32,6 +32,9 @@ export function Agenda({ tasks, events = [], names = {} }: { tasks: Task[]; even
   const nowIndex = timed.findIndex((t) => t.time > now)
   const markerAt = nowIndex === -1 ? timed.length : nowIndex
 
+  // Sin nada con hora ni de todo el día, Hoy no enseña una tarjeta vacía
+  if (!timed.length && !allDay.length) return null
+
   const marker = (
     <motion.div key="now" layout layoutDependency={markerAt} className="flex items-center gap-2 py-1">
       <span className="font-num w-11 text-right text-[12px] font-bold text-blue">{now}</span>
@@ -60,11 +63,7 @@ export function Agenda({ tasks, events = [], names = {} }: { tasks: Task[]; even
           ))}
         </div>
       )}
-      {timed.length === 0 ? (
-        <p className="py-2 text-[14px] leading-snug text-muted">
-          Nada con hora hoy. Escribe <span className="font-medium text-fg">"a las 10"</span> al crear una tarea o conecta tus calendarios en Ajustes.
-        </p>
-      ) : (
+      {timed.length > 0 && (
         <div className="space-y-0.5">
           {timed.map((it, i) => {
             const key = it.kind === 'task' ? it.task.id : it.event.id

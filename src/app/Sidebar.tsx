@@ -332,7 +332,7 @@ function SidebarContent() {
               aria-label="Nueva área"
               onClick={() => {
                 ui.sidebar(false)
-                window.location.hash = '/settings'
+                window.location.hash = '/settings/areas'
                 ui.create('area')
               }}
               className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg"

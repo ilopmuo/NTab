@@ -80,8 +80,21 @@ export function parentOf(path: string): string | undefined {
       return '/lists'
     case 'notes':
       return '/notes'
+    case 'settings':
+      return '/settings'
   }
 }
+
+/** Los apartados de Ajustes, en el orden de su portada (`/settings/<apartado>`) */
+export const SETTINGS_PAGES = {
+  avisos: 'Avisos',
+  apariencia: 'Apariencia',
+  funciones: 'Funciones y navegación',
+  areas: 'Áreas de vida',
+  calendarios: 'Calendarios',
+  conectar: 'Claude y Siri',
+  datos: 'Tus datos',
+} as const
 
 /** Cómo se llama la pantalla de una ruta: «Hoy», el nombre del proyecto, «#casa»… */
 export function titleOf(path: string): string {
@@ -93,5 +106,6 @@ export function titleOf(path: string): string {
   if (s === 'people' && id) return people.find((p) => p.id === id)?.name.split(' ')[0] ?? 'Persona'
   if (s === 'tag' && id) return `#${id}`
   if (s === 'list' && id) return 'Lista'
+  if (s === 'settings' && id) return SETTINGS_PAGES[id as keyof typeof SETTINGS_PAGES] ?? 'Ajustes'
   return TITLES[s ?? 'today'] ?? 'Hoy'
 }

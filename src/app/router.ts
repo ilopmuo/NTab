@@ -40,7 +40,7 @@ const canTransition = () =>
 // Entrar en algo (un proyecto, una persona, una etiqueta) desliza la pantalla
 // nueva desde la derecha sobre la anterior; volver la retira hacia la
 // derecha. Entre pantallas del mismo nivel (las pestañas), un fundido.
-const DEPTH: Record<string, number> = { area: 2, people: 2, tag: 2, list: 2, notes: 2, project: 3 }
+const DEPTH: Record<string, number> = { area: 2, people: 2, tag: 2, list: 2, notes: 2, project: 3, settings: 2 }
 /** Páginas sin id que viven dentro de un lugar (Algún día, en Listas; Objetivos, en Proyectos…) */
 const INSIDE = new Set(['someday', 'waiting', 'logbook', 'matrix', 'goals', 'templates', 'plan', 'focus', 'shutdown', 'review'])
 

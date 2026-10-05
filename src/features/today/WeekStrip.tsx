@@ -12,6 +12,8 @@ export function WeekStrip({ tasks }: { tasks: Task[] }) {
   const upcoming = tasks
     .filter((x) => x.dueDate && x.dueDate > t && x.dueDate <= days[6])
     .sort((a, b) => (a.dueDate! + (a.dueTime ?? '99')).localeCompare(b.dueDate! + (b.dueTime ?? '99')))
+  // Semana despejada: nada que enseñar
+  if (!upcoming.length) return null
   const count = (d: string) => upcoming.filter((x) => x.dueDate === d).length
 
   return (

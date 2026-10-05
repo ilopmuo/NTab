@@ -169,7 +169,7 @@ test('fecha límite: aviso la víspera a la hora elegida', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Entregar la memoria: mañana es la fecha límite. ¿La dejas hecha hoy?' })).toBeVisible({ timeout: 20_000 })
 
   // Se puede apagar en Ajustes → Avisos
-  await page.evaluate(() => (location.hash = '/settings'))
+  await page.evaluate(() => (location.hash = '/settings/avisos'))
   await page.getByRole('switch', { name: 'Avisar de las fechas límite' }).click()
   await expect(page.getByLabel('Hora del aviso de fecha límite')).toHaveCount(0)
 })

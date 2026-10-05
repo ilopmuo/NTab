@@ -1,7 +1,7 @@
 import { expect, openApp, quickAdd, test } from './fixtures'
 
 test('color de acento: se elige en Ajustes y se mantiene al recargar', async ({ page }) => {
-  await openApp(page, '/settings')
+  await openApp(page, '/settings/apariencia')
   const group = page.getByRole('radiogroup', { name: 'Color de acento' })
   await expect(group.getByRole('radio', { name: 'Índigo LUNO', exact: true })).toHaveAttribute('aria-checked', 'true')
   await group.getByRole('radio', { name: 'Rosa' }).click()

@@ -44,7 +44,7 @@ test('compartir con LUNO desde otra app: llega a la captura con su título y enl
 })
 
 test('traer de otra app: un CSV de Todoist y una lista pegada, con deshacer', async ({ page }) => {
-  await openApp(page, '/settings')
+  await openApp(page, '/settings/datos')
   await page.getByRole('button', { name: /Traer de otra app/ }).click()
   const sheet = page.getByRole('dialog')
   const csv = [
