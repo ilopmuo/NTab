@@ -2,9 +2,10 @@ import type { ExpenseRules } from '@/lib/expenses'
 import type { Intent } from '@/lib/intent'
 import type { Habit, HabitLog, Note, Task, Thing } from '@/db/types'
 import { db } from '@/db/db'
-import { addExpense, addHabitCount, addShoppingItems, completeHabit, completeTasks, createNote, createThing, createTracker, logTracker, restoreTasks, setTrackerLog, updateNote, updateThing } from '@/db/actions'
+import { addExpense, addIncome, addHabitCount, addShoppingItems, completeHabit, completeTasks, createNote, createThing, createTracker, logTracker, restoreTasks, setTrackerLog, updateNote, updateThing } from '@/db/actions'
 import { closest } from '@/lib/intent'
 import { money, parseExpense } from '@/lib/expenses'
+import { incomeCategoryFor, lastIncomeLike, parseIncome } from '@/lib/money'
 import { parseItems } from '@/lib/shopping'
 import { appendToNote, checklistStats } from '@/lib/noteFormat'
 import { normalize } from '@/lib/text'
@@ -108,6 +109,25 @@ export async function planCapture(intent: Intent): Promise<CapturePlan | null> {
         run: async () => {
           const e = await addExpense({ amount: p.amount, note: p.note, category: p.category, date: addDaysYmd(today(), -p.daysAgo), ...(p.tags?.length ? { tags: p.tags } : {}) })
           return { message: `${money(p.amount)} · ${p.note}`, undo: () => db.expenses.delete(e.id) }
+        },
+      }
+    }
+    case 'income': {
+      const p = parseIncome(intent.text)
+      // «Me ha llegado la nómina»: lo mismo que la última vez
+      const name = intent.text.replace(/^(?:la|el|los|las|una?)\s+/i, '').replace(/[\s,.;:]+$/, '').trim()
+      const last = p ? undefined : lastIncomeLike(await db.incomes.toArray(), name)
+      const amount = p?.amount ?? last?.amount
+      if (!amount) return { icon: 'wallet', label: 'Ingreso: falta el importe («1.850 nómina»)', run: async () => ({ message: '¿Cuánto has cobrado? Escríbelo con el importe' }) }
+      const note = p?.note ?? last?.note ?? (name ? cap(name) : 'Ingreso')
+      const category = p?.category ?? last?.category ?? incomeCategoryFor(note)
+      const days = p?.daysAgo ?? 0
+      return {
+        icon: 'wallet',
+        label: `Ingreso: +${money(amount)} · ${note}${days ? (days === 1 ? ' · ayer' : ` · hace ${days} días`) : ''}`,
+        run: async () => {
+          const e = await addIncome({ amount, note, category, date: addDaysYmd(today(), -days) })
+          return { message: `+${money(amount)} · ${note}`, undo: () => db.incomes.delete(e.id) }
         },
       }
     }

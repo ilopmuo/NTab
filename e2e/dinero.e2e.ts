@@ -119,3 +119,83 @@ test('huchas: un objetivo en euros dice cuánto apartar y se llena desde Gastos'
   await amount.press('Enter')
   await expect.poll(async () => nbsp(await page.locator('#main').innerText())).toContain('300 € de 1200 € · aparta 300 € al mes')
 })
+
+test('resumen del dinero: ingresos, lo que queda, traer movimientos del banco y la tabla del año', async ({ page }) => {
+  await openApp(page, '/money')
+  await expect(page.locator('#main h1')).toHaveText('Dinero')
+  const tabs = page.getByRole('navigation', { name: 'Dinero' })
+  await expect(tabs.getByRole('link')).toHaveText(['Resumen', 'Gastos', 'Fijos', 'Cuentas'])
+
+  const input = page.getByLabel('Apuntar ingreso')
+  await input.fill('1.850 nómina')
+  await expect(page.locator('#main')).toContainText('Nómina')
+  await input.press('Enter')
+  await expect.poll(async () => nbsp(await page.locator('#main').innerText())).toContain('+1850 €')
+  await expect(page.getByText('Ahorras el 100 % de lo que entra')).toBeVisible()
+
+  // Movimientos pegados de Excel: un gasto, un traspaso (no se trae) y otro ingreso
+  const day = await dayFromNow(page, 0)
+  const [y, m, d] = day.split('-')
+  await page.getByRole('button', { name: 'Traer movimientos del banco' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Movimientos pegados').fill(
+    [`${d}/${m}/${y}\tCOMPRA TARJ. 5540XXXXXXXX1234 MERCADONA\t-45,30`, `${d}/${m}/${y}\tTRASPASO A CUENTA DE AHORRO\t-200,00`, `${d}/${m}/${y}\tWALLAPOP BICI\t80,00`].join('\n'),
+  )
+  await dialog.getByRole('button', { name: 'Ver los movimientos' }).click()
+  await expect(dialog).toContainText('Mercadona')
+  await expect(dialog).toContainText('1 traspaso entre tus cuentas')
+  await dialog.getByRole('button', { name: 'Traer 2 movimientos' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect.poll(async () => nbsp(await page.locator('#main').innerText())).toContain('+80 €')
+  // 1930 entran, 45,30 salen
+  await expect.poll(async () => nbsp(await page.locator('#main').innerText())).toContain('+1885 €')
+  await expect(page.getByRole('heading', { name: '50/30/20' })).toBeVisible()
+  await expect(page.getByRole('region', { name: /Ingresos y gastos de \d{4}, mes a mes/ })).toContainText('Supermercado')
+
+  // El gasto traído está en Gastos, con su categoría
+  await tabs.getByRole('link', { name: 'Gastos' }).click()
+  await expect(page.locator('#main')).toContainText('Mercadona')
+  await expect(page.locator('#main')).toContainText('Supermercado')
+
+  // La captura rápida entiende los ingresos
+  await page.keyboard.press('n')
+  await page.getByRole('dialog').locator('input, textarea').first().fill('he cobrado 200 de una factura')
+  await expect(page.getByRole('dialog')).toContainText('Ingreso: +200 € · Factura')
+})
+
+test('cuentas y patrimonio: patrimonio neto, saldos de hoy y plan para salir de deudas', async ({ page }) => {
+  await openApp(page, '/accounts')
+  const add = async (kind: string, name: string, balance: string, debt?: { rate: string; payment: string }) => {
+    await page.getByRole('button', { name: /^(Nueva|Añadir la primera)$/ }).first().click()
+    const d = page.getByRole('dialog')
+    await d.getByLabel('Qué es').selectOption({ label: kind })
+    await d.getByLabel('Nombre').fill(name)
+    await d.getByLabel(/^Lo que (hay|debes) ahora/).fill(balance)
+    if (debt) {
+      await d.getByLabel('Interés anual (TIN %)').fill(debt.rate)
+      await d.getByLabel('Cuota al mes (€)').fill(debt.payment)
+    }
+    await d.getByRole('button', { name: 'Añadir' }).click()
+    await expect(d).toHaveCount(0)
+  }
+  await add('Cuenta corriente', 'BBVA', '3000')
+  await add('Inversiones (fondos, acciones…)', 'Indexa', '10000')
+  await add('Préstamo', 'Coche', '6000', { rate: '6', payment: '250' })
+  await add('Tarjeta de crédito', 'Visa', '900', { rate: '20', payment: '50' })
+  await expect.poll(async () => nbsp(await page.locator('#main').innerText())).toMatch(/Patrimonio neto\s+6100 €/)
+
+  // Bola de nieve: primero la más pequeña
+  await expect(page.getByRole('heading', { name: 'Salir de deudas' })).toBeVisible()
+  const plan = page.locator('section', { has: page.getByRole('heading', { name: 'Salir de deudas' }) })
+  await expect(plan.locator('ol li').first()).toContainText('Visa')
+  await expect(plan).toContainText('Sin deudas en')
+  await plan.getByRole('button', { name: 'Avalancha' }).click()
+  await expect(plan.locator('ol li').first()).toContainText('Visa')
+
+  // Saldos de hoy de todas a la vez
+  await page.getByRole('button', { name: 'Saldos de hoy' }).click()
+  await page.getByLabel('Saldo de BBVA (€)').fill('3500')
+  await page.getByRole('dialog').getByRole('button', { name: 'Guardar' }).click()
+  await expect.poll(async () => nbsp(await page.locator('#main').innerText())).toMatch(/Patrimonio neto\s+6600 €/)
+  await expect(page.getByRole('heading', { name: 'Independencia financiera' })).toBeVisible()
+})

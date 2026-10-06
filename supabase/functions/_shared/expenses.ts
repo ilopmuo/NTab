@@ -17,18 +17,28 @@ export const CATEGORIES: Category[] = [
   { id: 'salud', label: 'Salud', icon: 'heart' },
   { id: 'ropa', label: 'Ropa', icon: 'star' },
   { id: 'regalos', label: 'Regalos', icon: 'gift' },
+  { id: 'viajes', label: 'Viajes', icon: 'plane' },
+  { id: 'educacion', label: 'Educación', icon: 'graduation' },
+  { id: 'cuidado', label: 'Cuidado personal', icon: 'sparkles' },
+  { id: 'mascotas', label: 'Mascotas', icon: 'dog' },
+  { id: 'seguros', label: 'Seguros e impuestos', icon: 'briefcase' },
   { id: 'otros', label: 'Otros', icon: 'circle' },
 ]
 
 const RULES: [string, string[]][] = [
   ['super', ['super', 'supermercado', 'mercadona', 'carrefour', 'lidl', 'aldi', 'alcampo', 'eroski', 'dia', 'hipercor', 'compra', 'fruteria', 'carniceria', 'pescaderia', 'panaderia', 'mercado']],
   ['comer', ['cafe', 'bar', 'restaurante', 'cena', 'comida', 'almuerzo', 'desayuno', 'menu', 'pizza', 'burger', 'hamburguesa', 'kebab', 'sushi', 'cerveza', 'cana', 'copa', 'vermut', 'tapas', 'glovo', 'just eat', 'uber eats', 'takeaway', 'helado', 'churros']],
-  ['transporte', ['gasolina', 'diesel', 'gasoil', 'parking', 'aparcamiento', 'taxi', 'uber', 'cabify', 'bolt', 'metro', 'bus', 'autobus', 'tren', 'renfe', 'ave', 'peaje', 'abono', 'bici', 'avion', 'vuelo', 'itv', 'taller', 'coche']],
+  ['viajes', ['viaje', 'hotel', 'airbnb', 'booking', 'hostal', 'avion', 'vuelo', 'ryanair', 'vueling', 'iberia', 'easyjet', 'equipaje', 'crucero']],
+  ['transporte', ['gasolina', 'diesel', 'gasoil', 'parking', 'aparcamiento', 'taxi', 'uber', 'cabify', 'bolt', 'metro', 'bus', 'autobus', 'tren', 'renfe', 'ave', 'peaje', 'abono', 'bici', 'itv', 'taller', 'coche']],
   ['casa', ['alquiler', 'hipoteca', 'luz', 'agua', 'gas', 'internet', 'fibra', 'movil', 'comunidad', 'ikea', 'leroy', 'ferreteria', 'reparacion', 'fontanero', 'electricista', 'muebles', 'limpieza']],
-  ['ocio', ['cine', 'teatro', 'concierto', 'libro', 'libreria', 'juego', 'videojuego', 'netflix', 'spotify', 'hbo', 'disney', 'museo', 'entradas', 'entrada', 'viaje', 'hotel', 'airbnb', 'excursion', 'fiesta', 'discoteca']],
+  ['ocio', ['cine', 'teatro', 'concierto', 'libro', 'libreria', 'juego', 'videojuego', 'netflix', 'spotify', 'hbo', 'disney', 'museo', 'entradas', 'entrada', 'excursion', 'fiesta', 'discoteca']],
   ['salud', ['farmacia', 'medico', 'dentista', 'gimnasio', 'gym', 'fisio', 'fisioterapeuta', 'optica', 'gafas', 'psicologo', 'analisis', 'seguro medico']],
   ['ropa', ['ropa', 'zapatos', 'zapatillas', 'zara', 'primark', 'camiseta', 'pantalon', 'vestido', 'abrigo', 'chaqueta', 'calcetines', 'decathlon']],
   ['regalos', ['regalo', 'cumple', 'cumpleanos', 'boda', 'detalle', 'flores']],
+  ['educacion', ['colegio', 'academia', 'curso', 'clases', 'matricula', 'universidad', 'master', 'idiomas', 'guarderia', 'material escolar', 'libros de texto', 'udemy']],
+  ['cuidado', ['peluqueria', 'peluquero', 'barbero', 'barberia', 'estetica', 'manicura', 'depilacion', 'cosmetica', 'maquillaje', 'perfume', 'colonia', 'champu']],
+  ['mascotas', ['veterinario', 'pienso', 'perro', 'gato', 'mascota', 'arena gato', 'tiendanimal', 'kiwoko']],
+  ['seguros', ['seguro', 'ibi', 'impuesto', 'hacienda', 'irpf', 'multa', 'tasa', 'basuras', 'autonomo', 'cuota autonomos', 'gestoria']],
 ]
 
 export function fold(s: string) {
@@ -62,17 +72,22 @@ function learned(note: string, rules?: ExpenseRules): string | undefined {
   return best?.[1]
 }
 
-export function categoryFor(note: string, rules?: ExpenseRules): string {
-  const mine = learned(note, rules)
-  if (mine && CATEGORIES.some((c) => c.id === mine)) return mine
+/** La primera categoría cuyas palabras salen en el concepto (las cortas, enteras; las largas, al principio de una palabra) */
+export function matchRules(note: string, rules: [string, string[]][]): string | undefined {
   const text = ` ${fold(note)} `
   const words = text.trim().split(' ')
-  for (const [cat, list] of RULES) {
+  for (const [cat, list] of rules) {
     for (const w of list) {
       if (w.includes(' ') ? text.includes(` ${w} `) : w.length <= 3 ? words.includes(w) : words.some((x) => x.startsWith(w))) return cat
     }
   }
-  return 'otros'
+  return undefined
+}
+
+export function categoryFor(note: string, rules?: ExpenseRules): string {
+  const mine = learned(note, rules)
+  if (mine && CATEGORIES.some((c) => c.id === mine)) return mine
+  return matchRules(note, RULES) ?? 'otros'
 }
 
 export interface ParsedExpense {

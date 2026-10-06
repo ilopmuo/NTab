@@ -21,7 +21,7 @@ export interface UIState {
   /** editor de la barra lateral o de las pestañas del móvil */
   navEditor: 'sidebar' | 'tabs' | null
   /** abre el formulario de creación de la vista correspondiente */
-  creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | 'template' | 'routine' | 'thing' | 'tracker' | 'shopping' | 'smartList' | null
+  creating: 'project' | 'habit' | 'person' | 'area' | 'goal' | 'subscription' | 'template' | 'routine' | 'thing' | 'tracker' | 'shopping' | 'smartList' | 'account' | 'income' | 'bankImport' | null
   toast: { id: number; message: string; actions: ToastAction[]; icon: 'check' | 'bell'; onClick?: () => void; duration: number } | null
 }
 

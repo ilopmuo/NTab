@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Area, FocusLog, Goal, Habit, HabitLog, Interaction, Note, Person, Project, Routine, RoutineRun, Setting, Subscription, Task, Template, Thing, Tracker, TrashItem, ShoppingItem, PantryItem, JournalEntry, Expense, Recipe, MenuSlot, Countdown, Med, MedLog } from './types'
+import type { Area, FocusLog, Goal, Habit, HabitLog, Interaction, Note, Person, Project, Routine, RoutineRun, Setting, Subscription, Task, Template, Thing, Tracker, TrashItem, ShoppingItem, PantryItem, JournalEntry, Expense, Recipe, MenuSlot, Countdown, Med, MedLog, Income, Account } from './types'
 import { createTracking, type OutboxEntry } from '@/sync/tracking'
 import { computeRemindAt, withDefaultReminder } from '@/lib/reminders'
 import { computeSubRemindAt } from '@/lib/finance'
@@ -37,6 +37,8 @@ export class NTabDB extends Dexie {
   pantry!: EntityTable<PantryItem, 'id'>
   journal!: EntityTable<JournalEntry, 'id'>
   expenses!: EntityTable<Expense, 'id'>
+  incomes!: EntityTable<Income, 'id'>
+  accounts!: EntityTable<Account, 'id'>
   recipes!: EntityTable<Recipe, 'id'>
   menu!: EntityTable<MenuSlot, 'id'>
   countdowns!: EntityTable<Countdown, 'id'>
@@ -98,6 +100,10 @@ export class NTabDB extends Dexie {
       meds: 'id, archived, order',
       medLogs: 'id, medId, date',
     })
+    this.version(10).stores({
+      incomes: 'id, date, category',
+      accounts: 'id, order',
+    })
   }
 }
 
@@ -124,6 +130,8 @@ export const TABLES = [
   'pantry',
   'journal',
   'expenses',
+  'incomes',
+  'accounts',
   'recipes',
   'menu',
   'countdowns',

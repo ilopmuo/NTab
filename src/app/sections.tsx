@@ -5,6 +5,7 @@ import {
   CookingPot,
   Receipt,
   CalendarClock,
+  ChartPie,
   CalendarDays,
   ClipboardList,
   Flame,
@@ -12,6 +13,7 @@ import {
   History,
   House,
   Inbox,
+  Landmark,
   Layers,
   LayoutList,
   ListChecks,
@@ -77,8 +79,10 @@ export const SECTIONS: SectionDef[] = [
   { id: 'waiting', path: '/waiting', label: 'A la espera', short: 'A la espera', icon: UserRoundCheck, tint: 'blue', key: '' },
   { id: 'templates', path: '/templates', label: 'Plantillas', short: 'Plantillas', icon: ClipboardList, tint: 'blue', key: 'M' },
   { id: 'goals', path: '/goals', label: 'Objetivos', short: 'Objetivos', icon: Target, tint: 'blue', key: 'T' },
+  { id: 'money', path: '/money', label: 'Resumen del dinero', short: 'Resumen', icon: ChartPie, tint: 'blue', key: '' },
   { id: 'expenses', path: '/expenses', label: 'Gastos', short: 'Gastos', icon: Receipt, tint: 'blue', key: 'W' },
   { id: 'finance', path: '/finance', label: 'Pagos fijos', short: 'Fijos', icon: Wallet, tint: 'blue', key: 'F' },
+  { id: 'accounts', path: '/accounts', label: 'Cuentas y patrimonio', short: 'Cuentas', icon: Landmark, tint: 'blue', key: '' },
   { id: 'plan', path: '/plan', label: 'Planificar el día', short: 'Planificar', icon: Sun, tint: 'blue', key: '' },
   { id: 'shutdown', path: '/shutdown', label: 'Cerrar el día', short: 'Cerrar el día', icon: Moon, tint: 'blue', key: '' },
   { id: 'review', path: '/review', label: 'Revisión semanal', short: 'Revisión', icon: RefreshCcw, tint: 'blue', key: 'R' },
@@ -131,7 +135,7 @@ export const HUBS: HubDef[] = [
   hubDef('habits', 'Hábitos', 'Hábitos', Flame, [['habits', 'Hábitos'], ['routines', 'Rutinas'], ['meds', 'Medicación']]),
   hubDef('people', 'Personas', 'Personas', Users, [['people', 'Personas']]),
   hubDef('home', 'Casa', 'Casa', House, [['house', 'Tareas'], ['shopping', 'Compra'], ['menu', 'Menú'], ['things', 'Cosas']]),
-  hubDef('money', 'Dinero', 'Dinero', Wallet, [['expenses', 'Gastos'], ['finance', 'Fijos']]),
+  hubDef('money', 'Dinero', 'Dinero', Wallet, [['money', 'Resumen'], ['expenses', 'Gastos'], ['finance', 'Fijos'], ['accounts', 'Cuentas']]),
 ]
 
 export const hub = (id: string) => HUBS.find((h) => h.id === id) ?? HUBS[0]

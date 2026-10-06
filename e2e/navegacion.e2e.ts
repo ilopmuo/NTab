@@ -81,7 +81,7 @@ test.describe('en el móvil', () => {
   })
 })
 
-test('funciones: apagar Menú lo quita de las pestañas de Casa, ⌘K y su página; sin Gastos ni Pagos no hay Dinero', async ({ page }) => {
+test('funciones: apagar Menú lo quita de las pestañas de Casa, ⌘K y su página; sin Gastos, Pagos ni Cuentas no hay Dinero', async ({ page }) => {
   await openApp(page, '/today')
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
   const casa = page.getByRole('navigation', { name: 'Casa' })
@@ -95,6 +95,7 @@ test('funciones: apagar Menú lo quita de las pestañas de Casa, ⌘K y su pági
   await expect(sheet.getByRole('switch', { name: 'Menú' })).toHaveAttribute('aria-checked', 'false')
   await sheet.getByRole('switch', { name: 'Gastos' }).click()
   await sheet.getByRole('switch', { name: 'Pagos' }).click()
+  await sheet.getByRole('switch', { name: 'Cuentas y patrimonio' }).click()
   await page.keyboard.press('Escape')
   await expect(nav.getByRole('link', { name: 'Dinero' })).toHaveCount(0)
   await expect(nav.getByRole('link', { name: 'Casa' })).toBeVisible()

@@ -13,6 +13,10 @@ import { DAYS_SCHEMA } from './days.ts'
 import { logFocus, markDone, markRoutine, tellDay, tickShopping } from './day.ts'
 import { createGoal, logContactTool, savePerson, updateProject } from './organize.ts'
 import { buildSummary, eventLines, type EventLike, createNote, createProject, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { addIncomeTool, updateAccount, viewFinance } from './money.ts'
+import { CATEGORIES } from '../_shared/expenses.ts'
+import { ACCOUNT_KINDS } from '../_shared/wealth.ts'
+import { INCOME_CATEGORIES } from '../_shared/money.ts'
 
 export interface Store {
   /** los registros del usuario (con `tables`, solo de esas tablas) */
@@ -40,7 +44,7 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Datos de una persona (cumpleaños, teléfono, ideas de regalo, cada cuánto hablar): guardar_persona. Proyectos: crear_proyecto y actualizar_proyecto (terminarlo, pausarlo, fecha límite). Objetivos: crear_objetivo y actualizar_objetivo.
 - Para consultar lo que tiene apuntado en sus notas, buscar_notas; para añadir a una nota que ya tiene (ideas, la maleta…), anadir_a_nota.
 - Si vive con compañeros (CASA COMPARTIDA en el resumen), lo común va al piso con anadir_a_casa: la compra de casa, las tareas de casa (por turnos: sacar la basura, limpiar el baño) y los gastos que se reparten; «he sacado la basura» va a hecho_en_casa. Lo suyo personal, como siempre.
-- Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto (con etiqueta si es de un viaje). Si se apunta a algo que se cobra cada mes o a una prueba gratis, guárdalo con guardar_pago. Ante «tengo un rato, ¿qué hago?», usa que_hago.
+- Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto (con etiqueta si es de un viaje); si cobra algo («me ha llegado la nómina», «he vendido la bici por 80»), con apuntar_ingreso. Para «¿cuánto me queda este mes?», «¿cuánto ahorro?» o su patrimonio, ver_finanzas; si te dice el saldo de una cuenta, una inversión o lo que le queda de una deuda, actualizar_cuenta. Si se apunta a algo que se cobra cada mes o a una prueba gratis, guárdalo con guardar_pago. Ante «tengo un rato, ¿qué hago?», usa que_hago.
 - Para comidas de la semana, planificar_menu (y crear_receta para guardar recetas con sus ingredientes).
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
 - Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
@@ -411,7 +415,7 @@ export const TOOLS = [
         etiquetas: { type: 'array', items: { type: 'string' }, description: 'Para juntar gastos de un viaje o plan («roma»)' },
         importe: { type: 'number', description: 'En euros' },
         concepto: { type: 'string' },
-        categoria: { type: 'string', enum: ['super', 'comer', 'transporte', 'casa', 'ocio', 'salud', 'ropa', 'regalos', 'otros'] },
+        categoria: { type: 'string', enum: CATEGORIES.map((c) => c.id) },
         fecha: DATE,
       },
     },
@@ -423,6 +427,47 @@ export const TOOLS = [
     description: 'Gastos de un mes (por defecto el actual): total, presupuesto, proyección, por categoría con sus límites, etiquetas, los últimos 6 meses y los últimos gastos. Con «buscar», busca en todos los meses (concepto, categoría o #etiqueta) y da el total: «¿cuánto llevo gastado en Mercadona?», «¿cuánto me costó el viaje a Roma?».',
     inputSchema: { type: 'object', properties: { mes: { type: 'string', description: 'YYYY-MM' }, buscar: { type: 'string', description: 'Texto o #etiqueta' } } },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'apuntar_ingreso',
+    title: 'Apuntar un ingreso',
+    description: 'Apunta dinero que entra: la nómina, una factura cobrada, una venta, una devolución de Hacienda… Vale texto libre («1850 nómina», «ayer 80 wallapop») o importe y concepto. Sin importe, usa el de la última vez con ese concepto («me ha llegado la nómina»). Responde con lo que entra, sale y queda este mes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string' },
+        importe: { type: 'number', description: 'En euros' },
+        concepto: { type: 'string' },
+        categoria: { type: 'string', enum: INCOME_CATEGORIES.map((c) => c.id) },
+        fecha: DATE,
+      },
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'ver_finanzas',
+    title: 'Ver sus finanzas',
+    description: 'El dinero de un mes (por defecto el actual): lo que entra, lo que sale (gastos y pagos fijos) y lo que queda, tasa de ahorro, ingresos que aún no han llegado, 50/30/20, gastos por encima de lo normal y un mes normal. Y su patrimonio: cuentas, inversiones, bienes y deudas, colchón en meses, independencia financiera y cuándo acaba con las deudas.',
+    inputSchema: { type: 'object', properties: { mes: { type: 'string', description: 'YYYY-MM' } } },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'actualizar_cuenta',
+    title: 'Actualizar una cuenta o deuda',
+    description: 'Pone el saldo de hoy de una cuenta, inversión, bien o deuda (lo que se debe, en positivo); si no existe, la crea. Guarda el historial para ver cómo crece el patrimonio.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'BBVA, Indexa, Hipoteca…' },
+        saldo: { type: 'number', description: 'En euros; en una deuda, lo que queda por pagar' },
+        tipo: { type: 'string', enum: ACCOUNT_KINDS.map((k) => k.id), description: 'bank cuenta corriente, savings ahorro, cash efectivo, investment inversiones, pension plan de pensiones, property vivienda, vehicle vehículo, asset otro bien, mortgage hipoteca, loan préstamo, card tarjeta de crédito, debt otra deuda' },
+        interes: { type: 'number', description: 'Interés anual en % (TIN) de una deuda' },
+        cuota: { type: 'number', description: 'Cuota al mes de una deuda, en euros' },
+        notas: { type: 'string' },
+      },
+      required: ['nombre'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'ver_menu',
@@ -954,6 +999,8 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(readMenu(await store.load(), args, env))
     case 'ver_gastos':
       return text(listExpenses(await store.load(), args, env))
+    case 'ver_finanzas':
+      return text(viewFinance(await store.load(), args, env))
     case 'buscar_notas':
       return text(searchNotes(await store.load(), args, env))
     case 'que_hago':
@@ -965,6 +1012,8 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'planificar_menu':
     case 'crear_receta':
     case 'apuntar_gasto':
+    case 'apuntar_ingreso':
+    case 'actualizar_cuenta':
     case 'escribir_diario':
     case 'anadir_compra':
     case 'lo_he_hecho':
@@ -982,7 +1031,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'guardar_persona':
     case 'actualizar_proyecto':
     case 'crear_objetivo': {
-      const fn = { guardar_persona: savePerson, actualizar_proyecto: updateProject, crear_objetivo: createGoal, crear_habito: createHabit, actualizar_habito: updateHabit, actualizar_rutina: updateRoutine, anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContactTool, marcar_pago: markPaid }[name]
+      const fn = { guardar_persona: savePerson, actualizar_proyecto: updateProject, crear_objetivo: createGoal, crear_habito: createHabit, actualizar_habito: updateHabit, actualizar_rutina: updateRoutine, anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, apuntar_ingreso: addIncomeTool, actualizar_cuenta: updateAccount, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContactTool, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

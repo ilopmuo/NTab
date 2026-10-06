@@ -33,7 +33,8 @@ describe('funciones activables', () => {
     // Todas menos las del pie (Papelera, Ajustes) viven en un lugar: como pestaña o dentro de él
     for (const s of SECTIONS.filter((x) => !['trash', 'settings'].includes(x.id))) expect(hubOf(sectionOfRoute(s.id)), s.id).toBeTruthy()
     // Pocas pestañas: como mucho cuatro en un lugar, y solo donde hay cosas distintas
-    expect(tabsTotal()).toBeLessThanOrEqual(11)
+    // (Dinero lleva cuatro, como Monarch: resumen, movimientos, fijos y cuentas)
+    expect(tabsTotal()).toBeLessThanOrEqual(13)
     for (const h of HUBS) expect(h.tabs.length, h.id).toBeLessThanOrEqual(4)
     const tabs = HUBS.flatMap((h) => h.tabs.map((t) => t.id))
     expect(tabs).toHaveLength(new Set(tabs).size)

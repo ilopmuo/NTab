@@ -9,6 +9,7 @@
 import { normalize } from './text.ts'
 import { parseQuickAdd } from './parse.ts'
 import { parseExpense } from './expenses.ts'
+import { incomeText } from './money.ts'
 import { likeness } from './likeness.ts'
 
 const fold = (s: string) => normalize(s).trim()
@@ -118,6 +119,8 @@ export type Intent =
   /** una tarea en la lista de un proyecto */
   | { kind: 'projectTask'; text: string; project: string }
   | { kind: 'expense'; text: string }
+  /** dinero que entra: «he cobrado 1850 de la nómina», «me ha llegado la nómina» */
+  | { kind: 'income'; text: string }
   | { kind: 'task' }
 
 /**
@@ -179,6 +182,9 @@ export function classify(raw: string, names: IntentNames, today: string): Intent
     const project = names.projects?.find((p) => likeness(toList[2], p) >= 1)
     if (project) return { kind: 'projectTask', text: toList[1], project }
   }
+
+  const income = incomeText(text)
+  if (income !== undefined) return { kind: 'income', text: income }
 
   const expense = EXPENSE_PREFIX.exec(text)
   // «he pagado la luz» sin importe no es un gasto: es algo hecho

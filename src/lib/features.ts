@@ -40,8 +40,9 @@ export const FEATURES: FeatureDef[] = [
   { id: 'shopping', label: 'Compra', hint: 'Lista de la compra por pasillos', group: 'home', sections: ['shopping'], cards: [] },
   { id: 'menu', label: 'Menú', hint: 'Comidas de la semana con tus recetas', group: 'home', sections: ['menu'], cards: ['meals'] },
   { id: 'things', label: 'Cosas', hint: 'Dónde está algo, préstamos y caducidades', group: 'home', sections: ['things'], cards: ['things'] },
-  { id: 'expenses', label: 'Gastos', hint: 'Lo que gastas al mes, con presupuesto', group: 'money', sections: ['expenses'], cards: [] },
+  { id: 'expenses', label: 'Gastos', hint: 'Lo que gastas e ingresas al mes, con presupuesto y tu año', group: 'money', sections: ['expenses', 'money'], cards: [] },
   { id: 'finance', label: 'Pagos', hint: 'Suscripciones y recibos, con aviso antes del cargo', group: 'money', sections: ['finance'], cards: ['payments'] },
+  { id: 'accounts', label: 'Cuentas y patrimonio', hint: 'Patrimonio, deudas y colchón', group: 'money', sections: ['accounts'], cards: [] },
 ]
 
 export const FEATURE_GROUPS: { id: FeatureGroup; label: string }[] = [

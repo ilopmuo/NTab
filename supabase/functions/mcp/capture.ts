@@ -18,6 +18,7 @@ import { findUrl, linkTask } from '../_shared/links.ts'
 import { money, monthSummary, searchExpenses } from '../_shared/expenses.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { captureMed, medsLeft } from './meds.ts'
+import { FLOW_Q, WORTH_Q, addIncomeTool, moneyVoice } from './money.ts'
 import { houseVoice, type HouseCtx } from './casa.ts'
 import { itemKey, parseItems } from '../_shared/shopping.ts'
 import { ASKING, classify, cleanDictation, closest, infinitive, tidyTitle } from '../_shared/intent.ts'
@@ -132,7 +133,11 @@ const niceName = (s: string) => (/[a-zà-ÿ]/.test(s) ? s : s.toLowerCase().repl
 export function captureCardPayment(rows: Row[], input: CaptureInput, env: Env): WriteResult {
   const amount = readAmount(input.importe)
   if (amount === undefined || amount === 0) return { writes: [], report: ['No me ha llegado el importe del pago.'] }
-  if (amount < 0) return { writes: [], report: ['Es una devolución: no la apunto como gasto.'] }
+  // Una devolución entra como ingreso
+  if (amount < 0) {
+    const r = addIncomeTool(rows, { importe: -amount, concepto: `Devolución ${niceName(str(input.comercio).trim())}`.trim(), categoria: 'devoluciones' }, env)
+    return { ...r, report: r.writes.length ? [r.report[0].split('. Este mes')[0] + '.'] : r.report }
+  }
   const r = addExpenseTool(rows, { importe: amount, concepto: niceName(str(input.comercio).trim()) || 'Pago con tarjeta' }, env)
   return { ...r, report: r.writes.length ? [r.report[0].split('. Este mes')[0] + '.'] : r.report }
 }
@@ -700,7 +705,7 @@ function night(rows: Row[], env: Env, cx?: CaptureContext): string {
 
 const HELP = 'Puedo decirte qué tienes hoy, mañana o esta tarde, qué hacer ahora, dónde está algo, qué falta en la compra, qué hay de cenar, cuánto llevas gastado, qué estás esperando, cómo van tus proyectos o cuándo hiciste algo por última vez. Y dime «buenos días» para el resumen del día.'
 /** Lo que se responde aunque el dictado no ponga «?» ni empiece por «qué», «cuándo»… */
-const SPOKEN = [/^tengo\s+(?:un\s+rato|tiempo|\S+\s+(?:minutos|horas?))/i, /^(?:mi\s+)?agenda(?:\s|$)/i, /lista\s+de\s+la\s+compra$/i, /^a\s+qui[eé]n\s+le\s+toca\s/i]
+const SPOKEN = [FLOW_Q, WORTH_Q, /^tengo\s+(?:un\s+rato|tiempo|\S+\s+(?:minutos|horas?))/i, /^(?:mi\s+)?agenda(?:\s|$)/i, /lista\s+de\s+la\s+compra$/i, /^a\s+qui[eé]n\s+le\s+toca\s/i]
 
 /** La respuesta a una pregunta (o `undefined` si no es una de las que se saben) */
 function answer(rows: Row[], text: string, env: Env, cal?: CaptureContext): string | undefined {
@@ -708,6 +713,8 @@ function answer(rows: Row[], text: string, env: Env, cal?: CaptureContext): stri
   if (NIGHT.test(text)) return night(rows, env, cal)
   if (LAST_SAID.test(text)) return lastSaid(rows, env)
   if (SHOP_Q.test(text)) return shoppingNow(rows)
+  const mv = moneyVoice(rows, text, env)
+  if (mv) return mv
   const sp = SPENT_Q.exec(text)
   if (sp) return spent(rows, sp[1], env)
   const wh = WHERE_Q.exec(text)
@@ -887,6 +894,12 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal
     case 'projectTask': {
       const project = new Index(rows).projects.find((p) => str(p.name) === intent.project)
       return newTask(rows, intent.text, fields, env, project ? String(project.id) : undefined)
+    }
+    case 'income': {
+      const r = addIncomeTool(rows, { texto: intent.text }, env)
+      if (!r.writes.length) return { ...r, report: ['¿Cuánto has cobrado? Dilo con el importe: «he cobrado 1850 de la nómina».'] }
+      const amount = num(r.writes[0].data.amount)
+      return remember(rows, { ...r, report: [r.report[0].split('. Este mes')[0] + '.'] }, env, `el ingreso de ${money(amount)}`)
     }
     case 'expense': {
       const r = addExpenseTool(rows, { texto: intent.text }, env)

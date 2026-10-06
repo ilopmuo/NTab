@@ -128,3 +128,19 @@ export function forecast(subs: Subscription[], ref = today(), n = 12) {
   for (const m of out) m.charges.sort((a, b) => a.date.localeCompare(b.date))
   return out
 }
+
+/**
+ * Lo que cuestan al mes los pagos fijos en euros: los recibos (alquiler, luz…)
+ * cuentan como lo necesario y las suscripciones como caprichos (para el 50/30/20).
+ */
+export function fixedMonthly(subs: Pick<Subscription, 'amount' | 'cycle' | 'active' | 'currency' | 'kind'>[]) {
+  let needs = 0
+  let wants = 0
+  for (const s of subs) {
+    if (!s.active || s.currency !== 'EUR') continue
+    if (s.kind === 'bill') needs += monthly(s)
+    else wants += monthly(s)
+  }
+  const r = (n: number) => Math.round(n * 100) / 100
+  return { total: r(needs + wants), needs: r(needs), wants: r(wants) }
+}

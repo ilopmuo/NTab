@@ -1,4 +1,7 @@
 import type { MedLike, MedLogLike } from '../../supabase/functions/_shared/meds.ts'
+import type { AccountKind } from '../../supabase/functions/_shared/wealth.ts'
+
+export type { AccountKind }
 export type ID = string
 
 export type Priority = 0 | 1 | 2 | 3 // 0 ninguna, 1 baja, 2 media, 3 alta
@@ -370,6 +373,43 @@ export interface Expense {
   /** etiquetas con # para juntar los gastos de un viaje o un plan («roma») */
   tags?: string[]
   createdAt: number
+}
+
+/** Un ingreso («1.850 nómina»): lo que entra, para ver lo que queda cada mes */
+export interface Income {
+  id: ID
+  /** en euros */
+  amount: number
+  note: string
+  /** ver INCOME_CATEGORIES en src/lib/money.ts */
+  category: string
+  /** YYYY-MM-DD */
+  date: string
+  tags?: string[]
+  createdAt: number
+}
+
+/**
+ * Cuenta, bien o deuda (para el patrimonio): la cuenta del banco, el fondo
+ * indexado, el piso, la hipoteca… Las deudas guardan lo que se debe en positivo.
+ */
+export interface Account {
+  id: ID
+  name: string
+  kind: AccountKind
+  /** lo que hay ahora (o lo que se debe) */
+  balance: number
+  /** interés anual en %: el TIN de un préstamo o una tarjeta */
+  rate?: number
+  /** cuota al mes de una deuda */
+  payment?: number
+  /** saldo de cada día en que cambió, para la evolución */
+  history?: { date: string; balance: number }[]
+  notes?: string
+  archived?: boolean
+  order: number
+  createdAt: number
+  updatedAt: number
 }
 
 /** Receta: ingredientes tal cual se escriben («2 huevos», «200 g de harina») */

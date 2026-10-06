@@ -19,6 +19,8 @@ export const TITLES: Record<string, string> = {
   shopping: 'Compra',
   journal: 'Diario',
   expenses: 'Gastos',
+  money: 'Dinero',
+  accounts: 'Cuentas',
   menu: 'Menú',
   notes: 'Notas',
   people: 'Personas',

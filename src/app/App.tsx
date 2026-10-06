@@ -90,13 +90,15 @@ const loaders = {
   ThingsView: keep(() => import('@/features/things/ThingsView').then((m) => ({ default: m.ThingsView }))),
   MenuView: keep(() => import('@/features/menu/MenuView').then((m) => ({ default: m.MenuView }))),
   ExpensesView: keep(() => import('@/features/expenses/ExpensesView').then((m) => ({ default: m.ExpensesView }))),
+  MoneyView: keep(() => import('@/features/money/MoneyView').then((m) => ({ default: m.MoneyView }))),
+  AccountsView: keep(() => import('@/features/money/AccountsView').then((m) => ({ default: m.AccountsView }))),
   JournalView: keep(() => import('@/features/journal/JournalView').then((m) => ({ default: m.JournalView }))),
   ShoppingView: keep(() => import('@/features/shopping/ShoppingView').then((m) => ({ default: m.ShoppingView }))),
   MedsView: keep(() => import('@/features/meds/MedsView').then((m) => ({ default: m.MedsView }))),
   WaitingView: keep(() => import('@/features/waiting/WaitingView').then((m) => ({ default: m.WaitingView }))),
   RoutinesView: keep(() => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView }))),
 }
-const AreaView = warm(loaders.AreaView), CalendarView = warm(loaders.CalendarView), FinanceView = warm(loaders.FinanceView), FocusView = warm(loaders.FocusView), HouseView = warm(loaders.HouseView), GoalsView = warm(loaders.GoalsView), HabitsView = warm(loaders.HabitsView), InboxView = warm(loaders.InboxView), LogbookView = warm(loaders.LogbookView), NotesView = warm(loaders.NotesView), PlanView = warm(loaders.PlanView), ShutdownView = warm(loaders.ShutdownView), TrashView = warm(loaders.TrashView), TemplatesView = warm(loaders.TemplatesView), PeopleView = warm(loaders.PeopleView), PersonView = warm(loaders.PersonView), ProjectView = warm(loaders.ProjectView), ProjectsView = warm(loaders.ProjectsView), ReviewView = warm(loaders.ReviewView), SettingsView = warm(loaders.SettingsView), TagView = warm(loaders.TagView), MoreView = warm(loaders.MoreView), SomedayView = warm(loaders.SomedayView), ListsHome = warm(loaders.ListsHome), MatrixView = warm(loaders.MatrixView), SmartListView = warm(loaders.SmartListView), RoutinesView = warm(loaders.RoutinesView), ThingsView = warm(loaders.ThingsView), MedsView = warm(loaders.MedsView), WaitingView = warm(loaders.WaitingView), ShoppingView = warm(loaders.ShoppingView), JournalView = warm(loaders.JournalView), ExpensesView = warm(loaders.ExpensesView), MenuView = warm(loaders.MenuView)
+const AreaView = warm(loaders.AreaView), CalendarView = warm(loaders.CalendarView), FinanceView = warm(loaders.FinanceView), FocusView = warm(loaders.FocusView), HouseView = warm(loaders.HouseView), GoalsView = warm(loaders.GoalsView), HabitsView = warm(loaders.HabitsView), InboxView = warm(loaders.InboxView), LogbookView = warm(loaders.LogbookView), NotesView = warm(loaders.NotesView), PlanView = warm(loaders.PlanView), ShutdownView = warm(loaders.ShutdownView), TrashView = warm(loaders.TrashView), TemplatesView = warm(loaders.TemplatesView), PeopleView = warm(loaders.PeopleView), PersonView = warm(loaders.PersonView), ProjectView = warm(loaders.ProjectView), ProjectsView = warm(loaders.ProjectsView), ReviewView = warm(loaders.ReviewView), SettingsView = warm(loaders.SettingsView), TagView = warm(loaders.TagView), MoreView = warm(loaders.MoreView), SomedayView = warm(loaders.SomedayView), ListsHome = warm(loaders.ListsHome), MatrixView = warm(loaders.MatrixView), SmartListView = warm(loaders.SmartListView), RoutinesView = warm(loaders.RoutinesView), ThingsView = warm(loaders.ThingsView), MedsView = warm(loaders.MedsView), WaitingView = warm(loaders.WaitingView), ShoppingView = warm(loaders.ShoppingView), JournalView = warm(loaders.JournalView), ExpensesView = warm(loaders.ExpensesView), MoneyView = warm(loaders.MoneyView), AccountsView = warm(loaders.AccountsView), MenuView = warm(loaders.MenuView)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
@@ -153,6 +155,8 @@ const ROUTE_CODE: Record<string, () => Promise<unknown>> = {
   shopping: loaders.ShoppingView,
   journal: loaders.JournalView,
   expenses: loaders.ExpensesView,
+  money: loaders.MoneyView,
+  accounts: loaders.AccountsView,
   menu: loaders.MenuView,
   notes: loaders.NotesView,
   people: loaders.PeopleView,
@@ -269,6 +273,10 @@ function Screen() {
       return <JournalView date={id} />
     case 'expenses':
       return <ExpensesView />
+    case 'money':
+      return <MoneyView />
+    case 'accounts':
+      return <AccountsView />
     case 'menu':
       return <MenuView />
     case 'notes':
