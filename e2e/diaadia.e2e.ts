@@ -105,3 +105,26 @@ test('personas: fechas importantes (en Hoy) e ideas de regalo', async ({ page })
   await page.evaluate(() => (location.hash = '/today'))
   await expect(page.locator('#main')).toContainText('Aniversario de boda · Ana')
 })
+
+test('hábitos en el iPad: el nombre se lee entero y se marca con un toque', async ({ page }) => {
+  // iPad en horizontal: con la barra lateral, la tarjeta no cabe en una fila
+  await page.setViewportSize({ width: 1180, height: 820 })
+  await openApp(page, '/habits')
+  const name = 'Estirar la espalda diez minutos después de trabajar'
+  await page.getByRole('button', { name: 'Nuevo' }).first().click()
+  await page.getByPlaceholder('Ej. Beber 2 L de agua').fill(name)
+  await page.getByRole('button', { name: 'Crear hábito' }).click()
+
+  const title = page.locator('#main').getByText(name, { exact: true })
+  await expect(title).toBeVisible()
+  // Sin cortar: ni puntos suspensivos ni texto que no quepa
+  expect(await title.evaluate((el) => getComputedStyle(el).textOverflow !== 'ellipsis' && el.scrollWidth <= el.clientWidth)).toBe(true)
+
+  const mark = page.getByRole('button', { name: `${name}: hecho hoy` })
+  await expect(mark).toHaveAttribute('aria-pressed', 'false')
+  await mark.click()
+  await expect(mark).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('Hoy llevas 1 de 1.')).toBeVisible()
+  await mark.click()
+  await expect(mark).toHaveAttribute('aria-pressed', 'false')
+})

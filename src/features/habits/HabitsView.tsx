@@ -120,10 +120,11 @@ export function HabitsView({ focus }: { focus?: 'trackers' }) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...spring, delay: idx * 0.04 }}
-              className="glass relative flex flex-col gap-4 rounded-[22px] p-4 pr-12 @[900px]:flex-row @[900px]:items-center"
+              className="glass flex flex-col gap-3 rounded-[22px] p-4 @[1100px]:flex-row @[1100px]:items-center @[1100px]:gap-5"
             >
-              <HabitMenu habit={h} paused={!!paused} dayOff={dayOff} today={today} onEdit={() => setEditing(h)} />
-              <button type="button" onClick={() => setEditing(h)} className="flex min-w-0 items-center gap-3 text-left @[900px]:w-72">
+              {/* Nombre entero (sin cortar) y, al lado, marcar hoy: en tablet y móvil, arriba; con sitio de sobra, a la izquierda */}
+              <div className="flex items-center gap-2 @[1100px]:w-[28rem] @[1100px]:shrink-0">
+              <button type="button" onClick={() => setEditing(h)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 <div className="relative shrink-0">
                   <ProgressRing value={power} size={52} stroke={5} color={paused ? 'var(--c-muted)' : 'var(--c-green)'} track="var(--c-fill)" delay={0.15 + idx * 0.05} />
                   <span className="absolute inset-0 flex items-center justify-center text-fg">
@@ -131,7 +132,7 @@ export function HabitsView({ focus }: { focus?: 'trackers' }) {
                   </span>
                 </div>
                 <span className="min-w-0">
-                  <span className="block truncate text-[16px] font-semibold">{h.name}</span>
+                  <span className="block text-[16px] leading-snug font-semibold break-words">{h.name}</span>
                   <span className="flex flex-wrap items-center gap-x-2 text-[13px] text-muted">
                     <span title={`Racha: ${streakLabel(h, s)}`} className={cx('font-num inline-flex items-center gap-0.5 font-bold', s > 0 ? 'text-orange' : 'text-muted')}>
                       <Flame size={13} strokeWidth={2.6} /> {s}
@@ -159,19 +160,11 @@ export function HabitsView({ focus }: { focus?: 'trackers' }) {
                   )}
                 </span>
               </button>
-              {counted && !paused && (
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => void bumpHabit(h, today)}
-                  aria-label={`Sumar uno a ${h.name}`}
-                  className={cx('flex h-10 shrink-0 items-center gap-1.5 self-start rounded-full px-4 text-[15px] font-bold @[900px]:self-center', done.has(today) ? 'bg-green text-on-green' : 'bg-accent-fill text-white')}
-                >
-                  <Plus size={16} strokeWidth={3} /> 1
-                </motion.button>
-              )}
+              {!paused && <TodayButton habit={h} done={done.has(today)} counted={counted} today={today} />}
+              <HabitMenu habit={h} paused={!!paused} dayOff={dayOff} today={today} onEdit={() => setEditing(h)} />
+              </div>
 
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 @[1100px]:shrink-0">
                 {last7.map((d) => {
                   const scheduled = isScheduled(h, d)
                   const off = onBreak(h, d)
@@ -238,10 +231,38 @@ export function HabitsView({ focus }: { focus?: 'trackers' }) {
   )
 }
 
+/** Marcar hoy con un toque: «Hecho» (o deshacerlo) o, si es de cantidad, «+1» */
+function TodayButton({ habit: h, done, counted, today }: { habit: Habit; done: boolean; counted: boolean; today: string }) {
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.9 }}
+      onClick={() => (counted ? void bumpHabit(h, today) : (haptic(), void toggleHabit(h.id, today)))}
+      aria-label={counted ? `Sumar uno a ${h.name}` : `${h.name}: hecho hoy`}
+      aria-pressed={counted ? undefined : done}
+      className={cx(
+        // En el móvil, un círculo de 44 px para dejarle sitio al nombre
+        'flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-[15px] font-bold transition-colors @[480px]:px-4',
+        done ? 'bg-green text-on-green' : 'bg-accent-fill text-white',
+      )}
+    >
+      {counted ? (
+        <>
+          <Plus size={16} strokeWidth={3} /> 1
+        </>
+      ) : (
+        <>
+          <Check size={17} strokeWidth={3} />
+          <span className="hidden @[480px]:inline">{done ? 'Hecho' : 'Hoy'}</span>
+        </>
+      )}
+    </motion.button>
+  )
+}
+
 /** «…» de un hábito: hoy no toca, pausar o reanudar, editar */
 function HabitMenu({ habit, paused, dayOff, today, onEdit }: { habit: Habit; paused: boolean; dayOff: boolean; today: string; onEdit: () => void }) {
   return (
-    <div className="absolute top-3 right-3 z-10">
     <Menu
       label={`Opciones de ${habit.name}`}
       trigger={<MoreHorizontal size={16} strokeWidth={2.4} />}
@@ -267,7 +288,6 @@ function HabitMenu({ habit, paused, dayOff, today, onEdit }: { habit: Habit; pau
         { label: 'Editar', icon: <Pencil size={14} />, onSelect: onEdit },
       ]}
     />
-    </div>
   )
 }
 
@@ -275,7 +295,7 @@ function Heatmap({ habit, done, counts, today }: { habit: Habit; done: Set<strin
   const start = addDaysYmd(weekStart(today), -(WEEKS - 1) * 7)
   const weeks = Array.from({ length: WEEKS }, (_, w) => Array.from({ length: 7 }, (_, d) => addDaysYmd(start, w * 7 + d)))
   return (
-    <div className="hidden flex-1 justify-end gap-[3px] @[900px]:flex">
+    <div className="hidden min-w-0 flex-1 justify-end gap-[3px] overflow-hidden @[1100px]:flex">
       {weeks.map((week, i) => (
         <div key={i} className="flex flex-col gap-[3px]">
           {week.map((d) => {
