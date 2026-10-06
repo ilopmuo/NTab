@@ -10,7 +10,9 @@ import { takeMed, viewMeds } from './meds.ts'
 import { createHabit, listHabits, updateHabit } from './habits.ts'
 import { createRoutine, deleteRoutines, listRoutines, updateRoutine } from './routines.ts'
 import { DAYS_SCHEMA } from './days.ts'
-import { buildSummary, eventLines, type EventLike, createNote, createProject, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
+import { logFocus, markDone, markRoutine, tellDay, tickShopping } from './day.ts'
+import { createGoal, logContactTool, savePerson, updateProject } from './organize.ts'
+import { buildSummary, eventLines, type EventLike, createNote, createProject, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
   /** los registros del usuario (con `tables`, solo de esas tablas) */
@@ -33,7 +35,9 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
 - Para un hábito nuevo («quiero beber 8 vasos de agua al día»), crear_habito; para verlos con su racha, ver_habitos; para cambiarlo o dejarlo, actualizar_habito. «Me he bebido 2 vasos» se marca con marcar_habito.
 - Rutinas (listas de pasos que hace siempre igual): crear_rutina, ver_rutinas y actualizar_rutina. borrar_rutina las manda a la Papelera: confirma con él antes de borrar.
-- Si te cuenta qué tal su día y quiere guardarlo, usa escribir_diario.
+- Si te cuenta su día (lo que ha hecho, con quién ha hablado, qué ha comido, en qué ha gastado, cómo se siente, lo que tiene que hacer mañana…), apúntalo TODO de una vez con contar_dia: rellena cada apartado que salga y escribe en el diario un resumen con sus palabras. Luego cuéntale en pocas líneas qué has apuntado y pregunta lo que no encajó.
+- «He hecho X» suelto: marcar_hecho (completa la tarea, el hábito, la rutina o «Última vez» que encaje). Rato concentrado en algo: apuntar_foco. «He comprado…»: tachar_compra.
+- Datos de una persona (cumpleaños, teléfono, ideas de regalo, cada cuánto hablar): guardar_persona. Proyectos: crear_proyecto y actualizar_proyecto (terminarlo, pausarlo, fecha límite). Objetivos: crear_objetivo y actualizar_objetivo.
 - Para consultar lo que tiene apuntado en sus notas, buscar_notas; para añadir a una nota que ya tiene (ideas, la maleta…), anadir_a_nota.
 - Si vive con compañeros (CASA COMPARTIDA en el resumen), lo común va al piso con anadir_a_casa: la compra de casa, las tareas de casa (por turnos: sacar la basura, limpiar el baño) y los gastos que se reparten; «he sacado la basura» va a hecho_en_casa. Lo suyo personal, como siempre.
 - Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto (con etiqueta si es de un viaje). Si se apunta a algo que se cobra cada mes o a una prueba gratis, guárdalo con guardar_pago. Ante «tengo un rato, ¿qué hago?», usa que_hago.
@@ -50,6 +54,30 @@ const PRIORITY = { type: 'integer', minimum: 0, maximum: 3, description: '0 ning
 const NAG = { type: 'integer', minimum: 5, description: 'Repetir el aviso cada N minutos hasta que la marque como hecha (para lo que no puede olvidar: pastillas, llamadas…). Necesita hora.' }
 const DURATION = { type: 'integer', minimum: 1, description: 'Minutos que calculas que llevará (para no sobrecargar el día)' }
 
+/** Una tarea nueva (crear_tareas y contar_dia) */
+const TASK_ITEM = {
+  type: 'object',
+  properties: {
+    titulo: { type: 'string', description: 'Corto, empieza por un verbo' },
+    fecha: DATE,
+    hora: TIME,
+    fecha_limite: { ...DATE, description: 'YYYY-MM-DD: para cuándo tiene que estar hecha («antes del viernes»), aparte de cuándo hacerla' },
+    algun_dia: { type: 'boolean', description: 'Para «algún día»: sin fecha y fuera de la Bandeja (ideas, lo que no es ahora)' },
+    prioridad: PRIORITY,
+    notas: { type: 'string' },
+    proyecto: { type: 'string', description: 'Nombre de un proyecto existente' },
+    seccion: { type: 'string', description: 'Sección dentro del proyecto («Diseño»); si no existe, se crea' },
+    etiquetas: { type: 'array', items: { type: 'string' } },
+    subtareas: { type: 'array', items: { type: 'string' } },
+    personas: { type: 'array', items: { type: 'string' }, description: 'Personas relacionadas (por nombre): la tarea aparece en su ficha' },
+    duracion: DURATION,
+    insistir: NAG,
+    importante: { type: 'boolean', description: 'De lo importante del día (hasta 3; de hoy si no tiene fecha)' },
+    esperando: { type: 'string', description: 'A la espera de esta persona (algo que depende de otro: «le he pedido a Ana el presupuesto»). Sin fecha, vuelve en 3 días para que pregunte' },
+  },
+  required: ['titulo'],
+}
+
 export const TOOLS = [
   {
     name: 'ver_resumen',
@@ -58,6 +86,68 @@ export const TOOLS = [
       'Resumen completo: fecha y hora actuales, tareas atrasadas, con fecha y sin fecha (con sus id), proyectos, objetivos, hábitos de hoy, pagos próximos, personas (cumpleaños y a quién llamar), los huecos libres de hoy y mañana y su foco (hoy, la semana, la racha y sus mejores horas). Úsalo antes de responder sobre la agenda o planificar.',
     inputSchema: { type: 'object', properties: {} },
     annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  {
+    name: 'contar_dia',
+    title: 'Contar el día',
+    description:
+      'Apunta de una vez todo lo que cuenta de su día (por defecto hoy): lo hecho (completa tareas, hábitos, rutinas o «Última vez»), hábitos con cantidad, rutinas, ratos de foco, con quién ha hablado (crea a la persona si no está), comida y cena, gastos, lo comprado, lo que tiene que hacer (sin fecha, para el día siguiente) y el diario con su ánimo. Rellena solo lo que haya contado. Devuelve qué se apuntó y qué no encajó.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fecha: { ...DATE, description: 'YYYY-MM-DD del día que cuenta (por defecto hoy; no futura)' },
+        hecho: { type: 'array', items: { type: 'string' }, description: 'Lo que ha hecho, una cosa por elemento y como lo dice: «he llamado al banco», «regar las plantas»' },
+        habitos: {
+          type: 'array',
+          items: { type: 'object', properties: { habito: { type: 'string' }, cantidad: { type: 'number', description: 'Cuánto sumar (2 vasos)' } }, required: ['habito'] },
+          description: 'Hábitos con cantidad o que quieras marcar por su nombre',
+        },
+        rutinas: { type: 'array', items: { type: 'string' }, description: 'Rutinas que ha hecho enteras (por su nombre)' },
+        foco: {
+          type: 'array',
+          items: { type: 'object', properties: { que: { type: 'string', description: 'En qué (una tarea o algo libre)' }, minutos: { type: 'integer', minimum: 1, maximum: 720 }, hora_fin: TIME }, required: ['que', 'minutos'] },
+          description: 'Ratos concentrado en algo («2 horas con el informe»)',
+        },
+        personas: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { nombre: { type: 'string' }, tipo: { type: 'string', enum: ['llamada', 'mensaje', 'reunión', 'email', 'otro'] }, resumen: { type: 'string', description: 'De qué hablasteis' } },
+            required: ['nombre'],
+          },
+          description: 'Con quién ha hablado o quedado',
+        },
+        comida: { type: 'string', description: 'Qué ha comido a mediodía' },
+        cena: { type: 'string', description: 'Qué ha cenado' },
+        gastos: {
+          type: 'array',
+          items: { type: 'object', properties: { texto: { type: 'string', description: '«12,50 café»' }, importe: { type: 'number' }, concepto: { type: 'string' }, categoria: { type: 'string', enum: ['super', 'comer', 'transporte', 'casa', 'ocio', 'salud', 'ropa', 'regalos', 'otros'] } } },
+          description: 'En qué ha gastado (texto libre o importe y concepto)',
+        },
+        comprado: { type: 'array', items: { type: 'string' }, description: 'Lo que ha comprado: se tacha de la lista de la compra' },
+        tareas: { type: 'array', items: TASK_ITEM, description: 'Lo que tiene que hacer. Sin fecha, van para el día siguiente al que cuenta' },
+        diario: {
+          type: 'object',
+          properties: {
+            texto: { type: 'string', description: 'Resumen del día con sus palabras (se añade a lo que hubiera)' },
+            animo: { type: 'integer', minimum: 1, maximum: 5, description: '1 muy mal … 5 muy bien' },
+            cosas_buenas: { type: 'array', items: { type: 'string' }, maxItems: 3 },
+          },
+        },
+      },
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'marcar_hecho',
+    title: 'Marcar como hecho',
+    description: 'Marca lo que ha hecho («he llamado al banco», «he regado las plantas»): completa la tarea pendiente que encaje; si no, el hábito, la rutina o «Última vez». Si nada encaja, lo dice.',
+    inputSchema: {
+      type: 'object',
+      properties: { cosas: { type: 'array', items: { type: 'string' }, minItems: 1, description: 'Una cosa por elemento, como la dice' }, fecha: { ...DATE, description: 'Para hábitos, rutinas y «Última vez»: el día (por defecto hoy)' } },
+      required: ['cosas'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
     name: 'ver_eventos',
@@ -97,28 +187,7 @@ export const TOOLS = [
         tareas: {
           type: 'array',
           minItems: 1,
-          items: {
-            type: 'object',
-            properties: {
-              titulo: { type: 'string', description: 'Corto, empieza por un verbo' },
-              fecha: DATE,
-              hora: TIME,
-              fecha_limite: { ...DATE, description: 'YYYY-MM-DD: para cuándo tiene que estar hecha («antes del viernes»), aparte de cuándo hacerla' },
-              algun_dia: { type: 'boolean', description: 'Para «algún día»: sin fecha y fuera de la Bandeja (ideas, lo que no es ahora)' },
-              prioridad: PRIORITY,
-              notas: { type: 'string' },
-              proyecto: { type: 'string', description: 'Nombre de un proyecto existente' },
-              seccion: { type: 'string', description: 'Sección dentro del proyecto («Diseño»); si no existe, se crea' },
-              etiquetas: { type: 'array', items: { type: 'string' } },
-              subtareas: { type: 'array', items: { type: 'string' } },
-              personas: { type: 'array', items: { type: 'string' }, description: 'Personas relacionadas (por nombre): la tarea aparece en su ficha' },
-              duracion: DURATION,
-              insistir: NAG,
-              importante: { type: 'boolean', description: 'De lo importante del día (hasta 3; de hoy si no tiene fecha)' },
-              esperando: { type: 'string', description: 'A la espera de esta persona (algo que depende de otro: «le he pedido a Ana el presupuesto»). Sin fecha, vuelve en 3 días para que pregunte' },
-            },
-            required: ['titulo'],
-          },
+          items: TASK_ITEM,
         },
       },
       required: ['tareas'],
@@ -274,6 +343,24 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'actualizar_proyecto',
+    title: 'Actualizar proyecto',
+    description: 'Cambia un proyecto por su nombre: terminarlo, pausarlo o reactivarlo (estado), nombre, fecha límite (null la quita), descripción o área.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        proyecto: { type: 'string', description: 'Nombre del proyecto' },
+        estado: { type: 'string', enum: ['activo', 'pausado', 'terminado'] },
+        nombre: { type: 'string', description: 'Nombre nuevo' },
+        limite: { type: ['string', 'null'], description: 'YYYY-MM-DD, o null para quitarla' },
+        descripcion: { type: 'string', description: '¿Qué significa terminarlo?' },
+        area: { type: ['string', 'null'], description: 'Área existente, o null para quitarla' },
+      },
+      required: ['proyecto'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'donde_esta',
     title: 'Dónde está',
     description: 'Busca en sus Cosas: dónde guardó algo, qué ha prestado y a quién, qué le han prestado y qué caduca. Úsalo ante «¿dónde dejé…?», «¿quién tiene mi…?», «¿cuándo caduca…?».',
@@ -386,6 +473,22 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
+    name: 'apuntar_foco',
+    title: 'Apuntar foco',
+    description: 'Apunta un rato de trabajo concentrado («he estado 2 horas con el informe»), como el modo foco de la app: cuenta para su foco del día, la semana y la racha.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        que: { type: 'string', description: 'En qué: una tarea (se enlaza si encaja) o algo libre' },
+        minutos: { type: 'integer', minimum: 1, maximum: 720 },
+        fecha: DATE,
+        hora_fin: { ...TIME, description: 'HH:MM a la que terminó (por defecto, ahora)' },
+      },
+      required: ['que', 'minutos'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
     name: 'que_hago',
     title: '¿Qué hago ahora?',
     description: 'Propone qué tareas hacer ahora según el tiempo que tiene y su energía (atrasadas, para hoy, prioridad, lo que cabe). Úsalo ante «tengo media hora, ¿qué hago?».',
@@ -484,6 +587,17 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'tachar_compra',
+    title: 'Tachar de la compra',
+    description: 'Tacha de la lista de la compra lo que ya ha comprado («he comprado leche y pan»). Dice lo que no estaba en la lista.',
+    inputSchema: {
+      type: 'object',
+      properties: { cosas: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Lo comprado' } },
+      required: ['cosas'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'ver_medicacion',
     title: 'Ver la medicación',
     description: '¿Se ha tomado la pastilla? Lo de hoy de cada medicamento (tomada y a qué hora, pendiente, sin tomar), cuántas quedan y cómo ha cumplido las dos últimas semanas.',
@@ -577,6 +691,22 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   },
   {
+    name: 'marcar_rutina',
+    title: 'Marcar rutina',
+    description: 'Marca una rutina como hecha un día (por defecto hoy), entera o solo algunos pasos; con hecha=false los desmarca.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rutina: { type: 'string', description: 'Nombre de la rutina' },
+        pasos: { type: 'array', items: { type: 'string' }, description: 'Solo estos pasos (por su nombre); sin ellos, todos' },
+        fecha: DATE,
+        hecha: { type: 'boolean', description: 'false para desmarcar' },
+      },
+      required: ['rutina'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'actualizar_objetivo',
     title: 'Actualizar objetivo',
     description: 'Actualiza un objetivo: poner la cifra (cifra), sumarle algo (sumar, p. ej. 1 libro más) o marcarlo como conseguido.',
@@ -593,9 +723,51 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'crear_objetivo',
+    title: 'Crear objetivo',
+    description: 'Crea un objetivo. Con cifra (y unidad) se mide con un número que se va sumando («leer 12 libros»); con etiqueta y cifra, cuenta las tareas hechas con esa #etiqueta; con proyectos, por sus proyectos (que quedan vinculados).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        titulo: { type: 'string' },
+        por_que: { type: 'string', description: 'Por qué le importa' },
+        cifra: { type: 'number', description: 'A cuánto quiere llegar' },
+        unidad: { type: 'string', description: '«libros», «kg», «€»' },
+        etiqueta: { type: 'string', description: 'Contar las tareas hechas con esta etiqueta' },
+        proyectos: { type: 'array', items: { type: 'string' }, description: 'Proyectos existentes que lo forman' },
+        limite: DATE,
+        area: { type: 'string', description: 'Área de vida existente' },
+      },
+      required: ['titulo'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'guardar_persona',
+    title: 'Guardar persona',
+    description: 'Añade una persona o completa su ficha por su nombre: cumpleaños, teléfono, email, empresa, cargo, notas (se añaden), etiquetas, cada cuántos días quiere hablar con ella e ideas de regalo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string' },
+        cumpleanos: { type: 'string', description: 'MM-DD, o YYYY-MM-DD si sabe el año' },
+        telefono: { type: 'string' },
+        email: { type: 'string' },
+        empresa: { type: 'string' },
+        cargo: { type: 'string' },
+        notas: { type: 'string', description: 'Lo que conviene recordar de ella (se añade a lo que hubiera)' },
+        etiquetas: { type: 'array', items: { type: 'string' }, description: '«familia», «trabajo»…' },
+        cada_dias: { type: 'integer', minimum: 1, maximum: 365, description: 'Cada cuántos días quiere hablar con ella (LUNO avisa)' },
+        idea_regalo: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['nombre'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
     name: 'registrar_contacto',
     title: 'Registrar contacto',
-    description: 'Apunta que ha hablado con una persona (llamada, mensaje, reunión…). Actualiza su último contacto.',
+    description: 'Apunta que ha hablado con una persona (llamada, mensaje, reunión…) y actualiza su último contacto. Si no está en sus personas, la añade.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -743,6 +915,16 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(listHabits(rows, args, env))
     case 'ver_rutinas':
       return text(listRoutines(rows, args, env))
+    case 'contar_dia':
+    case 'marcar_hecho':
+    case 'marcar_rutina':
+    case 'apuntar_foco':
+    case 'tachar_compra': {
+      const fn = { contar_dia: tellDay, marcar_hecho: markDone, marcar_rutina: markRoutine, apuntar_foco: logFocus, tachar_compra: tickShopping }[name]
+      const r = fn(rows, args, env)
+      if (r.writes.length || r.deletes?.length) await store.save(r.writes, r.deletes)
+      return text(r.report.join('\n'), !r.writes.length && !r.deletes?.length)
+    }
     case 'borrar_rutina': {
       const r = deleteRoutines(rows, args, env)
       if (r.writes.length || r.deletes.length) await store.save(r.writes, r.deletes)
@@ -796,8 +978,11 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'marcar_pago':
     case 'crear_habito':
     case 'actualizar_habito':
-    case 'actualizar_rutina': {
-      const fn = { crear_habito: createHabit, actualizar_habito: updateHabit, actualizar_rutina: updateRoutine, anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+    case 'actualizar_rutina':
+    case 'guardar_persona':
+    case 'actualizar_proyecto':
+    case 'crear_objetivo': {
+      const fn = { guardar_persona: savePerson, actualizar_proyecto: updateProject, crear_objetivo: createGoal, crear_habito: createHabit, actualizar_habito: updateHabit, actualizar_rutina: updateRoutine, anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContactTool, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

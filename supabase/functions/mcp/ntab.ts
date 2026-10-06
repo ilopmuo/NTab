@@ -1045,7 +1045,7 @@ export function logContact(rows: Row[], args: { persona?: string; tipo?: string;
   const interaction: Data = { id, personId: person.id, date, kind: KINDS[fold(str(args.tipo))] ?? 'other', summary: str(args.resumen), createdAt: env.now }
   const writes: Row[] = [{ tbl: 'interactions', id, data: interaction }]
   if (!isYmd(person.lastContact) || (person.lastContact as string) < date) writes.push({ tbl: 'people', id: String(person.id), data: { ...person, lastContact: date } })
-  return { writes, report: [`Apuntado: ${fold(str(args.tipo)) || 'contacto'} con ${str(person.name)} el ${date}.`] }
+  return { writes, report: [`Apuntado: ${KINDS[fold(str(args.tipo))] ? str(args.tipo).trim().toLowerCase() : 'contacto'} con ${str(person.name)} el ${date}.`] }
 }
 
 /** Siguiente cargo, respetando el día del mes original (31 → 28 → 31) */

@@ -292,16 +292,24 @@ const ARTICLE = /^(?:el|la|los|las|mi|mis|un|una|unos|unas)\s+/i
 // «he comprado leche y pan», «ya tengo pan» (si está en la compra: si no, es otra cosa)
 const BOUGHT_SAID = /^(?:ya\s+(?:he\s+comprado|tengo|compr[eé])|he\s+comprado|compr[eé])\s+(.+)$/i
 
-/** Tacha de la compra lo que ya tienes («quita la leche de la compra», «he comprado pan») */
-function tick(rows: Row[], items: string, env: Env, strict: boolean): CaptureResult | undefined {
-  const wanted = parseItems(items.replace(ARTICLE, '')).map((i) => i.name)
+/** Lo de la compra (sin tachar) que encaja con cada cosa dicha: «2 barras de pan» ≈ «Pan» */
+export function shoppingHits(rows: Row[], wanted: string[]): { hits: Row[]; missing: string[] } {
   const open = rows.filter((r) => r.tbl === 'shopping' && !r.data.checked)
   const hits: Row[] = []
+  const missing: string[] = []
   for (const w of wanted) {
     const k = itemKey(w)
     const hit = open.find((r) => itemKey(str(r.data.name)) === k) ?? open.find((r) => fold(str(r.data.name)).includes(fold(w)) || fold(w).includes(fold(str(r.data.name))))
-    if (hit && !hits.includes(hit)) hits.push(hit)
+    if (!hit) missing.push(w)
+    else if (!hits.includes(hit)) hits.push(hit)
   }
+  return { hits, missing }
+}
+
+/** Tacha de la compra lo que ya tienes («quita la leche de la compra», «he comprado pan») */
+function tick(rows: Row[], items: string, env: Env, strict: boolean): CaptureResult | undefined {
+  const wanted = parseItems(items.replace(ARTICLE, '')).map((i) => i.name)
+  const { hits } = shoppingHits(rows, wanted)
   if (!hits.length) return strict ? { writes: [], report: [`No veo ${list(wanted.map((w) => w.toLowerCase()))} en la compra.`] } : undefined
   const names = hits.map((r) => str(r.data.name))
   return remember(rows, { writes: hits.map((r) => ({ tbl: 'shopping', id: r.id, data: { ...r.data, checked: 1 } })), report: [`Tachado de la compra: ${list(names)}.`] }, env, `${list(names)}, otra vez en la compra`)
