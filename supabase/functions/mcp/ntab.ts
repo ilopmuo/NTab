@@ -103,6 +103,21 @@ export function findByName<T extends Data>(items: T[], name: string, key = 'name
   return items.find((x) => fold(str(x[key])) === n) ?? items.find((x) => fold(str(x[key])).includes(n) || n.includes(fold(str(x[key]))))
 }
 
+/**
+ * Un registro por nombre para cambiarlo o borrarlo: el exacto o, si no, el
+ * único que lo contenga; si encajan varios o ninguno, el error para Claude.
+ */
+export function pickByName(items: Row[], name: string, noun: { none: string; many: string; plural: string; empty: string }): { row?: Row; error?: string } {
+  const n = fold(name)
+  if (!n) return { error: `Falta el nombre.` }
+  const exact = items.find((r) => fold(str(r.data.name)) === n)
+  if (exact) return { row: exact }
+  const near = items.filter((r) => fold(str(r.data.name)).includes(n) || n.includes(fold(str(r.data.name))))
+  if (near.length === 1) return { row: near[0] }
+  if (near.length > 1) return { error: `Hay ${noun.many} que encajan con «${name}»: ${near.map((r) => str(r.data.name)).join(', ')}. ¿Cuál?` }
+  return { error: `No hay ${noun.none} que se llame «${name}». ${noun.plural}: ${items.map((r) => str(r.data.name)).join(', ') || noun.empty}.` }
+}
+
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 const HHMM = /^([01]?\d|2[0-3]):[0-5]\d$/
 export const isYmd = (s: unknown): s is string => typeof s === 'string' && YMD.test(s)
@@ -1191,42 +1206,6 @@ export function useTemplate(rows: Row[], args: { plantilla?: string; fecha_inici
   return {
     writes,
     report: [`Plantilla «${str(tpl.name)}» usada${where}, empezando ${relDay(start, today)} (${start}):`, ...created.map((t) => taskLine(t, ix, today))],
-  }
-}
-
-// ── Rutinas ───────────────────────────────────────────────────
-
-const DAY_WORDS: Record<string, number[]> = {
-  todos: [0, 1, 2, 3, 4, 5, 6],
-  laborables: [1, 2, 3, 4, 5],
-  'fines de semana': [0, 6],
-}
-
-export function createRoutine(rows: Row[], args: { nombre?: string; pasos?: unknown; dias?: unknown; hora?: string }, env: Env): WriteResult {
-  const name = str(args.nombre).trim()
-  const steps = Array.isArray(args.pasos) ? args.pasos.map((x) => String(x).trim()).filter(Boolean) : []
-  if (!name || !steps.length) return { writes: [], report: ['Falta el nombre o los pasos de la rutina.'] }
-  const exists = rows.find((r) => r.tbl === 'routines' && !r.data.archived && fold(str(r.data.name)) === fold(name))
-  if (exists) return { writes: [], report: [`Ya existe la rutina «${str(exists.data.name)}».`] }
-  let days = [0, 1, 2, 3, 4, 5, 6]
-  if (Array.isArray(args.dias)) {
-    const d = args.dias.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
-    if (d.length) days = [...new Set(d)]
-  } else if (typeof args.dias === 'string' && DAY_WORDS[fold(args.dias)]) days = DAY_WORDS[fold(args.dias)]
-  const routine: Data = {
-    id: env.newId(),
-    name,
-    icon: 'list',
-    steps: steps.map((title) => ({ id: env.newId(), title })),
-    days,
-    archived: 0,
-    order: env.now,
-    createdAt: env.now,
-  }
-  if (isHhmm(args.hora)) routine.time = normTime(args.hora!)
-  return {
-    writes: [{ tbl: 'routines', id: String(routine.id), data: routine }],
-    report: [`Rutina creada: «${name}» con ${steps.length} pasos${routine.time ? `, aviso a las ${routine.time}` : ''}. La tiene en LUNO → Rutinas y en Hoy.`],
   }
 }
 

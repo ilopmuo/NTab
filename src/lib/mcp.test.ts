@@ -58,7 +58,7 @@ describe('conector MCP', () => {
     expect(init.result.capabilities).toHaveProperty('tools')
     expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, store, env())).toBeNull()
     const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, store, env())) as { result: { tools: { name: string }[] } }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'buscar_notas', 'anadir_a_nota', 'crear_nota', 'marcar_habito', 'ver_habitos', 'crear_habito', 'actualizar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'ver_menu', 'planificar_menu', 'crear_receta', 'cuenta_atras', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_casa', 'anadir_a_casa', 'hecho_en_casa', 'ver_compra', 'anadir_compra', 'ver_medicacion', 'tomar_medicacion', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'actualizar_objetivo', 'registrar_contacto', 'guardar_pago', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
+    expect(list.result.tools.map((t) => t.name)).toEqual(['ver_resumen', 'ver_eventos', 'buscar_tareas', 'crear_tareas', 'actualizar_tareas', 'buscar_notas', 'anadir_a_nota', 'crear_nota', 'marcar_habito', 'ver_habitos', 'crear_habito', 'actualizar_habito', 'crear_proyecto', 'donde_esta', 'guardar_cosa', 'marcar_devuelto', 'apuntar_gasto', 'ver_gastos', 'ver_menu', 'planificar_menu', 'crear_receta', 'cuenta_atras', 'que_hago', 'ver_diario', 'escribir_diario', 'ver_casa', 'anadir_a_casa', 'hecho_en_casa', 'ver_compra', 'anadir_compra', 'ver_medicacion', 'tomar_medicacion', 'ultima_vez', 'lo_he_hecho', 'crear_rutina', 'ver_rutinas', 'actualizar_rutina', 'borrar_rutina', 'actualizar_objetivo', 'registrar_contacto', 'guardar_pago', 'marcar_pago', 'ver_plantillas', 'usar_plantilla'])
     const bad = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'nada' }, store, env())) as { error: { code: number } }
     expect(bad.error.code).toBe(-32601)
   })
@@ -338,7 +338,7 @@ describe('conector MCP', () => {
   it('rutinas: crear y verlas en el resumen', async () => {
     const store = memoryStore(base())
     const r = await call(store, 'crear_rutina', { nombre: 'Antes de salir', pasos: ['Llaves', 'Cartera', 'Móvil'], dias: 'todos', hora: '8:05' })
-    expect(r.text).toContain('Rutina creada: «Antes de salir» con 3 pasos, aviso a las 08:05')
+    expect(r.text).toBe('Rutina creada: «Antes de salir» con 3 pasos, todos los días, aviso a las 08:05. La tiene en LUNO → Rutinas y en Hoy los días que toca.')
     const routine = [...store.rows.values()].find((x) => x.tbl === 'routines')!
     const first = (routine.data.steps as { id: string }[])[0].id
     await store.save([{ tbl: 'routineRuns', id: 'run', data: { routineId: routine.id, date: '2026-09-24', done: [first] } }])

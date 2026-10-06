@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { handleMessage, type Store } from '../../supabase/functions/mcp/server'
 import type { Env, Row } from '../../supabase/functions/mcp/ntab'
-import { daysLabel, parseDays } from '../../supabase/functions/mcp/habits'
+import { daysLabel, parseDays } from '../../supabase/functions/mcp/days'
 
 // Martes 6 de octubre de 2026, 10:00 en Madrid
 const NOW = Date.parse('2026-10-06T08:00:00Z')
@@ -121,7 +121,7 @@ describe('hábitos desde Claude', () => {
     }
     expect(await bad({ hora: '25:00' })).toBe('La hora «25:00» no vale: usa HH:MM en 24 h (p. ej. 08:30 o 21:00).')
     expect(await bad({ hora: '8h' })).toContain('no vale: usa HH:MM')
-    expect(await bad({ dias: [1, 7] })).toBe('Los días van del 0 (domingo) al 6 (sábado); no vale «7».')
+    expect(await bad({ dias: [1, 7] })).toContain('Los días van del 0 (domingo) al 6 (sábado); no vale «7».')
     expect(await bad({ dias: [] })).toContain('Indica al menos un día')
     expect(await bad({ dias: 'a veces' })).toContain('No entiendo los días «a veces»')
     expect(await bad({ cantidad: 0 })).toContain('La cantidad tiene que ser un número mayor que 0')

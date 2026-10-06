@@ -4,74 +4,16 @@
  * src/db/actions.ts) y misma lógica de días, cantidad y racha
  * (../_shared/habits.ts), así que salen en Hoy, en el resumen y avisan igual.
  */
-import { WEEKDAYS, ymdIn } from '../_shared/time.ts'
-import { doneDays, groupLogs, isDue, openBreak, perWeekOf, progressLabel, streak, streakLabel, type HabitLike } from '../_shared/habits.ts'
-import { Index, findByName, fold, isHhmm, type Env, type Row, type WriteResult } from './ntab.ts'
+import { ymdIn } from '../_shared/time.ts'
+import { doneDays, groupLogs, isDue, openBreak, progressLabel, streak, streakLabel, type HabitLike } from '../_shared/habits.ts'
+import { ALL_DAYS, daysLabel, parseDays, parseTime } from './days.ts'
+import { Index, findByName, fold, isHhmm, pickByName, type Env, type Row, type WriteResult } from './ntab.ts'
 
 type Data = Record<string, unknown>
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 const num = (v: unknown) => (typeof v === 'number' ? v : 0)
 
-const ALL = [0, 1, 2, 3, 4, 5, 6]
-const WORKDAYS = [1, 2, 3, 4, 5]
-const WEEKEND = [0, 6]
-const DAY_WORDS: Record<string, number[]> = {
-  todos: ALL,
-  'todos los dias': ALL,
-  'cada dia': ALL,
-  diario: ALL,
-  laborables: WORKDAYS,
-  'entre semana': WORKDAYS,
-  'de lunes a viernes': WORKDAYS,
-  'fines de semana': WEEKEND,
-  'fin de semana': WEEKEND,
-}
-const DAY_NAMES = WEEKDAYS.map(fold)
-/** Lunes primero, como en la app */
-const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 const MAX_TARGET = 1000
-
-const DAYS_HELP = 'usa una lista de 0 (domingo) a 6 (sábado), "todos", "laborables" o "fines de semana"'
-
-/** Días en que toca: lista 0–6 o palabras («laborables», «lunes y jueves»). `undefined` si no se dan. */
-export function parseDays(v: unknown): { days?: number[]; error?: string } {
-  if (v === undefined || v === null) return {}
-  if (Array.isArray(v)) {
-    const bad = v.filter((x) => !Number.isInteger(typeof x === 'string' && x.trim() ? Number(x) : x) || Number(x) < 0 || Number(x) > 6)
-    if (bad.length) return { error: `Los días van del 0 (domingo) al 6 (sábado); no vale ${bad.map((x) => `«${String(x)}»`).join(', ')}.` }
-    if (!v.length) return { error: `Indica al menos un día: ${DAYS_HELP}.` }
-    return { days: [...new Set(v.map(Number))].sort() }
-  }
-  if (typeof v === 'string') {
-    const s = fold(v)
-    if (DAY_WORDS[s]) return { days: DAY_WORDS[s] }
-    // «lunes, miércoles y viernes» o «1,3,5»
-    const parts = s.split(/\s*(?:,|\by\b|\be\b)\s*/).filter(Boolean)
-    const days = parts.map((p) => {
-      const word = p.replace(/^(?:los|el)\s+/, '')
-      return /^[0-6]$/.test(word) ? Number(word) : DAY_NAMES.includes(word) ? DAY_NAMES.indexOf(word) : DAY_NAMES.indexOf(word.replace(/s$/, ''))
-    })
-    if (parts.length && days.every((d) => d >= 0)) return { days: [...new Set(days)].sort() }
-  }
-  return { error: `No entiendo los días «${String(v)}»: ${DAYS_HELP}.` }
-}
-
-/** «todos los días», «laborables», «lunes, miércoles y viernes» o «3 veces por semana» */
-export function daysLabel(h: Pick<HabitLike, 'days' | 'perWeek'>) {
-  const n = perWeekOf(h)
-  if (n) return `${n} ${n === 1 ? 'vez' : 'veces'} por semana`
-  const key = [...new Set(h.days)].sort().join()
-  if (key === ALL.join()) return 'todos los días'
-  if (key === WORKDAYS.join()) return 'laborables'
-  if (key === WEEKEND.join()) return 'fines de semana'
-  const names = WEEK_ORDER.filter((d) => h.days.includes(d)).map((d) => WEEKDAYS[d])
-  return names.length < 2 ? (names[0] ?? 'ningún día') : `${names.slice(0, -1).join(', ')} y ${names.at(-1)}`
-}
-
-function parseTime(v: unknown): { time?: string; error?: string } {
-  if (isHhmm(v)) return { time: v.padStart(5, '0') }
-  return { error: `La hora «${String(v)}» no vale: usa HH:MM en 24 h (p. ej. 08:30 o 21:00).` }
-}
 
 /** Cantidad al día: entero de 1 a 1000 (1 = hecho o no hecho, sin cantidad) */
 function parseTarget(v: unknown): { target?: number; error?: string } {
@@ -151,7 +93,7 @@ export function createHabit(
   if (str(args.area).trim() && !area) notes.push(`No encontré el área «${str(args.area)}» (áreas: ${areaList(ix)}); lo he creado sin área.`)
 
   const id = env.newId()
-  const habit: Data = { id, name, icon: iconFor(name), color: '#30D158', days: days.days ?? ALL, archived: 0, order: env.now, createdAt: env.now }
+  const habit: Data = { id, name, icon: iconFor(name), color: '#30D158', days: days.days ?? ALL_DAYS, archived: 0, order: env.now, createdAt: env.now }
   if (time.time) habit.remindTime = time.time
   if ((target.target ?? 1) > 1) habit.target = target.target
   if (unit) habit.unit = unit
@@ -184,16 +126,11 @@ export function listHabits(rows: Row[], _args: Data, env: Env): string {
   return out.join('\n')
 }
 
-/** Por nombre: exacto primero; si no, el único que lo contenga (si hay varios, pide precisar) */
-function pickHabit(candidates: Row[], name: string): { habit?: Row; error?: string } {
-  const n = fold(name)
-  if (!n) return { error: 'Falta el nombre del hábito (habito).' }
-  const exact = candidates.find((r) => fold(str(r.data.name)) === n)
-  if (exact) return { habit: exact }
-  const near = candidates.filter((r) => fold(str(r.data.name)).includes(n) || n.includes(fold(str(r.data.name))))
-  if (near.length === 1) return { habit: near[0] }
-  if (near.length > 1) return { error: `Hay varios hábitos que encajan con «${name}»: ${near.map((r) => str(r.data.name)).join(', ')}. ¿Cuál?` }
-  return { error: `No hay ningún hábito que se llame «${name}». Hábitos: ${candidates.map((r) => str(r.data.name)).join(', ') || 'ninguno'}.` }
+const HABIT = { none: 'ningún hábito', many: 'varios hábitos', plural: 'Hábitos', empty: 'ninguno' }
+const pickHabit = (rows: Row[], name: string) => {
+  if (!name.trim()) return { error: 'Falta el nombre del hábito (habito).' }
+  const r = pickByName(rows, name, HABIT)
+  return { habit: r.row, error: r.error }
 }
 
 export function updateHabit(
