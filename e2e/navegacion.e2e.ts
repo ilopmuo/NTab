@@ -143,3 +143,22 @@ test('espacios: pestañas arriba, se recuerda la última y fijados en la barra l
   await page.getByRole('button', { name: 'Quitar de Fijados' }).click()
   await expect(nav.getByRole('region', { name: 'Fijados' })).toHaveCount(0)
 })
+
+test('si una pantalla falla, falla solo ella: se ve el error y la barra lateral sigue ahí para ir a otra', async ({ page, errors }) => {
+  // El código de Cosas no llega (una versión nueva publicada con la app abierta)
+  await page.route(/assets\/ThingsView-[^/]+\.js/, (r) => r.abort())
+  await openApp(page)
+  await page.evaluate(() => (location.hash = '/things'))
+  // Recarga una vez para traer la versión nueva; si sigue sin llegar, lo dice
+  const alert = page.locator('#main').getByRole('alert')
+  await expect(alert).toContainText('Esta pantalla no se ha podido abrir')
+  await expect(alert).toContainText('dynamically imported module')
+  await expect(alert.getByRole('button', { name: 'Recargar' })).toBeVisible()
+  const nav = page.getByRole('navigation', { name: 'Barra lateral' })
+  await expect(nav).toBeInViewport()
+  await nav.getByRole('link', { name: /^Bandeja de entrada/ }).click()
+  await expect(page.locator('#main h1')).toHaveText('Bandeja de entrada')
+  await expect(alert).toHaveCount(0)
+  // Los fallos de esa carga eran lo esperado
+  errors.length = 0
+})

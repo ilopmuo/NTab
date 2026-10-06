@@ -26,6 +26,7 @@ import { closeAuth, useSync } from '@/sync/service'
 const reminders = () => import('@/reminders/local')
 import { ReauthBanner } from '@/sync/ReauthBanner'
 import { SETTINGS_PAGES, TITLES } from './titles'
+import { BarCrash, Boundary, ScreenCrash } from './Boundary'
 
 pageTop.Component = PageTop
 pageTop.Back = BackButton
@@ -122,11 +123,18 @@ const touchScreen = typeof matchMedia !== 'undefined' && matchMedia('(pointer: c
 
 const TaskDetailPanel = warm(panels.TaskDetailPanel), CommandPalette = warm(panels.CommandPalette), ShortcutsHelp = warm(panels.ShortcutsHelp), RecoveryModal = warm(panels.RecoveryModal), FocusMode = warm(panels.FocusMode), RoutineRunner = warm(panels.RoutineRunner), WhatNow = warm(panels.WhatNow), SelectionBar = warm(panels.SelectionBar), AuthScreen = warm(panels.AuthScreen), NavEditor = warm(panels.NavEditor), FeaturesSheet = warm(panels.FeaturesSheet), QuickAdd = warm(panels.QuickAdd), TaskContextMenu = warm(panels.TaskContextMenu)
 
-/** Monta su contenido la primera vez que `when` es cierto y lo deja montado (para que se anime al cerrar) */
-function Deferred({ when, children }: { when: boolean; children: ReactNode }) {
+/**
+ * Monta su contenido la primera vez que `when` es cierto y lo deja montado (para que se anime al cerrar).
+ * Si falla, desaparece solo ese panel; al cerrarlo y volver a abrirlo (o al abrir otra cosa: `reset`), se reintenta.
+ */
+function Deferred({ when, reset = when, children }: { when: boolean; reset?: unknown; children: ReactNode }) {
   const [on, setOn] = useState(when)
   if (when && !on) setOn(true)
-  return on ? <Suspense fallback={null}>{children}</Suspense> : null
+  return on ? (
+    <Boundary where="panel" resetKey={reset} fallback={() => null}>
+      <Suspense fallback={null}>{children}</Suspense>
+    </Boundary>
+  ) : null
 }
 
 /** Qué código necesita cada pantalla (por la primera parte de la ruta) */
@@ -448,7 +456,9 @@ function Workspace() {
         Saltar al contenido
       </button>
       <div id="announcer" role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
-      <Sidebar />
+      <Boundary where="barra lateral" resetKey={path} fallback={(_, retry) => <BarCrash retry={retry} className="bottom-4 left-4 max-md:hidden" />}>
+        <Sidebar />
+      </Boundary>
       <main
         id="main"
         tabIndex={-1}
@@ -470,13 +480,18 @@ function Workspace() {
           transition={{ type: 'spring', stiffness: 260, damping: 30, mass: 0.8 }}
           className={cx('screen min-h-full', screenKey === 'notes' && 'h-full')}
         >
-          {/* Mientras llega (el código o los datos), la pantalla está vacía y se ve su esqueleto (ver .screen en index.css) */}
-          <Suspense fallback={null}>
-            <Screen />
-          </Suspense>
+          {/* Si falla, solo esta pantalla: se ve el error y se puede reintentar o ir a otra */}
+          <Boundary where="pantalla" resetKey={path} fallback={(crash, retry) => <ScreenCrash crash={crash} retry={retry} />}>
+            {/* Mientras llega (el código o los datos), la pantalla está vacía y se ve su esqueleto (ver .screen en index.css) */}
+            <Suspense fallback={null}>
+              <Screen />
+            </Suspense>
+          </Boundary>
         </motion.div>
       </main>
-      <MobileBar />
+      <Boundary where="barra de pestañas" resetKey={path} fallback={(_, retry) => <BarCrash retry={retry} className="bottom-[max(env(safe-area-inset-bottom),12px)] left-1/2 -translate-x-1/2 md:hidden" />}>
+        <MobileBar />
+      </Boundary>
       {touchScreen && (
         <Suspense fallback={null}>
           <EdgeBack />
@@ -490,7 +505,8 @@ function Workspace() {
 }
 
 function Panels() {
-  const task = useUI((s) => !!s.selectedTaskId)
+  const taskId = useUI((s) => s.selectedTaskId)
+  const task = !!taskId
   const palette = useUI((s) => s.paletteOpen)
   const help = useUI((s) => s.helpOpen)
   const navEditor = useUI((s) => !!s.navEditor)
@@ -507,7 +523,7 @@ function Panels() {
   useEffect(() => void selection.clear(), [path])
   return (
     <>
-      <Deferred when={task}>
+      <Deferred when={task} reset={taskId}>
         <TaskDetailPanel />
       </Deferred>
       <Deferred when={featuresOpen}>

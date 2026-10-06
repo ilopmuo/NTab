@@ -14,6 +14,7 @@ import { rollSubscriptions } from './db/actions'
 import { purgeTrash } from './db/trash'
 import { interceptLinks } from './app/router'
 import { watchViewport } from './lib/viewport'
+import { AppCrash, Boundary } from './app/Boundary'
 
 // Compartido desde otra app (Android, o la app instalada en el ordenador: ver
 // share_target en vite.config.ts): llega en la dirección y va a la captura
@@ -56,7 +57,9 @@ seedIfEmpty().finally(() => {
   initSync()
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App />
+      <Boundary where="app" fallback={(crash) => <AppCrash crash={crash} />}>
+        <App />
+      </Boundary>
     </StrictMode>,
   )
 })
