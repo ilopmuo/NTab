@@ -61,7 +61,8 @@ export type GoalStatus = 'active' | 'done' | 'dropped'
 /**
  * Objetivo: algo que quiero conseguir. El progreso sale de
  * - `projects`: los proyectos vinculados (proyecto terminado = 100 %, si no, sus tareas);
- * - `number`: una cifra que actualizo a mano (`current` de `target`, p. ej. 3 de 12 libros).
+ * - `number`: una cifra que actualizo a mano (`current` de `target`, p. ej. 3 de 12 libros);
+ * - `tasks`: las tareas hechas con una #etiqueta desde que existe (`target` de ellas).
  */
 export interface Goal {
   id: ID
@@ -69,7 +70,9 @@ export interface Goal {
   /** por qué me importa */
   why: string
   areaId?: ID
-  kind: 'projects' | 'number'
+  kind: 'projects' | 'number' | 'tasks'
+  /** con `kind: 'tasks'`: cuenta las tareas hechas con esta etiqueta («libro») */
+  tag?: string
   target?: number
   current?: number
   /** "libros", "kg", "€"… */
@@ -151,6 +154,8 @@ export interface Task {
   waitingFor?: string
   /** YYYY-MM-DD: desde cuándo se espera */
   waitingSince?: string
+  /** de qué casilla de qué nota salió (al hacerla, se marca allí) */
+  source?: { noteId: ID; line: string }
   projectId?: ID
   /** sección dentro de su proyecto (si ya no existe, la tarea va sin sección) */
   sectionId?: ID
@@ -455,6 +460,8 @@ export interface Interaction {
   date: string
   kind: 'call' | 'message' | 'meeting' | 'email' | 'other'
   summary: string
+  /** la tarea hecha que lo apuntó sola (si vuelve a pendiente, se quita) */
+  taskId?: ID
   createdAt: number
 }
 

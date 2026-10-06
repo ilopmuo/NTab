@@ -1,5 +1,8 @@
-import { FileText, Hash, Link2, Plus } from 'lucide-react'
+import { CheckCircle2, FileText, Hash, Link2, Plus } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '@/db/db'
 import type { Note } from '@/db/types'
+import { TaskList } from '@/components/TaskList'
 import { createNote } from '@/db/actions'
 import { href, navigate } from '@/app/router'
 import { backlinks, findNote, noteLinks, noteTags } from '@/lib/notes'
@@ -29,6 +32,24 @@ export function LinkSuggestions({ items, active, onPick }: { items: string[]; ac
         ))}
       </div>
     </div>
+  )
+}
+
+/**
+ * Las tareas que salieron de las casillas de la nota: se hacen desde aquí o
+ * desde cualquier lista, y su casilla se marca sola.
+ */
+export function NoteTasks({ noteId }: { noteId: string }) {
+  const tasks = useLiveQuery(() => db.tasks.filter((t) => t.source?.noteId === noteId).toArray(), [noteId])
+  if (!tasks?.length) return null
+  const open = tasks.filter((t) => !t.done)
+  return (
+    <section aria-labelledby="note-tasks" className="mt-8" data-note-tasks>
+      <h2 id="note-tasks" className="mb-2 flex items-center gap-1.5 text-[13px] font-bold text-muted">
+        <CheckCircle2 size={14} strokeWidth={2.4} aria-hidden /> Tareas de esta nota · {tasks.length - open.length} de {tasks.length} hechas
+      </h2>
+      <TaskList tasks={open} hideProject empty={<p className="px-4 py-3 text-[14px] text-muted">Todas hechas.</p>} />
+    </section>
   )
 }
 

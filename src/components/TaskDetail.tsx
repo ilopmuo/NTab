@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, Reorder, m as motion, useDragControls } from 'motion/react'
-import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, Timer, Trash2, UserRoundCheck, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, UserRoundCheck, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Subtask, Task } from '@/db/types'
@@ -422,6 +422,7 @@ function TaskDetail({ task }: { task: Task }) {
           className={cx('text-[22px] leading-snug font-bold tracking-tight', task.done && 'text-muted line-through')}
         />
       </div>
+      {task.source && <SourceNote noteId={task.source.noteId} />}
 
       <div className="space-y-4 px-3">
         {/* Las notas, justo debajo del título (como en Things y Recordatorios) */}
@@ -782,6 +783,17 @@ function TaskDetail({ task }: { task: Task }) {
         </p>
       </div>
     </div>
+  )
+}
+
+/** La nota de la que salió (una casilla): al hacer la tarea, allí se marca */
+function SourceNote({ noteId }: { noteId: string }) {
+  const note = useLiveQuery(() => db.notes.get(noteId), [noteId])
+  if (!note) return null
+  return (
+    <a href={`#/notes/${note.id}`} onClick={() => ui.closeTask()} data-source-note className="-mt-3 mb-4 ml-[58px] flex w-fit items-center gap-1.5 text-[13.5px] font-medium text-muted hover:text-fg">
+      <StickyNote size={13} strokeWidth={2.4} aria-hidden /> De la nota «{note.title || 'Sin título'}»
+    </a>
   )
 }
 

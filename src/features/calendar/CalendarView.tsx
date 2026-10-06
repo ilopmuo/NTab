@@ -23,6 +23,7 @@ import { Page } from '../Page'
 import { DayTimeline } from '../plan/DayTimeline'
 import { LoadMeter } from './LoadMeter'
 import { WeekGrid } from './WeekGrid'
+import { MarkIcons, MarkRow, useDayMarks, type DayMark } from './dayMarks'
 
 type Mode = 'list' | 'month' | 'week' | 'day'
 const HEAD = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
@@ -78,6 +79,7 @@ export function CalendarView({ initial }: { initial?: Mode }) {
   const cal = useEvents(range.start, end)
   const evByDay = useMemo(() => eventsByDay(cal.events), [cal.events])
   const birthdays = useMemo(() => upcomingBirthdays(people, range.start, 45), [people, range.start])
+  const marks = useDayMarks(range.start, end, open)
 
   const byDay = useMemo(() => {
     const m = new Map<string, Task[]>()
@@ -170,7 +172,7 @@ export function CalendarView({ initial }: { initial?: Mode }) {
       {mode === 'list' ? (
         <UpcomingList />
       ) : mode === 'day' ? (
-        <DayView day={cursor} tasks={byDay.get(cursor) ?? []} events={evByDay.get(cursor) ?? []} birthdays={birthdays.filter((b) => b.date === cursor).map((b) => b.person)} names={cal.names} />
+        <DayView day={cursor} tasks={byDay.get(cursor) ?? []} events={evByDay.get(cursor) ?? []} birthdays={birthdays.filter((b) => b.date === cursor).map((b) => b.person)} marks={marks.get(cursor) ?? []} names={cal.names} />
       ) : mode === 'month' ? (
         <div className="grid gap-6 @[1100px]:grid-cols-[minmax(0,1fr)_340px]">
           <Card className="overflow-hidden p-2">
@@ -200,6 +202,7 @@ export function CalendarView({ initial }: { initial?: Mode }) {
                     inMonth={d.slice(0, 7) === month}
                     past={d < t}
                     birthday={birthdays.some((b) => b.date === d)}
+                    marks={marks.get(d) ?? []}
                     selected={selected === d}
                     isToday={d === t}
                     onSelect={() => setSelected(d)}
@@ -232,6 +235,13 @@ export function CalendarView({ initial }: { initial?: Mode }) {
                 {b.age ? <span className="text-muted">({b.age})</span> : null}
               </a>
             ))}
+            {(marks.get(selected) ?? []).length > 0 && (
+              <div className="glass mb-3 space-y-0.5 rounded-[16px] px-2.5 py-2">
+                {(marks.get(selected) ?? []).map((m) => (
+                  <MarkRow key={m.id} mark={m} />
+                ))}
+              </div>
+            )}
             {(evByDay.get(selected) ?? []).length > 0 && (
               <div className="glass mb-3 overflow-hidden rounded-[16px]">
                 {(evByDay.get(selected) ?? []).map((e) => (
@@ -243,7 +253,7 @@ export function CalendarView({ initial }: { initial?: Mode }) {
           </div>
         </div>
       ) : wide ? (
-        <WeekGrid days={range.days} byDay={byDay} evByDay={evByDay} birthdays={birthdays} />
+        <WeekGrid days={range.days} byDay={byDay} evByDay={evByDay} birthdays={birthdays} marks={marks} />
       ) : (
         <div className="grid gap-3 @[560px]:grid-cols-2 @[820px]:grid-cols-4 @[1180px]:grid-cols-7">
           {/* Una semana con muchas tareas: los días de abajo se pintan al acercarse */}
@@ -251,7 +261,7 @@ export function CalendarView({ initial }: { initial?: Mode }) {
             items={range.days.map((d, i) => ({ d, i }))}
             weight={({ d }) => (byDay.get(d)?.length ?? 0) + 2}
             render={({ d, i }) => (
-              <WeekDay key={d} day={d} index={i} list={byDay.get(d) ?? []} events={evByDay.get(d) ?? []} birthdays={birthdays.filter((b) => b.date === d).map((b) => b.person)} isToday={d === t} />
+              <WeekDay key={d} day={d} index={i} list={byDay.get(d) ?? []} events={evByDay.get(d) ?? []} birthdays={birthdays.filter((b) => b.date === d).map((b) => b.person)} marks={marks.get(d) ?? []} isToday={d === t} />
             )}
           />
         </div>
@@ -282,6 +292,7 @@ function MonthCell({
   inMonth,
   past,
   birthday,
+  marks,
   selected,
   isToday,
   onSelect,
@@ -292,6 +303,7 @@ function MonthCell({
   inMonth: boolean
   past: boolean
   birthday: boolean
+  marks: DayMark[]
   selected: boolean
   isToday: boolean
   onSelect: () => void
@@ -323,7 +335,10 @@ function MonthCell({
         >
           {fromYmd(day).getDate()}
         </span>
-        {birthday && <Cake size={13} className="text-pink" strokeWidth={2.4} />}
+        <span className="flex items-center gap-0.5">
+          <MarkIcons marks={marks} />
+          {birthday && <Cake size={13} className="text-pink" strokeWidth={2.4} />}
+        </span>
       </span>
       <span className="hidden flex-col gap-[3px] sm:flex">
         {events.slice(0, 2).map((e) => (
@@ -370,9 +385,9 @@ function MonthCell({
   )
 }
 
-function WeekDay({ day, index, list, events, birthdays, isToday }: { day: string; index: number; list: Task[]; events: CalEvent[]; birthdays: Person[]; isToday: boolean }) {
+function WeekDay({ day, index, list, events, birthdays, marks, isToday }: { day: string; index: number; list: Task[]; events: CalEvent[]; birthdays: Person[]; marks: DayMark[]; isToday: boolean }) {
   const over = useDropOver(day)
-  const empty = !list.length && !events.length && !birthdays.length
+  const empty = !list.length && !events.length && !birthdays.length && !marks.length
   const past = day < today()
   return (
     <motion.div
@@ -405,6 +420,9 @@ function WeekDay({ day, index, list, events, birthdays, isToday }: { day: string
           <Cake size={12} /> {p.name}
         </p>
       ))}
+      {marks.map((m) => (
+        <MarkRow key={m.id} mark={m} />
+      ))}
       {events.map((e) => (
         <p key={e.id} className="mx-1.5 mb-1 truncate rounded-[8px] border border-line-strong px-2 py-1 text-[12.5px] text-muted">
           {!e.allDay && <span className="font-num mr-1 font-semibold">{eventTime(e)}</span>}
@@ -421,7 +439,7 @@ function WeekDay({ day, index, list, events, birthdays, isToday }: { day: string
 }
 
 /** Un día hora a hora (como la vista de día de Fantastical): reuniones, tareas con hora, lo de todo el día y lo que no tiene hora */
-function DayView({ day, tasks, events, birthdays, names }: { day: string; tasks: Task[]; events: CalEvent[]; birthdays: Person[]; names: Record<string, string> }) {
+function DayView({ day, tasks, events, birthdays, marks, names }: { day: string; tasks: Task[]; events: CalEvent[]; birthdays: Person[]; marks: DayMark[]; names: Record<string, string> }) {
   const allDay = events.filter((e) => e.allDay)
   const untimed = tasks.filter((x) => !x.dueTime)
   return (
@@ -434,6 +452,13 @@ function DayView({ day, tasks, events, birthdays, names }: { day: string; tasks:
             <Cake size={18} className="text-pink" strokeWidth={2.3} /> Cumpleaños de <b className="font-semibold">{p.name}</b>
           </a>
         ))}
+        {marks.length > 0 && (
+          <div className="glass mb-3 space-y-0.5 rounded-[16px] px-2.5 py-2">
+            {marks.map((m) => (
+              <MarkRow key={m.id} mark={m} />
+            ))}
+          </div>
+        )}
         {allDay.length > 0 && (
           <div className="glass mb-3 overflow-hidden rounded-[16px]">
             {allDay.map((e) => (

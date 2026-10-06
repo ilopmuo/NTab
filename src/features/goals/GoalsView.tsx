@@ -16,12 +16,13 @@ import { Button, Empty, IconButton, PageHeader, ProgressBar, ProgressRing, Secti
 import { Page } from '../Page'
 import { GoalForm } from './GoalForm'
 import { GoalChart } from './GoalChart'
+import { goalTasks } from './goalTasks'
 
 const PACE = { late: 'Fuera de plazo', behind: 'Vas con retraso', ok: 'Vas bien' } as const
 
 export function GoalsView() {
   const goals = useLiveQuery(() => db.goals.orderBy('order').toArray(), []) ?? []
-  const tasks = useLiveQuery(() => db.tasks.where('projectId').above('').toArray(), []) ?? []
+  const tasks = useLiveQuery(goalTasks, []) ?? []
   const { areas, projects } = useLookup()
   const [status, setStatus] = useState<Goal['status']>('active')
   const creating = useUI((s) => s.creating === 'goal')
@@ -93,6 +94,25 @@ export function GoalsView() {
   )
 }
 
+/** Lo siguiente con la etiqueta del objetivo (o cómo empezar), y todas en su página */
+function TagNext({ tag, tasks }: { tag: string; tasks: Task[] }) {
+  const open = tasks.filter((t) => !t.done && t.tags.some((x) => x.toLowerCase() === tag.toLowerCase()))
+  const next = [...open].sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'))[0]
+  return (
+    <a href={href(`/tag/${encodeURIComponent(tag)}`)} className="block rounded-[14px] bg-fill-2 px-3 py-2.5 text-[13px] transition-colors hover:bg-hover">
+      {next ? (
+        <>
+          <span className="text-muted">Siguiente: </span>
+          <span className="font-medium">{next.title}</span>
+          {open.length > 1 && <span className="text-muted"> · y {open.length - 1} más</span>}
+        </>
+      ) : (
+        <span className="text-muted">Añade tareas con #{tag} y cada una que hagas sumará.</span>
+      )}
+    </a>
+  )
+}
+
 function GoalCard({
   goal,
   projects,
@@ -155,6 +175,8 @@ function GoalCard({
       {goal.why && <p className="line-clamp-2 text-[13px] leading-snug text-muted italic">«{goal.why}»</p>}
 
       {goal.kind === 'number' && <GoalChart goal={goal} />}
+
+      {goal.kind === 'tasks' && goal.tag && !done && <TagNext tag={goal.tag} tasks={tasks} />}
 
       {p.projects.length > 0 && (
         <div className="space-y-2.5 rounded-[14px] bg-fill-2 px-3 py-2.5">

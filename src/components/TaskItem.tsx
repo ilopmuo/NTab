@@ -5,7 +5,7 @@ import { durationLabel } from '@/lib/duration'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
 import type { Lookup } from '@/db/hooks'
-import { mutateTask, toggleTask } from '@/db/actions'
+import { mutateTask, toggleTask, undoRipples } from '@/db/actions'
 import { addDaysYmd, dateLabel, today } from '@/lib/dates'
 import { haptic } from '@/lib/haptics'
 import { useSwipe } from './swipe'
@@ -139,18 +139,38 @@ function longPress(e: React.PointerEvent, run: () => void) {
 export async function completeWithFeedback(task: Task) {
   const wasDone = !!task.done
   if (!wasDone) haptic('success')
+  // Si cuenta para un objetivo (por su #etiqueta), cuánto llevará: se mira antes para avisar sin esperar
+  const goal = !wasDone && task.tags.length ? (await db.goals.where('status').equals('active').toArray()).find((g) => g.kind === 'tasks' && g.tag && task.tags.some((x) => x.toLowerCase() === g.tag!.toLowerCase())) : undefined
+  const count = goal ? (await db.tasks.where('tags').equals(goal.tag!).filter((x) => !!x.done && (x.completedAt ?? 0) >= goal.createdAt).count()) + 1 : 0
   const next = await toggleTask(task)
   if (wasDone) return
-  const msg = next?.dueDate ? `Hecho · se repite ${dateLabel(next.dueDate).toLowerCase()}` : 'Hecho'
-  toast(msg, {
+  const undo = {
     label: 'Deshacer',
     run: async () => {
       await db.transaction('rw', db.tasks, async () => {
         if (next) await db.tasks.delete(next.id)
         await db.tasks.update(task.id, { done: 0, completedAt: undefined, recurrence: task.recurrence })
       })
+      await undoRipples(task)
     },
-  })
+  }
+  // La última de un proyecto: ¿se da por terminado? (y su objetivo avanza)
+  const project = task.projectId && !next ? await db.projects.get(task.projectId) : undefined
+  if (project?.status === 'active' && !(await db.tasks.where('projectId').equals(project.id).filter((x) => !x.done).count())) {
+    const goal = project.goalId ? await db.goals.get(project.goalId) : undefined
+    return toast(`Era la última de «${project.name}»`, [
+      undo,
+      {
+        label: 'Terminarlo',
+        run: async () => {
+          await db.projects.update(project.id, { status: 'done' })
+          toast(`«${project.name}» terminado${goal ? ` · «${goal.title}» avanza` : ''}`, { label: 'Deshacer', run: () => void db.projects.update(project.id, { status: 'active' }) })
+        },
+      },
+    ], 7000)
+  }
+  const msg = next?.dueDate ? `Hecho · se repite ${dateLabel(next.dueDate).toLowerCase()}` : goal ? `Hecho · «${goal.title}»: ${count} de ${goal.target ?? 0}` : 'Hecho'
+  toast(msg, undo)
 }
 
 const BANGS = ['', '!', '!!', '!!!']

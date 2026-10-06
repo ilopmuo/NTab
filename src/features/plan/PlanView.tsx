@@ -6,6 +6,7 @@ import { useLookup, useOpenTasks } from '@/db/hooks'
 import type { Task } from '@/db/types'
 import { addDaysYmd, longDateLabel, relativeDays, today } from '@/lib/dates'
 import { isInbox, sortTasks, whenDue } from '@/lib/tasks'
+import { nextStep } from '@/lib/projects'
 import { dayLoad, durationLabel } from '@/lib/duration'
 import { eventMinutes, eventsByDay, useEvents } from '@/lib/calendarEvents'
 import { navigate } from '@/app/router'
@@ -37,6 +38,20 @@ export function PlanView() {
       soon: list.filter((x) => x.dueDate && x.dueDate > t && x.dueDate <= addDaysYmd(t, 7)),
     }
   }, [open, t])
+
+  // El siguiente paso de cada proyecto activo que no tiene nada esta semana: para que ninguno se pare
+  const stuck = useMemo(() => {
+    if (!open) return []
+    const week = addDaysYmd(t, 7)
+    return projects
+      .filter((p) => p.status === 'active')
+      .flatMap((p) => {
+        const mine = open.filter((x) => x.projectId === p.id)
+        if (mine.some((x) => x.dueDate && x.dueDate <= week)) return []
+        const next = nextStep(p, mine)
+        return next && !next.someday && !next.waitingFor ? [{ task: next, project: p.name }] : []
+      })
+  }, [open, projects, t])
 
   const [picking, setPicking] = useState(false)
   const cal = useEvents(t, t)
@@ -178,6 +193,19 @@ export function PlanView() {
             </Section>
           )}
         </>
+      )}
+
+      {stuck.length > 0 && (
+        <Section title="Para que avancen tus proyectos" count={stuck.length}>
+          <p className="mb-2 px-1 text-[13px] text-muted">El siguiente paso de los proyectos que no tienen nada esta semana.</p>
+          <Group>
+            <AnimatePresence initial={false}>
+              {stuck.map(({ task: x, project }) => (
+                <Row key={x.id} task={x} meta={project} actions={[toToday, toTomorrow]} />
+              ))}
+            </AnimatePresence>
+          </Group>
+        </Section>
       )}
 
       <ImportantPicker open={picking} day={t} onClose={() => setPicking(false)} />

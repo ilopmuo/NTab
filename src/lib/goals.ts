@@ -1,7 +1,9 @@
 import type { Goal, Project, Task } from '@/db/types'
 import { diffDays, today, ymd } from './dates'
 
-export { goalChange, logGoal, type GoalPoint } from '../../supabase/functions/_shared/goals.ts'
+import { taskGoalCount } from '../../supabase/functions/_shared/goals.ts'
+
+export { goalChange, logGoal, taskGoalCount, type GoalPoint } from '../../supabase/functions/_shared/goals.ts'
 
 export interface GoalProgress {
   /** 0…1 */
@@ -22,6 +24,15 @@ export function goalProgress(goal: Goal, projects: Project[], tasks: Task[]): Go
   const linked = projects
     .filter((p) => p.goalId === goal.id)
     .map((project) => ({ project, ...projectValue(project, tasks) }))
+  if (goal.kind === 'tasks') {
+    const target = goal.target || 0
+    const n = taskGoalCount(goal, tasks)
+    return {
+      value: goal.status === 'done' ? 1 : target > 0 ? Math.min(1, n / target) : 0,
+      label: `${fmtNum(n)} de ${fmtNum(target)} ${goal.unit || 'tareas'}${goal.tag ? ` · #${goal.tag}` : ''}`,
+      projects: linked,
+    }
+  }
   if (goal.kind === 'number') {
     const target = goal.target || 0
     const current = goal.current ?? 0

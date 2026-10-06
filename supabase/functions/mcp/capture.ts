@@ -21,6 +21,7 @@ import { captureMed, medsLeft } from './meds.ts'
 import { houseVoice, type HouseCtx } from './casa.ts'
 import { itemKey, parseItems } from '../_shared/shopping.ts'
 import { ASKING, classify, cleanDictation, closest, infinitive } from '../_shared/intent.ts'
+import type { Health } from '../_shared/projectHealth.ts'
 import {
   Index,
   addExpenseTool,
@@ -34,6 +35,7 @@ import {
   habitsToday,
   logLastTime,
   markHabit,
+  projectsNeedingCare,
   menuName,
   saveThing,
   shoppingLists,
@@ -229,8 +231,10 @@ function undoLast(rows: Row[], env: Env): CaptureResult {
 function complete(rows: Row[], task: Task, env: Env): CaptureResult {
   const today = ymdIn(env.now, env.tz)
   const r = updateTasks(rows, [{ id: task.id, hecha: true }], env)
-  const next = r.writes.find((w) => w.id !== task.id)
-  return remember(rows, { writes: r.writes, report: [`Hecho: ${task.title}.${next ? ` La próxima vez, ${spokenDay(str(next.data.dueDate), today)}.` : ''}`] }, env, `«${task.title}» vuelve a estar pendiente`)
+  const next = r.writes.find((w) => w.tbl === 'tasks' && w.id !== task.id)
+  // Si era la última de su proyecto, también se dice
+  const last = r.report.find((x) => x.startsWith('Era la última'))
+  return remember(rows, { writes: r.writes, report: [`Hecho: ${task.title}.${next ? ` La próxima vez, ${spokenDay(str(next.data.dueDate), today)}.` : ''}${last ? ` ${last}` : ''}`] }, env, `«${task.title}» vuelve a estar pendiente`)
 }
 
 /**
@@ -527,6 +531,7 @@ const HOUSE_Q = /^(?:qu[eé]\s+(?:me\s+toca|toca|hay\s+que\s+hacer|tengo\s+que\s
 const BDAY_Q = /^cu[aá]ndo\s+es\s+el\s+(cumplea[nñ]os|santo|aniversario)\s+de\s+(.+)$/i
 const BDAYS_Q = /^qu[eé]\s+cumplea[nñ]os\s+hay\s*(.*)$/i
 // «¿qué estoy esperando?», «¿qué espero de Luis?»
+const PROJECTS_Q = /^(?:c[oó]mo|qu[eé]\s+tal)\s+(?:van|llevo|voy\s+con)\s+(?:mis\s+|los\s+)?proyectos$/i
 const WAIT_Q = /^qu[eé]\s+(?:estoy\s+esperando|tengo\s+a\s+la\s+espera|espero)(?:\s+de\s+(.+))?$/i
 // «¿qué hábitos me quedan?», «¿cómo voy con los hábitos?»
 const HABITS_Q = /^(?:(?:qu[eé]|cu[aá]ntos)\s+(?:h[aá]bitos\s+(?:me\s+)?(?:quedan|faltan|tengo|tocan)|me\s+(?:quedan?|faltan?)\s+de\s+h[aá]bitos)|c[oó]mo\s+voy\s+(?:con\s+)?(?:los\s+)?h[aá]bitos)(?:\s+hoy)?$/i
@@ -634,7 +639,39 @@ function brief(rows: Row[], env: Env, cx?: CaptureContext): string {
     const home = houseVoice(cx.house, today)
     if (!home.startsWith('Hoy no te toca')) out.push(home)
   }
+  // El proyecto que más atención pide (con fecha encima o parado), para que no se olvide
+  const care = projectsNeedingCare(new Index(rows), today, env).find((x) => x.health.kind === 'late' || x.health.kind === 'atRisk' || x.health.kind === 'stalled')
+  if (care) out.push(projectVoice(care.name, care.health))
   return out.join(' ')
+}
+
+/** Cómo va un proyecto, dicho en voz alta */
+function projectVoice(name: string, h: Health): string {
+  const things = (n: number) => (n === 1 ? 'una cosa' : `${n} cosas`)
+  switch (h.kind) {
+    case 'late':
+      return `«${name}» se ha pasado de fecha y le quedan ${things(h.open)}.`
+    case 'atRisk':
+      return `A «${name}» le quedan ${things(h.open)} y ${h.daysLeft === 0 ? 'acaba hoy' : h.daysLeft === 1 ? 'acaba mañana' : `faltan ${h.daysLeft} días`}.`
+    case 'stalled':
+      return `«${name}» lleva ${h.days} días parado: ¿cuál es el siguiente paso?`
+    case 'noNext':
+      return `«${name}» no tiene siguiente paso.`
+    case 'finished':
+      return `«${name}» tiene todo hecho: ¿lo das por terminado?`
+    default:
+      return `«${name}» va bien.`
+  }
+}
+
+/** «¿Cómo van mis proyectos?»: los que piden atención; si ninguno, que van bien */
+function projectsNow(rows: Row[], env: Env): string {
+  const ix = new Index(rows)
+  const active = ix.projects.filter((p) => p.status === 'active').length
+  if (!active) return 'No tienes proyectos en marcha.'
+  const care = projectsNeedingCare(ix, ymdIn(env.now, env.tz), env)
+  if (!care.length) return active === 1 ? 'Tu proyecto va bien.' : `Tus ${active} proyectos van bien.`
+  return [...care.slice(0, 3).map((x) => projectVoice(x.name, x.health)), ...(care.length > 3 ? [`Y ${care.length - 3} más en la app.`] : []), ...(active > care.length ? [`El resto va bien.`] : [])].join(' ')
 }
 
 /** «Buenas noches»: lo hecho, lo que queda y lo de mañana */
@@ -653,7 +690,7 @@ function night(rows: Row[], env: Env, cx?: CaptureContext): string {
   return out.join(' ')
 }
 
-const HELP = 'Puedo decirte qué tienes hoy, mañana o esta tarde, qué hacer ahora, dónde está algo, qué falta en la compra, qué hay de cenar, cuánto llevas gastado, qué estás esperando o cuándo hiciste algo por última vez. Y dime «buenos días» para el resumen del día.'
+const HELP = 'Puedo decirte qué tienes hoy, mañana o esta tarde, qué hacer ahora, dónde está algo, qué falta en la compra, qué hay de cenar, cuánto llevas gastado, qué estás esperando, cómo van tus proyectos o cuándo hiciste algo por última vez. Y dime «buenos días» para el resumen del día.'
 /** Lo que se responde aunque el dictado no ponga «?» ni empiece por «qué», «cuándo»… */
 const SPOKEN = [/^tengo\s+(?:un\s+rato|tiempo|\S+\s+(?:minutos|horas?))/i, /^(?:mi\s+)?agenda(?:\s|$)/i, /lista\s+de\s+la\s+compra$/i, /^a\s+qui[eé]n\s+le\s+toca\s/i]
 
@@ -679,6 +716,7 @@ function answer(rows: Row[], text: string, env: Env, cal?: CaptureContext): stri
   if (bdays) return birthdaysSoon(rows, bdays[1], env)
   const wait = WAIT_Q.exec(text)
   if (wait) return waiting(rows, wait[1], env)
+  if (PROJECTS_Q.test(text)) return projectsNow(rows, env)
   if (NOW_Q.test(text) || NOW_FREE.test(text)) return whatNow(rows, text, env)
   const ag = AGENDA_Q.exec(text)
   const asked = ag ? askedDay(ag[1], env) : undefined

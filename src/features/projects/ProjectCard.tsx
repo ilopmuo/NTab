@@ -1,7 +1,8 @@
 import { m as motion } from 'motion/react'
-import { CalendarClock, Check, Circle } from 'lucide-react'
+import { AlertCircle, CalendarClock, Check, Circle } from 'lucide-react'
 import type { Project, Task } from '@/db/types'
-import { dateLabel, relativeDays, today } from '@/lib/dates'
+import { dateLabel, relativeDays, today, ymd } from '@/lib/dates'
+import { healthLabel, projectHealth } from '@/lib/projectHealth'
 import { nextStep } from '@/lib/projects'
 import { href, vtName } from '@/app/router'
 import { useListModes } from '@/components/ManualOrder'
@@ -31,6 +32,9 @@ export function ProjectCard({ project, tasks, index = 0 }: { project: Project; t
   const late = !!project.deadline && project.deadline < today() && project.status !== 'done'
   const complete = s.total > 0 && s.open === 0
   const sections = project.sections?.length ?? 0
+  // Lo que necesita (parado, con la fecha límite encima…); «sin siguiente paso» y «todo hecho» ya se dicen abajo
+  const h = projectHealth(project, tasks.filter((t) => t.projectId === project.id), today(), (ms) => ymd(new Date(ms)))
+  const health = h.kind === 'stalled' || h.kind === 'atRisk' || h.kind === 'late' ? healthLabel(h) : undefined
   return (
     <motion.a
       href={href(`/project/${project.id}`)}
@@ -78,7 +82,12 @@ export function ProjectCard({ project, tasks, index = 0 }: { project: Project; t
           )}
         </div>
       )}
-      {project.deadline && project.status !== 'done' && (
+      {health && (
+        <p className="mt-2.5 inline-flex items-center gap-1.5 self-start rounded-full bg-fill px-2.5 py-0.5 text-[12px] font-semibold" data-project-health>
+          <AlertCircle size={12} strokeWidth={2.6} aria-hidden /> {health}
+        </p>
+      )}
+      {project.deadline && project.status !== 'done' && !health && (
         <p className={cx('mt-2.5 flex items-center gap-1.5 text-[12px] font-semibold', late ? 'text-fg' : 'text-muted')}>
           <CalendarClock size={13} strokeWidth={2.4} aria-hidden />
           {deadlineText(project.deadline, late)}

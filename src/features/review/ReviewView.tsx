@@ -6,6 +6,7 @@ import { createTask, markReviewed, setGoalCurrent, setSetting, updateTask } from
 import { useLookup, useOpenTasks } from '@/db/hooks'
 import { addDaysYmd, dateLabel, today } from '@/lib/dates'
 import { completionRate } from '@/lib/habits'
+import { goalTasks } from '../goals/goalTasks'
 import { goalPace, goalProgress } from '@/lib/goals'
 import { dueForContact, upcomingBirthdays } from '@/lib/people'
 import { isInbox, isSomeday, whenDue } from '@/lib/tasks'
@@ -286,7 +287,7 @@ const PACE = { late: 'Fuera de plazo', behind: 'Vas con retraso', ok: 'Vas bien'
 function GoalsStep() {
   const { projects } = useLookup()
   const goals = useLiveQuery(() => db.goals.where('status').equals('active').toArray(), []) ?? []
-  const tasks = useLiveQuery(() => db.tasks.where('projectId').above('').toArray(), []) ?? []
+  const tasks = useLiveQuery(goalTasks, []) ?? []
   if (!goals.length)
     return (
       <p className="text-[14px] text-muted">

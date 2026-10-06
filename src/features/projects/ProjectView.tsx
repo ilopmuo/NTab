@@ -1,14 +1,16 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, m as motion } from 'motion/react'
-import { Check, CheckCircle2, ChevronRight, ClipboardList, Columns3, FileText, List, MoreHorizontal, Pause, Pencil, Pin, Play, Plus, StickyNote, Target, Trash2 } from 'lucide-react'
+import { AlertCircle, Check, CheckCircle2, ChevronRight, ClipboardList, Columns3, FileText, List, MoreHorizontal, Pause, Pencil, Pin, Play, Plus, StickyNote, Sun, Target, Trash2 } from 'lucide-react'
 import { db } from '@/db/db'
-import { createNote, deleteProject, markReviewed } from '@/db/actions'
+import { createNote, deleteProject, markReviewed, mutateTask } from '@/db/actions'
 import { useAreas } from '@/db/hooks'
-import type { ProjectStatus } from '@/db/types'
-import { dateLabel, relativeDays, today } from '@/lib/dates'
+import type { Project, ProjectStatus, Task } from '@/db/types'
+import { dateLabel, relativeDays, today, ymd } from '@/lib/dates'
+import { healthLabel, projectHealth } from '@/lib/projectHealth'
+import { nextStep } from '@/lib/projects'
 import { href, inViewTransition, navigate, vtName } from '@/app/router'
-import { toast } from '@/app/store'
+import { toast, ui } from '@/app/store'
 import { isPinned, togglePinWithToast, usePins } from '@/app/pins'
 import { AreaBadge } from '@/components/icons'
 import { TaskList } from '@/components/TaskList'
@@ -26,6 +28,52 @@ import { SelectButton } from '@/features/select/SelectButton'
 function reviewedLabel(at: number) {
   const days = Math.floor((Date.now() - at) / 864e5)
   return days <= 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`
+}
+
+/**
+ * Lo que necesita el proyecto, con lo que se puede hacer ya: terminarlo si
+ * está todo hecho, añadir el siguiente paso, traerlo a hoy si lleva días
+ * parado o pausarlo. Nada si va bien.
+ */
+function ProjectNudge({ project, tasks, onStatus }: { project: Project; tasks: Task[]; onStatus: (s: ProjectStatus) => void }) {
+  const health = projectHealth(project, tasks, today(), (ms) => ymd(new Date(ms)))
+  const label = healthLabel(health)
+  if (!label) return null
+  const next = nextStep(project, tasks)
+  const text =
+    health.kind === 'finished'
+      ? 'Ya está todo hecho. ¿Lo das por terminado?'
+      : health.kind === 'noNext'
+        ? 'No tiene nada que hacer ahora: ¿cuál es el siguiente paso?'
+        : health.kind === 'stalled'
+          ? `Lleva ${health.days} días parado.${next ? ` El siguiente paso es «${next.title}».` : ''}`
+          : `${label}.`
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-fill-2 px-4 py-3 text-[14px]" role="status" data-project-nudge>
+      <AlertCircle size={16} strokeWidth={2.4} className="shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1 font-medium">{text}</span>
+      {health.kind === 'finished' && (
+        <Button size="sm" variant="tinted" onClick={() => onStatus('done')}>
+          <CheckCircle2 size={14} strokeWidth={2.4} /> Terminar
+        </Button>
+      )}
+      {health.kind === 'noNext' && (
+        <Button size="sm" variant="tinted" onClick={() => ui.quickAdd({ projectId: project.id, areaId: project.areaId })}>
+          <Plus size={14} strokeWidth={2.4} /> Siguiente paso
+        </Button>
+      )}
+      {health.kind === 'stalled' && next && next.dueDate !== today() && (
+        <Button size="sm" variant="tinted" onClick={() => void mutateTask(next.id, (t) => void ((t.dueDate = today()), delete t.someday)).then(() => toast(`${next.title} → hoy`))}>
+          <Sun size={14} strokeWidth={2.4} /> Hacerlo hoy
+        </Button>
+      )}
+      {health.kind === 'stalled' && (
+        <Button size="sm" onClick={() => onStatus('paused')}>
+          <Pause size={13} strokeWidth={2.4} /> Pausar
+        </Button>
+      )}
+    </div>
+  )
 }
 
 export function ProjectView({ id }: { id: string }) {
@@ -104,6 +152,7 @@ export function ProjectView({ id }: { id: string }) {
         </div>
         <CompactBar target={titleRef} title={project.name} />
         {project.description && <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted">{project.description}</p>}
+        <ProjectNudge project={project} tasks={tasks} onStatus={setStatus} />
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {project.status === 'done' || project.status === 'paused' ? (
             <Button size="sm" variant="tinted" onClick={() => setStatus('active')}>

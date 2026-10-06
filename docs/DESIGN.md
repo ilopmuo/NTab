@@ -138,3 +138,12 @@ La app tiene que ir igual de suave con 3.000 tareas en un móvil normal. Reglas 
 - **Teclado**: `j`/`k` o `↑`/`↓` entre tareas, `Intro` abre, `Espacio` completa, `T` hoy, `M` mañana, `S` algún día, `Supr` papelera, `⌘Z` deshace. Los menús, el selector de color y el de fecha se manejan con flechas. Todo lo que se arrastra (tableros, matriz, días) tiene también «Mover a…» en su menú.
 - **Campos**: `Field` es un `<label>` cuando lleva un solo control; con varios botones (segmentados, iconos, días) se usa `group`, para que cada botón conserve su nombre y el título nombre al grupo.
 - **Comprobación**: axe (WCAG 2.1 AA) en todas las secciones y en los diálogos principales, en tema claro y oscuro, con otros acentos y con más contraste (`e2e/accesibilidad.e2e.ts`).
+
+## 7. Todo conectado
+
+Lo que se hace en un sitio se nota en los demás, sin pedir permiso y sin molestar:
+
+- **Efectos de hacer algo, en silencio y reversibles**: completar una tarea apunta el contacto con sus @personas, la «Última vez» que es y la casilla de la nota de la que salió (`src/db/ripples.ts`, con la lógica compartida en `supabase/functions/_shared/ripples.ts` para que Claude y Siri hagan lo mismo). Todo va en la misma transacción que la tarea y «Deshacer» lo quita todo. Solo se pregunta cuando hay una decisión de verdad (la última tarea de un proyecto: «Terminarlo», dentro del propio aviso de «Hecho»).
+- **Avisos donde ya miras**: la salud de un proyecto (`_shared/projectHealth.ts`) sale como una píldora gris en su tarjeta y como una franja arriba en su página, siempre con la acción que lo resuelve al lado (siguiente paso, hoy, pausar, terminar). Nada en rojo: el icono de alerta y el texto bastan (principio 2).
+- **Un dato, una fuente**: las cosas con fecha que no son tareas (fechas límite, cargos, pruebas gratis, cuentas atrás) se calculan al pintar el Calendario (`src/features/calendar/dayMarks.tsx`) y no se copian como tareas; cada una con su icono (bandera, capas, tarjeta, reloj de arena), lo que tiene que estar en texto fuerte y lo demás en gris.
+- **Enlaces de ida y vuelta**: si algo sale de otro sitio, lo dice y lleva a él («De la nota «Viaje»» en la tarea; «Tareas de esta nota» en la nota).

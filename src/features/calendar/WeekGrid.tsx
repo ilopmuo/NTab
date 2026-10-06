@@ -12,6 +12,7 @@ import { swallowNextClick } from '@/components/dayDrag'
 import { toast, ui } from '@/app/store'
 import { cx } from '@/components/ui'
 import { LoadMeter } from './LoadMeter'
+import { MarkRow, type DayMark } from './dayMarks'
 
 const HOUR = 48
 const GUTTER = 48
@@ -53,7 +54,19 @@ const nowMin = () => {
  * que no tienen hora, desde arriba a un hueco (el «timeboxing» de Akiflow o
  * Sunsama). Tocar un hueco crea una tarea a esa hora.
  */
-export function WeekGrid({ days, byDay, evByDay, birthdays }: { days: string[]; byDay: Map<string, Task[]>; evByDay: Map<string, CalEvent[]>; birthdays: { date: string; person: Person }[] }) {
+export function WeekGrid({
+  days,
+  byDay,
+  evByDay,
+  birthdays,
+  marks,
+}: {
+  days: string[]
+  byDay: Map<string, Task[]>
+  evByDay: Map<string, CalEvent[]>
+  birthdays: { date: string; person: Person }[]
+  marks: Map<string, DayMark[]>
+}) {
   const t = today()
   const [now, setNow] = useState(nowMin)
   useEffect(() => {
@@ -260,6 +273,9 @@ export function WeekGrid({ days, byDay, evByDay, birthdays }: { days: string[]; 
                     <Cake size={11} className="shrink-0" /> {b.person.name}
                   </p>
                 ))}
+              {(marks.get(d) ?? []).map((m) => (
+                <MarkRow key={m.id} mark={m} small />
+              ))}
               {(evByDay.get(d) ?? [])
                 .filter((e) => e.allDay)
                 .map((e) => (

@@ -52,11 +52,19 @@ export async function mutateTasks(ids: string[], fn: (t: Task) => void): Promise
 
 /** Deja las tareas como estaban (deshacer de las acciones en bloque) */
 export async function restoreTasks(snapshots: Task[], created: string[] = []) {
+  // Las que vuelven a pendiente deshacen también lo que cambiaron al hacerse
+  const was = await db.tasks.bulkGet(snapshots.map((s) => s.id))
   await db.transaction('rw', db.tasks, async () => {
     if (created.length) await db.tasks.bulkDelete(created)
     await db.tasks.bulkPut(snapshots)
   })
+  for (const [i, s] of snapshots.entries()) if (!s.done && was[i]?.done) await undoRipples(s)
 }
+
+/** Lo que cambia en el resto de LUNO al hacer una tarea (ver ripples.ts): se carga al hacer la primera, no al abrir la app */
+const loadRipples = () => import('./ripples')
+/** Deshace lo que cambió al hacerse (el contacto, la «última vez», la casilla de la nota) */
+export const undoRipples = async (task: Task) => (await loadRipples()).rippleUndone(task)
 
 /** Completa varias tareas (las que se repiten crean la siguiente) */
 export async function completeTasks(ids: string[]) {
@@ -75,10 +83,22 @@ export async function completeTasks(ids: string[]) {
  * automáticamente la siguiente ocurrencia.
  */
 export async function toggleTask(task: Task): Promise<Task | undefined> {
-  if (task.done) {
-    await db.tasks.update(task.id, { done: 0, completedAt: undefined })
-    return
-  }
+  // Todo de una vez: la tarea y lo que cambia en el resto de LUNO al hacerla
+  // (personas, «Última vez», la nota de origen), así las pantallas se enteran a la vez
+  const r = await loadRipples()
+  return db.transaction('rw', [db.tasks, ...r.RIPPLE_TABLES], async () => {
+    if (task.done) {
+      await db.tasks.update(task.id, { done: 0, completedAt: undefined })
+      await r.rippleUndone(task)
+      return
+    }
+    const next = await completeOne(task)
+    await r.rippleDone(task)
+    return next
+  })
+}
+
+async function completeOne(task: Task): Promise<Task | undefined> {
   return db.transaction('rw', db.tasks, async () => {
     await db.tasks.update(task.id, { done: 1, completedAt: Date.now() })
     if (!task.recurrence) return
@@ -148,6 +168,7 @@ export async function duplicateTask(task: Task) {
   return createTask({
     ...rest,
     title: `${task.title} (copia)`,
+    source: undefined,
     done: 0,
     subtasks: task.subtasks.map((s) => ({ ...s, id: uid() })),
     createdAt: Date.now(),

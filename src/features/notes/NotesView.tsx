@@ -9,13 +9,17 @@ import { db } from '@/db/db'
 import { toastTrashed } from '../trash/undo'
 import type { Note } from '@/db/types'
 import { createNote, createTask, notesCreatedHere, updateNote, deleteNote, renameNoteLinks, restoreNoteContents, setSetting } from '@/db/actions'
+import { checkItem, openChecklist, sameLine } from '@/lib/ripples'
+import { setNoteLineTask } from '@/db/ripples'
+import { loadParser } from '@/lib/useParser'
+import { today } from '@/lib/dates'
 import { useLookup } from '@/db/hooks'
 import { goBack, href, navigate } from '@/app/router'
 import { toast } from '@/app/store'
 import { Empty, IconButton, Select, Textarea, cx, useMediaQuery } from '@/components/ui'
 import { Progressive } from '@/components/Progressive'
 import { allNoteTags, groupNotes, noteTags, suggestLink } from '@/lib/notes'
-import { LinkSuggestions, NoteConnections } from './NoteLinks'
+import { LinkSuggestions, NoteConnections, NoteTasks } from './NoteLinks'
 import { NoteReader } from './NoteReader'
 import { ChecklistBar, FormatBar, MAX_PHOTOS, NotePhotos, type FormatAction } from './NoteTools'
 import { TemplatePicker } from './NoteTemplates'
@@ -190,7 +194,7 @@ function ListProgress({ content }: { content: string }) {
 }
 
 function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: (tag: string) => void }) {
-  const { areas, projects } = useLookup()
+  const { areas, projects, people } = useLookup()
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -225,8 +229,11 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
     applyEdit(a === 'bold' ? wrapSelection(content, start, end) : toggleLinePrefix(content, start, a === 'check' ? '- [ ] ' : a === 'list' ? '- ' : '## '))
   }
   const toggleLine = (line: number) => {
+    const item = checkItem(content.split('\n')[line] ?? '')
     const next = toggleCheck(content, line)
     change(sortOn ? sortChecked(next) : next)
+    // Si la casilla es una tarea, se hace (o se reabre) también
+    if (item) void setNoteLineTask(note.id, item.text, !item.done)
   }
   const write = () => {
     setMode('edit')
@@ -284,6 +291,15 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
   const latest = useRef({ title, content })
   latest.current = { title, content }
 
+  // Si la nota cambia desde fuera (al hacer una de sus tareas se marca su casilla;
+  // Claude o Siri le añaden algo) y aquí no hay nada sin guardar, se ve al momento
+  const stored = useRef(note.content)
+  useEffect(() => {
+    const before = stored.current
+    stored.current = note.content
+    if (note.content !== before && latest.current.content === before) setContent(note.content)
+  }, [note.content])
+
   // Renombrar: los [[enlaces]] de las demás notas siguen apuntando aquí
   const linkedTitle = useRef(note.title)
   const syncLinks = async () => {
@@ -315,23 +331,30 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
 
   const assign = note.projectId ? `p:${note.projectId}` : note.areaId ? `a:${note.areaId}` : ''
 
-  /** Convierte las líneas "- [ ] algo" en tareas reales */
+  /**
+   * Las casillas sin marcar pasan a tareas de verdad (con sus fechas, @personas y
+   * #etiquetas, en la lista de la nota). Quedan enlazadas: al hacer la tarea se
+   * marca aquí su casilla, y una casilla que ya es tarea no se repite.
+   */
   const extractTasks = async () => {
-    const lines = content.split('\n')
-    let n = 0
-    const next = []
+    const linked = (await db.tasks.filter((t) => t.source?.noteId === note.id).toArray()).map((t) => t.source!.line)
+    const lines = openChecklist(content).filter((l) => !linked.some((x) => sameLine(x, l)))
+    if (!lines.length) return toast(linked.length ? 'Todas las casillas ya son tareas' : 'Escribe líneas como "- [ ] Llamar a Juan" para convertirlas en tareas')
+    const parseQuickAdd = await loadParser()
+    const created: string[] = []
     for (const line of lines) {
-      const m = line.match(/^\s*[-*]\s*\[\s\]\s+(.+)$/)
-      if (m) {
-        await createTask({ title: m[1].trim(), projectId: note.projectId, areaId: note.areaId })
-        next.push(line.replace('[ ]', '[x]'))
-        n++
-      } else next.push(line)
+      const { title, projectId, areaId, waitingFor, ...rest } = parseQuickAdd(line, { areas, projects, people })
+      const t = await createTask({
+        ...rest,
+        title: title || line,
+        source: { noteId: note.id, line },
+        projectId: projectId ?? note.projectId,
+        areaId: projectId ? areaId : (areaId ?? note.areaId),
+        ...(waitingFor ? { waitingFor, waitingSince: today() } : {}),
+      })
+      created.push(t.id)
     }
-    if (!n) return toast('Escribe líneas como "- [ ] Llamar a Juan" para convertirlas en tareas')
-    dirty.current = true
-    setContent(next.join('\n'))
-    toast(`${n} ${n === 1 ? 'tarea creada' : 'tareas creadas'}`)
+    toast(`${created.length} ${created.length === 1 ? 'tarea creada' : 'tareas creadas'}: al hacerlas se marcan aquí`, { label: 'Deshacer', run: () => void db.tasks.bulkDelete(created) })
   }
 
   return (
@@ -376,7 +399,7 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
           <IconButton label="Compartir" onClick={() => void share()}>
             <Share size={15} />
           </IconButton>
-          <IconButton label="Convertir [ ] en tareas" onClick={extractTasks}>
+          <IconButton label="Pasar la lista a tareas" onClick={extractTasks}>
             <ListPlus size={16} />
           </IconButton>
           <IconButton label={note.pinned ? 'Desfijar' : 'Fijar'} onClick={() => updateNote(note.id, { pinned: note.pinned ? 0 : 1 })}>
@@ -499,6 +522,7 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
           toast('Foto quitada', { label: 'Deshacer', run: () => void updateNote(note.id, { images }) })
         }}
       />
+      <NoteTasks noteId={note.id} />
       <NoteConnections note={note} title={title} content={content} notes={notes} onTag={onTag} />
     </div>
   )

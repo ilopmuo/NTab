@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { Check } from 'lucide-react'
 import type { Goal } from '@/db/types'
 import { db } from '@/db/db'
+import { cleanTag } from '@/lib/tags'
 import { createGoal, deleteGoal, linkGoalProjects, setGoalCurrent, setGoalStatus } from '@/db/actions'
 import { useLookup } from '@/db/hooks'
 import { toastTrashed } from '../trash/undo'
@@ -23,6 +25,8 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
   const [current, setCurrent] = useState(String(goal?.current ?? 0))
   const [target, setTarget] = useState(goal?.target ? String(goal.target) : '')
   const [unit, setUnit] = useState(goal?.unit ?? '')
+  const [tag, setTag] = useState(goal?.tag ?? '')
+  const tags = (useLiveQuery(() => db.tasks.orderBy('tags').uniqueKeys(), []) ?? []) as string[]
   const [areaId, setAreaId] = useState(goal?.areaId ?? '')
   const [deadline, setDeadline] = useState(goal?.deadline ?? '')
   const [linked, setLinked] = useState<string[]>(() => (goal ? projects.filter((p) => p.goalId === goal.id).map((p) => p.id) : []))
@@ -31,7 +35,7 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
     const n = Number(s.replace(',', '.'))
     return Number.isFinite(n) ? n : 0
   }
-  const valid = title.trim() && (kind === 'projects' || num(target) > 0)
+  const valid = title.trim() && (kind === 'projects' || num(target) > 0) && (kind !== 'tasks' || !!cleanTag(tag))
 
   const save = async () => {
     if (!valid) return
@@ -42,8 +46,9 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
       areaId: areaId || undefined,
       deadline: deadline || undefined,
       current: kind === 'number' ? num(current) : undefined,
-      target: kind === 'number' ? num(target) : undefined,
-      unit: kind === 'number' ? unit.trim() || undefined : undefined,
+      target: kind !== 'projects' ? num(target) : undefined,
+      unit: kind !== 'projects' ? unit.trim() || undefined : undefined,
+      tag: kind === 'tasks' ? cleanTag(tag) : undefined,
     }
     const id = goal ? (await db.goals.update(goal.id, data), goal.id) : (await createGoal({ ...data, title: data.title! })).id
     // La cifra nueva (o la de partida) entra en el historial
@@ -77,10 +82,31 @@ function Form({ goal, onClose }: { goal?: Goal; onClose: () => void }) {
             options={[
               { value: 'projects', label: 'Con proyectos' },
               { value: 'number', label: 'Con una cifra' },
+              { value: 'tasks', label: 'Con tareas' },
             ]}
           />
         </Field>
-        {kind === 'number' ? (
+        {kind === 'tasks' ? (
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Etiqueta">
+                <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="#lectura" list="goal-tags" autoCapitalize="none" />
+                <datalist id="goal-tags">
+                  {tags.map((t) => (
+                    <option key={t} value={t} />
+                  ))}
+                </datalist>
+              </Field>
+              <Field label="Meta">
+                <Input inputMode="numeric" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="20" />
+              </Field>
+              <Field label="Unidad">
+                <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="tareas" />
+              </Field>
+            </div>
+            <p className="-mt-2 px-1 text-[13px] text-muted">Cada tarea con esta etiqueta que hagas desde hoy suma uno, estés donde estés.</p>
+          </>
+        ) : kind === 'number' ? (
           <div className="grid grid-cols-3 gap-3">
             <Field label="Llevo">
               <Input inputMode="decimal" value={current} onChange={(e) => setCurrent(e.target.value)} />

@@ -12,7 +12,8 @@ import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { CATEGORIES, budgetAlert, categoryBudgets, categoryFor, money, monthSummary, monthlyTotals, normTag, parseExpense, searchExpenses, tagTotals, type Budget, type ExpenseRules } from '../_shared/expenses.ts'
 import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
-import { logGoal, type GoalPoint } from '../_shared/goals.ts'
+import { logGoal, taskGoalCount, type GoalPoint } from '../_shared/goals.ts'
+import { healthLabel, healthRank, projectHealth, type Health } from '../_shared/projectHealth.ts'
 import { appendToNote, checklistStats } from '../_shared/notes.ts'
 import { ceilTo, freeSlots, slotsLabel, toMin, type Block } from '../_shared/schedule.ts'
 import { houseSummary, type HouseCtx } from './casa.ts'
@@ -20,6 +21,7 @@ import { bestWindow, focusStreak, lastDays, minutesByDay, minutesByHour, windowL
 import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabel, type DailyGoal } from '../_shared/day.ts'
 import { WAIT_DAYS } from '../_shared/parse.ts'
 import { medLines } from './meds.ts'
+import { checkNoteLine, contactKind, trackerFor } from '../_shared/ripples.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -369,10 +371,14 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   const active = ix.projects.filter((p) => p.status === 'active')
   if (active.length) {
     s.push(`\nPROYECTOS ACTIVOS:`)
+    let warn = false
     for (const p of active) {
       const pt = ix.tasks.filter((t) => t.projectId === p.id)
-      s.push(`- ${str(p.name)}: ${pt.filter((t) => !t.done).length} pendientes de ${pt.length}${isYmd(p.deadline) ? ` · límite ${p.deadline}` : ''}`)
+      const label = healthLabel(healthOf(p, ix.tasks, today, env))
+      if (label) warn = true
+      s.push(`- ${str(p.name)}: ${pt.filter((t) => !t.done).length} pendientes de ${pt.length}${isYmd(p.deadline) ? ` · límite ${p.deadline}` : ''}${label ? ` · OJO: ${label}` : ''}`)
     }
+    if (warn) s.push('(Los que llevan OJO piden atención: si está parado o sin siguiente paso, propón uno concreto; si va justo de fecha, ayuda a repartir lo que queda; si está todo hecho, pregunta si se da por terminado.)')
   }
 
   const goals = rows.filter((r) => r.tbl === 'goals' && r.data.status === 'active')
@@ -382,6 +388,8 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
       const d = g.data
       let progress: string
       if (d.kind === 'number') progress = `${num(d.current)} de ${num(d.target)}${d.unit ? ` ${str(d.unit)}` : ''}`
+      else if (d.kind === 'tasks')
+        progress = `${taskGoalCount({ tag: str(d.tag), createdAt: num(d.createdAt) }, ix.tasks)} de ${num(d.target)} ${str(d.unit) || 'tareas'} (cuenta solo las tareas con #${str(d.tag)} que hace: para avanzar, crea tareas con esa etiqueta)`
       else {
         const linked = ix.projects.filter((p) => p.goalId === g.id)
         const done = linked.filter((p) => p.status === 'done').length
@@ -777,8 +785,52 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
     }
     out.writes.push({ tbl: 'tasks', id: t.id, data: t as unknown as Data })
     out.report.push(`Actualizada: ${taskLine(t, ix, today).slice(2)}`)
+    // Hecha: lo que cambia en el resto (como en la app, ver _shared/ripples.ts)
+    if (c.hecha === true && !current.done) out.writes.push(...ripples(rows, { ...t, recurrence: current.recurrence }, env, today, out))
   }
   return out
+}
+
+/**
+ * Al hacer una tarea: el contacto con sus personas, su «Última vez» y la
+ * casilla de la nota de la que salió; y si era la última de su proyecto, se dice.
+ */
+/** Cómo va un proyecto activo (ver _shared/projectHealth.ts) */
+export function healthOf(p: Data, tasks: Task[], today: string, env: Env): Health {
+  return projectHealth({ status: str(p.status), deadline: isYmd(p.deadline) ? p.deadline : undefined, createdAt: num(p.createdAt) }, tasks.filter((t) => t.projectId === p.id), today, (ms) => ymdIn(ms, env.tz))
+}
+
+/** Los proyectos que piden atención, lo más urgente antes */
+export function projectsNeedingCare(ix: Index, today: string, env: Env): { name: string; health: Health }[] {
+  return ix.projects
+    .filter((p) => p.status === 'active')
+    .map((p) => ({ name: str(p.name), health: healthOf(p, ix.tasks, today, env) }))
+    .filter((x) => x.health.kind !== 'ok')
+    .sort((a, b) => healthRank[b.health.kind] - healthRank[a.health.kind])
+}
+
+function ripples(rows: Row[], t: Task, env: Env, today: string, out: WriteResult): Row[] {
+  const writes: Row[] = []
+  for (const personId of t.people ?? []) {
+    const id = env.newId()
+    writes.push({ tbl: 'interactions', id, data: { id, personId, date: today, kind: contactKind(t.title), summary: t.title, taskId: t.id, createdAt: env.now } })
+    const person = rows.find((r) => r.tbl === 'people' && r.id === personId)
+    if (person && (!isYmd(person.data.lastContact) || (person.data.lastContact as string) < today)) writes.push({ tbl: 'people', id: person.id, data: { ...person.data, lastContact: today } })
+  }
+  const trackers = rows.filter((r) => r.tbl === 'trackers').map((r) => ({ ...r.data, id: r.id, name: str(r.data.name), log: Array.isArray(r.data.log) ? (r.data.log as string[]) : [] }))
+  const tracker = trackerFor(t.title, trackers)
+  if (tracker && tracker.log[0] !== today) writes.push(...logLastTime(rows, { cosa: tracker.name }, env).writes)
+  const source = (t as Task & { source?: { noteId: string; line: string } }).source
+  // Si se repite, la casilla sigue abierta para la próxima vez
+  const note = source && !t.recurrence && rows.find((r) => r.tbl === 'notes' && r.id === source.noteId)
+  const content = note && checkNoteLine(str(note.data.content), source!.line, true)
+  if (note && content !== undefined) writes.push({ tbl: 'notes', id: note.id, data: { ...note.data, content, updatedAt: env.now } })
+  if (t.projectId) {
+    const project = rows.find((r) => r.tbl === 'projects' && r.id === t.projectId)
+    const left = rows.filter((r) => r.tbl === 'tasks' && r.data.projectId === t.projectId && !r.data.done && r.id !== t.id && !out.writes.some((w) => w.id === r.id && w.data.done))
+    if (project && project.data.status === 'active' && !left.length) out.report.push(`Era la última tarea de «${str(project.data.name)}»: si ya está, el proyecto se puede dar por terminado.`)
+  }
+  return writes
 }
 
 export function createNote(rows: Row[], args: { titulo?: string; contenido?: string; proyecto?: string }, env: Env): WriteResult {
@@ -943,7 +995,7 @@ export function updateGoal(rows: Row[], args: { objetivo?: string; cifra?: numbe
   const next: Data = { ...g }
   const out: string[] = []
   if (typeof args.cifra === 'number' || typeof args.sumar === 'number') {
-    if (g.kind !== 'number') return { writes: [], report: [`«${str(g.title)}» se mide con sus proyectos, no con una cifra.`] }
+    if (g.kind !== 'number') return { writes: [], report: [`«${str(g.title)}» se mide ${g.kind === 'tasks' ? `con las tareas #${str(g.tag)} que hace` : 'con sus proyectos'}, no con una cifra.`] }
     next.current = Math.max(0, typeof args.cifra === 'number' ? args.cifra : num(g.current) + (args.sumar ?? 0))
     next.log = logGoal(g.log as GoalPoint[] | undefined, ymdIn(env.now, env.tz), next.current as number)
     out.push(`«${str(g.title)}»: ${num(next.current)} de ${num(g.target)}${g.unit ? ` ${str(g.unit)}` : ''}.`)

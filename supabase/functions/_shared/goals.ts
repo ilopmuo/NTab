@@ -20,3 +20,13 @@ export function goalChange(log: GoalPoint[] | undefined, since: string): number 
   const before = [...log].reverse().find((p) => p.date <= since) ?? log[0]
   return log[log.length - 1].value - before.value
 }
+
+/**
+ * Un objetivo que se mide con tareas («Leer 20 libros», con #lectura): cuántas
+ * tareas con esa etiqueta se han hecho desde que se creó el objetivo.
+ */
+export function taskGoalCount(goal: { tag?: string; createdAt: number }, tasks: { done: unknown; completedAt?: number; tags?: string[] }[]): number {
+  const tag = (goal.tag ?? '').toLowerCase()
+  if (!tag) return 0
+  return tasks.filter((t) => t.done && (t.completedAt ?? 0) >= goal.createdAt && t.tags?.some((x) => x.toLowerCase() === tag)).length
+}
