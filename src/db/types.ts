@@ -209,6 +209,8 @@ export interface Habit {
   perWeek?: number
   /** días de descanso (vacaciones, «hoy no toca»): no cuentan ni rompen la racha; sin `to`, en pausa */
   breaks?: { from: string; to?: string }[]
+  /** área de vida (Salud, Estudio…); por ahora la pone el conector de Claude */
+  areaId?: ID
   archived: 0 | 1
   order: number
   createdAt: number

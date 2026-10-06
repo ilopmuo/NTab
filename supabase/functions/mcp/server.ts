@@ -7,6 +7,7 @@ import { houseAdd, houseDone, houseView, type HouseCtx } from './casa.ts'
 import type { HouseOp } from '../_shared/house.ts'
 import { ymdIn } from '../_shared/time.ts'
 import { takeMed, viewMeds } from './meds.ts'
+import { createHabit, listHabits, updateHabit } from './habits.ts'
 import { buildSummary, eventLines, type EventLike, createNote, createProject, createRoutine, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, logContact, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
 
 export interface Store {
@@ -28,6 +29,7 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Para lo que no puede olvidar (llamadas importantes), crea la tarea con hora e insistir. Sus pastillas van en Medicación: ante «¿me he tomado la pastilla?», mira MEDICACIÓN DE HOY en el resumen o usa ver_medicacion; «me la he tomado» se marca con tomar_medicacion.
 - Si algo depende de otra persona («le he pedido a Ana el presupuesto», «espero la respuesta del casero»), crea la tarea con esperando: sale de Hoy y vuelve en unos días para que pregunte. Las de A LA ESPERA no son trabajo suyo: cuando llegue su fecha, propón preguntar.
 - Lo que haya que comprar va a la lista de la compra (anadir_compra), no a tareas. Lo que hace de vez en cuando («he cambiado las sábanas») va a lo_he_hecho.
+- Para un hábito nuevo («quiero beber 8 vasos de agua al día»), crear_habito; para verlos con su racha, ver_habitos; para cambiarlo o dejarlo, actualizar_habito. «Me he bebido 2 vasos» se marca con marcar_habito.
 - Si te cuenta qué tal su día y quiere guardarlo, usa escribir_diario.
 - Para consultar lo que tiene apuntado en sus notas, buscar_notas; para añadir a una nota que ya tiene (ideas, la maleta…), anadir_a_nota.
 - Si vive con compañeros (CASA COMPARTIDA en el resumen), lo común va al piso con anadir_a_casa: la compra de casa, las tareas de casa (por turnos: sacar la basura, limpiar el baño) y los gastos que se reparten; «he sacado la basura» va a hecho_en_casa. Lo suyo personal, como siempre.
@@ -200,6 +202,59 @@ export const TOOLS = [
         fecha: DATE,
         hecho: { type: 'boolean', description: 'false para desmarcarlo; por defecto true' },
         cantidad: { type: 'number', description: 'Cuánto sumar en hábitos con cantidad (p. ej. 2 vasos)' },
+      },
+      required: ['habito'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'ver_habitos',
+    title: 'Ver hábitos',
+    description: 'Lista sus hábitos activos: días en que tocan, objetivo de cantidad, hora de aviso, área, racha actual y cómo va hoy. Al final, los archivados.',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'crear_habito',
+    title: 'Crear hábito',
+    description:
+      'Crea un hábito que quiere hacer con regularidad («meditar», «beber agua: 8 vasos al día»). Sale en Hoy los días que toca, avisa a su hora si no está hecho y se marca con marcar_habito. Si ya existe uno con ese nombre, no lo duplica.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'Corto: «Meditar», «Beber agua», «Leer»' },
+        dias: {
+          description: 'Días en que toca: lista de números (0 domingo … 6 sábado) o "todos", "laborables", "fines de semana". Por defecto, todos.',
+          oneOf: [{ type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } }, { type: 'string' }],
+        },
+        hora: { ...TIME, description: 'HH:MM: avisarle a esta hora si aún no lo ha hecho (opcional)' },
+        cantidad: { type: 'integer', minimum: 1, maximum: 1000, description: 'Objetivo al día para hábitos con cantidad (8 vasos, 20 min). Sin ella, hecho o no hecho' },
+        unidad: { type: 'string', description: 'Unidad de la cantidad: «vasos», «min», «páginas»' },
+        area: { type: 'string', description: 'Área de vida existente (Salud, Estudio, Trabajo, Personal…)' },
+      },
+      required: ['nombre'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  {
+    name: 'actualizar_habito',
+    title: 'Actualizar hábito',
+    description:
+      'Cambia un hábito por su nombre: nombre, días, hora de aviso, cantidad y unidad o área (hora, cantidad o area a null los quitan). Con archivado=true lo deja (sale de Hoy, sin borrar su historial); con archivado=false lo recupera.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        habito: { type: 'string', description: 'Nombre actual del hábito' },
+        nombre: { type: 'string', description: 'Nombre nuevo' },
+        dias: {
+          description: 'Días nuevos en que toca: lista de números (0 domingo … 6 sábado) o "todos", "laborables", "fines de semana".',
+          oneOf: [{ type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } }, { type: 'string' }],
+        },
+        hora: { type: ['string', 'null'], description: 'HH:MM del aviso, o null para quitarlo' },
+        cantidad: { type: ['integer', 'null'], minimum: 1, maximum: 1000, description: 'Objetivo al día, o null para que sea hecho o no hecho' },
+        unidad: { type: 'string', description: 'Unidad de la cantidad («vasos», «min»)' },
+        area: { type: ['string', 'null'], description: 'Área existente, o null para quitarla' },
+        archivado: { type: 'boolean', description: 'true: archivarlo (conserva el historial); false: recuperarlo' },
       },
       required: ['habito'],
     },
@@ -650,6 +705,8 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       if (r.writes.length || r.deletes.length) await store.save(r.writes, r.deletes)
       return text(r.report.join('\n'))
     }
+    case 'ver_habitos':
+      return text(listHabits(rows, args, env))
     case 'ver_plantillas':
       return text(listTemplates(rows))
     case 'usar_plantilla': {
@@ -695,8 +752,10 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'registrar_contacto':
     case 'anadir_a_nota':
     case 'guardar_pago':
-    case 'marcar_pago': {
-      const fn = { anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
+    case 'marcar_pago':
+    case 'crear_habito':
+    case 'actualizar_habito': {
+      const fn = { crear_habito: createHabit, actualizar_habito: updateHabit, anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContact, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)
