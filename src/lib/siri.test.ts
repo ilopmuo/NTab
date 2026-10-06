@@ -54,6 +54,31 @@ describe('Siri: el dictado tal como llega', () => {
     expect(spokenDay('2027-01-04', '2026-10-05')).toBe('el lunes 4 de enero de 2027')
   })
 
+  it('el título sin lo que se dice para pedirla ni las muletillas', () => {
+    const title = (s: string) => saved(say(s)).find((w) => w.tbl === 'tasks')?.data
+    expect(title('Recuérdame que tengo que llamar al dentista mañana por la mañana')).toMatchObject({ title: 'Llamar al dentista', dueDate: '2026-10-06', dueTime: '09:00' })
+    expect(title('Acuérdate de que mañana tengo que llevar el coche al taller')).toMatchObject({ title: 'Llevar el coche al taller', dueDate: '2026-10-06' })
+    expect(title('Apúntame una tarea para revisar el contrato del piso el jueves')).toMatchObject({ title: 'Revisar el contrato del piso', dueDate: '2026-10-08' })
+    expect(title('Por favor añade una tarea de enviar el informe al jefe el lunes')?.title).toBe('Enviar el informe al jefe')
+    expect(title('Crea una tarea llamar a Luis')?.title).toBe('Llamar a Luis')
+    expect(title('Apunta que hay que pedir cita en el médico')?.title).toBe('Pedir cita en el médico')
+    expect(title('No me puedo olvidar de sacar la basura esta noche')?.title).toBe('Sacar la basura')
+    expect(title('Eh vale y luego también tengo que llamar al banco')?.title).toBe('Llamar al banco')
+    expect(title('Debería ir al gimnasio esta tarde')?.title).toBe('Ir al gimnasio')
+    expect(title('Necesito hacer la declaración de la renta, por favor')?.title).toBe('Hacer la declaración de la renta')
+    // Sin un verbo detrás, «necesito» y «quiero» son la tarea; y «pon la lavadora» o «mira el correo», también
+    expect(title('Necesito un abrigo nuevo')?.title).toBe('Necesito un abrigo nuevo')
+    expect(title('Pon la lavadora')?.title).toBe('Pon la lavadora')
+    expect(title('Mira el correo de Hacienda')?.title).toBe('Mira el correo de Hacienda')
+    expect(title('Voy a la peluquería el martes')?.title).toBe('Voy a la peluquería')
+  })
+
+  it('«antes del viernes» es la fecha límite, y se dice', () => {
+    const r = say('Oye pues tengo que mirar lo del seguro del coche eh antes del viernes')
+    expect(saved(r)[0].data).toMatchObject({ title: 'Mirar lo del seguro del coche', deadline: '2026-10-09' })
+    expect(r.report[0]).toBe('Apuntado: Mirar lo del seguro del coche, para antes del viernes 9.')
+  })
+
   it('la compra dicha con naturalidad, también en otras listas', () => {
     expect(saved(say('Compra pan y huevos.')).map((w) => w.data.name)).toEqual(['Pan', 'Huevos'])
     expect(say('Añade huevos a la lista de la compra.').report[0]).toBe('Añadido a la compra: Huevos.')
@@ -173,7 +198,7 @@ describe('Siri: preguntar', () => {
   })
 
   it('lo que empieza como una pregunta pero no lo es se apunta como siempre', () => {
-    expect(saved(say('Tengo que llamar al banco mañana.'))[0].data).toMatchObject({ title: 'Tengo que llamar al banco', dueDate: '2026-10-06' })
+    expect(saved(say('Tengo que llamar al banco mañana.'))[0].data).toMatchObject({ title: 'Llamar al banco', dueDate: '2026-10-06' })
     expect(saved(say('Hay que sacar la basura esta noche.'))[0].tbl).toBe('tasks')
     expect(saved(say('Como con Ana el viernes.'))[0].data).toMatchObject({ dueDate: '2026-10-09' })
     expect(saved(say('Recuerda que tengo cita en el médico el martes.'))[0].tbl).toBe('tasks')

@@ -20,7 +20,7 @@ import { suggest, type Energy } from '../_shared/suggest.ts'
 import { captureMed, medsLeft } from './meds.ts'
 import { houseVoice, type HouseCtx } from './casa.ts'
 import { itemKey, parseItems } from '../_shared/shopping.ts'
-import { ASKING, classify, cleanDictation, closest, infinitive } from '../_shared/intent.ts'
+import { ASKING, classify, cleanDictation, closest, infinitive, tidyTitle } from '../_shared/intent.ts'
 import type { Health } from '../_shared/projectHealth.ts'
 import {
   Index,
@@ -748,10 +748,12 @@ function newTask(rows: Row[], text: string, fields: CaptureInput, env: Env, proj
     areas: ix.areas.map(target),
     people: ix.people.map(target),
   })
-  if (!parsed.title && !link) return { writes: [], report: ['No he entendido qué apuntar.'] }
+  // Sin lo que se dice para pedirla: «recuérdame que tengo que…», «oye, apunta que…»
+  const title = tidyTitle(parsed.title)
+  if (!title && !link) return { writes: [], report: ['No he entendido qué apuntar.'] }
   let task: Task = {
     id: env.newId(),
-    title: link ? linkTask(parsed.title, link.url, fields.titulo).title : parsed.title,
+    title: link ? linkTask(title, link.url, fields.titulo).title : title,
     notes: link ? link.url : '',
     done: 0,
     priority: parsed.priority,
@@ -762,6 +764,8 @@ function newTask(rows: Row[], text: string, fields: CaptureInput, env: Env, proj
   }
   if (parsed.dueDate) task.dueDate = parsed.dueDate
   if (parsed.dueTime) task.dueTime = parsed.dueTime
+  if (parsed.deadline) task.deadline = parsed.deadline
+  if (parsed.someday) task.someday = true
   if (parsed.projectId) task.projectId = parsed.projectId
   if (projectId) {
     task.projectId = projectId
@@ -784,8 +788,10 @@ function newTask(rows: Row[], text: string, fields: CaptureInput, env: Env, proj
     ? `, esperando a ${task.waitingFor}; te lo recuerdo ${spokenDay(task.dueDate!, today)}`
     : task.dueDate
       ? `, ${spokenDay(task.dueDate, today)}${task.dueTime ? ` a las ${task.dueTime}` : ''}`
-      : ''
-  const where = task.projectId ? ix.projectName(task.projectId) : task.areaId ? ix.areaName(task.areaId) : task.dueDate ? '' : 'la bandeja'
+      : task.deadline
+        ? `, para antes ${toDay(task.deadline, today).replace(/^a /, 'de ').replace(/^al /, 'del ')}`
+        : ''
+  const where = task.projectId ? ix.projectName(task.projectId) : task.areaId ? ix.areaName(task.areaId) : task.dueDate || task.deadline ? '' : task.someday ? 'Algún día' : 'la bandeja'
   return remember(
     rows,
     {

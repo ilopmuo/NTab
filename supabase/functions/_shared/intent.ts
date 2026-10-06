@@ -26,6 +26,32 @@ export function cleanDictation(raw: string): { text: string; question: boolean }
   return { text: t.replace(/^[¿¡\s]+/, '').replace(/[\s.,;:!?¡¿…]+$/u, ''), question: /^¿|\?$/.test(t) }
 }
 
+// Muletillas del habla: «oye», «pues», «vale», «y luego también»…
+const FILLER = /^(?:oye|oiga|venga|vale|bueno|pues|eh+|em+|ehm|mm+|ok(?:ay)?|a\s+ver|y|luego|despu[eé]s|tambi[eé]n|adem[aá]s|por\s+favor|porfa|siri|luno)(?:[\s,]+|$)/i
+// Pedírselo a Siri: «recuérdame que…», «acuérdate de…», «no me puedo olvidar de…»
+const ASK_REMIND = /^(?:recu[eé]rda(?:me|le)?|acu[eé]rda(?:te|me)|av[ií]same|no\s+(?:me\s+)?(?:puedo|debo|tengo\s+que)\s+olvidar(?:me)?|no\s+(?:te\s+)?olvides|que\s+no\s+se\s+me\s+olvide)(?:\s+(?:de\s+)?que|\s+de)?(?:[\s,]+|$)/i
+// «apunta que…», «apúntame una tarea para…», «crea una tarea: …» («pon la lavadora» se queda: es la tarea)
+const ASK_NOTE = /^(?:(?:a(?:p[uú]nta|n[oó]ta)(?:me)?|a[nñ]ade(?:me)?|cr[eé]a(?:me)?|p[oó]n(?:me)?|m[eé]te(?:me)?|agrega|guarda)\s+(?:que\b|(?:una\s+|la\s+)?(?:tarea|recordatorio)\b|un\s+recordatorio\b|en\s+(?:las\s+|mis\s+)?tareas\b)|(?:una\s+)?(?:tarea|recordatorio)\s*(?=[:,]|de\s|para\s|que\s))(?:\s*(?:de|para|que)\b)?[\s:,]*/i
+// «tengo que…», «necesito…», «hay que…», «debería…» delante de lo que hay que hacer (un infinitivo)
+const MODAL = /^(?:de\s+)?(?:que\s+)?(?:yo\s+)?(?:tengo\s+que|tenemos\s+que|tendr[ií]a\s+que|tendr[eé]\s+que|hay\s+que|habr[ií]a\s+que|he\s+de|necesito|necesitamos|quiero|queremos|debo|debemos|deber[ií]a|deber[ií]amos|me\s+toca|me\s+gustar[ií]a|voy\s+a|vamos\s+a)\s+(?=\S*?[aeií]r(?:me|te|le|lo|la|les|los|las|se|nos)*(?:\s|$))/i
+// Al final: «…, por favor», «…, gracias», «…, ¿vale?»
+const TAIL = /[\s,]+(?:por\s+favor|porfa|gracias|vale|eh+|o\s+algo\s+as[ií])$/i
+
+/**
+ * El título de una tarea dictada, sin lo que se dice para pedirla:
+ * «Recuérdame que tengo que llamar al dentista» → «Llamar al dentista»,
+ * «Oye, apunta que hay que pedir cita en el médico» → «Pedir cita en el médico».
+ */
+export function tidyTitle(title: string): string {
+  let t = title.replace(/(^|[\s,])(?:eh+|em+|ehm|mm+)(?=[\s,]|$)/gi, '$1').replace(/\s+/g, ' ').replace(/\s+,/g, ',').trim()
+  for (let prev = ''; prev !== t; ) {
+    prev = t
+    t = t.replace(FILLER, '').replace(ASK_REMIND, '').replace(ASK_NOTE, '').replace(MODAL, '').replace(TAIL, '').replace(/^[\s,;:.-]+/, '')
+  }
+  // Si no queda nada (lo dicho era solo la petición), mejor lo de antes
+  return t ? cap(t) : title
+}
+
 // ── Parecidos: «he llamado al dentista» ≈ «Llamar al dentista» (ver likeness.ts) ──
 
 export { closest, infinitive, likeness } from './likeness.ts'
