@@ -15,12 +15,19 @@ export function HubTabs({ className, anyDepth }: { className?: string; /** tambi
   const { parts } = useRoute()
   const features = useFeatures()
   const current = sectionOfRoute(parts[0])
-  useEffect(() => rememberTab(current), [current])
+  useEffect(() => {
+    rememberTab(current)
+  }, [current])
   const h = hubOf(current)
   const tabs = h ? hubTabs(h, features.section) : []
-  // La pestaña activa, siempre a la vista (en el móvil la fila se desliza)
+  // La pestaña activa, siempre a la vista (en el móvil la fila se desliza).
+  // Entre llaves: Chrome ya devuelve una Promise de scrollIntoView y React la
+  // tomaría por la limpieza del efecto; al salir de la pantalla la llamaba
+  // («… is not a function») y la ventana entera se quedaba en blanco
   const nav = useRef<HTMLElement>(null)
-  useEffect(() => nav.current?.querySelector('[aria-current=page]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }), [current])
+  useEffect(() => {
+    nav.current?.querySelector('[aria-current=page]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [current])
   if (!h || (parts.length > 1 && !anyDepth) || tabs.length < 2) return null
   return (
     <nav ref={nav} aria-label={h.label} className={cx('no-scrollbar -mx-1 mb-4 flex gap-0.5 overflow-x-auto px-1 after:block after:w-3 after:shrink-0 after:content-[\'\']', className)}>

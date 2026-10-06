@@ -162,3 +162,21 @@ test('si una pantalla falla, falla solo ella: se ve el error y la barra lateral 
   // Los fallos de esa carga eran lo esperado
   errors.length = 0
 })
+
+test('salir de una pantalla con pestañas no rompe la app aunque el navegador devuelva una Promise al hacer scroll (Chrome nuevo)', async ({ page }) => {
+  // Chrome ya devuelve una Promise de scrollIntoView; el de los tests aún no
+  await page.addInitScript(() => {
+    const scroll = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element, ...args: Parameters<typeof scroll>) {
+      scroll.apply(this, args)
+      return Promise.resolve() as unknown as void
+    }
+  })
+  await openApp(page, '/notes')
+  await expect(page.locator('#main nav a[aria-current=page]')).toBeVisible()
+  const nav = page.getByRole('navigation', { name: 'Barra lateral' })
+  await nav.getByRole('link', { name: /^Bandeja de entrada/ }).click()
+  await expect(page.locator('#main h1')).toHaveText('Bandeja de entrada')
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(nav).toBeInViewport()
+})

@@ -94,7 +94,9 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
     setActive(0)
   }
 
-  useEffect(() => inputRef.current?.focus(), [])
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   const final = build(parsed)
   function build(parsed: ParsedTask): Partial<Task> {
