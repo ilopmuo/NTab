@@ -9,7 +9,7 @@ import { markDone, markSlip } from './markDone'
 import { today } from '@/lib/dates'
 import { AVOID_PRESETS, TRACKER_PRESETS, cleanDays, cleanRecord, everyLabel, inLabel, milestoneLabel, nextMilestone, savedSince, sinceLabel, sortTrackers, trackerState } from '@/lib/trackers'
 import { money } from '@/lib/finance'
-import { setUI, useUI } from '@/app/store'
+import { setUI, useUI, ui } from '@/app/store'
 import { href } from '@/app/router'
 import { Icon } from '@/components/icons'
 import { Button, Empty, Group, cx, spring } from '@/components/ui'
@@ -170,7 +170,7 @@ export function TrackersBlock() {
           Última vez
         </h2>
         {due > 0 && <span className="text-[15px] font-semibold text-blue">Toca {due === 1 ? '1 cosa' : `${due} cosas`}</span>}
-        <Button size="sm" variant="tinted" className="ml-auto" onClick={() => setUI({ creating: 'tracker' })}>
+        <Button size="sm" variant="tinted" className="ml-auto" onClick={() => ui.create('tracker')}>
           <Plus size={14} strokeWidth={2.6} /> Apuntar
         </Button>
       </div>

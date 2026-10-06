@@ -1,10 +1,11 @@
 /**
- * Navegación a tu medida: qué espacios (Hoy, Casa, Dinero… ver HUBS en
- * src/app/sections.tsx) van en la cuadrícula de la barra lateral, cuáles en la
- * lista, cuáles se ocultan (siguen en ⌘K y en los atajos) y qué cuatro
- * pestañas lleva la barra del móvil. Se guarda en el ajuste `nav`.
+ * Navegación a tu medida: en qué orden van los lugares (Hoy, Casa, Dinero… ver
+ * HUBS en src/app/sections.tsx) en la barra lateral, cuáles se ocultan (siguen
+ * en «N más», en ⌘K y en los atajos) y qué cuatro pestañas lleva la barra del
+ * móvil. Se guarda en el ajuste `nav`.
  */
 
+/** `tile` era la cuadrícula de arriba de la barra lateral (ya no existe): cuenta como `list` */
 export type Place = 'tile' | 'list' | 'hidden'
 
 export interface NavPrefs {
@@ -15,8 +16,21 @@ export interface NavPrefs {
 
 /** Siempre al pie de la barra lateral: no se mueven ni se ocultan */
 export const FIXED = ['trash', 'settings']
-export const DEFAULT_TILES = ['today', 'inbox', 'calendar', 'habits', 'notes', 'home']
-export const DEFAULT_LIST = ['projects', 'filters', 'people', 'money']
+/** El orden de siempre: el día, lo que organizas y tu vida (ver GROUP) */
+export const DEFAULT_ORDER = ['today', 'inbox', 'calendar', 'projects', 'filters', 'notes', 'habits', 'people', 'home', 'money']
+/** Para separar en la barra lo de cada momento: el día, organizar y la vida */
+export const GROUP: Record<string, 'day' | 'organize' | 'life'> = {
+  today: 'day',
+  inbox: 'day',
+  calendar: 'day',
+  projects: 'organize',
+  filters: 'organize',
+  notes: 'organize',
+  habits: 'life',
+  people: 'life',
+  home: 'life',
+  money: 'life',
+}
 /** De la lista, pero ocultos al empezar: en «N más» al pie, en «Más» y en ⌘K */
 export const DEFAULT_HIDDEN: string[] = []
 export const DEFAULT_TABS = ['today', 'inbox', 'calendar', 'habits']
@@ -27,8 +41,7 @@ export const ALWAYS_VISIBLE = ['today']
 export interface Nav {
   /** Todas las secciones que se pueden colocar, en su orden */
   order: string[]
-  place: Record<string, Place>
-  tiles: string[]
+  place: Record<string, Exclude<Place, 'tile'>>
   list: string[]
   hidden: string[]
   tabs: string[]
@@ -41,17 +54,15 @@ export interface Nav {
  */
 export function resolveNav(prefs: NavPrefs | null | undefined, sections: string[]): Nav {
   const known = sections.filter((id) => !FIXED.includes(id))
-  const defaults = [...DEFAULT_TILES, ...DEFAULT_LIST]
+  const defaults = DEFAULT_ORDER
   const byDefault = [...defaults.filter((id) => known.includes(id)), ...known.filter((id) => !defaults.includes(id))]
   const saved = unique(prefs?.order ?? []).filter((id) => known.includes(id))
   const order = [...saved, ...byDefault.filter((id) => !saved.includes(id))]
 
-  const place: Record<string, Place> = {}
+  const place: Record<string, Exclude<Place, 'tile'>> = {}
   for (const id of order) {
-    let p = prefs?.place?.[id] ?? (DEFAULT_TILES.includes(id) ? 'tile' : DEFAULT_HIDDEN.includes(id) ? 'hidden' : 'list')
-    if (p !== 'tile' && p !== 'list' && p !== 'hidden') p = 'list'
-    if (p === 'hidden' && ALWAYS_VISIBLE.includes(id)) p = DEFAULT_TILES.includes(id) ? 'tile' : 'list'
-    place[id] = p
+    const p = prefs?.place?.[id] ?? (DEFAULT_HIDDEN.includes(id) ? 'hidden' : 'list')
+    place[id] = p === 'hidden' && !ALWAYS_VISIBLE.includes(id) ? 'hidden' : 'list'
   }
 
   const valid = unique(prefs?.tabs ?? []).filter((id) => sections.includes(id))
@@ -60,7 +71,6 @@ export function resolveNav(prefs: NavPrefs | null | undefined, sections: string[
   return {
     order,
     place,
-    tiles: order.filter((id) => place[id] === 'tile'),
     list: order.filter((id) => place[id] === 'list'),
     hidden: order.filter((id) => place[id] === 'hidden'),
     tabs,

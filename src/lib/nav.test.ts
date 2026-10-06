@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_HIDDEN, DEFAULT_LIST, DEFAULT_TABS, DEFAULT_TILES, resolveNav, setTab } from './nav'
+import { DEFAULT_HIDDEN, DEFAULT_ORDER, DEFAULT_TABS, resolveNav, setTab } from './nav'
 
-const ALL = [...DEFAULT_TILES, ...DEFAULT_LIST, 'trash', 'settings']
+const ALL = [...DEFAULT_ORDER, 'trash', 'settings']
 
 describe('resolveNav', () => {
-  it('sin ajustes: la barra de siempre', () => {
+  it('sin ajustes: la barra de siempre, en una sola lista', () => {
     const nav = resolveNav(null, ALL)
-    expect(nav.tiles).toEqual(DEFAULT_TILES)
-    expect(nav.list).toEqual(DEFAULT_LIST.filter((id) => !DEFAULT_HIDDEN.includes(id)))
+    expect(nav.list).toEqual(DEFAULT_ORDER.filter((id) => !DEFAULT_HIDDEN.includes(id)))
     expect(nav.hidden).toEqual(DEFAULT_HIDDEN)
     expect(nav.tabs).toEqual(DEFAULT_TABS)
+  })
+
+  it('lo que estaba en la cuadrícula de antes pasa a la lista, en su orden', () => {
+    const nav = resolveNav({ order: ['today', 'inbox', 'habits', 'projects'], place: { today: 'tile', inbox: 'tile', habits: 'tile', projects: 'list' } }, ALL)
+    expect(nav.list.slice(0, 4)).toEqual(['today', 'inbox', 'habits', 'projects'])
+    expect(Object.values(nav.place)).not.toContain('tile')
   })
 
   it('el pie (papelera y ajustes) no se coloca', () => {
@@ -25,11 +30,10 @@ describe('resolveNav', () => {
     expect(nav.tabs).toHaveLength(4)
   })
 
-  it('respeta el orden, el sitio y las ocultas', () => {
+  it('respeta el orden y las ocultas', () => {
     const nav = resolveNav({ order: ['notes', 'today', 'money'], place: { money: 'tile', inbox: 'hidden', people: 'hidden' } }, ALL)
-    expect(nav.tiles.slice(0, 3)).toEqual(['notes', 'today', 'money'])
+    expect(nav.list.slice(0, 3)).toEqual(['notes', 'today', 'money'])
     expect(nav.hidden.filter((id) => !DEFAULT_HIDDEN.includes(id))).toEqual(['inbox', 'people'])
-    expect(nav.list).not.toContain('money')
   })
 
   it('lo oculto se puede volver a poner en la lista', () => {
@@ -49,7 +53,7 @@ describe('resolveNav', () => {
 
   it('Hoy no se puede ocultar', () => {
     const nav = resolveNav({ place: { today: 'hidden' } }, ALL)
-    expect(nav.tiles).toContain('today')
+    expect(nav.list).toContain('today')
     expect(nav.hidden).not.toContain('today')
   })
 

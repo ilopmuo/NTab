@@ -5,7 +5,7 @@ import { db } from '@/db/db'
 import { useLookup } from '@/db/hooks'
 import type { ProjectStatus } from '@/db/types'
 import { navigate } from '@/app/router'
-import { setUI, useUI } from '@/app/store'
+import { setUI, useUI, ui } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Button, Empty, PageHeader, Section, Segmented } from '@/components/ui'
 import { Page } from '../Page'
@@ -35,7 +35,7 @@ export function ProjectsView() {
         title="Proyectos"
         subtitle="Todo lo que requiere más de un paso."
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'project' })}>
+          <Button variant="primary" onClick={() => ui.create('project')}>
             <Plus size={15} /> Nuevo
           </Button>
         }

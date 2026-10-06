@@ -1,6 +1,6 @@
 import { Group, cx } from '@/components/ui'
 
-const rowCls = 'flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-[15px] transition-colors hover:bg-hover disabled:opacity-50 [&+&]:shadow-[inset_0_1px_0_var(--c-border)]'
+const rowCls = 'flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-[15px] transition-colors hover:bg-hover active:bg-press disabled:opacity-50 [&+&]:shadow-[inset_0_1px_0_var(--c-border)]'
 
 export function LinkSection({ title, footer, children }: { title: string; footer?: React.ReactNode; children: React.ReactNode }) {
   return (

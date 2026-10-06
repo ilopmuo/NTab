@@ -190,7 +190,7 @@ export function FocusMode() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.94 }}
           transition={spring}
-          className="glass-thick fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),10px)+72px)] z-[55] flex h-[54px] items-center gap-1 overflow-hidden rounded-full pr-1.5 pl-1.5 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[340px]"
+          className="glass-thick fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),10px)+72px)] z-[55] flex h-[54px] items-center gap-1 overflow-hidden rounded-full pr-1.5 pl-1.5 md:inset-x-auto md:right-6 md:bottom-6 md:w-[340px] md:pointer-coarse:right-[100px]"
         >
           <button type="button" onClick={() => focus.minimize(false)} aria-label="Abrir el modo foco" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-1 pr-2 text-left">
             <span className="relative flex h-[42px] w-[42px] shrink-0 items-center justify-center">

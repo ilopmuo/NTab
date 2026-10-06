@@ -31,7 +31,7 @@ export function EdgeBack() {
   const { path } = useRoute()
   const parent = parentOf(path)
   // Con la barra lateral a la vista (tablet en horizontal) el borde es suyo
-  const narrow = useMediaQuery('(max-width: 1023px)')
+  const narrow = useMediaQuery('(max-width: 767px)')
   const touch = useMediaQuery('(pointer: coarse)')
   const [target, setTarget] = useState<string | null>(null)
   const ghost = useRef<HTMLDivElement>(null)

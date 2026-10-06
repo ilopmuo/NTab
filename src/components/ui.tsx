@@ -324,10 +324,13 @@ export function Modal({
       {open && (
         <motion.div
           key={`modal-${session.current}`}
+          // En lo que se ve de verdad (ver lib/viewport.ts): con el teclado del móvil
+          // abierto, la hoja o el diálogo quedan justo encima, sin saltos
           className={cx(
-            'fixed inset-0 z-50 flex justify-center',
-            mobile ? 'items-end' : position === 'top' ? 'items-start px-4 pt-[14vh] pb-4' : 'items-center p-4',
+            'fixed inset-x-0 z-50 flex justify-center transition-[top,height] duration-200 ease-out',
+            mobile ? 'items-end' : position === 'top' ? 'items-start px-4 pt-[min(14vh,10%)] pb-4' : 'items-center p-4',
           )}
+          style={{ top: 'var(--vv-top, 0px)', height: 'var(--vv-height, 100%)' }}
         >
           <motion.div
             className="absolute inset-0 bg-scrim backdrop-blur-[3px]"
@@ -456,7 +459,7 @@ function Sheet({ children, onClose, className }: { children: ReactNode; onClose:
       onDragEnd={onDragEnd}
       style={{ y, opacity, background: 'color-mix(in srgb, var(--c-elevated) 96%, transparent)' }}
       className={cx(
-        'glass-thick relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-t-[28px] pb-[max(env(safe-area-inset-bottom),12px)]',
+        'glass-thick relative max-h-[calc(100%-max(env(safe-area-inset-top),16px))] w-full overflow-y-auto overscroll-contain rounded-t-[28px] pb-[max(env(safe-area-inset-bottom),12px)]',
         className,
         '!max-w-none',
       )}

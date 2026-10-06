@@ -22,7 +22,7 @@ export function useGlobalShortcuts() {
         return
       }
       // ⌘\ / Ctrl \: plegar o desplegar la barra lateral (en el ordenador)
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\' && matchMedia('(min-width: 1024px)').matches) {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\' && matchMedia('(min-width: 768px)').matches) {
         e.preventDefault()
         ui.toggleSidebarHidden()
         return

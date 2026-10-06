@@ -322,6 +322,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
+    /* Sin esperar a ver si es un doble toque (que acerca la página): los toques responden al momento */
+    touch-action: manipulation;
     font-size: 15px;
     letter-spacing: -0.01em;
     overscroll-behavior: none;
@@ -615,7 +617,7 @@ html[data-nav='pop']::view-transition-new(root) {
     opacity: 0.45;
   }
 }
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   html[data-nav='push']::view-transition-old(root),
   html[data-nav='pop']::view-transition-old(root) {
     animation: 0.18s ease-out both vt-fade-out;
@@ -642,7 +644,7 @@ html[data-nav='pop']::view-transition-new(root) {
   }
 }
 /* En el móvil, entrar y salir mueve la pantalla entera: el título y lo demás van con ella */
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   html[data-nav='push'] main [style*='view-transition-name'],
   html[data-nav='pop'] main [style*='view-transition-name'] {
     view-transition-name: none !important;
@@ -692,4 +694,23 @@ html[data-nav='pop']::view-transition-new(root) {
 }
 .just-added {
   animation: just-added 1.8s ease-out both;
+}
+
+/* Con el teclado del móvil abierto, la barra de pestañas y el + se apartan: todo el sitio para escribir (ver lib/viewport.ts) */
+html[data-keyboard] [data-mobile-bar],
+html[data-keyboard] [data-tablet-add] {
+  opacity: 0;
+  translate: 0 120%;
+  pointer-events: none;
+}
+
+/* Con el dedo, mantener pulsado un enlace, un botón o la navegación no abre la vista previa de Safari ni selecciona su texto (como en una app) */
+@media (pointer: coarse) {
+  a,
+  button,
+  nav {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
 }

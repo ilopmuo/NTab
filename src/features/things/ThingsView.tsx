@@ -7,7 +7,7 @@ import type { Thing, ThingKind } from '@/db/types'
 import { inventoryValue, searchThings } from '@/lib/things'
 import { ROOMS } from '@/lib/rooms'
 import { navigate } from '@/app/router'
-import { setUI, useUI } from '@/app/store'
+import { setUI, useUI, ui } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Button, Empty, Group, PageHeader, Section, Segmented, cx } from '@/components/ui'
 import { Page } from '../Page'
@@ -63,7 +63,7 @@ export function ThingsView({ id }: { id?: string }) {
   const open = (t: Thing) => navigate(`/things/${t.id}`)
   const create = (kind: ThingKind) => {
     setNewKind(kind)
-    setUI({ creating: 'thing' })
+    ui.create('thing')
   }
 
   return (

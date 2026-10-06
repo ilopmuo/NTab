@@ -13,6 +13,7 @@ import { requestPersistentStorage } from './sync/authStorage'
 import { rollSubscriptions } from './db/actions'
 import { purgeTrash } from './db/trash'
 import { interceptLinks } from './app/router'
+import { watchViewport } from './lib/viewport'
 
 // Compartido desde otra app (Android, o la app instalada en el ordenador: ver
 // share_target en vite.config.ts): llega en la dirección y va a la captura
@@ -40,6 +41,7 @@ try {
 
 registerSW({ immediate: true })
 interceptLinks()
+watchViewport()
 void requestPersistentStorage()
 
 seedIfEmpty().finally(() => {

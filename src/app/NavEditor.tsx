@@ -1,14 +1,14 @@
 import { Reorder, useDragControls } from 'motion/react'
-import { EyeOff, GripVertical, LayoutGrid, List } from 'lucide-react'
+import { GripVertical } from 'lucide-react'
 import { ALWAYS_VISIBLE, setTab, type Place } from '@/lib/nav'
-import { Button, Modal, ModalHeader, Segmented, Select } from '@/components/ui'
+import { Button, Modal, ModalHeader, Segmented, Select, Switch } from '@/components/ui'
 import { saveNav, useNav } from './nav'
 import { useFeatures } from './features'
 import { HUBS, SectionIcon, hub } from './sections'
 import { hubTabs } from './hubs'
 import { ui, useUI } from './store'
 
-/** Personalizar la barra lateral (cuadrícula, lista u oculta) y las pestañas del móvil */
+/** Personalizar la barra lateral (orden y qué se ve) y las pestañas del móvil */
 export function NavEditor() {
   const mode = useUI((s) => s.navEditor)
   const close = () => ui.navEditor(null)
@@ -54,16 +54,9 @@ function SidebarEditor() {
   )
 }
 
-const PLACES: { value: Place; label: React.ReactNode; title: string }[] = [
-  { value: 'tile', label: <LayoutGrid size={14} strokeWidth={2.3} />, title: 'En la cuadrícula' },
-  { value: 'list', label: <List size={14} strokeWidth={2.3} />, title: 'En la lista' },
-  { value: 'hidden', label: <EyeOff size={14} strokeWidth={2.3} />, title: 'Oculta' },
-]
-
 function SectionRow({ id, place, onPlace }: { id: string; place: Place; onPlace: (p: Place) => void }) {
   const controls = useDragControls()
   const def = hub(id)
-  const options = ALWAYS_VISIBLE.includes(id) ? PLACES.filter((p) => p.value !== 'hidden') : PLACES
   return (
     <Reorder.Item value={id} dragListener={false} dragControls={controls} className="flex h-12 items-center gap-2 rounded-xl bg-fill-2 pr-2 pl-1.5">
       <button
@@ -76,7 +69,7 @@ function SectionRow({ id, place, onPlace }: { id: string; place: Place; onPlace:
       </button>
       <SectionIcon def={def} size={26} square />
       <span className={place === 'hidden' ? 'min-w-0 flex-1 truncate text-[15px] text-muted' : 'min-w-0 flex-1 truncate text-[15px]'}>{def.label}</span>
-      <Segmented value={place} onChange={onPlace} options={options} />
+      {!ALWAYS_VISIBLE.includes(id) && <Switch checked={place !== 'hidden'} onChange={(on) => onPlace(on ? 'list' : 'hidden')} label={`Mostrar ${def.label}`} />}
     </Reorder.Item>
   )
 }

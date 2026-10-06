@@ -7,7 +7,7 @@ import { markPaid, rollSubscriptions } from '@/db/actions'
 import type { Subscription } from '@/db/types'
 import { addDaysYmd, today } from '@/lib/dates'
 import { CYCLES, chargeWhen, inTrial, money, monthly, priceChange, yearly, yearlyIncrease } from '@/lib/finance'
-import { setUI, toast, useUI } from '@/app/store'
+import { setUI, toast, useUI, ui } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Button, CountUp, Empty, Group, PageHeader, ProgressBar, Section, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
@@ -62,7 +62,7 @@ export function FinanceView() {
         title="Pagos"
         subtitle="Suscripciones y recibos que se repiten."
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'subscription' })}>
+          <Button variant="primary" onClick={() => ui.create('subscription')}>
             <Plus size={15} /> Nuevo
           </Button>
         }
@@ -76,7 +76,7 @@ export function FinanceView() {
             title="Controla lo que pagas cada mes"
             hint="Apunta tus suscripciones y recibos: verás cuánto suman y te avisaré antes de cada cargo."
           >
-            <Button variant="primary" onClick={() => setUI({ creating: 'subscription' })}>
+            <Button variant="primary" onClick={() => ui.create('subscription')}>
               Añadir el primero
             </Button>
           </Empty>

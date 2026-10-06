@@ -15,6 +15,7 @@ import { ProjectCard } from '../projects/ProjectCard'
 import { ProjectForm } from '../projects/ProjectForm'
 import { AreaForm } from './AreaForm'
 import { SelectButton } from '@/features/select/SelectButton'
+import { primeKeyboard } from '@/lib/viewport'
 
 export function AreaView({ id }: { id: string }) {
   const area = useLiveQuery(() => db.areas.get(id), [id])
@@ -97,6 +98,7 @@ export function AreaView({ id }: { id: string }) {
               size="sm"
               variant="ghost"
               onClick={async () => {
+                primeKeyboard()
                 const n = await createNote({ areaId: id })
                 navigate(`/notes/${n.id}`)
               }}

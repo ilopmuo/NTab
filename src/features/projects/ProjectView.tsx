@@ -23,6 +23,7 @@ import { ProjectForm } from './ProjectForm'
 import { toastTrashed } from '../trash/undo'
 import { templateFromProject } from '@/lib/templates'
 import { SelectButton } from '@/features/select/SelectButton'
+import { primeKeyboard } from '@/lib/viewport'
 
 /** «hoy», «ayer», «hace 5 días» */
 function reviewedLabel(at: number) {
@@ -233,6 +234,7 @@ export function ProjectView({ id }: { id: string }) {
             size="sm"
             variant="ghost"
             onClick={async () => {
+              primeKeyboard()
               const n = await createNote({ projectId: id, areaId: project.areaId })
               navigate(`/notes/${n.id}`)
             }}

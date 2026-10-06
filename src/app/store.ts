@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Task } from '@/db/types'
 import { announce } from './announce'
+import { primeKeyboard } from '@/lib/viewport'
 
 export interface ToastAction {
   label: string
@@ -69,7 +70,11 @@ export function useUI<T>(select: (s: UIState) => T): T {
 export const ui = {
   openTask: (id: string) => setUI({ selectedTaskId: id }),
   closeTask: () => setUI({ selectedTaskId: null }),
-  quickAdd: (defaults?: Partial<Task>, text?: string) => setUI({ quickAdd: { open: true, defaults, text }, paletteOpen: false }),
+  quickAdd: (defaults?: Partial<Task>, text?: string) => {
+    // El teclado, ya en el toque (en el iPhone, si no, no sale hasta tocar el campo)
+    primeKeyboard()
+    setUI({ quickAdd: { open: true, defaults, text }, paletteOpen: false })
+  },
   closeQuickAdd: () => setUI({ quickAdd: { open: false } }),
   palette: (open = true) => setUI({ paletteOpen: open }),
   help: (open = true) => setUI({ helpOpen: open }),
@@ -86,7 +91,11 @@ export const ui = {
     setUI({ sidebarHidden: hidden })
   },
   navEditor: (mode: UIState['navEditor']) => setUI({ navEditor: mode, sidebarOpen: false, paletteOpen: false }),
-  create: (what: UIState['creating']) => setUI({ creating: what, paletteOpen: false }),
+  create: (what: UIState['creating']) => {
+    // Los formularios de crear empiezan con el nombre a punto: el teclado, ya
+    if (what) primeKeyboard()
+    setUI({ creating: what, paletteOpen: false })
+  },
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined

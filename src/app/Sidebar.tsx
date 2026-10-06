@@ -1,17 +1,17 @@
 import { AnimatePresence, m as motion } from 'motion/react'
 import { ChevronDown, ChevronRight, Hash, ListFilter, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, SlidersHorizontal, Sun } from 'lucide-react'
 import { useLookup } from '@/db/hooks'
-import { AreaBadge } from '@/components/icons'
+import { Icon } from '@/components/icons'
 import { LunoLockup } from '@/components/Brand'
 import { Kbd, ProgressPie, RollingNumber, cx, spring, useMediaQuery } from '@/components/ui'
 import { SyncBadge } from '@/sync/SyncBadge'
 import { useNavCounts, useProjectProgress, useSmartListCounts } from './counts'
 import { useNav } from './nav'
 import { href, navigate, useRoute } from './router'
-import { SectionIcon, hub, section, type HubDef } from './sections'
+import { hub, section, type HubDef } from './sections'
 import { hubPath, inHub } from './hubs'
-import { FIXED } from '@/lib/nav'
-import { setUI, ui, useUI } from './store'
+import { FIXED, GROUP } from '@/lib/nav'
+import { ui, useUI } from './store'
 import { toggleTheme, useTheme } from './theme'
 import { usePins } from './pins'
 import { useCollapsed } from './navGroups'
@@ -20,36 +20,15 @@ import { useFeatures } from './features'
 
 const FOOT = FIXED.map(section)
 
-/** Lista inteligente en cuadrícula, como en Recordatorios */
-function Tile({ def, to, count, active }: { def: HubDef; to: string; count?: number | string; active: boolean }) {
-  return (
-    <a
-      href={href(to)}
-      aria-current={active ? 'page' : undefined}
-      onClick={() => ui.sidebar(false)}
-      className={cx(
-        'relative flex flex-col gap-2 overflow-hidden rounded-[14px] p-2.5 transition-[transform,box-shadow] duration-200 active:scale-[0.97]',
-        active ? 'text-white shadow-lg' : 'bg-[var(--c-material)] shadow-[var(--c-shadow)] hover:brightness-[1.03]',
-      )}
-      style={active ? { background: 'var(--c-accent-fill)', boxShadow: '0 6px 18px -10px rgb(0 0 0 / 0.35)' } : undefined}
-    >
-      <div className="flex items-start justify-between">
-        {active ? (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white" style={{ color: 'var(--c-accent-fill)' }}>
-            {def.icon === 'today' ? (
-              <span className="font-num text-[13px] font-bold">{new Date().getDate()}</span>
-            ) : (
-              <def.icon size={16} strokeWidth={2.4} />
-            )}
-          </span>
-        ) : (
-          <SectionIcon def={def} size={28} />
-        )}
-        {count !== undefined && <RollingNumber value={count} className={cx('text-[22px] leading-none font-bold', !active && 'text-fg')} />}
-      </div>
-      <span className={cx('truncate text-[13px] font-semibold', active ? 'text-white' : 'text-muted')}>{def.short}</span>
-    </a>
-  )
+/** El glifo de cada lugar, sin baldosa (como en Things o Linear); Hoy, con el día del mes */
+function Glyph({ def, active }: { def: Pick<HubDef, 'icon'>; active: boolean }) {
+  if (def.icon === 'today')
+    return (
+      <span className="font-num flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.6px] border-current text-[9.5px] leading-none font-bold">
+        {new Date().getDate()}
+      </span>
+    )
+  return <def.icon size={18} strokeWidth={active ? 2.4 : 2} />
 }
 
 function Row({
@@ -75,13 +54,14 @@ function Row({
       aria-current={active ? 'page' : undefined}
       onClick={() => ui.sidebar(false)}
       className={cx(
-        'relative flex h-9 items-center gap-2.5 rounded-[10px] px-2 text-[14px] transition-colors',
+        // Con el dedo (tablet), filas de 44 px
+        'relative flex h-9 items-center gap-2.5 rounded-[10px] px-2 text-[14px] transition-colors pointer-coarse:h-11 pointer-coarse:text-[15px]',
         indent && 'pl-9',
-        active ? 'font-semibold text-fg' : 'text-fg/90 hover:bg-hover',
+        active ? 'font-semibold text-fg' : 'text-fg/90 hover:bg-hover active:bg-press',
       )}
     >
       {active && <motion.span layoutId="nav-pill" layoutDependency={active} transition={spring} className="absolute inset-0 rounded-[10px] bg-fill" />}
-      <span className="relative flex w-6 shrink-0 justify-center">{icon}</span>
+      <span aria-hidden className={cx('relative flex w-6 shrink-0 justify-center', active ? 'text-blue' : 'text-muted')}>{icon}</span>
       <span className="relative min-w-0 flex-1 truncate">{label}</span>
       {!!count && (
         <RollingNumber value={count} className="text-[13px] font-medium" style={{ color: countTone ?? 'var(--c-muted)' }} />
@@ -170,7 +150,7 @@ function OnlyActive({ children }: { children: React.ReactNode }) {
 
 function SidebarContent() {
   const { path } = useRoute()
-  const desktop = useMediaQuery('(min-width: 1024px)')
+  const desktop = useMediaQuery('(min-width: 768px)')
   const c = useNavCounts()
   const nav = useNav()
   const { areas, projects } = useLookup()
@@ -186,17 +166,16 @@ function SidebarContent() {
   const smartCounts = useSmartListCounts(smart)
   const is = (p: string) => path === p || path.startsWith(p + '/') || (p === '/tags' && path.startsWith('/tag/'))
 
-  const tileCount: Record<string, number | string> = {
+  // Lo que queda por hacer en cada lugar (lo atrasado de Hoy, en texto fuerte)
+  const count: Record<string, number | undefined> = {
     today: c.today,
     inbox: c.inbox,
-    calendar: c.calendar,
-    habits: c.habitsTotal ? `${c.habitsDone}/${c.habitsTotal}` : 0,
-    notes: c.notes,
+    habits: c.habitsLeft,
     home: c.shopping,
     people: c.peopleDue,
   }
 
-  // Los espacios: en cuadrícula, en la lista y los ocultos al pie
+  // Los lugares, en una lista (con un respiro entre el día, organizar y la vida) y los ocultos al pie
   const to = (d: HubDef) => hubPath(d, features.section)
   const hidden = nav.hidden.map(hub)
   const hubRow = (d: HubDef) => (
@@ -204,12 +183,13 @@ function SidebarContent() {
       key={d.id}
       to={to(d)}
       active={inHub(d, path)}
-      icon={<SectionIcon def={d} size={24} square />}
+      icon={<Glyph def={d} active={inHub(d, path)} />}
       label={d.label}
-      count={d.id === 'people' ? c.peopleDue : d.id === 'home' ? c.shopping : undefined}
-      countTone={d.id === 'people' ? 'var(--c-purple)' : undefined}
+      count={count[d.id]}
+      countTone={d.id === 'today' && c.overdue ? 'var(--c-text)' : undefined}
     />
   )
+  const places = nav.list.map(hub)
   const pinRows = pins.flatMap((pin) => {
     if (pin.kind === 'project') {
       const p = projects.find((x) => x.id === pin.id)
@@ -221,10 +201,10 @@ function SidebarContent() {
       const a = areas.find((x) => x.id === pin.id)
       if (!a) return []
       const to = `/area/${a.id}`
-      return [{ key: `a:${a.id}`, to, active: path === to, label: a.name, count: c.byArea.get(a.id), icon: <AreaBadge icon={a.icon} /> }]
+      return [{ key: `a:${a.id}`, to, active: path === to, label: a.name, count: c.byArea.get(a.id), icon: <Icon name={a.icon} size={17} strokeWidth={2.1} /> }]
     }
     const to = `/tag/${encodeURIComponent(pin.id)}`
-    return [{ key: `t:${pin.id}`, to, active: path === to, label: pin.id, count: undefined, icon: <span className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-fill text-fg"><Hash size={13} strokeWidth={2.6} /></span> }]
+    return [{ key: `t:${pin.id}`, to, active: path === to, label: pin.id, count: undefined, icon: <Hash size={16} strokeWidth={2.2} /> }]
   })
 
   return (
@@ -267,59 +247,21 @@ function SidebarContent() {
       </div>
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-3 pb-4">
-        <div className="grid grid-cols-2 gap-2">
-          {nav.tiles.map(hub).map((d) => (
-            <Tile key={d.id} def={d} to={to(d)} count={tileCount[d.id]} active={inHub(d, path)} />
+        <div className="space-y-px" data-nav-places>
+          {places.map((d, i) => (
+            <div key={d.id} className={cx(i > 0 && GROUP[d.id] !== GROUP[places[i - 1].id] && 'pt-3')}>
+              {hubRow(d)}
+            </div>
           ))}
+          {hidden.length > 0 && <MoreRows group="hubs" label="la barra" items={hidden} isActive={(d) => inHub(d, path)} render={hubRow} />}
         </div>
 
         {pinRows.length > 0 && (
-          <NavGroup id="pins" label="Fijados" active={pinRows.some((r) => r.active)} className={cx(nav.tiles.length > 0 && 'mt-4')}>
+          <NavGroup id="pins" label="Fijados" active={pinRows.some((r) => r.active)}>
             {pinRows.map((r) => (
               <Row key={r.key} to={r.to} active={r.active} icon={r.icon} label={r.label} count={r.count} />
             ))}
           </NavGroup>
-        )}
-
-        {smart.length > 0 && (
-          <NavGroup
-            id="smart"
-            label="Mis filtros"
-            active={smart.some((l) => path === `/list/${l.id}`)}
-            className={cx(nav.tiles.length > 0 && pinRows.length === 0 && 'mt-4')}
-            action={
-              <button
-                type="button"
-                aria-label="Nuevo filtro"
-                onClick={() => {
-                  ui.sidebar(false)
-                  navigate('/lists')
-                  setUI({ creating: 'smartList' })
-                }}
-                className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg"
-              >
-                <Plus size={15} />
-              </button>
-            }
-          >
-            {smart.map((l) => (
-              <Row
-                key={l.id}
-                to={`/list/${l.id}`}
-                active={path === `/list/${l.id}`}
-                icon={<span className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-fill text-fg"><ListFilter size={13} strokeWidth={2.6} /></span>}
-                label={l.name}
-                count={smartCounts.get(l.id)}
-              />
-            ))}
-          </NavGroup>
-        )}
-
-        {nav.list.length + hidden.length > 0 && (
-          <div className={cx('space-y-px', (nav.tiles.length > 0 || pinRows.length > 0 || smart.length > 0) && 'mt-4')}>
-            {nav.list.map(hub).map(hubRow)}
-            {hidden.length > 0 && <MoreRows group="hubs" label="la barra" items={hidden} isActive={(d) => inHub(d, path)} render={hubRow} />}
-          </div>
         )}
 
         <NavGroup
@@ -346,7 +288,7 @@ function SidebarContent() {
               <Row
                 to={`/area/${a.id}`}
                 active={path === `/area/${a.id}`}
-                icon={<AreaBadge icon={a.icon} />}
+                icon={<Icon name={a.icon} size={17} strokeWidth={2.1} />}
                 label={a.name}
                 count={c.byArea.get(a.id)}
               />
@@ -378,11 +320,38 @@ function SidebarContent() {
               />
             ))}
         </NavGroup>
+
+        {/* Tus filtros guardados, al final: se usan menos que los lugares y las áreas */}
+        {smart.length > 0 && (
+          <NavGroup
+            id="smart"
+            label="Mis filtros"
+            active={smart.some((l) => path === `/list/${l.id}`)}
+            action={
+              <button
+                type="button"
+                aria-label="Nuevo filtro"
+                onClick={() => {
+                  ui.sidebar(false)
+                  navigate('/lists')
+                  ui.create('smartList')
+                }}
+                className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-fg"
+              >
+                <Plus size={15} />
+              </button>
+            }
+          >
+            {smart.map((l) => (
+              <Row key={l.id} to={`/list/${l.id}`} active={path === `/list/${l.id}`} icon={<ListFilter size={16} strokeWidth={2.2} />} label={l.name} count={smartCounts.get(l.id)} />
+            ))}
+          </NavGroup>
+        )}
       </div>
 
       <div className="space-y-px px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] shadow-[inset_0_1px_0_var(--c-border)]">
         {FOOT.map((d) => (
-          <Row key={d.id} to={d.path} active={is(d.path)} icon={<SectionIcon def={d} size={24} square />} label={d.label} />
+          <Row key={d.id} to={d.path} active={is(d.path)} icon={<Glyph def={d} active={is(d.path)} />} label={d.label} />
         ))}
         <div className="flex items-center">
           <div className="min-w-0 flex-1">
@@ -426,7 +395,7 @@ function SidebarContent() {
 
 export function Sidebar() {
   const open = useUI((s) => s.sidebarOpen)
-  const desktop = useMediaQuery('(min-width: 1024px)')
+  const desktop = useMediaQuery('(min-width: 768px)')
   const hidden = useUI((s) => s.sidebarHidden)
   if (desktop) {
     return (

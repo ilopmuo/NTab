@@ -8,7 +8,7 @@ import type { Template, TemplateItem } from '@/db/types'
 import { dateLabel, today } from '@/lib/dates'
 import { SAMPLE_TEMPLATES, applyTemplate, createTemplate, expandTemplate } from '@/lib/templates'
 import { navigate } from '@/app/router'
-import { setUI, toast, useUI } from '@/app/store'
+import { setUI, toast, useUI, ui } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { ICONS, Icon } from '@/components/icons'
 import { Button, Empty, Field, IconButton, Input, Modal, ModalHeader, PageHeader, Segmented, Select, cx } from '@/components/ui'
@@ -28,7 +28,7 @@ export function TemplatesView() {
         title="Plantillas"
         subtitle="Listas que repites: úsalas y se crean las tareas con sus fechas."
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'template' })}>
+          <Button variant="primary" onClick={() => ui.create('template')}>
             <Plus size={15} /> Nueva
           </Button>
         }

@@ -61,8 +61,10 @@ export function MobileBar() {
     { id: 'more', path: '/more', label: 'Más', on: moreOn, color: 'var(--c-blue)', icon: LayoutGrid },
   ]
   return (
+    <>
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),10px)] lg:hidden"
+      data-mobile-bar
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),10px)] transition-[opacity,translate] duration-200 md:hidden"
       style={{ viewTransitionName: 'tabbar' }}
     >
       <motion.nav
@@ -137,6 +139,18 @@ export function MobileBar() {
         <Plus size={28} strokeWidth={2.5} />
       </motion.button>
     </div>
+      {/* En la tablet (con la barra lateral a la vista), solo el botón de crear, a mano del pulgar */}
+      <motion.button
+        type="button"
+        aria-label="Nueva tarea"
+        whileTap={{ scale: 0.88 }}
+        onClick={() => ui.quickAdd()}
+        data-tablet-add
+        className="fixed right-6 bottom-[max(env(safe-area-inset-bottom),24px)] z-30 hidden h-[60px] w-[60px] items-center justify-center rounded-full bg-accent-fill text-white shadow-[0_10px_28px_-10px_rgb(0_0_0/0.45)] md:pointer-coarse:flex"
+      >
+        <Plus size={28} strokeWidth={2.5} />
+      </motion.button>
+    </>
   )
 }
 

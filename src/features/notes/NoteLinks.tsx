@@ -11,7 +11,7 @@ import { cx } from '@/components/ui'
 /** Sugerencias de títulos mientras se escribe «[[…» (se eligen con ↑ ↓ e Intro) */
 export function LinkSuggestions({ items, active, onPick }: { items: string[]; active: number; onPick: (title: string) => void }) {
   return (
-    <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+92px)] z-10 mt-2 lg:bottom-4">
+    <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+92px)] z-10 mt-2 md:bottom-4">
       <div role="listbox" id="note-link-suggestions" aria-label="Enlazar a otra nota" className="glass-thick overflow-hidden rounded-[16px] p-1 shadow-[var(--c-shadow-lg)]">
         <p className="px-3 pt-1.5 pb-1 text-[12px] font-semibold text-muted">Enlazar a…</p>
         {items.map((t, i) => (

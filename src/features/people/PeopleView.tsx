@@ -7,7 +7,7 @@ import type { Person } from '@/db/types'
 import { dateLabel, relativeDays, today } from '@/lib/dates'
 import { dueForContact, upcomingBirthdays } from '@/lib/people'
 import { href, navigate } from '@/app/router'
-import { setUI, useUI } from '@/app/store'
+import { setUI, useUI, ui } from '@/app/store'
 import { Button, Empty, Field, Group, Input, Modal, ModalHeader, PageHeader, Section, Select } from '@/components/ui'
 import { SectionIcon, section } from '@/app/sections'
 import { Page } from '../Page'
@@ -63,7 +63,7 @@ export function PeopleView() {
         title="Personas"
         subtitle="Tu gente: familia, amigos, clientes. Que nadie se quede olvidado."
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'person' })} className="">
+          <Button variant="primary" onClick={() => ui.create('person')} className="">
             <Plus size={16} strokeWidth={2.6} /> Nueva
           </Button>
         }

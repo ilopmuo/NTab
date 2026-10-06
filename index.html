@@ -36,6 +36,13 @@
         if (localStorage.getItem('ntab-contrast') === 'on' || matchMedia('(prefers-contrast: more)').matches) document.documentElement.dataset.contrast = 'more';
         if (localStorage.getItem('ntab-motion') === 'on' || matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.dataset.motion = 'reduce';
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+      // En el iPhone y el iPad, tocar un campo de texto de menos de 16 px acerca la
+      // página (y hay que alejarla a mano): así no lo hace. Pellizcar para ampliar
+      // sigue funcionando (Safari no deja quitarlo desde iOS 10).
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        var vp = document.querySelector('meta[name=viewport]');
+        if (vp) vp.content += ', maximum-scale=1';
+      }
     </script>
   </head>
   <body>

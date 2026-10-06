@@ -83,7 +83,7 @@ export function SelectionBar() {
           transition={softSpring}
           role="toolbar"
           aria-label="Acciones de la selección"
-          className="glass-thick fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),10px)+76px)] z-40 mx-auto max-w-[560px] rounded-[22px] p-2 shadow-[0_18px_50px_-12px_rgba(0,0,0,0.45)] lg:bottom-6"
+          className="glass-thick fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),10px)+76px)] z-40 mx-auto max-w-[560px] rounded-[22px] p-2 shadow-[0_18px_50px_-12px_rgba(0,0,0,0.45)] md:bottom-6"
         >
           <div className="flex items-center gap-2 px-1 pb-1.5">
             <button type="button" aria-label="Cancelar la selección" onClick={selection.clear} className="flex h-8 w-8 items-center justify-center rounded-full bg-fill text-fg active:scale-90">

@@ -7,6 +7,7 @@ import { createTask } from '@/db/actions'
 import { loadParser, useParser } from '@/lib/useParser'
 import { isFresh, sortManual, sortTasks } from '@/lib/tasks'
 import { today } from '@/lib/dates'
+import { primeKeyboard } from '@/lib/viewport'
 import { TaskItem } from './TaskItem'
 import { useListOrder } from './ManualOrder'
 import { Group, cx } from './ui'
@@ -169,7 +170,10 @@ export function InlineAdd({
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          primeKeyboard()
+          setOpen(true)
+        }}
         className="group flex w-full items-center gap-3 px-4 py-[11px] text-[15px] font-medium transition-colors hover:bg-hover"
         style={{ color }}
       >

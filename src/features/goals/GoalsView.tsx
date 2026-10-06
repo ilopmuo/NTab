@@ -10,7 +10,7 @@ import { dateLabel } from '@/lib/dates'
 import { goalPace, goalProgress, isMoneyGoal, monthlyToSave } from '@/lib/goals'
 import { money } from '@/lib/expenses'
 import { href } from '@/app/router'
-import { setUI, useUI } from '@/app/store'
+import { setUI, useUI, ui } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { Button, Empty, IconButton, PageHeader, ProgressBar, ProgressRing, Section, Segmented, cx } from '@/components/ui'
 import { Page } from '../Page'
@@ -46,7 +46,7 @@ export function GoalsView() {
             : 'Lo que quieres conseguir y cómo vas.'
         }
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'goal' })}>
+          <Button variant="primary" onClick={() => ui.create('goal')}>
             <Plus size={15} /> Nuevo
           </Button>
         }
@@ -73,7 +73,7 @@ export function GoalsView() {
           }
         >
           {status === 'active' && (
-            <Button variant="primary" onClick={() => setUI({ creating: 'goal' })}>
+            <Button variant="primary" onClick={() => ui.create('goal')}>
               Crear objetivo
             </Button>
           )}

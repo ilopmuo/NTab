@@ -323,13 +323,14 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
       <div className="flex items-center gap-3 px-5 pt-1 pb-4">
         <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-muted">
           {plan ? null : toInbox ? (
-            <>
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
               <Inbox size={14} strokeWidth={2.3} /> Bandeja de entrada
-            </>
+            </span>
           ) : (
             <span className="truncate">{[final.dueDate && `${dateLabel(final.dueDate)}${final.dueTime ? ` a las ${final.dueTime}` : ''}`, destination].filter(Boolean).join(' · ')}</span>
           )}
-          <span className={cx('ml-auto hidden items-center gap-1 text-muted', !plan && 'md:flex')}>
+          {/* Las pistas del teclado, solo con teclado y ratón */}
+          <span className={cx('ml-auto hidden items-center gap-1 text-muted', !plan && 'md:pointer-fine:flex')}>
             <Kbd>#</Kbd>etiqueta <Kbd>+</Kbd>lista <Kbd>@</Kbd>persona <Kbd>!</Kbd>prioridad <Kbd>~</Kbd>duración
           </span>
         </div>
@@ -340,7 +341,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
             aria-label={dictation.listening ? 'Dejar de dictar' : 'Dictar'}
             aria-pressed={dictation.listening}
             className={cx(
-              'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors active:scale-90',
+              'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors active:scale-90 pointer-coarse:h-11 pointer-coarse:w-11',
               dictation.listening ? 'bg-green text-on-green' : 'bg-fill text-fg hover:bg-press',
             )}
           >
@@ -352,7 +353,7 @@ function QuickAddForm({ defaults, initial }: { defaults?: Partial<Task>; initial
           type="submit"
           disabled={(!plan && !parsed.title && !link && !bulk) || saving}
           aria-label={bulk ? `Añadir ${bulk.length} tareas` : 'Añadir'}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none pointer-coarse:h-11 pointer-coarse:w-11"
         >
           <ArrowUp size={18} strokeWidth={2.8} />
         </button>

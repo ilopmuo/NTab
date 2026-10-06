@@ -7,7 +7,7 @@ import { spring } from './ui'
 export function Toast() {
   const t = useUI((s) => s.toast)
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[96px] z-[60] flex justify-center px-4 lg:bottom-6">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[96px] z-[60] flex justify-center px-4 md:bottom-6">
       <AnimatePresence mode="popLayout">
         {t && (
           <motion.div

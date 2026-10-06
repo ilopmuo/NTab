@@ -455,7 +455,7 @@ function Workspace() {
         aria-label={TITLES[parts[0]] ?? 'LUNO'}
         className={cx(
           '@container h-full overflow-y-auto overscroll-contain transition-[padding] duration-300',
-          !sidebarHidden && 'lg:pl-[272px]',
+          !sidebarHidden && 'md:pl-[272px]',
           panelOpen && 'xl:pr-[420px]',
         )}
       >

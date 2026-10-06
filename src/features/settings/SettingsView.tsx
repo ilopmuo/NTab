@@ -81,7 +81,7 @@ function Glyph({ c, children }: { c: Tint; children: React.ReactNode }) {
 }
 
 const rowCls =
-  "relative flex min-h-[52px] w-full items-center gap-3 px-4 py-2 text-left text-[15px] transition-colors after:absolute after:right-0 after:bottom-0 after:left-[58px] after:h-px after:bg-line after:content-[''] last:after:hidden"
+  "relative flex min-h-[52px] w-full items-center gap-3 px-4 py-2 text-left text-[15px] transition-colors active:bg-press after:absolute after:right-0 after:bottom-0 after:left-[58px] after:h-px after:bg-line after:content-[''] last:after:hidden"
 
 function Row({
   glyph,
@@ -639,7 +639,7 @@ function AreasPage() {
             </IconButton>
           </div>
         ))}
-        <button type="button" onClick={() => setUI({ creating: 'area' })} className={cx(rowCls, 'font-medium text-blue hover:bg-hover')}>
+        <button type="button" onClick={() => ui.create('area')} className={cx(rowCls, 'font-medium text-blue hover:bg-hover')}>
           <span className="flex h-[30px] w-[30px] items-center justify-center">
             <Plus size={20} strokeWidth={2.4} />
           </span>

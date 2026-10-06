@@ -5,7 +5,7 @@ test('diez lugares y pocas pestañas: lo de dentro, con «‹ Atrás»', async (
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
   // Lo que antes eran espacios o pestañas aparte ya no está en la barra
   for (const gone of ['Planificar', 'Etiquetas y filtros', 'Próximo', 'Completadas']) await expect(nav.getByRole('link', { name: gone, exact: true })).toHaveCount(0)
-  for (const place of ['Hoy', 'Bandeja', 'Calendario', 'Hábitos', 'Notas', 'Casa', 'Proyectos', 'Listas', 'Personas', 'Dinero']) await expect(nav.getByRole('link', { name: new RegExp(`(^|\\s)${place}$`) }).first()).toBeVisible()
+  for (const place of ['Hoy', 'Bandeja de entrada', 'Calendario', 'Hábitos', 'Notas', 'Casa', 'Proyectos', 'Listas', 'Personas', 'Dinero']) await expect(nav.getByRole('link', { name: new RegExp(`^${place}( \\d+)?$`) }).first()).toBeVisible()
 
   // Calendario lleva Próximo dentro, como su vista «Lista»
   await nav.getByRole('link', { name: /Calendario$/ }).click()

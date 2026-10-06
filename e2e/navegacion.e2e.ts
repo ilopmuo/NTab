@@ -1,19 +1,39 @@
 import { expect, openApp, test } from './fixtures'
 
-test('barra lateral: ocultar un espacio y pasar otro a la cuadrícula', async ({ page }) => {
+test('barra lateral: una lista clara, los filtros al final y ocultar un lugar lo deja en «N más»', async ({ page }) => {
   await openApp(page)
-  await page.getByRole('button', { name: 'Personalizar la barra lateral' }).click()
-  const row = (label: string) => page.getByRole('dialog').locator('li', { hasText: label }).first()
-  await row('Bandeja de entrada').getByTitle('Oculta').click()
-  await row('Dinero').getByTitle('En la cuadrícula').click()
-  await page.getByRole('button', { name: 'Listo' }).click()
-  const grid = page.locator('nav .grid a')
-  await expect(grid.filter({ hasText: 'Bandeja' })).toHaveCount(0)
-  await expect(grid.filter({ hasText: 'Dinero' })).toHaveCount(1)
-  // Oculta: plegada al pie de la lista, y se llega igual
+  // Un filtro guardado (como si viniera de otro dispositivo)
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const req = indexedDB.open('ntab')
+        req.onsuccess = () => {
+          const tx = req.result.transaction('settings', 'readwrite')
+          tx.objectStore('settings').put({ key: 'smartLists', value: [{ id: 'alta', name: 'Prioridad alta', minPriority: 3 }] })
+          tx.oncomplete = () => (req.result.close(), resolve())
+        }
+      }),
+  )
+  await page.reload()
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
+  // Sin cuadrícula: los lugares en una lista, en su orden, y lo de Hoy con su número
+  await expect(nav.locator('.grid a')).toHaveCount(0)
+  const places = nav.locator('[data-nav-places] a')
+  await expect(places).toHaveCount(10)
+  await expect(places.first()).toHaveAccessibleName(/^Hoy( \d+)?$/)
+  // Mis filtros, después de los lugares y de tus áreas
+  const sections = await nav.locator('section').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))
+  expect(sections.indexOf('Mis filtros')).toBeGreaterThan(sections.indexOf('Mis áreas'))
+  await nav.getByRole('link', { name: /^Prioridad alta/ }).click()
+  await expect(page.locator('#main h1')).toHaveText('Prioridad alta')
+
+  // Ocultar la Bandeja: sale de la lista y queda plegada al pie, y se llega igual
+  await nav.getByRole('button', { name: 'Personalizar la barra lateral' }).click()
+  await page.getByRole('dialog').getByRole('switch', { name: 'Mostrar Bandeja de entrada' }).click()
+  await page.getByRole('button', { name: 'Listo' }).click()
+  await expect(places).toHaveCount(9)
   await nav.getByRole('button', { name: 'Ver 1 más de la barra' }).click()
-  await nav.getByRole('link', { name: 'Bandeja de entrada' }).click()
+  await nav.getByRole('link', { name: /^Bandeja de entrada/ }).click()
   await expect(page.locator('#main h1')).toHaveText('Bandeja de entrada')
 })
 
@@ -30,6 +50,18 @@ test('barra lateral plegable: botón, ⌘\\ y se recuerda', async ({ page }) => 
   await page.keyboard.press('Control+Backslash')
   await expect(nav).toBeInViewport()
   await expect(page.getByRole('button', { name: 'Mostrar la barra lateral' })).toHaveCount(0)
+})
+
+test.describe('en la tablet', () => {
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true })
+
+  test('barra lateral a la vista, sin pestañas del móvil y con el + a mano', async ({ page }) => {
+    await openApp(page, '/today')
+    await expect(page.getByRole('navigation', { name: 'Barra lateral' })).toBeInViewport()
+    await expect(page.locator('[data-mobile-bar]')).toBeHidden()
+    await page.locator('[data-tablet-add]').tap()
+    await expect(page.getByRole('dialog').getByRole('combobox', { name: 'Nueva tarea' })).toBeFocused()
+  })
 })
 
 test.describe('en el móvil', () => {

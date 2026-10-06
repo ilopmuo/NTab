@@ -185,7 +185,7 @@ export function ShutdownView() {
       </Section>
 
       <ImportantPicker open={picking} day={tomorrow} onClose={() => setPicking(false)} />
-      <div className="sticky bottom-[calc(max(env(safe-area-inset-bottom),10px)+80px)] z-10 flex justify-center lg:bottom-6">
+      <div className="sticky bottom-[calc(max(env(safe-area-inset-bottom),10px)+80px)] z-10 flex justify-center md:bottom-6">
         <Button variant="primary" size="lg" onClick={() => void close()} className="shadow-[0_10px_28px_-12px_rgb(0_0_0/0.4)]">
           <Moon size={18} strokeWidth={2.4} /> Cerrar el día <ArrowRight size={17} strokeWidth={2.4} />
         </Button>

@@ -7,7 +7,7 @@ import type { Task } from '@/db/types'
 import { defaultsFor, describe, filterTasks, PRESETS, type SmartList } from '@/lib/smartLists'
 import { deleteSmartList, saveSmartList, useSmartLists } from '@/app/smartLists'
 import { href, navigate, vtName } from '@/app/router'
-import { setUI, useUI } from '@/app/store'
+import { setUI, useUI, ui } from '@/app/store'
 import { Menu } from '@/components/Menu'
 import { TaskList } from '@/components/TaskList'
 import { Button, Empty, Group, PageHeader, Section } from '@/components/ui'
@@ -39,7 +39,7 @@ export function SmartListsBlock() {
       title="Filtros"
       count={lists.length}
       action={
-        <Button size="sm" variant="tinted" onClick={() => setUI({ creating: 'smartList' })}>
+        <Button size="sm" variant="tinted" onClick={() => ui.create('smartList')}>
           <Plus size={14} strokeWidth={2.6} /> Nuevo filtro
         </Button>
       }

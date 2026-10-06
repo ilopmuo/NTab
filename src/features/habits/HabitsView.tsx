@@ -7,7 +7,7 @@ import { addDaysYmd, fmt, fromYmd, weekStart, WEEKDAYS_SHORT } from '@/lib/dates
 import { bestStreak, isCounted, isDue, isScheduled, onBreak, openBreak, perWeekOf, progressLabel, streak, streakLabel, strength, targetOf } from '@/lib/habits'
 import { bumpHabit } from './bump'
 import { SectionIcon, section } from '@/app/sections'
-import { setUI, toast, useUI } from '@/app/store'
+import { setUI, toast, useUI, ui } from '@/app/store'
 import { Menu } from '@/components/Menu'
 import { Icon } from '@/components/icons'
 import { Button, Empty, Group, PageHeader, ProgressRing, bouncy, cx, spring } from '@/components/ui'
@@ -88,7 +88,7 @@ export function HabitsView({ focus }: { focus?: 'trackers' }) {
         title="Hábitos"
         subtitle={scheduledToday.length ? `Hoy llevas ${doneToday} de ${scheduledToday.length}.` : 'Pequeñas acciones, repetidas cada día, lo cambian todo.'}
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'habit' })} className="">
+          <Button variant="primary" onClick={() => ui.create('habit')} className="">
             <Plus size={16} strokeWidth={2.6} /> Nuevo
           </Button>
         }

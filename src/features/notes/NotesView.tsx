@@ -25,6 +25,7 @@ import { ChecklistBar, FormatBar, MAX_PHOTOS, NotePhotos, type FormatAction } fr
 import { TemplatePicker } from './NoteTemplates'
 import { checklistStats, noteMarkdown, setAllChecks, sortChecked, toggleCheck } from '@/lib/noteFormat'
 import { continueList, toggleLinePrefix, wrapSelection, type Edit } from '@/lib/noteEdit'
+import { primeKeyboard } from '@/lib/viewport'
 
 /** Cuándo se tocó: la hora si es de hoy; si no, hace cuánto */
 function noteWhen(t: number) {
@@ -61,6 +62,8 @@ export function NotesView({ id }: { id?: string }) {
   }
 
   const newNote = async () => {
+    // La nota nueva se abre para escribir: el teclado, ya en el toque
+    primeKeyboard()
     const n = await createNote()
     navigate(`/notes/${n.id}`)
   }
@@ -112,7 +115,7 @@ export function NotesView({ id }: { id?: string }) {
             </div>
           )}
         </div>
-        <div ref={listRef} className="flex-1 overflow-y-auto px-3 pb-36 lg:pb-4">
+        <div ref={listRef} className="flex-1 overflow-y-auto px-3 pb-36 md:pb-4">
           {list.length === 0 &&
             (q || notes.length ? (
               <p className="px-3 py-6 text-center text-[13px] text-muted">Sin resultados</p>
@@ -358,7 +361,7 @@ function NoteEditor({ note, notes, onTag }: { note: Note; notes: Note[]; onTag: 
   }
 
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col px-5 pt-[max(env(safe-area-inset-top),16px)] pb-36 lg:px-10 lg:pt-10 lg:pb-10">
+    <div className="mx-auto flex h-full max-w-3xl flex-col px-5 pt-[max(env(safe-area-inset-top),16px)] pb-36 md:pb-10 lg:px-10 lg:pt-10">
       <div className="mb-4 flex items-center gap-1">
         {/* Como en Notas de iOS: vuelve a la lista con su animación */}
         <button type="button" onClick={() => goBack('/notes')} className="mr-1 -ml-1.5 flex items-center rounded-lg py-1.5 pr-2 text-[17px] font-medium text-blue active:opacity-50 md:hidden" aria-label="Volver a Notas">

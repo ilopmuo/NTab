@@ -8,7 +8,7 @@ import { ROUTINE_PRESETS, minutesLabel, routineProgress, routineStreak, routineT
 import { uid } from '@/lib/id'
 import { haptic } from '@/lib/haptics'
 import { SectionIcon, section } from '@/app/sections'
-import { setUI, useUI } from '@/app/store'
+import { setUI, useUI, ui } from '@/app/store'
 import { Icon } from '@/components/icons'
 import { Button, Empty, Group, IconButton, PageHeader, ProgressRing, bouncy, cx, spring } from '@/components/ui'
 import { Page } from '../Page'
@@ -62,7 +62,7 @@ export function RoutinesView() {
         title="Rutinas"
         subtitle={todays.length ? `Hoy llevas ${doneToday} de ${todays.length}.` : 'Listas de pasos para no dejarte nada: al salir de casa, al acostarte…'}
         actions={
-          <Button variant="primary" onClick={() => setUI({ creating: 'routine' })}>
+          <Button variant="primary" onClick={() => ui.create('routine')}>
             <Plus size={16} strokeWidth={2.6} /> Nueva
           </Button>
         }
