@@ -1,7 +1,9 @@
-import { addMonths, addYears, getDaysInMonth } from 'date-fns'
+import { addMonths } from 'date-fns'
 import type { BillingCycle, Subscription } from '@/db/types'
-import { addDaysYmd, diffDays, fromYmd, today, ymd } from './dates'
-import { DEFAULT_REMIND_TIME, dueMoment } from './reminders'
+import { diffDays, fromYmd, today, ymd } from './dates'
+import { advanceCharge } from './remindAt'
+
+export { advanceCharge, computeSubRemindAt, rollForward } from './remindAt'
 
 export const CYCLES: { value: BillingCycle; label: string; per: string }[] = [
   { value: 'week', label: 'Semanal', per: 'semana' },
@@ -15,28 +17,6 @@ const PER_YEAR: Record<BillingCycle, number> = { week: 52, month: 12, quarter: 4
 
 export const yearly = (s: Pick<Subscription, 'amount' | 'cycle'>) => s.amount * PER_YEAR[s.cycle]
 export const monthly = (s: Pick<Subscription, 'amount' | 'cycle'>) => yearly(s) / 12
-
-/** Siguiente cargo tras `from`. En los meses se respeta el día original (31 → 28/29 → 31). */
-export function advanceCharge(from: string, cycle: BillingCycle, anchorDay?: number): string {
-  if (cycle === 'week') return addDaysYmd(from, 7)
-  const d = fromYmd(from)
-  const next = cycle === 'year' ? addYears(d, 1) : addMonths(d, cycle === 'quarter' ? 3 : 1)
-  if (anchorDay) next.setDate(Math.min(anchorDay, getDaysInMonth(next)))
-  return ymd(next)
-}
-
-/** Primer cargo en `ref` o después */
-export function rollForward(s: Pick<Subscription, 'nextDate' | 'cycle' | 'anchorDay'>, ref = today()): string {
-  let d = s.nextDate
-  for (let i = 0; d < ref && i < 1000; i++) d = advanceCharge(d, s.cycle, s.anchorDay)
-  return d
-}
-
-/** Cuándo avisar de un cargo: `notifyDays` antes, a las 09:00 */
-export function computeSubRemindAt(s: Pick<Subscription, 'nextDate' | 'notifyDays' | 'active'>): number | undefined {
-  if (!s.active || s.notifyDays == null || !s.nextDate) return undefined
-  return dueMoment(addDaysYmd(s.nextDate, -s.notifyDays), DEFAULT_REMIND_TIME)
-}
 
 export function money(amount: number, currency = 'EUR', decimals?: number) {
   return new Intl.NumberFormat('es-ES', {

@@ -8,7 +8,9 @@ import { incomeCat, incomeCategoryFor } from '@/lib/money'
 import { parseBank, readTable, withoutKnown, type BankRow } from '@/lib/bankImport'
 import { dateLabel } from '@/lib/dates'
 import { toast } from '@/app/store'
-import { Button, Modal, ModalHeader, Textarea, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
+import { Textarea } from '@/components/form'
 import { cat } from '../expenses/ExpenseParts'
 
 /**

@@ -1,5 +1,6 @@
 import { ui, useUI } from '@/app/store'
-import { Kbd, Modal, ModalHeader } from './ui'
+import { Kbd } from './ui'
+import { Modal, ModalHeader } from './Modal'
 
 const GROUPS: [string, [string[], string][]][] = [
   [

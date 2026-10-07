@@ -32,7 +32,9 @@ import {
   type Usual,
 } from '@/lib/house'
 import { toast } from '@/app/store'
-import { Button, Empty, Group, Input, Modal, ModalHeader, Section, bouncy, cx, softSpring } from '@/components/ui'
+import { Button, Empty, Group, Section, bouncy, cx, softSpring } from '@/components/ui'
+import { Input } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 import { act } from './store'
 
 interface Props {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowUp, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { Project, ProjectSection, Task } from '@/db/types'
-import { addSection, deleteSection, moveSection, renameSection } from '@/db/actions'
+import { addSection, deleteSection, moveSection, renameSection } from '@/db/moreActions'
 import { TaskList } from '@/components/TaskList'
 import { OrderToggle } from '@/components/ManualOrder'
 import { Menu } from '@/components/Menu'

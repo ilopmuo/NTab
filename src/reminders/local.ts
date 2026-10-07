@@ -1,5 +1,6 @@
 import { db } from '@/db/db'
-import { completeHabit, rollSubscriptions, toggleTask, updateTask } from '@/db/actions'
+import { toggleTask, updateTask } from '@/db/actions'
+import { completeHabit, rollSubscriptions } from '@/db/moreActions'
 import { addDaysYmd, today, weekStart } from '@/lib/dates'
 import { DEADLINE_ALERT_TIME, deadlineAlert, deadlineMessage, type DeadlineAlertPrefs } from '@/lib/deadlines'
 import { doneDays, groupLogs, isDue } from '@/lib/habits'

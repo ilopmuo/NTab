@@ -3,13 +3,15 @@ import { Camera, Receipt, Trash2, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Thing, ThingKind } from '@/db/types'
 import { db } from '@/db/db'
-import { createThing, deleteThing, updateThing } from '@/db/actions'
+import { createThing, deleteThing, updateThing } from '@/db/moreActions'
 import { today } from '@/lib/dates'
 import { DEFAULT_NOTIFY_DAYS, KIND_LABEL, addYears, compressPhoto } from '@/lib/things'
 import { roomsIn } from '@/lib/rooms'
 import { toast } from '@/app/store'
 import { toastTrashed } from '../trash/undo'
-import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, Textarea, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Field, Input, Segmented, Select, Textarea } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 const KINDS: ThingKind[] = ['stored', 'lent', 'borrowed', 'document']
 const PLACEHOLDER: Record<ThingKind, string> = {

@@ -1,5 +1,7 @@
 import type { Tracker } from '@/db/types'
-import { addDaysYmd, fromYmd, today as todayYmd, ymd } from './dates'
+import { fromYmd, today as todayYmd, ymd } from './dates'
+
+export { computeTrackerRemindAt, withDate } from './remindAt'
 
 export const TRACKER_PRESETS: { name: string; icon: string; every?: number; avoid?: boolean }[] = [
   { name: 'Cambiar las sábanas', icon: 'bed', every: 14 },
@@ -24,11 +26,6 @@ const dayMs = 864e5
 export const daysBetween = (a: string, b: string) => Math.round((fromYmd(b).getTime() - fromYmd(a).getTime()) / dayMs)
 
 export const lastDone = (t: Pick<Tracker, 'log'>) => t.log[0]
-
-/** Añade una fecha al historial (sin repetir, de más reciente a más antigua) */
-export function withDate(log: string[], date: string) {
-  return [...new Set([date, ...log])].sort((a, b) => b.localeCompare(a)).slice(0, 200)
-}
 
 /** Cada cuántos días se hace de media (hacen falta al menos dos veces) */
 export function averageEvery(t: Pick<Tracker, 'log'>): number | undefined {
@@ -75,18 +72,6 @@ export function everyLabel(every: number) {
   if (every % 30 === 0 && every >= 30) return every === 30 ? 'cada mes' : `cada ${every / 30} meses`
   if (every % 7 === 0) return `cada ${every / 7} semanas`
   return `cada ${every} días`
-}
-
-/** Aviso: el día que toca, a las 10:00. Si ya pasó, a las 10:00 siguientes (una vez). Lo que se quiere dejar no avisa. */
-export function computeTrackerRemindAt(t: Pick<Tracker, 'log' | 'every' | 'archived' | 'avoid'>, now = Date.now()): number | undefined {
-  if (t.avoid || !t.every || !t.log[0] || t.archived) return undefined
-  const at = fromYmd(addDaysYmd(t.log[0], t.every))
-  at.setHours(10, 0, 0, 0)
-  if (at.getTime() > now) return at.getTime()
-  const next = new Date(now)
-  if (next.getHours() >= 10) next.setDate(next.getDate() + 1)
-  next.setHours(10, 0, 0, 0)
-  return next.getTime()
 }
 
 /** Primero lo que toca (lo más atrasado), luego lo que hace más que no se hace; al final, lo que quieres dejar */

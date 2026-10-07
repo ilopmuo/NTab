@@ -6,11 +6,10 @@ import { today } from '@/lib/dates'
 import { doneByDay, goalStreak, type DailyGoal } from '@/lib/day'
 import { haptic } from '@/lib/haptics'
 import { toast } from '@/app/store'
-import { IconButton, Modal, cx } from '@/components/ui'
+import { IconButton, cx } from '@/components/ui'
 
-// El formulario, solo al abrirlo
-const GoalForm = lazy(() => import('./DailyGoalForm'))
-
+// La hoja y el formulario, solo al abrirlos
+const GoalSheet = lazy(() => import('./DailyGoalForm').then((m) => ({ default: m.GoalSheet })))
 
 /**
  * Objetivo diario de tareas y su racha (como en Todoist): días seguidos
@@ -25,6 +24,8 @@ export function GoalFooter() {
     [goal?.tasks, t],
   )
   const [editing, setEditing] = useState(false)
+  const [opened, setOpened] = useState(false)
+  if (editing && !opened) setOpened(true)
   const streak = goal && history ? goalStreak(doneByDay(history), goal, t) : undefined
 
   // Al cumplirlo, un aviso (solo si se cumple ahora, no al abrir Hoy)
@@ -68,13 +69,11 @@ export function GoalFooter() {
           )
         )}
       </div>
-      <Modal open={editing} onClose={() => setEditing(false)} position="center">
-        {editing && (
-          <Suspense fallback={<div className="h-72" />}>
-            <GoalForm goal={goal} onClose={() => setEditing(false)} />
-          </Suspense>
-        )}
-      </Modal>
+      {opened && (
+        <Suspense fallback={null}>
+          <GoalSheet open={editing} goal={goal} onClose={() => setEditing(false)} />
+        </Suspense>
+      )}
     </>
   )
 }

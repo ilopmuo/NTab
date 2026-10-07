@@ -6,7 +6,8 @@ import { uid } from '@/lib/id'
 import { dateLabel, fmt, relativeDays, today } from '@/lib/dates'
 import { nextBirthday } from '@/lib/people'
 import { toast } from '@/app/store'
-import { Button, Card, Input, Section, cx } from '@/components/ui'
+import { Button, Card, Section, cx } from '@/components/ui'
+import { Input } from '@/components/form'
 
 /**
  * Fechas importantes que vuelven cada año (aniversario, santo…), como en

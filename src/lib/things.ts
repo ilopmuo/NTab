@@ -1,5 +1,8 @@
 import type { Thing, ThingKind } from '@/db/types'
 import { addDaysYmd, fromYmd, today as todayYmd } from './dates'
+import { DEFAULT_NOTIFY_DAYS } from './remindAt'
+
+export { DEFAULT_NOTIFY_DAYS, computeThingRemindAt } from './remindAt'
 
 export const KIND_LABEL: Record<ThingKind, string> = {
   stored: 'Guardado',
@@ -8,44 +11,6 @@ export const KIND_LABEL: Record<ThingKind, string> = {
   document: 'Caduca',
 }
 
-/** Días antes de caducar para avisar, por defecto */
-export const DEFAULT_NOTIFY_DAYS = 30
-
-function at(date: string, hh: number) {
-  const d = fromYmd(date)
-  d.setHours(hh, 0, 0, 0)
-  return d.getTime()
-}
-
-/**
- * Cuándo avisar de una cosa:
- * - lo que caduca: `notifyDays` antes, a las 9:00;
- * - lo prestado con fecha: ese día, a las 10:00 («¿te lo ha devuelto?»);
- * - lo que me prestaron con fecha: el día antes, a las 9:00.
- * Si se apunta algo que ya está dentro del margen (caduca en 10 días y se
- * avisa 30 antes), se avisa a las 9:00 siguientes, mientras no haya caducado.
- * Lo que ya pasó no se avisa (no se reenvía lo antiguo).
- */
-export function computeThingRemindAt(t: Pick<Thing, 'kind' | 'expires' | 'notifyDays' | 'returnBy' | 'returned' | 'warranty'>, now = Date.now()): number | undefined {
-  /** `days` antes de `date`, a las 9; ya dentro del margen, a las 9 siguientes (si no ha pasado) */
-  const before = (date: string, days: number) => {
-    let when: number | undefined = at(addDaysYmd(date, -days), 9)
-    if (when <= now) {
-      const next = new Date(now)
-      if (next.getHours() >= 9) next.setDate(next.getDate() + 1)
-      next.setHours(9, 0, 0, 0)
-      when = next.getTime() <= at(date, 9) ? next.getTime() : undefined
-    }
-    return when
-  }
-  let when: number | undefined
-  if (t.kind === 'document' && t.expires) when = before(t.expires, t.notifyDays ?? DEFAULT_NOTIFY_DAYS)
-  else if (t.kind === 'lent' && t.returnBy && !t.returned) when = at(t.returnBy, 10)
-  else if (t.kind === 'borrowed' && t.returnBy && !t.returned) when = at(addDaysYmd(t.returnBy, -1), 9)
-  // Lo que no tiene otro aviso: el fin de la garantía, un mes antes
-  if ((when === undefined || when <= now) && t.warranty && !t.returned) when = before(t.warranty, DEFAULT_NOTIFY_DAYS)
-  return when !== undefined && when > now ? when : undefined
-}
 
 /** ¿Cómo va la garantía? (como la caducidad, con un mes de margen) */
 export function warrantyStatus(t: Pick<Thing, 'warranty'>, today = todayYmd()): { level: 'expired' | 'soon' | 'ok'; days: number } | null {

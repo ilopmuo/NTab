@@ -5,7 +5,9 @@ import { useSync } from '@/sync/service'
 import { refreshEvents, useEvents } from '@/lib/calendarEvents'
 import { addDaysYmd, today } from '@/lib/dates'
 import { toast } from '@/app/store'
-import { Button, Field, Input, Modal, ModalHeader } from '@/components/ui'
+import { Button } from '@/components/ui'
+import { Field, Input } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 import { LinkRow, LinkSection } from './LinkSection'
 
 interface Source {

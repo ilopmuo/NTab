@@ -8,7 +8,9 @@ import { money } from '@/lib/expenses'
 import { INCOME_CATEGORIES, incomeCat, rule503020 } from '@/lib/money'
 import { toast } from '@/app/store'
 import { Icon } from '@/components/icons'
-import { Button, Card, Field, Input, Modal, ModalHeader, Section, Select, cx, softSpring } from '@/components/ui'
+import { Button, Card, Section, cx, softSpring } from '@/components/ui'
+import { Field, Input, Select } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 import { readEuros } from './data'
 
 export function shiftMonth(month: string, n: number) {

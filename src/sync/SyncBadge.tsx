@@ -1,9 +1,15 @@
 import { AlertTriangle, Cloud, CloudOff, CloudUpload, Loader2, LogIn } from 'lucide-react'
-import { formatDistanceToNowStrict } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { href } from '@/app/router'
 import { cx } from '@/components/ui'
 import { openAuth, useSync, type SyncStatus } from './service'
+
+/** «20 segundos», «5 minutos», «1 hora», «3 días» (lo de formatDistanceToNowStrict, sin cargarlo al arrancar) */
+export function since(at: number, now = Date.now()) {
+  const s = Math.max(0, Math.round((now - at) / 1000))
+  const [n, one, many]: [number, string, string] =
+    s < 60 ? [s, 'segundo', 'segundos'] : s < 3600 ? [Math.round(s / 60), 'minuto', 'minutos'] : s < 86400 ? [Math.round(s / 3600), 'hora', 'horas'] : [Math.round(s / 86400), 'día', 'días']
+  return `${n} ${n === 1 ? one : many}`
+}
 
 export function syncLabel(s: SyncStatus): { icon: React.ReactNode; text: string; tone: string } {
   switch (s.state) {
@@ -12,7 +18,7 @@ export function syncLabel(s: SyncStatus): { icon: React.ReactNode; text: string;
     case 'synced':
       return {
         icon: <Cloud size={14} />,
-        text: s.lastSyncAt ? `Sincronizado · ${formatDistanceToNowStrict(s.lastSyncAt, { locale: es })}` : 'Sincronizado',
+        text: s.lastSyncAt ? `Sincronizado · ${since(s.lastSyncAt)}` : 'Sincronizado',
         tone: 'text-muted',
       }
     case 'pending':

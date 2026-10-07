@@ -4,7 +4,7 @@ import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { cleanTimes, doseToTake, nowHHMM, perDoseOf, stockAfter, takeLog } from '@/lib/meds'
 import { putInTrash } from '@/db/trash'
-import { addShoppingItems } from '@/db/actions'
+import { addShoppingItems } from '@/db/moreActions'
 
 export async function createMed(data: Partial<Med> & { name: string }): Promise<Med> {
   const med: Med = {

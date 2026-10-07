@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import type { Habit } from '@/db/types'
 import { db } from '@/db/db'
-import { createHabit, deleteHabit } from '@/db/actions'
+import { createHabit, deleteHabit } from '@/db/moreActions'
 import { WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { ICONS, Icon } from '@/components/icons'
 import { toastTrashed } from '../trash/undo'
-import { Button, Field, Input, Modal, ModalHeader, Segmented, Switch, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Field, Input, Segmented, Switch } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 import { Bell } from 'lucide-react'
 
 

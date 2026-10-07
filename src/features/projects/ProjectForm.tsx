@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Project } from '@/db/types'
 import { db } from '@/db/db'
-import { createProject } from '@/db/actions'
+import { createProject } from '@/db/moreActions'
 import { useAreas } from '@/db/hooks'
-import { Button, Field, Input, Modal, ModalHeader, Select, Textarea } from '@/components/ui'
+import { Button } from '@/components/ui'
+import { Field, Input, Select, Textarea } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 export function ProjectForm({
   project,

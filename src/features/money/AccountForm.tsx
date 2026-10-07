@@ -7,7 +7,9 @@ import { fmt } from '@/lib/dates'
 import { money } from '@/lib/expenses'
 import { ACCOUNT_KINDS, GROUPS, isDebt, kindOf } from '@/lib/wealth'
 import { toast } from '@/app/store'
-import { Button, Field, Input, Modal, ModalHeader, Select } from '@/components/ui'
+import { Button } from '@/components/ui'
+import { Field, Input, Select } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 import { readEuros } from './data'
 
 /** Nueva cuenta, bien o deuda, o editar una */

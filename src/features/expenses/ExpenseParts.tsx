@@ -8,7 +8,9 @@ import { dateLabel, fmt, today } from '@/lib/dates'
 import { CATEGORIES, categoryBudgets, money, normTag, ruleKey, type Budget, type ExpenseRules } from '@/lib/expenses'
 import { toast } from '@/app/store'
 import { Icon } from '@/components/icons'
-import { Button, Card, Field, Input, Modal, ModalHeader, Section, Select, cx, softSpring } from '@/components/ui'
+import { Button, Card, Section, cx, softSpring } from '@/components/ui'
+import { Field, Input, Select } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 export const cat = (id: string) => CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1]
 

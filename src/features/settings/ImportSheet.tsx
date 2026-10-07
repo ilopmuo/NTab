@@ -6,7 +6,9 @@ import { uid } from '@/lib/id'
 import { today } from '@/lib/dates'
 import { readImport, type ImportResult } from '@/lib/importers'
 import { toast } from '@/app/store'
-import { Button, Modal, ModalHeader, Textarea, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
+import { Textarea } from '@/components/form'
 
 /**
  * Crea lo que se trae: los proyectos que no existan (o les añade las

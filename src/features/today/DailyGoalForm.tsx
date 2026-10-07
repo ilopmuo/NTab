@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { setSetting } from '@/db/actions'
 import type { DailyGoal } from '@/lib/day'
-import { Button, IconButton, ModalHeader, cx } from '@/components/ui'
+import { Button, IconButton, cx } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 const DAYS = [
   { d: 1, l: 'L', name: 'lunes' },
@@ -85,5 +86,14 @@ export default function GoalForm({ goal, onClose }: { goal: DailyGoal | null; on
         </Button>
       </div>
     </div>
+  )
+}
+
+/** La hoja del objetivo diario: se carga la primera vez que se abre y se queda (para cerrarse con su animación) */
+export function GoalSheet({ open, goal, onClose }: { open: boolean; goal: DailyGoal | null; onClose: () => void }) {
+  return (
+    <Modal open={open} onClose={onClose} position="center">
+      {open && <GoalForm goal={goal} onClose={onClose} />}
+    </Modal>
   )
 }

@@ -1,7 +1,7 @@
 import { m as motion } from 'motion/react'
 import { ArrowDownLeft, ArrowUpRight, Box, FileClock, MapPin } from 'lucide-react'
 import type { Thing } from '@/db/types'
-import { updateThing } from '@/db/actions'
+import { updateThing } from '@/db/moreActions'
 import { daysUntil, expiryStatus, relativeLabel, warrantyStatus } from '@/lib/things'
 import { toast } from '@/app/store'
 import { haptic } from '@/lib/haptics'

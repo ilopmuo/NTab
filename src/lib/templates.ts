@@ -1,5 +1,6 @@
 import { db } from '@/db/db'
-import { createProject, createTask } from '@/db/actions'
+import { createTask } from '@/db/actions'
+import { createProject } from '@/db/moreActions'
 import type { Project, Task, Template, TemplateItem } from '@/db/types'
 import { uid } from './id'
 import { expandTemplate, itemsFromTasks, planSections } from '../../supabase/functions/_shared/templates.ts'

@@ -200,7 +200,7 @@ npm run preview    # sirve el build
 
 **Tests end-to-end** (`e2e/*.e2e.ts`, Playwright): recorren la app de verdad en Chromium, sin red (Supabase cortado, modo sin cuenta). Incluyen una revisión de accesibilidad con axe (WCAG 2.1 AA) de las pantallas principales en los dos temas, que falla con cualquier problema serio: contraste, controles sin nombre o anidados. Si el navegador no está instalado: `npx playwright install chromium`.
 
-**CI** (`.github/workflows/ci.yml`), en cada PR y en `main`: tipos, tests, build, límite de tamaño del arranque (`scripts/check-size.mjs`, 216 KB gzip), los e2e y `deno check` de las Edge Functions.
+**CI** (`.github/workflows/ci.yml`), en cada PR y en `main`: tipos, tests, build, límite de tamaño del arranque (`scripts/check-size.mjs`, 200 KB gzip), los e2e y `deno check` de las Edge Functions.
 
 **Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Motion · Dexie (IndexedDB) · Supabase · date-fns · lucide · cmdk · vite-plugin-pwa · Vitest.
 
@@ -211,7 +211,10 @@ Se publica en Vercel (`vercel.json`). La URL y la clave pública de Supabase est
 - Las vistas y los paneles globales (detalle de tarea, captura rápida, `⌘K`, foco, rutinas, «¿Qué hago?», selección, inicio de sesión) se cargan la primera vez que se abren, y se precargan cuando el navegador está libre (`src/app/App.tsx`).
 - Motion va en su versión ligera (`LazyMotion` con `m`): lo pesado (layout, arrastrar, animar a mano) llega justo después de pintar (`src/lib/motionFeatures.ts`); hasta entonces, lo que se mueve aparece sin animación. Lo que arrastra para ordenar (`Reorder`) también va aparte.
 - También llegan después: el analizador de lenguaje natural (al abrir un campo de tarea), los avisos con la app abierta, los pasillos de la compra y el confeti.
-- React, Dexie y date-fns van en trozos propios (`vite.config.ts`): al publicar una versión nueva, el iPhone solo vuelve a bajar el código de la app.
+- Las tarjetas de Hoy que solo salen si tienen algo (hábitos, cuenta atrás, rutinas, última vez, cosas, pagos, personas, menú, diario, medicación, casa) llegan aparte y aparecen a la vez que sus datos; el editor del objetivo diario, al abrirlo.
+- Lo que se usa al arrancar va en archivos pequeños, porque si el arranque usa una sola función de un archivo, se trae el archivo entero: las acciones de tareas, hábitos y ajustes (`src/db/actions.ts`; las demás, en `src/db/moreActions.ts`), cuándo avisar de pagos, cosas y «Última vez» (`src/lib/remindAt.ts`), el estado del foco (`src/features/focus/focusStore.ts`) y lo básico de la interfaz (`src/components/ui.tsx`; las hojas en `Modal.tsx` y los campos en `form.tsx`).
+- Las fechas se escriben con un formateador propio en español (`formatEs` en `src/lib/dates.ts`, comprobado contra date-fns) y date-fns usa el español por defecto (`vite.config.ts`): ni su formateador ni el inglés llegan al arranque.
+- React y Dexie van en trozos propios (`vite.config.ts`): al publicar una versión nueva, el iPhone solo vuelve a bajar el código de la app. date-fns ya no, para que cada pantalla traiga solo lo suyo.
 
 ## Plan
 

@@ -1,0 +1,25 @@
+// Lo que hace cada función (para Ajustes → Funciones), aparte de lib/features.ts:
+// no hace falta para arrancar
+export const FEATURE_HINTS: Record<string, string> = {
+  notes: 'Apuntes, ideas y listas que se convierten en tareas',
+  lists: 'Búsquedas guardadas por fecha, prioridad, etiqueta o persona, en Listas',
+  matrix: 'Lo urgente y lo importante, en cuatro cuadrantes',
+  templates: 'Listas que repites: la maleta, el cierre de mes…',
+  goals: 'Metas con una cifra o con sus proyectos',
+  review: 'Unos pasos para vaciar la cabeza y planificar la semana',
+  focus: 'Pomodoros con descansos, sonido de fondo y tus mejores horas',
+  countdowns: 'Los días que faltan para lo que esperas, en Hoy',
+  habits: 'Seguimiento diario, rachas y recordatorios',
+  routines: 'Pasos que haces siempre igual, guiados',
+  trackers: '¿Cuándo cambiaste las sábanas? Y aviso cuando toca',
+  meds: 'Tus pastillas a su hora, con aviso hasta que las marques y cuándo reponer',
+  journal: 'Ánimo, unas líneas y tres cosas buenas cada día',
+  people: 'Cumpleaños y a quién hace tiempo que no llamas',
+  house: 'Turnos de limpieza, compra y cuentas con tus compañeros de piso',
+  shopping: 'Lista de la compra por pasillos',
+  menu: 'Comidas de la semana con tus recetas',
+  things: 'Dónde está algo, préstamos y caducidades',
+  expenses: 'Lo que gastas e ingresas al mes, con presupuesto y tu año',
+  finance: 'Suscripciones y recibos, con aviso antes del cargo',
+  accounts: 'Patrimonio, deudas y colchón',
+}

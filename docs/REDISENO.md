@@ -35,6 +35,6 @@ Lo que engancha en esas apps y no depende del color es lo que traemos:
 - Hitos de racha (7, 30, 100, 365 días) con una tarjeta de celebración, la cifra que sube y confeti en lima y acento (Duolingo / Fitness).
 
 ## Restricciones que se respetan
-- JS de arranque ≤ 216 KB gzip.
+- JS de arranque ≤ 200 KB gzip.
 - Contraste AA en las 28 pantallas y los dos temas (axe en e2e).
 - «Reducir movimiento» y «Más contraste» siguen funcionando.

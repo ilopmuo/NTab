@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, m as motion } from 'motion/react'
 import { Check, ChevronLeft, Flame, RotateCcw, SkipForward, X } from 'lucide-react'
-import { resetRoutineRun, toggleRoutineStep } from '@/db/actions'
+import { resetRoutineRun, toggleRoutineStep } from '@/db/moreActions'
 import { finishAt, minutesLeft, routineProgress, routineStreak } from '@/lib/routines'
 import { Countdown } from '@/components/Countdown'
 import { haptic } from '@/lib/haptics'

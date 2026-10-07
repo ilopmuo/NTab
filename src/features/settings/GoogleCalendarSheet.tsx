@@ -1,5 +1,6 @@
 import { Copy, ExternalLink } from 'lucide-react'
-import { Button, Modal, ModalHeader } from '@/components/ui'
+import { Button } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
 import { copyText } from './secretLink'
 import { googleScript } from './googleScript'
 

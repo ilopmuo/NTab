@@ -9,7 +9,9 @@ import { haptic } from '@/lib/haptics'
 import { ui } from '@/app/store'
 import { focus } from '@/features/focus/focus'
 import { completeWithFeedback } from '@/components/TaskItem'
-import { Button, Modal, ModalHeader, Segmented, cx, softSpring } from '@/components/ui'
+import { Button, cx, softSpring } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
+import { Segmented } from '@/components/form'
 
 import { whatNow, useWhatNowOpen as useOpen } from './store'
 

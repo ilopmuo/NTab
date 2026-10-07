@@ -1,7 +1,8 @@
 import { Reorder, useDragControls } from 'motion/react'
 import { GripVertical } from 'lucide-react'
 import { setSetting } from '@/db/actions'
-import { Modal, ModalHeader, Switch } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
+import { Switch } from '@/components/form'
 import { TODAY_CARDS, useTodayCards, type Prefs, type TodayCardId } from './cards'
 
 /** Elegir y ordenar las tarjetas de Hoy */

@@ -7,7 +7,9 @@ import { filterTasks, WHEN_LABEL, type SmartList, type SmartWhen } from '@/lib/s
 import { saveSmartList } from '@/app/smartLists'
 import { useFeatures } from '@/app/features'
 import { navigate } from '@/app/router'
-import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Field, Input, Segmented, Select } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 export function SmartListForm({ list, open, onClose }: { list?: SmartList; open: boolean; onClose: () => void }) {
   return (

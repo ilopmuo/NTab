@@ -4,10 +4,12 @@ import { Check } from 'lucide-react'
 import type { Goal } from '@/db/types'
 import { db } from '@/db/db'
 import { cleanTag } from '@/lib/tags'
-import { createGoal, deleteGoal, linkGoalProjects, setGoalCurrent, setGoalStatus } from '@/db/actions'
+import { createGoal, deleteGoal, linkGoalProjects, setGoalCurrent, setGoalStatus } from '@/db/moreActions'
 import { useLookup } from '@/db/hooks'
 import { toastTrashed } from '../trash/undo'
-import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, Textarea, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Field, Input, Segmented, Select, Textarea } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 export function GoalForm({ goal, open, onClose }: { goal?: Goal; open: boolean; onClose: () => void }) {
   return (

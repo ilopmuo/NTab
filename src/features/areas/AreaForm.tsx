@@ -3,7 +3,9 @@ import type { Area } from '@/db/types'
 import { db } from '@/db/db'
 import { createArea } from '@/db/actions'
 import { ICONS, Icon } from '@/components/icons'
-import { Button, Field, Input, Modal, ModalHeader, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Field, Input } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 export function AreaForm({ area, open, onClose, onSaved }: { area?: Area; open: boolean; onClose: () => void; onSaved?: (a: Area) => void }) {
   return (

@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState, type ComponentType, type R
 import { AnimatePresence, LazyMotion, MotionConfig, m as motion } from 'motion/react'
 import { TodayView } from '@/features/Today'
 import { DragGhost } from '@/components/dayDrag'
-import { useFocus } from '@/features/focus/focus'
+import { useFocus } from '@/features/focus/focusStore'
 import { selection, useSelecting } from '@/features/select/selection'
 import { useWhatNowOpen } from '@/features/whatnow/store'
 import { runner, useRunner } from '@/features/routines/useRoutines'

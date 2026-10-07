@@ -13,7 +13,6 @@ export type FeatureGroup = 'organize' | 'life' | 'home' | 'money'
 export interface FeatureDef {
   id: string
   label: string
-  hint: string
   group: FeatureGroup
   /** secciones de la app que dependen de ella */
   sections: string[]
@@ -22,27 +21,27 @@ export interface FeatureDef {
 }
 
 export const FEATURES: FeatureDef[] = [
-  { id: 'notes', label: 'Notas', hint: 'Apuntes, ideas y listas que se convierten en tareas', group: 'organize', sections: ['notes'], cards: [] },
-  { id: 'lists', label: 'Filtros', hint: 'Búsquedas guardadas por fecha, prioridad, etiqueta o persona, en Listas', group: 'organize', sections: [], cards: [] },
-  { id: 'matrix', label: 'Matriz de Eisenhower', hint: 'Lo urgente y lo importante, en cuatro cuadrantes', group: 'organize', sections: ['matrix'], cards: [] },
-  { id: 'templates', label: 'Plantillas', hint: 'Listas que repites: la maleta, el cierre de mes…', group: 'organize', sections: ['templates'], cards: [] },
-  { id: 'goals', label: 'Objetivos', hint: 'Metas con una cifra o con sus proyectos', group: 'organize', sections: ['goals'], cards: [] },
-  { id: 'review', label: 'Revisión semanal', hint: 'Unos pasos para vaciar la cabeza y planificar la semana', group: 'organize', sections: ['review'], cards: [] },
-  { id: 'focus', label: 'Foco', hint: 'Pomodoros con descansos, sonido de fondo y tus mejores horas', group: 'organize', sections: ['focus'], cards: [] },
-  { id: 'countdowns', label: 'Cuenta atrás', hint: 'Los días que faltan para lo que esperas, en Hoy', group: 'organize', sections: [], cards: ['countdowns'] },
-  { id: 'habits', label: 'Hábitos', hint: 'Seguimiento diario, rachas y recordatorios', group: 'life', sections: ['habits'], cards: ['habits'] },
-  { id: 'routines', label: 'Rutinas', hint: 'Pasos que haces siempre igual, guiados', group: 'life', sections: ['routines'], cards: ['routines'] },
-  { id: 'trackers', label: 'Última vez', hint: '¿Cuándo cambiaste las sábanas? Y aviso cuando toca', group: 'life', sections: ['trackers'], cards: ['trackers'] },
-  { id: 'meds', label: 'Medicación', hint: 'Tus pastillas a su hora, con aviso hasta que las marques y cuándo reponer', group: 'life', sections: ['meds'], cards: ['meds'] },
-  { id: 'journal', label: 'Diario', hint: 'Ánimo, unas líneas y tres cosas buenas cada día', group: 'life', sections: ['journal'], cards: ['journal'] },
-  { id: 'people', label: 'Personas', hint: 'Cumpleaños y a quién hace tiempo que no llamas', group: 'life', sections: ['people'], cards: ['people'] },
-  { id: 'house', label: 'Tareas de casa', hint: 'Turnos de limpieza, compra y cuentas con tus compañeros de piso', group: 'home', sections: ['house'], cards: ['house'] },
-  { id: 'shopping', label: 'Compra', hint: 'Lista de la compra por pasillos', group: 'home', sections: ['shopping'], cards: [] },
-  { id: 'menu', label: 'Menú', hint: 'Comidas de la semana con tus recetas', group: 'home', sections: ['menu'], cards: ['meals'] },
-  { id: 'things', label: 'Cosas', hint: 'Dónde está algo, préstamos y caducidades', group: 'home', sections: ['things'], cards: ['things'] },
-  { id: 'expenses', label: 'Gastos', hint: 'Lo que gastas e ingresas al mes, con presupuesto y tu año', group: 'money', sections: ['expenses', 'money'], cards: [] },
-  { id: 'finance', label: 'Pagos', hint: 'Suscripciones y recibos, con aviso antes del cargo', group: 'money', sections: ['finance'], cards: ['payments'] },
-  { id: 'accounts', label: 'Cuentas y patrimonio', hint: 'Patrimonio, deudas y colchón', group: 'money', sections: ['accounts'], cards: [] },
+  { id: 'notes', label: 'Notas', group: 'organize', sections: ['notes'], cards: [] },
+  { id: 'lists', label: 'Filtros', group: 'organize', sections: [], cards: [] },
+  { id: 'matrix', label: 'Matriz de Eisenhower', group: 'organize', sections: ['matrix'], cards: [] },
+  { id: 'templates', label: 'Plantillas', group: 'organize', sections: ['templates'], cards: [] },
+  { id: 'goals', label: 'Objetivos', group: 'organize', sections: ['goals'], cards: [] },
+  { id: 'review', label: 'Revisión semanal', group: 'organize', sections: ['review'], cards: [] },
+  { id: 'focus', label: 'Foco', group: 'organize', sections: ['focus'], cards: [] },
+  { id: 'countdowns', label: 'Cuenta atrás', group: 'organize', sections: [], cards: ['countdowns'] },
+  { id: 'habits', label: 'Hábitos', group: 'life', sections: ['habits'], cards: ['habits'] },
+  { id: 'routines', label: 'Rutinas', group: 'life', sections: ['routines'], cards: ['routines'] },
+  { id: 'trackers', label: 'Última vez', group: 'life', sections: ['trackers'], cards: ['trackers'] },
+  { id: 'meds', label: 'Medicación', group: 'life', sections: ['meds'], cards: ['meds'] },
+  { id: 'journal', label: 'Diario', group: 'life', sections: ['journal'], cards: ['journal'] },
+  { id: 'people', label: 'Personas', group: 'life', sections: ['people'], cards: ['people'] },
+  { id: 'house', label: 'Tareas de casa', group: 'home', sections: ['house'], cards: ['house'] },
+  { id: 'shopping', label: 'Compra', group: 'home', sections: ['shopping'], cards: [] },
+  { id: 'menu', label: 'Menú', group: 'home', sections: ['menu'], cards: ['meals'] },
+  { id: 'things', label: 'Cosas', group: 'home', sections: ['things'], cards: ['things'] },
+  { id: 'expenses', label: 'Gastos', group: 'money', sections: ['expenses', 'money'], cards: [] },
+  { id: 'finance', label: 'Pagos', group: 'money', sections: ['finance'], cards: ['payments'] },
+  { id: 'accounts', label: 'Cuentas y patrimonio', group: 'money', sections: ['accounts'], cards: [] },
 ]
 
 export const FEATURE_GROUPS: { id: FeatureGroup; label: string }[] = [

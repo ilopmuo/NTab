@@ -2,7 +2,9 @@ import { useRef, useState } from 'react'
 import { Bold, Heading2, ImagePlus, List, ListChecks, X } from 'lucide-react'
 import { compressPhoto } from '@/lib/things'
 import { toast } from '@/app/store'
-import { Modal, Switch, cx } from '@/components/ui'
+import { cx } from '@/components/ui'
+import { Modal } from '@/components/Modal'
+import { Switch } from '@/components/form'
 
 export const MAX_PHOTOS = 6
 

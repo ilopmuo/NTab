@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { authErrorMessage, dismissRecovery, updatePassword, useSync } from '@/sync/service'
 import { toast } from '@/app/store'
-import { Button, Input, Modal, ModalHeader } from '@/components/ui'
+import { Button } from '@/components/ui'
+import { Input } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 /** Se abre al volver del enlace "recuperar contraseña" del email */
 export function RecoveryModal() {

@@ -1,12 +1,4 @@
-import {
-  addDays,
-  differenceInCalendarDays,
-  format,
-  isValid,
-  parse,
-  startOfWeek,
-} from 'date-fns'
-import { es } from 'date-fns/locale'
+import { addDays, differenceInCalendarDays, isValid, parse, startOfWeek } from 'date-fns'
 
 /** Fecha local → 'YYYY-MM-DD' */
 export function ymd(d: Date): string {
@@ -42,8 +34,36 @@ export function weekStart(s: string): string {
   return ymd(startOfWeek(fromYmd(s), { weekStartsOn: 1 }))
 }
 
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+const DAYS3 = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/**
+ * Lo que la app usa de `format` de date-fns con el español (d, dd, M…MMMM,
+ * yy, yyyy, E…EEEEEE y 'texto'), igual que date-fns pero sin traer su
+ * formateador al arranque (unos 12 KB). Lo comprueba dates.test.ts.
+ */
+export function formatEs(date: Date, pattern: string): string {
+  return pattern.replace(/'([^']*)'|d{1,2}|M{1,4}|y+|E{1,6}/g, (t: string, lit: string | undefined) => {
+    if (lit !== undefined) return lit || "'"
+    const day = date.getDay()
+    const month = date.getMonth()
+    switch (t[0]) {
+      case 'd':
+        return t.length === 2 ? pad2(date.getDate()) : String(date.getDate())
+      case 'M':
+        return t.length === 1 ? String(month + 1) : t.length === 2 ? pad2(month + 1) : t.length === 3 ? MONTHS[month].slice(0, 3) : MONTHS[month]
+      case 'y':
+        return t.length === 2 ? String(date.getFullYear()).slice(-2) : String(date.getFullYear())
+      default:
+        return t.length <= 3 ? DAYS3[day] : t.length === 4 ? DAYS[day] : t.length === 5 ? DAYS[day][0] : DAYS3[day].slice(0, 2)
+    }
+  })
+}
+
 export function fmt(s: string, pattern: string): string {
-  return format(fromYmd(s), pattern, { locale: es })
+  return formatEs(fromYmd(s), pattern)
 }
 
 export function capitalize(s: string): string {

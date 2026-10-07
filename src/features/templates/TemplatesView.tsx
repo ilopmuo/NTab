@@ -11,7 +11,9 @@ import { navigate } from '@/app/router'
 import { setUI, toast, useUI, ui } from '@/app/store'
 import { SectionIcon, section } from '@/app/sections'
 import { ICONS, Icon } from '@/components/icons'
-import { Button, Empty, Field, IconButton, Input, Modal, ModalHeader, PageHeader, Segmented, Select, cx } from '@/components/ui'
+import { Button, Empty, IconButton, PageHeader, cx } from '@/components/ui'
+import { Field, Input, Segmented, Select } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 import { Page } from '../Page'
 
 export function TemplatesView() {

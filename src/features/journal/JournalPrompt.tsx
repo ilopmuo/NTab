@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { BookOpen } from 'lucide-react'
 import { db } from '@/db/db'
-import { saveJournal } from '@/db/actions'
+import { saveJournal } from '@/db/moreActions'
 import { today } from '@/lib/dates'
 import { hasContent, moodLabel } from '@/lib/journal'
 import { href } from '@/app/router'

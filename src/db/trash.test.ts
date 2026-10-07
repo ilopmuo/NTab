@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './db'
-import { createGoal, createProject, createTask, deleteGoal, deleteProject, deleteTask, linkGoalProjects } from './actions'
+import { createTask, deleteTask } from './actions'
+import { createGoal, createProject, deleteGoal, deleteProject, linkGoalProjects } from './moreActions'
 import { TRASH_DAYS, purgeTrash, restoreFromTrash, trashKey } from './trash'
 
 beforeEach(async () => {

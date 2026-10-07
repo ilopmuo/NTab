@@ -1,9 +1,9 @@
 import { CalendarDays, Lightbulb, ListChecks, Luggage, Users } from 'lucide-react'
 import { db } from '@/db/db'
-import { createNote } from '@/db/actions'
+import { createNote } from '@/db/moreActions'
 import { capitalize, fmt, today } from '@/lib/dates'
 import { navigate } from '@/app/router'
-import { Modal, ModalHeader } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 interface Template {
   id: string

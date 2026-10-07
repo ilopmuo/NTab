@@ -1,0 +1,651 @@
+/**
+ * Las acciones que no hacen falta para arrancar: proyectos, notas, personas,
+ * objetivos, pagos, rutinas, cosas, compra, menú… (las de tareas, hábitos y
+ * ajustes, las que usa Hoy, están en actions.ts y van en el arranque).
+ */
+import { db } from './db'
+import type { Goal, Habit, Income, Interaction, Note, Person, Project, Expense, JournalEntry, MenuSlot, Recipe, Routine, ShoppingItem, Subscription, Task, Thing, Tracker } from './types'
+import { uid } from '@/lib/id'
+import { addDaysYmd, today } from '@/lib/dates'
+import { advanceCharge, rollForward, withDate } from '@/lib/remindAt'
+import { putInTrash } from './trash'
+import type { ParsedItem } from '@/lib/shopping'
+import { cleanTag, replaceTag } from '@/lib/tags'
+import { logGoal } from '@/lib/goals'
+import { renameLinks } from '@/lib/notes'
+import { addHabitCount } from './actions'
+
+/** Los pasillos de la compra solo hacen falta en la compra */
+const shoppingLib = () => import('@/lib/shopping')
+
+/** Borra una nota (va a la papelera) */
+export async function deleteNote(id: string) {
+  await db.transaction('rw', db.notes, db.trash, async () => {
+    const note = await db.notes.get(id)
+    if (!note) return
+    await putInTrash('notes', note)
+    await db.notes.delete(id)
+  })
+}
+
+/** Borra un pago recurrente (va a la papelera) */
+export async function deleteSubscription(id: string) {
+  await db.transaction('rw', db.subscriptions, db.trash, async () => {
+    const sub = await db.subscriptions.get(id)
+    if (!sub) return
+    await putInTrash('subscriptions', sub)
+    await db.subscriptions.delete(id)
+  })
+}
+
+// ── Áreas y proyectos ─────────────────────────────────────────
+
+export async function deleteArea(id: string) {
+  await db.transaction('rw', [db.areas, db.projects, db.tasks, db.notes, db.goals], async () => {
+    await db.projects.where('areaId').equals(id).modify({ areaId: undefined })
+    await db.goals.where('areaId').equals(id).modify({ areaId: undefined })
+    await db.tasks.where('areaId').equals(id).modify({ areaId: undefined })
+    await db.notes.where('areaId').equals(id).modify({ areaId: undefined })
+    await db.areas.delete(id)
+  })
+}
+
+export async function createProject(data: Partial<Project> & { name: string }): Promise<Project> {
+  const project: Project = {
+    id: uid(),
+    description: '',
+    status: 'active',
+    color: '#0A84FF',
+    order: Date.now(),
+    createdAt: Date.now(),
+    ...data,
+  }
+  await db.projects.add(project)
+  return project
+}
+
+export async function deleteProject(id: string, withTasks: boolean) {
+  await db.transaction('rw', [db.projects, db.tasks, db.notes, db.trash], async () => {
+    const project = await db.projects.get(id)
+    if (!project) return
+    const tasks = await db.tasks.where('projectId').equals(id).toArray()
+    const notes = await db.notes.where('projectId').equals(id).toArray()
+    await putInTrash('projects', project, {
+      related: withTasks ? tasks.map((t) => ({ tbl: 'tasks', data: t as unknown as Record<string, unknown> })) : [],
+      unlinked: [
+        ...(withTasks ? [] : tasks.map((t) => ({ tbl: 'tasks' as const, id: t.id, field: 'projectId' as const }))),
+        ...notes.map((n) => ({ tbl: 'notes' as const, id: n.id, field: 'projectId' as const })),
+      ],
+    })
+    if (withTasks) await db.tasks.where('projectId').equals(id).delete()
+    else await db.tasks.where('projectId').equals(id).modify({ projectId: undefined })
+    await db.notes.where('projectId').equals(id).modify({ projectId: undefined })
+    await db.projects.delete(id)
+  })
+}
+
+// ── Notas ─────────────────────────────────────────────────────
+
+/** Notas creadas en esta sesión: se abren para escribir (las demás, para leer) */
+export const notesCreatedHere = new Set<string>()
+
+export async function createNote(data: Partial<Note> = {}): Promise<Note> {
+  const note: Note = {
+    id: uid(),
+    title: '',
+    content: '',
+    pinned: 0,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    ...data,
+  }
+  notesCreatedHere.add(note.id)
+  await db.notes.add(note)
+  return note
+}
+
+export async function updateNote(id: string, changes: Partial<Note>) {
+  await db.notes.update(id, { ...changes, updatedAt: Date.now() })
+}
+
+/**
+ * Al renombrar una nota, los [[enlaces]] de las demás pasan al nombre nuevo.
+ * No cambia cuándo se editaron. Devuelve cómo estaban, para deshacer.
+ */
+export async function renameNoteLinks(noteId: string, from: string, to: string) {
+  return db.transaction('rw', db.notes, async () => {
+    const before: { id: string; content: string }[] = []
+    for (const n of await db.notes.toArray()) {
+      if (n.id === noteId) continue
+      const next = renameLinks(n.content, from, to)
+      if (next === n.content) continue
+      before.push({ id: n.id, content: n.content })
+      await db.notes.update(n.id, { content: next })
+    }
+    return before
+  })
+}
+
+export async function restoreNoteContents(list: { id: string; content: string }[]) {
+  await db.transaction('rw', db.notes, async () => {
+    for (const n of list) await db.notes.update(n.id, { content: n.content })
+  })
+}
+
+// ── Hábitos ───────────────────────────────────────────────────
+
+export async function createHabit(data: Partial<Habit> & { name: string }): Promise<Habit> {
+  const habit: Habit = {
+    id: uid(),
+    icon: 'sparkles',
+    color: '#30D158',
+    days: [0, 1, 2, 3, 4, 5, 6],
+    archived: 0,
+    order: Date.now(),
+    createdAt: Date.now(),
+    ...data,
+  }
+  await db.habits.add(habit)
+  return habit
+}
+
+// ── Pausas de hábitos (como en Streaks): no cuentan ni rompen la racha ──
+
+/** Pone el hábito en pausa desde `from` (sin fecha de vuelta: hasta que se reanude) */
+export async function pauseHabit(id: string, from = today()) {
+  await db.habits.where('id').equals(id).modify((h) => {
+    if (h.breaks?.some((b) => !b.to)) return
+    h.breaks = [...(h.breaks ?? []), { from }]
+  })
+}
+
+/** Vuelve a contar desde `date` (si la pausa empezó ese mismo día, se quita) */
+export async function resumeHabit(id: string, date = today()) {
+  await db.habits.where('id').equals(id).modify((h) => {
+    h.breaks = (h.breaks ?? []).flatMap((b) => (b.to ? [b] : b.from >= date ? [] : [{ from: b.from, to: addDaysYmd(date, -1) }]))
+  })
+}
+
+/** «Hoy no toca»: un día libre (o deja de serlo) */
+export async function toggleHabitDayOff(id: string, date: string) {
+  await db.habits.where('id').equals(id).modify((h) => {
+    const one = (h.breaks ?? []).some((b) => b.from === date && b.to === date)
+    h.breaks = one ? h.breaks!.filter((b) => !(b.from === date && b.to === date)) : [...(h.breaks ?? []), { from: date, to: date }]
+  })
+}
+
+/** Marca un hábito como hecho hoy (con cantidad, lo lleva al objetivo) */
+export async function completeHabit(habit: Pick<Habit, 'id' | 'target'>, date: string) {
+  const logs = await db.habitLogs.where('[habitId+date]').equals([habit.id, date]).toArray()
+  const now = logs.reduce((n, l) => n + (l.count ?? 1), 0)
+  const target = Math.max(1, habit.target ?? 1)
+  if (now >= target) return
+  if (target === 1) await db.habitLogs.add({ id: uid(), habitId: habit.id, date })
+  else await addHabitCount(habit.id, date, target - now)
+}
+
+export async function deleteHabit(id: string) {
+  await db.transaction('rw', db.habits, db.habitLogs, db.trash, async () => {
+    const habit = await db.habits.get(id)
+    if (!habit) return
+    const logs = await db.habitLogs.where('habitId').equals(id).toArray()
+    await putInTrash('habits', habit, { related: logs.map((l) => ({ tbl: 'habitLogs', data: l as unknown as Record<string, unknown> })) })
+    await db.habitLogs.where('habitId').equals(id).delete()
+    await db.habits.delete(id)
+  })
+}
+
+// ── Personas ──────────────────────────────────────────────────
+
+export async function createPerson(data: Partial<Person> & { name: string }): Promise<Person> {
+  const person: Person = {
+    id: uid(),
+    email: '',
+    phone: '',
+    company: '',
+    role: '',
+    notes: '',
+    tags: [],
+    createdAt: Date.now(),
+    ...data,
+  }
+  await db.people.add(person)
+  return person
+}
+
+export async function logInteraction(data: Omit<Interaction, 'id' | 'createdAt'>) {
+  await db.transaction('rw', db.people, db.interactions, async () => {
+    await db.interactions.add({ ...data, id: uid(), createdAt: Date.now() })
+    const person = await db.people.get(data.personId)
+    if (person && (!person.lastContact || person.lastContact < data.date)) {
+      await db.people.update(data.personId, { lastContact: data.date })
+    }
+  })
+}
+
+export async function deletePerson(id: string) {
+  await db.transaction('rw', db.people, db.interactions, db.trash, async () => {
+    const person = await db.people.get(id)
+    if (!person) return
+    const history = await db.interactions.where('personId').equals(id).toArray()
+    await putInTrash('people', person, { related: history.map((i) => ({ tbl: 'interactions', data: i as unknown as Record<string, unknown> })) })
+    await db.interactions.where('personId').equals(id).delete()
+    await db.people.delete(id)
+  })
+}
+
+// ── Objetivos ─────────────────────────────────────────────────
+
+export async function createGoal(data: Partial<Goal> & { title: string }): Promise<Goal> {
+  const goal: Goal = {
+    id: uid(),
+    why: '',
+    kind: 'projects',
+    status: 'active',
+    order: Date.now(),
+    createdAt: Date.now(),
+    ...data,
+  }
+  await db.goals.add(goal)
+  return goal
+}
+
+/** Cambia la cifra de un objetivo y la apunta en su historial (para la gráfica) */
+export async function setGoalCurrent(id: string, value: number) {
+  const v = Math.max(0, value)
+  await db.goals.where('id').equals(id).modify((g) => {
+    g.current = v
+    g.log = logGoal(g.log, today(), v)
+  })
+}
+
+export async function setGoalStatus(id: string, status: Goal['status']) {
+  await db.goals.update(id, { status, completedAt: status === 'done' ? Date.now() : undefined })
+}
+
+/** Vincula exactamente estos proyectos al objetivo (y desvincula el resto) */
+export async function linkGoalProjects(goalId: string, projectIds: string[]) {
+  await db.transaction('rw', db.projects, async () => {
+    await db.projects.where('goalId').equals(goalId).filter((p) => !projectIds.includes(p.id)).modify({ goalId: undefined })
+    if (projectIds.length) await db.projects.where('id').anyOf(projectIds).modify({ goalId })
+  })
+}
+
+export async function deleteGoal(id: string) {
+  await db.transaction('rw', db.goals, db.projects, db.trash, async () => {
+    const goal = await db.goals.get(id)
+    if (!goal) return
+    const linked = await db.projects.where('goalId').equals(id).primaryKeys()
+    await putInTrash('goals', goal, { unlinked: linked.map((p) => ({ tbl: 'projects' as const, id: String(p), field: 'goalId' as const })) })
+    await db.projects.where('goalId').equals(id).modify({ goalId: undefined })
+    await db.goals.delete(id)
+  })
+}
+
+// ── Pagos recurrentes ─────────────────────────────────────────
+
+export async function createSubscription(data: Partial<Subscription> & { name: string; amount: number; nextDate: string }): Promise<Subscription> {
+  const sub: Subscription = {
+    id: uid(),
+    kind: 'sub',
+    currency: 'EUR',
+    cycle: 'month',
+    active: true,
+    category: '',
+    notifyDays: 1,
+    notes: '',
+    createdAt: Date.now(),
+    anchorDay: Number(data.nextDate.slice(8, 10)),
+    ...data,
+  }
+  await db.subscriptions.add(sub)
+  return sub
+}
+
+/** Recibo pagado: pasa al siguiente cargo y queda en su historial (como en Chronicle) */
+export async function markPaid(s: Subscription) {
+  await db.subscriptions.update(s.id, {
+    nextDate: advanceCharge(s.nextDate, s.cycle, s.anchorDay),
+    paidLog: [{ date: today(), amount: s.amount }, ...(s.paidLog ?? [])].slice(0, 24),
+  })
+}
+
+/** Las suscripciones se cobran solas: las fechas pasadas avanzan al siguiente cargo */
+export async function rollSubscriptions(ref = today()) {
+  const past = await db.subscriptions.where('nextDate').below(ref).toArray()
+  for (const s of past) {
+    if (s.kind !== 'sub' || !s.active) continue
+    await db.subscriptions.update(s.id, { nextDate: rollForward(s, ref) })
+  }
+}
+
+// ── Etiquetas ─────────────────────────────────────────────────
+
+/** Renombra una etiqueta en todas las tareas (si ya existía la nueva, se juntan) */
+export async function renameTag(from: string, to: string) {
+  const clean = cleanTag(to)
+  if (!clean || clean === from) return 0
+  return db.tasks.where('tags').equals(from).modify((t) => void (t.tags = replaceTag(t.tags, from, clean)))
+}
+
+/** Quita una etiqueta de todas las tareas */
+export async function deleteTag(tag: string) {
+  return db.tasks.where('tags').equals(tag).modify((t) => void (t.tags = t.tags.filter((x) => x !== tag)))
+}
+
+// ── Revisión de proyectos ─────────────────────────────────────
+
+/** Marca un proyecto como revisado ahora (o quita la marca) */
+export async function markReviewed(projectId: string, reviewed = true) {
+  await db.projects.update(projectId, { reviewedAt: reviewed ? Date.now() : undefined })
+}
+
+// ── Secciones de proyecto ─────────────────────────────────────
+
+export async function addSection(projectId: string, name: string) {
+  const section = { id: uid(), name: name.trim() }
+  if (!section.name) return undefined
+  await db.projects.where('id').equals(projectId).modify((p) => void (p.sections = [...(p.sections ?? []), section]))
+  return section
+}
+
+export async function renameSection(projectId: string, sectionId: string, name: string) {
+  if (!name.trim()) return
+  await db.projects.where('id').equals(projectId).modify((p) => {
+    p.sections = (p.sections ?? []).map((s) => (s.id === sectionId ? { ...s, name: name.trim() } : s))
+  })
+}
+
+/** Sube (-1) o baja (+1) una sección */
+export async function moveSection(projectId: string, sectionId: string, dir: -1 | 1) {
+  await db.projects.where('id').equals(projectId).modify((p) => {
+    const list = [...(p.sections ?? [])]
+    const i = list.findIndex((s) => s.id === sectionId)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= list.length) return
+    ;[list[i], list[j]] = [list[j], list[i]]
+    p.sections = list
+  })
+}
+
+/** Borra la sección; sus tareas se quedan en el proyecto, sin sección */
+export async function deleteSection(projectId: string, sectionId: string) {
+  await db.transaction('rw', db.projects, db.tasks, async () => {
+    await db.projects.where('id').equals(projectId).modify((p) => void (p.sections = (p.sections ?? []).filter((s) => s.id !== sectionId)))
+    await db.tasks.where('projectId').equals(projectId).modify((t) => {
+      if (t.sectionId === sectionId) delete t.sectionId
+    })
+  })
+}
+
+// ── Rutinas ───────────────────────────────────────────────────
+
+export async function createRoutine(data: Partial<Routine> & { name: string }): Promise<Routine> {
+  const routine: Routine = {
+    id: uid(),
+    icon: 'list',
+    steps: [],
+    days: [0, 1, 2, 3, 4, 5, 6],
+    archived: 0,
+    order: Date.now(),
+    createdAt: Date.now(),
+    // Los campos sin valor no pisan los de por defecto (p. ej. días de una idea)
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.routines.add(routine)
+  return routine
+}
+
+export async function deleteRoutine(id: string) {
+  await db.transaction('rw', db.routines, db.routineRuns, db.trash, async () => {
+    const routine = await db.routines.get(id)
+    if (!routine) return
+    const runs = await db.routineRuns.where('routineId').equals(id).toArray()
+    await putInTrash('routines', routine, { related: runs.map((r) => ({ tbl: 'routineRuns', data: r as unknown as Record<string, unknown> })) })
+    await db.routineRuns.where('routineId').equals(id).delete()
+    await db.routines.delete(id)
+  })
+}
+
+/** Marca o desmarca un paso de la rutina en un día. Devuelve si ha quedado completa. */
+export async function toggleRoutineStep(routine: Routine, date: string, stepId: string, on?: boolean): Promise<boolean> {
+  return db.transaction('rw', db.routineRuns, async () => {
+    const run = await db.routineRuns.where('[routineId+date]').equals([routine.id, date]).first()
+    const done = new Set(run?.done ?? [])
+    const want = on ?? !done.has(stepId)
+    if (want) done.add(stepId)
+    else done.delete(stepId)
+    const list = routine.steps.map((s) => s.id).filter((s) => done.has(s))
+    const complete = routine.steps.length > 0 && list.length === routine.steps.length
+    const completedAt = complete ? (run?.completedAt ?? Date.now()) : undefined
+    if (run) await db.routineRuns.update(run.id, { done: list, completedAt })
+    else await db.routineRuns.add({ id: uid(), routineId: routine.id, date, done: list, ...(completedAt ? { completedAt } : {}) })
+    return complete
+  })
+}
+
+/** Empieza de nuevo la rutina de ese día */
+export async function resetRoutineRun(routineId: string, date: string) {
+  const run = await db.routineRuns.where('[routineId+date]').equals([routineId, date]).first()
+  if (run) await db.routineRuns.update(run.id, { done: [], completedAt: undefined })
+}
+
+// ── Cosas ─────────────────────────────────────────────────────
+
+export async function createThing(data: Partial<Thing> & { name: string; kind: Thing['kind'] }): Promise<Thing> {
+  const now = Date.now()
+  const thing: Thing = {
+    id: uid(),
+    createdAt: now,
+    updatedAt: now,
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.things.add(thing)
+  return thing
+}
+
+export async function updateThing(id: string, changes: Partial<Thing>) {
+  await db.things.update(id, { ...changes, updatedAt: Date.now() })
+}
+
+export async function deleteThing(id: string) {
+  await db.transaction('rw', db.things, db.trash, async () => {
+    const thing = await db.things.get(id)
+    if (!thing) return
+    await putInTrash('things', thing)
+    await db.things.delete(id)
+  })
+}
+
+/** Pone hora a varias tareas de una vez (colocar en huecos). Devuelve cómo estaban. */
+export async function setTaskTimes(times: { id: string; time: string }[]): Promise<Task[]> {
+  return db.transaction('rw', db.tasks, async () => {
+    const before = (await db.tasks.bulkGet(times.map((t) => t.id))).filter((t): t is Task => !!t)
+    for (const { id, time } of times) await db.tasks.where('id').equals(id).modify((t) => void (t.dueTime = time))
+    return structuredClone(before)
+  })
+}
+
+// ── Última vez ────────────────────────────────────────────────
+
+export async function createTracker(data: Partial<Tracker> & { name: string }): Promise<Tracker> {
+  const tracker: Tracker = {
+    id: uid(),
+    icon: 'circle',
+    log: [],
+    archived: 0,
+    order: Date.now(),
+    createdAt: Date.now(),
+    ...(Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as typeof data),
+  }
+  await db.trackers.add(tracker)
+  return tracker
+}
+
+/** Apunta que se ha hecho ese día. Devuelve el historial anterior (para deshacer). */
+export async function logTracker(id: string, date = today()): Promise<string[] | undefined> {
+  const t = await db.trackers.get(id)
+  if (!t) return
+  await db.trackers.update(id, { log: withDate(t.log, date) })
+  return t.log
+}
+
+export async function setTrackerLog(id: string, log: string[]) {
+  await db.trackers.update(id, { log })
+}
+
+export async function deleteTracker(id: string) {
+  await db.transaction('rw', db.trackers, db.trash, async () => {
+    const t = await db.trackers.get(id)
+    if (!t) return
+    await putInTrash('trackers', t)
+    await db.trackers.delete(id)
+  })
+}
+
+// ── Compra ────────────────────────────────────────────────────
+
+/**
+ * Añade cosas a una lista (sin repetir lo que ya está pendiente en ella). Lo
+ * que no trae precio toma el último que se apuntó. Devuelve lo añadido.
+ */
+export async function addShoppingItems(items: ParsedItem[], list?: string): Promise<ShoppingItem[]> {
+  const { aisleFor, itemKey } = await shoppingLib()
+  return db.transaction('rw', db.shopping, db.pantry, async () => {
+    const pantry = await db.pantry.toArray()
+    const known = Object.fromEntries(pantry.map((p) => [p.id, p.aisle]))
+    const prices = new Map(pantry.filter((p) => p.price).map((p) => [p.id, p.price!]))
+    const pending = (await db.shopping.where('checked').equals(0).toArray()).filter((x) => (x.list ?? undefined) === list).map((x) => ({ x, key: itemKey(x.name) }))
+    const added: ShoppingItem[] = []
+    let order = Date.now()
+    for (const it of items) {
+      const key = itemKey(it.name)
+      const same = pending.find((p) => p.key === key)
+      if (same) {
+        if (it.qty && it.qty !== same.x.qty) await db.shopping.update(same.x.id, { qty: it.qty })
+        if (it.price && it.price !== same.x.price) await db.shopping.update(same.x.id, { price: it.price })
+        continue
+      }
+      const price = it.price ?? prices.get(key)
+      const item: ShoppingItem = {
+        id: uid(),
+        name: it.name,
+        aisle: aisleFor(it.name, known),
+        checked: 0,
+        order: order++,
+        createdAt: Date.now(),
+        ...(it.qty ? { qty: it.qty } : {}),
+        ...(price ? { price } : {}),
+        ...(list ? { list } : {}),
+      }
+      await db.shopping.add(item)
+      pending.push({ x: item, key })
+      added.push(item)
+    }
+    return added
+  })
+}
+
+export async function toggleShopping(id: string) {
+  const it = await db.shopping.get(id)
+  if (it) await db.shopping.update(id, { checked: it.checked ? 0 : 1 })
+}
+
+/** Cambia el pasillo y lo recuerda para la próxima vez */
+export async function setShoppingAisle(id: string, aisle: string) {
+  const { itemKey } = await shoppingLib()
+  await db.transaction('rw', db.shopping, db.pantry, async () => {
+    const it = await db.shopping.get(id)
+    if (!it) return
+    await db.shopping.update(id, { aisle })
+    const key = itemKey(it.name)
+    const p = await db.pantry.get(key)
+    await db.pantry.put({ id: key, name: it.name, aisle, count: p?.count ?? 0, lastAt: p?.lastAt ?? 0 })
+  })
+}
+
+/** Terminar la compra: lo del carro sale de la lista y cuenta para «lo de siempre» */
+export async function finishShopping(list?: string): Promise<ShoppingItem[]> {
+  const { itemKey } = await shoppingLib()
+  return db.transaction('rw', db.shopping, db.pantry, async () => {
+    const bought = (await db.shopping.where('checked').equals(1).toArray()).filter((x) => (x.list ?? undefined) === list)
+    const now = Date.now()
+    for (const it of bought) {
+      const key = itemKey(it.name)
+      const p = await db.pantry.get(key)
+      await db.pantry.put({ id: key, name: it.name, aisle: it.aisle, count: (p?.count ?? 0) + 1, lastAt: now, ...((it.price ?? p?.price) ? { price: it.price ?? p?.price } : {}) })
+    }
+    await db.shopping.bulkDelete(bought.map((b) => b.id))
+    return bought
+  })
+}
+
+/** Precio estimado de una cosa (vacío = sin precio); se recuerda para la próxima vez */
+export async function setShoppingPrice(id: string, price: number | undefined) {
+  const { itemKey } = await shoppingLib()
+  await db.transaction('rw', db.shopping, db.pantry, async () => {
+    const it = await db.shopping.get(id)
+    if (!it) return
+    await db.shopping.update(id, { price })
+    const key = itemKey(it.name)
+    const p = await db.pantry.get(key)
+    if (p) await db.pantry.update(key, { price })
+  })
+}
+
+// ── Diario ────────────────────────────────────────────────────
+
+/** Guarda (o completa) la entrada de un día */
+export async function saveJournal(date: string, patch: Partial<Omit<JournalEntry, 'id'>>) {
+  await db.transaction('rw', db.journal, async () => {
+    const cur = await db.journal.get(date)
+    await db.journal.put({ id: date, text: '', good: [], ...cur, ...patch, updatedAt: Date.now() })
+  })
+}
+
+// ── Gastos ────────────────────────────────────────────────────
+
+export async function addExpense(data: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+  const e: Expense = { id: uid(), createdAt: Date.now(), ...data }
+  await db.expenses.add(e)
+  return e
+}
+
+// ── Ingresos y cuentas ────────────────────────────────────────
+
+export async function addIncome(data: Omit<Income, 'id' | 'createdAt'>): Promise<Income> {
+  const e: Income = { id: uid(), createdAt: Date.now(), ...data }
+  await db.incomes.add(e)
+  return e
+}
+
+// ── Menú ──────────────────────────────────────────────────────
+
+export async function saveRecipe(data: Partial<Recipe> & { name: string; ingredients: string[] }, id?: string): Promise<string> {
+  if (id) {
+    await db.recipes.update(id, data)
+    return id
+  }
+  const r: Recipe = { id: uid(), createdAt: Date.now(), ...data }
+  await db.recipes.add(r)
+  return r.id
+}
+
+export async function deleteRecipe(id: string) {
+  await db.transaction('rw', db.recipes, db.menu, db.trash, async () => {
+    const r = await db.recipes.get(id)
+    if (!r) return
+    await putInTrash('recipes', r)
+    await db.recipes.delete(id)
+    // Las comidas que la usaban se quedan con el nombre como texto
+    const slots = await db.menu.filter((s) => s.recipeId === id).toArray()
+    for (const s of slots) await db.menu.put({ id: s.id, date: s.date, meal: s.meal, text: r.name })
+  })
+}
+
+/** Pone (o quita, con null) lo que se come en una comida */
+export async function setMenuSlot(date: string, meal: MenuSlot['meal'], value: { recipeId?: string; text?: string } | null) {
+  const id = `${date}:${meal}`
+  if (!value || (!value.recipeId && !value.text?.trim())) return void (await db.menu.delete(id))
+  await db.menu.put({ id, date, meal, ...(value.recipeId ? { recipeId: value.recipeId } : { text: value.text!.trim() }) })
+}

@@ -10,7 +10,6 @@ import { watchPrefs } from './lib/prefs'
 import { initSync } from './sync/service'
 import { startLookupCache, startOpenTasks } from './db/hooks'
 import { requestPersistentStorage } from './sync/authStorage'
-import { rollSubscriptions } from './db/actions'
 import { purgeTrash } from './db/trash'
 import { interceptLinks } from './app/router'
 import { watchViewport } from './lib/viewport'
@@ -52,7 +51,8 @@ seedIfEmpty().finally(() => {
   watchPrefs(db)
   // Los avisos con la app abierta, en cuanto haya cargado lo demás
   void import('./reminders/local').then((m) => m.startLocalReminders())
-  void rollSubscriptions()
+  // Las suscripciones cobradas pasan a su siguiente cargo (fuera del arranque)
+  void import('./db/moreActions').then((m) => m.rollSubscriptions())
   void purgeTrash()
   initSync()
   createRoot(document.getElementById('root')!).render(

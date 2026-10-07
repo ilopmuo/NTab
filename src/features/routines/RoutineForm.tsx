@@ -3,12 +3,14 @@ import { Reorder, useDragControls } from 'motion/react'
 import { Bell, GripVertical, Plus, X } from 'lucide-react'
 import type { Routine, RoutineStep } from '@/db/types'
 import { db } from '@/db/db'
-import { createRoutine, deleteRoutine } from '@/db/actions'
+import { createRoutine, deleteRoutine } from '@/db/moreActions'
 import { uid } from '@/lib/id'
 import { WEEK_ORDER, WEEKDAYS_SHORT } from '@/lib/dates'
 import { ICONS, Icon } from '@/components/icons'
 import { toastTrashed } from '../trash/undo'
-import { Button, Field, Input, Modal, ModalHeader, Switch, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Field, Input, Switch } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 const ROUTINE_ICONS = ['key', 'sun', 'moon', 'home', 'door', 'backpack', 'bed', 'shirt', 'pill', 'food', 'briefcase', 'car', 'plane', 'dumbbell', 'book', 'list']
 

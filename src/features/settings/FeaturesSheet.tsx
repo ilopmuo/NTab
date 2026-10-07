@@ -1,7 +1,9 @@
 import { FEATURE_GROUPS, FEATURES } from '@/lib/features'
+import { FEATURE_HINTS } from './featureHints'
 import { setFeature, useFeatures } from '@/app/features'
 import { toast, ui, useUI } from '@/app/store'
-import { Modal, ModalHeader, Switch } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
+import { Switch } from '@/components/form'
 
 /** Ajustes → Funciones: encender y apagar lo que no usas */
 export function FeaturesSheet() {
@@ -30,7 +32,7 @@ export function FeaturesSheet() {
                 <div key={f.id} className="flex items-center gap-3 px-3.5 py-2.5 shadow-[inset_0_-1px_0_var(--c-border)] last:shadow-none">
                   <div className="min-w-0 flex-1">
                     <p className="text-[15px]">{f.label}</p>
-                    <p className="text-[12.5px] leading-snug text-muted">{f.hint}</p>
+                    <p className="text-[12.5px] leading-snug text-muted">{FEATURE_HINTS[f.id]}</p>
                   </div>
                   <Switch label={f.label} checked={features.on(f.id)} onChange={(v) => void change(f.id, f.label, v)} />
                 </div>

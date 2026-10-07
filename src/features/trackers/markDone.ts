@@ -1,5 +1,5 @@
 import type { Tracker } from '@/db/types'
-import { logTracker, setTrackerLog } from '@/db/actions'
+import { logTracker, setTrackerLog } from '@/db/moreActions'
 import { haptic } from '@/lib/haptics'
 import { toast } from '@/app/store'
 

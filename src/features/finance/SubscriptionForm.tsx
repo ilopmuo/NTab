@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { BillingCycle, Subscription } from '@/db/types'
 import { db } from '@/db/db'
-import { createSubscription, deleteSubscription } from '@/db/actions'
+import { createSubscription, deleteSubscription } from '@/db/moreActions'
 import { toastTrashed } from '../trash/undo'
 import { CYCLES, NOTIFY_OPTIONS, inTrial, money, rollForward, withNewPrice } from '@/lib/finance'
 import { addDaysYmd, fmt, today } from '@/lib/dates'
-import { Button, Field, Input, Modal, ModalHeader, Segmented, Select, Switch, Textarea } from '@/components/ui'
+import { Button } from '@/components/ui'
+import { Field, Input, Segmented, Select, Switch, Textarea } from '@/components/form'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 export function SubscriptionForm({ sub, open, onClose }: { sub?: Subscription; open: boolean; onClose: () => void }) {
   return (

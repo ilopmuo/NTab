@@ -15,22 +15,13 @@ import { TaskList } from '@/components/TaskList'
 import { OrderToggle } from '@/components/ManualOrder'
 import { Menu } from '@/components/Menu'
 import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/components/ui'
-import { HabitStrip } from './habits/HabitStrip'
-import { RoutinesCard } from './routines/RoutinesCard'
-import { JournalPrompt } from './journal/JournalPrompt'
-import { TodayMeals } from './menu/TodayMeals'
-import { CountdownsCard } from './countdowns/CountdownsCard'
 import { TodayCardsEditor, useTodayCards } from './today/cards'
 import { useFeatures } from '@/app/features'
-import { ThingsAttention } from './things/ThingsAttention'
-import { TrackersDue } from './trackers/TrackersDue'
 import { useHabits } from './habits/useHabits'
 import { Agenda } from './today/Agenda'
 import { NowCard } from './today/NowCard'
 import { useEvents } from '@/lib/calendarEvents'
 import { DayRings } from './today/DayRings'
-import { PaymentsCard } from './today/PaymentsCard'
-import { PeopleCard } from './today/PeopleCard'
 import { WeekStrip } from './today/WeekStrip'
 import { ImportantPrompt, ImportantSection } from './today/Important'
 import { GoalFooter } from './today/DailyGoal'
@@ -43,6 +34,17 @@ const ImportantPicker = lazy(() => import('./today/ImportantPicker'))
 // Solo si tienes piso: se carga aparte para no pesar en el arranque
 const HouseCard = lazy(() => import('./today/HouseCard'))
 const MedsCard = lazy(() => import('./today/MedsCard'))
+// Las tarjetas que solo salen si tienen algo (y no en todos los días) también,
+// para que el arranque traiga lo justo: aparecen a la vez que sus datos
+const RoutinesCard = lazy(() => import('./routines/RoutinesCard').then((m) => ({ default: m.RoutinesCard })))
+const JournalPrompt = lazy(() => import('./journal/JournalPrompt').then((m) => ({ default: m.JournalPrompt })))
+const TodayMeals = lazy(() => import('./menu/TodayMeals').then((m) => ({ default: m.TodayMeals })))
+const CountdownsCard = lazy(() => import('./countdowns/CountdownsCard').then((m) => ({ default: m.CountdownsCard })))
+const ThingsAttention = lazy(() => import('./things/ThingsAttention').then((m) => ({ default: m.ThingsAttention })))
+const TrackersDue = lazy(() => import('./trackers/TrackersDue').then((m) => ({ default: m.TrackersDue })))
+const PaymentsCard = lazy(() => import('./today/PaymentsCard').then((m) => ({ default: m.PaymentsCard })))
+const HabitStrip = lazy(() => import('./habits/HabitStrip').then((m) => ({ default: m.HabitStrip })))
+const PeopleCard = lazy(() => import('./today/PeopleCard').then((m) => ({ default: m.PeopleCard })))
 const DayComplete = lazy(() => import('@/components/Celebrate').then((m) => ({ default: m.DayComplete })))
 
 const PARTS = [
@@ -129,6 +131,40 @@ export function TodayView() {
           : needsReview
             ? 'review'
             : null
+
+  /** Cada tarjeta de la columna de Hoy */
+  const sideCard = (id: string) => {
+    switch (id) {
+      case 'agenda':
+        return <Agenda tasks={todays} events={todayEvents} names={cal.names} />
+      case 'journal':
+        return <JournalPrompt />
+      case 'meals':
+        return <TodayMeals />
+      case 'countdowns':
+        return <CountdownsCard />
+      case 'routines':
+        return <RoutinesCard />
+      case 'trackers':
+        return <TrackersDue />
+      case 'house':
+        return <HouseCard />
+      case 'meds':
+        return <MedsCard />
+      case 'things':
+        return <ThingsAttention />
+      case 'habits':
+        return <HabitStrip />
+      case 'week':
+        return <WeekStrip tasks={open} />
+      case 'payments':
+        return <PaymentsCard />
+      case 'people':
+        return <PeopleCard people={people} />
+      default:
+        return null
+    }
+  }
 
   const summary =
     total === 0
@@ -382,46 +418,11 @@ export function TodayView() {
         </div>
 
         <aside className="min-w-0 space-y-4 [grid-area:side]">
-          {cards.visible.map((id) => {
-            switch (id) {
-              case 'agenda':
-                return <Agenda key={id} tasks={todays} events={todayEvents} names={cal.names} />
-              case 'journal':
-                return <JournalPrompt key={id} />
-              case 'meals':
-                return <TodayMeals key={id} />
-              case 'countdowns':
-                return <CountdownsCard key={id} />
-              case 'routines':
-                return <RoutinesCard key={id} />
-              case 'trackers':
-                return <TrackersDue key={id} />
-              case 'house':
-                return (
-                  <Suspense key={id} fallback={null}>
-                    <HouseCard />
-                  </Suspense>
-                )
-              case 'meds':
-                return (
-                  <Suspense key={id} fallback={null}>
-                    <MedsCard />
-                  </Suspense>
-                )
-              case 'things':
-                return <ThingsAttention key={id} />
-              case 'habits':
-                return <HabitStrip key={id} />
-              case 'week':
-                return <WeekStrip key={id} tasks={open} />
-              case 'payments':
-                return <PaymentsCard key={id} />
-              case 'people':
-                return <PeopleCard key={id} people={people} />
-              default:
-                return null
-            }
-          })}
+          {cards.visible.map((id) => (
+            <Suspense key={id} fallback={null}>
+              {sideCard(id)}
+            </Suspense>
+          ))}
           <button type="button" onClick={() => setCustomizing(true)} className="flex w-full items-center justify-center gap-1.5 rounded-full py-2 text-[13px] font-semibold text-muted transition-colors hover:text-fg">
             <SlidersHorizontal size={13} /> Personalizar Hoy
           </button>

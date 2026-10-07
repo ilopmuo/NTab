@@ -18,7 +18,6 @@ export default defineConfig({
           groups: [
             { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
             { name: 'dexie', test: /node_modules[\\/]dexie(-react-hooks)?[\\/]/ },
-            { name: 'date-fns', test: /node_modules[\\/]date-fns[\\/]/ },
           ],
         },
       },
@@ -28,6 +27,15 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   plugins: [
+    // date-fns trae el inglés como idioma por defecto aunque siempre se le pase
+    // el español: así no llega el inglés al arranque
+    {
+      name: 'date-fns-es-por-defecto',
+      enforce: 'pre',
+      resolveId(id, importer) {
+        if (importer?.includes('/node_modules/date-fns/') && /(^|\/)_lib\/defaultLocale\.js$/.test(id)) return fileURLToPath(new URL('./src/lib/dateLocale.ts', import.meta.url))
+      },
+    },
     react(),
     tailwindcss(),
     VitePWA({

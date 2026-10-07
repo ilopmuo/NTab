@@ -6,7 +6,8 @@ import { dateLabel, today } from '@/lib/dates'
 import { MAX_IMPORTANT } from '@/lib/day'
 import { sortTasks, whenDue } from '@/lib/tasks'
 import { toast } from '@/app/store'
-import { Button, Modal, ModalHeader, cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
+import { Modal, ModalHeader } from '@/components/Modal'
 
 /**
  * Lo importante de un día (los «objetivos» de Sunsama, el «Highlight» de Make
