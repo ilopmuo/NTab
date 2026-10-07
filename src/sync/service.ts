@@ -3,8 +3,9 @@ import type { Session } from '@supabase/supabase-js'
 import { rawDb } from '@/db/db'
 import { seedIfEmpty } from '@/db/seed'
 import { toast } from '@/app/store'
-import { SyncEngine } from './engine'
+import type { SyncEngine } from './engine'
 import { getSupabase, loadSupabase } from './client'
+import { durableStorage } from './authStorage'
 import { onLocalChange } from './tracking'
 
 export type SyncState = 'loading' | 'signed-out' | 'syncing' | 'synced' | 'pending' | 'offline' | 'error'
@@ -57,6 +58,8 @@ export function useSync(): SyncStatus {
 
 // ── Ciclo de sincronización ───────────────────────────────────
 
+/** El motor solo hace falta con cuenta: se carga al entrar */
+const loadEngine = () => import('./engine')
 let engine: SyncEngine | null = null
 let connected = false
 let running = false
@@ -130,7 +133,7 @@ export async function syncNow() {
 async function start(session: Session) {
   // Ya está cargado (la sesión viene de él): se espera antes de comprobar nada
   // para que dos llamadas seguidas no creen dos motores
-  const { supabase, SupabaseRemote } = await loadSupabase()
+  const [{ supabase, SupabaseRemote }, { SyncEngine }] = await Promise.all([loadSupabase(), loadEngine()])
   const user = { id: session.user.id, email: session.user.email ?? '' }
   if (engine && status.user?.id === user.id) return
   stop()
@@ -185,14 +188,14 @@ function cleanAuthHash() {
 }
 
 let initialized = false
-export function initSync() {
-  if (initialized) return
-  initialized = true
-  const known = rawDb._local
-    .get('email')
-    .then((r) => (r?.value as string | undefined) ?? null)
-    .catch(() => null)
-  void known.then((knownEmail) => set({ knownEmail }))
+/** Si este dispositivo ya estuvo conectado a una cuenta, su email */
+let known: Promise<string | null> = Promise.resolve(null)
+let listening = false
+
+/** Escuchar a Supabase (la sesión guardada, entrar, salir…): carga el cliente */
+function listen() {
+  if (listening) return
+  listening = true
   void getSupabase().then((supabase) => supabase.auth.onAuthStateChange((event, session) => {
     // No se puede llamar a Supabase dentro de este callback: se difiere
     setTimeout(async () => {
@@ -207,6 +210,34 @@ export function initSync() {
       if (event === 'SIGNED_IN') cleanAuthHash()
     }, 0)
   }))
+}
+
+/** El cliente para entrar, crear la cuenta o cambiar la contraseña (escuchando ya sus cambios) */
+async function authClient() {
+  listen()
+  return getSupabase()
+}
+
+/** ¿Puede haber sesión? Guardada en el dispositivo, o un enlace de la cuenta (confirmar el email, recuperar la contraseña) en la dirección */
+async function maybeSession() {
+  if (/access_token=|error_description=|type=recovery|type=signup/.test(window.location.hash) || /[?&]code=/.test(window.location.search)) return true
+  return (await durableStorage.getItem('ntab-auth')) !== null
+}
+
+export function initSync() {
+  if (initialized) return
+  initialized = true
+  known = rawDb._local
+    .get('email')
+    .then((r) => (r?.value as string | undefined) ?? null)
+    .catch(() => null)
+  void known.then((knownEmail) => set({ knownEmail }))
+  // Sin sesión (quien usa LUNO sin cuenta, o aún no ha entrado) no hace falta
+  // el cliente de Supabase, la dependencia más pesada: se carga al ir a entrar
+  void maybeSession().then(async (maybe) => {
+    if (maybe) listen()
+    else if (!listening) set({ state: 'signed-out', user: null, knownEmail: await known })
+  })
 }
 
 const MESSAGES: [RegExp, string][] = [
@@ -226,24 +257,24 @@ export function authErrorMessage(e: unknown) {
 const redirectTo = () => `${window.location.origin}${window.location.pathname}`
 
 export async function signIn(email: string, password: string) {
-  const { error } = await (await getSupabase()).auth.signInWithPassword({ email, password })
+  const { error } = await (await authClient()).auth.signInWithPassword({ email, password })
   if (error) throw error
 }
 
 /** Devuelve true si hay que confirmar el email antes de poder entrar */
 export async function signUp(email: string, password: string): Promise<boolean> {
-  const { data, error } = await (await getSupabase()).auth.signUp({ email, password, options: { emailRedirectTo: redirectTo() } })
+  const { data, error } = await (await authClient()).auth.signUp({ email, password, options: { emailRedirectTo: redirectTo() } })
   if (error) throw error
   return !data.session
 }
 
 export async function sendPasswordReset(email: string) {
-  const { error } = await (await getSupabase()).auth.resetPasswordForEmail(email, { redirectTo: redirectTo() })
+  const { error } = await (await authClient()).auth.resetPasswordForEmail(email, { redirectTo: redirectTo() })
   if (error) throw error
 }
 
 export async function updatePassword(password: string) {
-  const { error } = await (await getSupabase()).auth.updateUser({ password })
+  const { error } = await (await authClient()).auth.updateUser({ password })
   if (error) throw error
   set({ recovery: false })
 }
@@ -256,7 +287,7 @@ export async function signOut() {
   const pending = engine ? await engine.pendingCount() : 0
   if (pending && !window.confirm(`Hay ${pending} cambios sin subir que se perderán. ¿Cerrar sesión igualmente?`)) return
   if (!pending && !window.confirm('¿Cerrar sesión? Tus datos seguirán en tu cuenta, pero se borrarán de este dispositivo.')) return
-  const { supabase, SupabaseRemote } = await loadSupabase()
+  const [{ supabase, SupabaseRemote }, { SyncEngine }] = await Promise.all([loadSupabase(), loadEngine()])
   const local = new SyncEngine(rawDb, new SupabaseRemote(''))
   // Dejar de recibir avisos en este dispositivo
   try {

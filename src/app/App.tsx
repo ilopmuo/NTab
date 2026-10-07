@@ -7,10 +7,9 @@ import { selection, useSelecting } from '@/features/select/selection'
 import { useWhatNowOpen } from '@/features/whatnow/store'
 import { runner, useRunner } from '@/features/routines/useRoutines'
 import { Toast } from '@/components/Toast'
-import { cx } from '@/components/ui'
+import { cx, useMediaQuery } from '@/components/ui'
 import { inViewTransition, navigate, placeScroll, useRoute } from './router'
 import { useGlobalShortcuts } from './shortcuts'
-import { Sidebar } from './Sidebar'
 import { announce } from './announce'
 import { reducedMotion, useA11yPrefs } from './theme'
 import { useFeatures } from './features'
@@ -18,7 +17,6 @@ import { FeatureOff } from '@/features/FeatureOff'
 import { BackButton, PageTop } from './BackButton'
 import { useTaskMenu } from '@/components/taskMenu'
 import { pageTop } from './pageTop'
-import { MobileBar } from './MobileBar'
 import { Splash } from './Splash'
 import { ui, useUI } from './store'
 import { closeAuth, useSync } from '@/sync/service'
@@ -31,7 +29,9 @@ import { BarCrash, Boundary, ScreenCrash } from './Boundary'
 pageTop.Component = PageTop
 pageTop.Back = BackButton
 
-const loadMotionFeatures = () => import('@/lib/motionFeatures').then((m) => m.default)
+// Cuando el navegador queda libre tras pintar Hoy: en un móvil lento, cargarlo
+// a la vez que el arranque le quitaba ~100 ms de CPU a la primera pantalla
+const loadMotionFeatures = () => new Promise<void>((r) => idle(r)).then(() => import('@/lib/motionFeatures')).then((m) => m.default)
 
 /** El código de cada pantalla que ya ha llegado */
 const loaded = new Map<() => Promise<unknown>, unknown>()
@@ -99,6 +99,16 @@ const loaders = {
   RoutinesView: keep(() => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView }))),
 }
 const AreaView = warm(loaders.AreaView), CalendarView = warm(loaders.CalendarView), FinanceView = warm(loaders.FinanceView), FocusView = warm(loaders.FocusView), HouseView = warm(loaders.HouseView), GoalsView = warm(loaders.GoalsView), HabitsView = warm(loaders.HabitsView), InboxView = warm(loaders.InboxView), LogbookView = warm(loaders.LogbookView), NotesView = warm(loaders.NotesView), PlanView = warm(loaders.PlanView), ShutdownView = warm(loaders.ShutdownView), TrashView = warm(loaders.TrashView), TemplatesView = warm(loaders.TemplatesView), PeopleView = warm(loaders.PeopleView), PersonView = warm(loaders.PersonView), ProjectView = warm(loaders.ProjectView), ProjectsView = warm(loaders.ProjectsView), ReviewView = warm(loaders.ReviewView), SettingsView = warm(loaders.SettingsView), TagView = warm(loaders.TagView), MoreView = warm(loaders.MoreView), SomedayView = warm(loaders.SomedayView), ListsHome = warm(loaders.ListsHome), MatrixView = warm(loaders.MatrixView), SmartListView = warm(loaders.SmartListView), RoutinesView = warm(loaders.RoutinesView), ThingsView = warm(loaders.ThingsView), MedsView = warm(loaders.MedsView), WaitingView = warm(loaders.WaitingView), ShoppingView = warm(loaders.ShoppingView), JournalView = warm(loaders.JournalView), ExpensesView = warm(loaders.ExpensesView), MoneyView = warm(loaders.MoneyView), AccountsView = warm(loaders.AccountsView), MenuView = warm(loaders.MenuView)
+
+// La barra lateral (ordenador e iPad) y la de pestañas (móvil): cada pantalla
+// usa una, así que van aparte y se pide ya la que se ve; la otra, si cambia
+// el ancho (girar el iPad, estrechar la ventana)
+const bars = {
+  Sidebar: keep(() => import('./Sidebar').then((m) => ({ default: m.Sidebar }))),
+  MobileBar: keep(() => import('./MobileBar').then((m) => ({ default: m.MobileBar }))),
+}
+void (typeof matchMedia !== 'undefined' && matchMedia('(min-width: 768px)').matches ? bars.Sidebar() : bars.MobileBar())
+const Sidebar = warm(bars.Sidebar), MobileBar = warm(bars.MobileBar)
 
 /**
  * Paneles que se abren encima de cualquier vista. No hacen falta para el primer
@@ -389,6 +399,13 @@ const Workspace = memo(function Workspace() {
   const { path, parts } = useRoute()
   const firstRender = useRef(true)
   const panelOpen = useUI((s) => !!s.selectedTaskId)
+  // Solo la barra que se ve: la lateral en pantallas anchas (en el móvil, al
+  // abrir el menú, y se queda para cerrarse con su animación) y la de pestañas
+  // en el móvil y la tablet
+  const wide = useMediaQuery('(min-width: 768px)')
+  const drawer = useUI((s) => s.sidebarOpen)
+  const [drawerUsed, setDrawerUsed] = useState(false)
+  if (drawer && !drawerUsed) setDrawerUsed(true)
 
   // Enlace de una notificación: #/task/<id> abre la tarea sobre Hoy;
   // #/task/<id>/done o /snooze viene de los botones con la app cerrada
@@ -466,9 +483,13 @@ const Workspace = memo(function Workspace() {
         Saltar al contenido
       </button>
       <div id="announcer" role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
-      <Boundary where="barra lateral" resetKey={path} fallback={(_, retry) => <BarCrash retry={retry} className="bottom-4 left-4 max-md:hidden" />}>
-        <Sidebar />
-      </Boundary>
+      {(wide || drawerUsed) && (
+        <Boundary where="barra lateral" resetKey={path} fallback={(_, retry) => <BarCrash retry={retry} className="bottom-4 left-4 max-md:hidden" />}>
+          <Suspense fallback={null}>
+            <Sidebar />
+          </Suspense>
+        </Boundary>
+      )}
       <main
         id="main"
         tabIndex={-1}
@@ -499,9 +520,14 @@ const Workspace = memo(function Workspace() {
           </Boundary>
         </motion.div>
       </main>
-      <Boundary where="barra de pestañas" resetKey={path} fallback={(_, retry) => <BarCrash retry={retry} className="bottom-[max(env(safe-area-inset-bottom),12px)] left-1/2 -translate-x-1/2 md:hidden" />}>
-        <MobileBar />
-      </Boundary>
+      {/* (en la tablet, con su botón de crear) */}
+      {(!wide || touchScreen) && (
+        <Boundary where="barra de pestañas" resetKey={path} fallback={(_, retry) => <BarCrash retry={retry} className="bottom-[max(env(safe-area-inset-bottom),12px)] left-1/2 -translate-x-1/2 md:hidden" />}>
+          <Suspense fallback={null}>
+            <MobileBar />
+          </Suspense>
+        </Boundary>
+      )}
       {touchScreen && (
         <Suspense fallback={null}>
           <EdgeBack />

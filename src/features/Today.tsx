@@ -18,11 +18,9 @@ import { Button, Empty, Group, PageHeader, Section, cx, softSpring } from '@/com
 import { TodayCardsEditor, useTodayCards } from './today/cards'
 import { useFeatures } from '@/app/features'
 import { useHabits } from './habits/useHabits'
-import { Agenda } from './today/Agenda'
 import { NowCard } from './today/NowCard'
 import { useEvents } from '@/lib/calendarEvents'
 import { DayRings } from './today/DayRings'
-import { WeekStrip } from './today/WeekStrip'
 import { ImportantPrompt, ImportantSection } from './today/Important'
 import { GoalFooter } from './today/DailyGoal'
 import { Page } from './Page'
@@ -44,6 +42,8 @@ const ThingsAttention = lazy(() => import('./things/ThingsAttention').then((m) =
 const TrackersDue = lazy(() => import('./trackers/TrackersDue').then((m) => ({ default: m.TrackersDue })))
 const PaymentsCard = lazy(() => import('./today/PaymentsCard').then((m) => ({ default: m.PaymentsCard })))
 const HabitStrip = lazy(() => import('./habits/HabitStrip').then((m) => ({ default: m.HabitStrip })))
+const Agenda = lazy(() => import('./today/Agenda').then((m) => ({ default: m.Agenda })))
+const WeekStrip = lazy(() => import('./today/WeekStrip').then((m) => ({ default: m.WeekStrip })))
 const PeopleCard = lazy(() => import('./today/PeopleCard').then((m) => ({ default: m.PeopleCard })))
 const DayComplete = lazy(() => import('@/components/Celebrate').then((m) => ({ default: m.DayComplete })))
 

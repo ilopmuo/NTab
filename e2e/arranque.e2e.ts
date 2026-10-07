@@ -18,6 +18,20 @@ test('dispositivo nuevo: pantalla de acceso', async ({ page }) => {
   await expect(page.locator('#main')).toHaveCount(0)
 })
 
+test('sin cuenta no se descarga Supabase (lo más pesado); al ir a entrar, sí', async ({ page }) => {
+  const asked: string[] = []
+  page.on('request', (r) => asked.push(r.url()))
+  await openApp(page)
+  await expect(page.getByText('Solo en este dispositivo').first()).toBeVisible()
+  const supabase = () => asked.filter((u) => /assets\/supabase-[^/]+\.js/.test(u))
+  expect(supabase()).toEqual([])
+  await page.getByText('Solo en este dispositivo').first().click()
+  await page.getByPlaceholder('tu@email.com').fill('yo@ejemplo.com')
+  await page.getByPlaceholder('Contraseña').fill('secreto123')
+  await page.keyboard.press('Enter')
+  await expect.poll(() => supabase().length).toBeGreaterThan(0)
+})
+
 test('dispositivo que ya tenía cuenta: Hoy al momento y aviso de volver a entrar', async ({ page }) => {
   await openApp(page)
   await page.evaluate(async () => {

@@ -36,6 +36,32 @@ export default defineConfig({
         if (importer?.includes('/node_modules/date-fns/') && /(^|\/)_lib\/defaultLocale\.js$/.test(id)) return fileURLToPath(new URL('./src/lib/dateLocale.ts', import.meta.url))
       },
     },
+    // La barra que se ve (la lateral en pantallas anchas, la de pestañas en el
+    // móvil) va aparte para no bajar las dos: se pide a la vez que el resto
+    // del arranque, eligiendo la buena con el ancho de la pantalla
+    {
+      name: 'precargar-barra-y-fuente',
+      apply: 'build',
+      transformIndexHtml: {
+        order: 'post',
+        handler(html, ctx) {
+          const chunks = Object.values(ctx.bundle ?? {}).filter((c) => c.type === 'chunk')
+          const inHtml = new Set([...html.matchAll(/assets\/[^"]+\.js/g)].map((m) => m[0]))
+          const files = (name: string) => {
+            const c = chunks.find((x) => x.facadeModuleId?.endsWith(`/src/app/${name}.tsx`))
+            return c ? [c.fileName, ...c.imports].filter((f) => !inHtml.has(f)) : []
+          }
+          const wide = files('Sidebar')
+          const narrow = files('MobileBar')
+          // La fuente (Inter, alfabeto latino): se pide ya, sin esperar a leer el CSS
+          const font = Object.keys(ctx.bundle ?? {}).find((f) => /inter-latin-wght-normal-[^/]+\.woff2$/.test(f))
+          if (font) html = html.replace('</head>', `    <link rel="preload" as="font" type="font/woff2" href="./${font}" crossorigin>\n  </head>`)
+          if (!wide.length || !narrow.length) return html
+          const script = `<script>(matchMedia('(min-width: 768px)').matches?${JSON.stringify(wide)}:${JSON.stringify(narrow)}).forEach(function(f){var l=document.createElement('link');l.rel='modulepreload';l.href='./'+f;l.crossOrigin='';document.head.appendChild(l)})</script>`
+          return html.replace('</head>', `    ${script}\n  </head>`)
+        },
+      },
+    },
     react(),
     tailwindcss(),
     VitePWA({
