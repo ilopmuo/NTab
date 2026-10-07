@@ -181,3 +181,28 @@ test('salir de una pantalla con pestañas no rompe la app aunque el navegador de
   await expect(page.getByRole('alert')).toHaveCount(0)
   await expect(nav).toBeInViewport()
 })
+
+test('lo que repinta la app (la sincronización al completar una tarea) no te sube arriba', async ({ page }) => {
+  await openApp(page, '/inbox')
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const req = indexedDB.open('ntab')
+        req.onsuccess = () => {
+          const tx = req.result.transaction('tasks', 'readwrite')
+          for (let i = 0; i < 60; i++) tx.objectStore('tasks').put({ id: `s${i}`, title: `Tarea número ${i}`, notes: '', done: 0, priority: 0, tags: [], subtasks: [], order: i, createdAt: i })
+          tx.oncomplete = () => (req.result.close(), resolve())
+        }
+      }),
+  )
+  await page.reload()
+  const main = page.locator('#main')
+  // Completar una tarea abajo (el clic deja la tarea a la vista)…
+  await main.locator('[data-task-id]', { hasText: /^Tarea número 30\b/ }).getByRole('checkbox').click()
+  const y = await main.evaluate((el) => el.scrollTop)
+  expect(y).toBeGreaterThan(500)
+  // …y que la app entera se repinte, como cuando la sincronización cambia de estado
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.waitForTimeout(400)
+  expect(await main.evaluate((el) => el.scrollTop)).toBeGreaterThan(y - 100)
+})

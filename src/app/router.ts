@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { flushSync } from 'react-dom'
 
 function current() {
@@ -17,7 +17,11 @@ export function useRoute(): { path: string; parts: string[] } {
     },
     current,
   )
-  return { path, parts: path.split('/').filter(Boolean).map(decodeURIComponent) }
+  // `parts` es el mismo array mientras no cambie la ruta: los efectos que dependen
+  // de él (volver arriba al cambiar de pantalla) no se repiten en cada repintado,
+  // como los de la sincronización al completar una tarea
+  const parts = useMemo(() => path.split('/').filter(Boolean).map(decodeURIComponent), [path])
+  return { path, parts }
 }
 
 // ── Transiciones entre pantallas ──────────────────────────────
