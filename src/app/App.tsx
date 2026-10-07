@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import { Suspense, lazy, memo, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { AnimatePresence, LazyMotion, MotionConfig, m as motion } from 'motion/react'
 import { TodayView } from '@/features/Today'
 import { DragGhost } from '@/components/dayDrag'
@@ -381,7 +381,9 @@ export function App() {
   )
 }
 
-function Workspace() {
+// Aparte (memo): App se repinta con cada paso de la sincronización (al guardar
+// algo y cada minuto), y eso no tiene por qué repintar todas las pantallas
+const Workspace = memo(function Workspace() {
   useGlobalShortcuts()
   useEffect(preloadViews, [])
   const { path, parts } = useRoute()
@@ -510,7 +512,7 @@ function Workspace() {
       <Toast />
     </div>
   )
-}
+})
 
 function Panels() {
   const taskId = useUI((s) => s.selectedTaskId)

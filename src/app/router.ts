@@ -155,10 +155,18 @@ export function placeScroll(path: string) {
   const y = back ? (scrolls.get(path) ?? 0) : 0
   main.scrollTo({ top: y })
   if (!y) return
-  // Lo de abajo llega un momento después (datos, listas por tramos): se insiste un poco
+  // Lo de abajo llega un momento después (datos, listas por tramos): se insiste un poco,
+  // pero en cuanto tocas o desplazas la pantalla, manda lo que haces tú
   const start = performance.now()
+  let yours = false
+  const mine = () => (yours = true)
+  const INPUT = ['touchstart', 'wheel', 'pointerdown', 'keydown'] as const
+  for (const e of INPUT) window.addEventListener(e, mine, { passive: true, capture: true })
   const again = () => {
-    if (Math.abs(main.scrollTop - y) <= 2 || performance.now() - start > 900 || shownPath !== path) return
+    if (yours || Math.abs(main.scrollTop - y) <= 2 || performance.now() - start > 900 || shownPath !== path) {
+      for (const e of INPUT) window.removeEventListener(e, mine, { capture: true })
+      return
+    }
     main.scrollTop = y
     requestAnimationFrame(again)
   }
