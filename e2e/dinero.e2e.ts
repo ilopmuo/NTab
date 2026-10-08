@@ -199,3 +199,85 @@ test('cuentas y patrimonio: patrimonio neto, saldos de hoy y plan para salir de 
   await expect.poll(async () => nbsp(await page.locator('#main').innerText())).toMatch(/Patrimonio neto\s+6600 €/)
   await expect(page.getByRole('heading', { name: 'Independencia financiera' })).toBeVisible()
 })
+
+test('gastos sin clasificar: se pregunta, se responde en un toque y se aprende', async ({ page }) => {
+  await openApp(page, '/expenses')
+  const input = page.getByLabel('Apuntar gasto')
+  await input.fill('23,40 amzn mktp')
+  // LUNO no sabe de qué es: deja elegir aquí, o guardarlo y preguntar luego
+  await expect(page.getByRole('group', { name: '¿De qué es?' })).toBeVisible()
+  await input.press('Enter')
+  const ask = page.getByRole('group', { name: '¿De qué es «Amzn mktp»?' })
+  await expect(ask).toBeVisible()
+  await expect(page.locator('#main')).toContainText('Sin clasificar')
+
+  // También en Hoy
+  await input.fill('5 tpv 3321')
+  await input.press('Enter')
+  await page.goto('./#/today')
+  await expect(page.getByRole('heading', { name: '¿De qué son estos gastos?' })).toBeVisible()
+
+  // Responder en un toque: se aprende para la próxima
+  await page.goto('./#/expenses')
+  await ask.getByRole('button', { name: 'Otra…' }).click()
+  await ask.getByRole('button', { name: 'Ocio' }).click()
+  await expect(page.locator('span').filter({ hasText: 'Amzn mktp: Ocio. Los próximos irán ahí' })).toBeVisible()
+  await expect(ask).toHaveCount(0)
+  await input.fill('9 amzn mktp')
+  await expect(page.getByRole('group', { name: '¿De qué es?' })).toHaveCount(0)
+  await expect(page.locator('#main').getByRole('button', { name: 'Ocio', exact: true }).first()).toBeVisible()
+})
+
+test('análisis de gastos: consejos con su botón (límite y reto) y una categoría a fondo', async ({ page }) => {
+  await openApp(page, '/expenses')
+  await page.evaluate(async () => {
+    const req = indexedDB.open('ntab')
+    const db: IDBDatabase = await new Promise((r) => (req.onsuccess = () => r(req.result)))
+    const tx = db.transaction(['expenses'], 'readwrite')
+    const now = new Date()
+    const at = (m: number, day: number) => {
+      const x = new Date(now.getFullYear(), now.getMonth() - m, day)
+      return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+    }
+    let i = 0
+    const ex = (date: string, amount: number, category: string, note: string) => tx.objectStore('expenses').put({ id: `e${i++}`, amount, note, category, date, createdAt: 1 })
+    for (const m of [1, 2, 3]) {
+      ex(at(m, 3), 250, 'super', 'Mercadona')
+      ex(at(m, 20), 90, 'ocio', 'Concierto')
+      ex(at(m, 25), 80, 'ropa', 'Zara')
+    }
+    // Glovo cada pocos días en los últimos 30
+    for (let d = 1; d <= 28; d += 5) {
+      const x = new Date(now)
+      x.setDate(x.getDate() - d)
+      ex(`${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`, 18, 'comer', 'Glovo')
+    }
+    await new Promise((r) => (tx.oncomplete = r))
+  })
+  await page.reload()
+  await page.goto('./#/insights')
+  await expect(page.locator('#main h1')).toHaveText('Análisis de gastos')
+  await expect(page.locator('#main')).toContainText('Ponle un límite a ropa')
+  await page.getByRole('button', { name: 'Poner límite de 70 €' }).click()
+  await expect(page.locator('span').filter({ hasText: /Límite de ropa: 70/ })).toBeVisible()
+  await expect(page.locator('#main')).not.toContainText('Ponle un límite a ropa')
+
+  await expect(page.locator('#main')).toContainText('Glovo: 6 veces en un mes')
+  await page.getByRole('button', { name: 'Empezar el reto' }).first().click()
+  await expect(page.locator('span').filter({ hasText: /Reto empezado: Sin glovo/ })).toBeVisible()
+
+  // Descartar un consejo
+  const tip = page.getByRole('button', { name: /^No me interesa: Glovo/ })
+  await tip.click()
+  await expect(tip).toHaveCount(0)
+
+  // Una categoría a fondo
+  await page.locator('#main button', { hasText: 'Supermercado' }).first().click()
+  await expect(page.locator('#main h1')).toHaveText('Supermercado')
+  await expect(page.locator('#main')).toContainText('En qué se va')
+  await expect(page.locator('#main')).toContainText('Mercadona')
+
+  // El reto está en Hábitos → Última vez
+  await page.goto('./#/trackers')
+  await expect(page.locator('#main')).toContainText('Sin glovo')
+})

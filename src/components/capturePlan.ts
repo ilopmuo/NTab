@@ -106,10 +106,11 @@ export async function planCapture(intent: Intent): Promise<CapturePlan | null> {
       if (!p) return { icon: 'wallet', label: 'Gasto: falta el importe («12,50 café»)', run: async () => ({ message: '¿Cuánto has gastado? Escríbelo con el importe' }) }
       return {
         icon: 'wallet',
-        label: `Gasto: ${money(p.amount)} · ${p.note}${p.daysAgo ? (p.daysAgo === 1 ? ' · ayer' : ` · hace ${p.daysAgo} días`) : ''}`,
+        label: `Gasto: ${money(p.amount)} · ${p.note}${p.daysAgo ? (p.daysAgo === 1 ? ' · ayer' : ` · hace ${p.daysAgo} días`) : ''}${p.unsure ? ' · sin clasificar' : ''}`,
         run: async () => {
-          const e = await addExpense({ amount: p.amount, note: p.note, category: p.category, date: addDaysYmd(today(), -p.daysAgo), ...(p.tags?.length ? { tags: p.tags } : {}) })
-          return { message: `${money(p.amount)} · ${p.note}`, undo: () => db.expenses.delete(e.id) }
+          const e = await addExpense({ amount: p.amount, note: p.note, category: p.category, date: addDaysYmd(today(), -p.daysAgo), ...(p.tags?.length ? { tags: p.tags } : {}), ...(p.unsure ? { unclassified: true as const } : {}) })
+          // Si no se sabe de qué es, se pregunta en Gastos y en Hoy
+          return { message: `${money(p.amount)} · ${p.note}${p.unsure ? ': ¿de qué es? Te lo pregunto en Gastos' : ''}`, undo: () => db.expenses.delete(e.id) }
         },
       }
     }

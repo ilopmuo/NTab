@@ -39,7 +39,7 @@ export const FEATURES: FeatureDef[] = [
   { id: 'shopping', label: 'Compra', group: 'home', sections: ['shopping'], cards: [] },
   { id: 'menu', label: 'Menú', group: 'home', sections: ['menu'], cards: ['meals'] },
   { id: 'things', label: 'Cosas', group: 'home', sections: ['things'], cards: ['things'] },
-  { id: 'expenses', label: 'Gastos', group: 'money', sections: ['expenses', 'money'], cards: [] },
+  { id: 'expenses', label: 'Gastos', group: 'money', sections: ['expenses', 'money', 'insights'], cards: ['classify'] },
   { id: 'finance', label: 'Pagos', group: 'money', sections: ['finance'], cards: ['payments'] },
   { id: 'accounts', label: 'Cuentas y patrimonio', group: 'money', sections: ['accounts'], cards: [] },
 ]

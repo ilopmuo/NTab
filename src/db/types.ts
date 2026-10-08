@@ -372,6 +372,8 @@ export interface Expense {
   date: string
   /** etiquetas con # para juntar los gastos de un viaje o un plan («roma») */
   tags?: string[]
+  /** LUNO no sabía de qué era (va en Otros mientras): se pregunta hasta que se clasifica */
+  unclassified?: true
   createdAt: number
 }
 

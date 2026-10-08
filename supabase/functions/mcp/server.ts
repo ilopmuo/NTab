@@ -13,7 +13,7 @@ import { DAYS_SCHEMA } from './days.ts'
 import { logFocus, markDone, markRoutine, tellDay, tickShopping } from './day.ts'
 import { createGoal, logContactTool, savePerson, updateProject } from './organize.ts'
 import { buildSummary, eventLines, type EventLike, createNote, createProject, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
-import { addIncomeTool, updateAccount, viewFinance } from './money.ts'
+import { addIncomeTool, classifyExpenseTool, unclassifiedLines, updateAccount, viewFinance } from './money.ts'
 import { CATEGORIES } from '../_shared/expenses.ts'
 import { ACCOUNT_KINDS } from '../_shared/wealth.ts'
 import { INCOME_CATEGORIES } from '../_shared/money.ts'
@@ -44,7 +44,7 @@ const INSTRUCTIONS = `LUNO es el sistema personal con el que el usuario organiza
 - Datos de una persona (cumpleaños, teléfono, ideas de regalo, cada cuánto hablar): guardar_persona. Proyectos: crear_proyecto y actualizar_proyecto (terminarlo, pausarlo, fecha límite). Objetivos: crear_objetivo y actualizar_objetivo.
 - Para consultar lo que tiene apuntado en sus notas, buscar_notas; para añadir a una nota que ya tiene (ideas, la maleta…), anadir_a_nota.
 - Si vive con compañeros (CASA COMPARTIDA en el resumen), lo común va al piso con anadir_a_casa: la compra de casa, las tareas de casa (por turnos: sacar la basura, limpiar el baño) y los gastos que se reparten; «he sacado la basura» va a hecho_en_casa. Lo suyo personal, como siempre.
-- Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto (con etiqueta si es de un viaje); si cobra algo («me ha llegado la nómina», «he vendido la bici por 80»), con apuntar_ingreso. Para «¿cuánto me queda este mes?», «¿cuánto ahorro?» o su patrimonio, ver_finanzas; si te dice el saldo de una cuenta, una inversión o lo que le queda de una deuda, actualizar_cuenta. Si se apunta a algo que se cobra cada mes o a una prueba gratis, guárdalo con guardar_pago. Ante «tengo un rato, ¿qué hago?», usa que_hago.
+- Si menciona un gasto («me he gastado 20 en la cena»), apúntalo con apuntar_gasto (con etiqueta si es de un viaje); si cobra algo («me ha llegado la nómina», «he vendido la bici por 80»), con apuntar_ingreso. Para «¿cuánto me queda este mes?», «¿cuánto ahorro?», «¿cómo puedo gastar menos?» o su patrimonio, ver_finanzas (trae CONSEJOS concretos: preséntalos y ofrece hacerlos); si un gasto queda sin clasificar, pregúntale de qué es y usa clasificar_gasto; si te dice el saldo de una cuenta, una inversión o lo que le queda de una deuda, actualizar_cuenta. Si se apunta a algo que se cobra cada mes o a una prueba gratis, guárdalo con guardar_pago. Ante «tengo un rato, ¿qué hago?», usa que_hago.
 - Para comidas de la semana, planificar_menu (y crear_receta para guardar recetas con sus ingredientes).
 - Para preguntas sobre su agenda o para planificar, llama primero a ver_resumen.
 - Los cambios se guardan al momento y aparecen en todos sus dispositivos. Antes de cambios grandes (muchas tareas, reprogramar varias cosas), propón el plan y espera su confirmación.
@@ -445,9 +445,24 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
+    name: 'clasificar_gasto',
+    title: 'Clasificar un gasto',
+    description: 'Dice de qué categoría es un gasto que la app no supo clasificar (salen en SIN CLASIFICAR de ver_gastos, o al apuntarlo). Por id o por concepto. La app lo aprende para los próximos con ese concepto y aplica lo mismo a los que siguen sin clasificar iguales.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        concepto: { type: 'string', description: 'Si no tienes el id: el concepto del gasto («AMZN Mktp»)' },
+        categoria: { type: 'string', enum: CATEGORIES.map((c) => c.id) },
+      },
+      required: ['categoria'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'ver_finanzas',
     title: 'Ver sus finanzas',
-    description: 'El dinero de un mes (por defecto el actual): lo que entra, lo que sale (gastos y pagos fijos) y lo que queda, tasa de ahorro, ingresos que aún no han llegado, 50/30/20, gastos por encima de lo normal y un mes normal. Y su patrimonio: cuentas, inversiones, bienes y deudas, colchón en meses, independencia financiera y cuándo acaba con las deudas.',
+    description: 'El dinero de un mes (por defecto el actual): lo que entra, lo que sale (gastos y pagos fijos) y lo que queda, tasa de ahorro, ingresos que aún no han llegado, 50/30/20, un mes normal y CONSEJOS para gastar menos (ritmo frente a los límites, qué sube y por qué, compras repetidas, suscripciones que se solapan…). Y su patrimonio: cuentas, inversiones, bienes y deudas, colchón en meses, independencia financiera y cuándo acaba con las deudas.',
     inputSchema: { type: 'object', properties: { mes: { type: 'string', description: 'YYYY-MM' } } },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
@@ -997,8 +1012,10 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     }
     case 'ver_menu':
       return text(readMenu(await store.load(), args, env))
-    case 'ver_gastos':
-      return text(listExpenses(await store.load(), args, env))
+    case 'ver_gastos': {
+      const all = await store.load()
+      return text([listExpenses(all, args, env), ...(args.buscar ? [] : unclassifiedLines(all))].join('\n'))
+    }
     case 'ver_finanzas':
       return text(viewFinance(await store.load(), args, env))
     case 'buscar_notas':
@@ -1013,6 +1030,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'crear_receta':
     case 'apuntar_gasto':
     case 'apuntar_ingreso':
+    case 'clasificar_gasto':
     case 'actualizar_cuenta':
     case 'escribir_diario':
     case 'anadir_compra':
@@ -1031,7 +1049,7 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
     case 'guardar_persona':
     case 'actualizar_proyecto':
     case 'crear_objetivo': {
-      const fn = { guardar_persona: savePerson, actualizar_proyecto: updateProject, crear_objetivo: createGoal, crear_habito: createHabit, actualizar_habito: updateHabit, actualizar_rutina: updateRoutine, anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, apuntar_ingreso: addIncomeTool, actualizar_cuenta: updateAccount, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContactTool, marcar_pago: markPaid }[name]
+      const fn = { guardar_persona: savePerson, actualizar_proyecto: updateProject, crear_objetivo: createGoal, crear_habito: createHabit, actualizar_habito: updateHabit, actualizar_rutina: updateRoutine, anadir_a_nota: appendNoteTool, guardar_pago: savePayment, crear_proyecto: createProject, cuenta_atras: addCountdown, planificar_menu: planMenu, crear_receta: createRecipe, apuntar_gasto: addExpenseTool, apuntar_ingreso: addIncomeTool, clasificar_gasto: classifyExpenseTool, actualizar_cuenta: updateAccount, escribir_diario: writeJournal, anadir_compra: addShopping, lo_he_hecho: logLastTime, guardar_cosa: saveThing, marcar_devuelto: markReturned, crear_rutina: createRoutine, actualizar_objetivo: updateGoal, registrar_contacto: logContactTool, marcar_pago: markPaid }[name]
       const r = fn(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
       return text(r.report.join('\n'), !r.writes.length)

@@ -45,7 +45,7 @@ export function openTaskFromNotification(id: string) {
 }
 
 export const SNOOZE_MINUTES = 15
-export type ReminderAction = 'snooze' | 'done' | 'habit-done' | 'med-taken'
+export type ReminderAction = 'snooze' | 'done' | 'habit-done' | 'med-taken' | `cat:${string}`
 
 /** minutos de a a b (HH:MM del mismo día) */
 function minutesBetween(a: string, b: string) {
@@ -58,6 +58,14 @@ const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('es-ES', { hour: '2
 
 /** Posponer o completar desde un aviso (dentro de la app o desde la notificación) */
 export async function applyReminderAction(action: ReminderAction, id: string) {
+  // «¿De qué es este gasto?»: la categoría del botón
+  if (action.startsWith('cat:')) {
+    const e = await db.expenses.get(id)
+    if (!e) return
+    const { answer } = await import('@/features/expenses/Classify')
+    await answer(e, action.slice(4))
+    return
+  }
   if (action === 'med-taken') {
     // id: `${medId}|${fecha}|${hora}`
     const [medId, date, time] = id.split('|')
@@ -93,7 +101,7 @@ export async function applyReminderAction(action: ReminderAction, id: string) {
 function listenToWorker() {
   navigator.serviceWorker?.addEventListener('message', (e: MessageEvent) => {
     const d = e.data as { type?: string; action?: ReminderAction; id?: string } | null
-    if (d?.type === 'reminder-action' && d.id && (d.action === 'snooze' || d.action === 'done' || d.action === 'habit-done' || d.action === 'med-taken')) void applyReminderAction(d.action, d.id)
+    if (d?.type === 'reminder-action' && d.id && d.action && (d.action === 'snooze' || d.action === 'done' || d.action === 'habit-done' || d.action === 'med-taken' || d.action.startsWith('cat:'))) void applyReminderAction(d.action, d.id)
   })
 }
 

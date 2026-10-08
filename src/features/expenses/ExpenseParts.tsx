@@ -27,7 +27,7 @@ export function ExpenseRow({ e, onClick, showDate }: { e: Expense; onClick: () =
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px]">{e.note}</span>
         <span className="block truncate text-[12.5px] text-muted">
-          {[showDate && dateLabel(e.date), cat(e.category).label, ...(e.tags ?? []).map((t) => `#${t}`)].filter(Boolean).join(' · ')}
+          {[showDate && dateLabel(e.date), e.unclassified ? 'Sin clasificar' : cat(e.category).label, ...(e.tags ?? []).map((t) => `#${t}`)].filter(Boolean).join(' · ')}
         </span>
       </span>
       <span className="font-num text-[15px] font-semibold">{money(e.amount)}</span>
@@ -201,7 +201,8 @@ export function ExpenseForm({ expense, rules, onClose }: { expense?: Expense; ru
 function ExpenseFields({ expense, rules, onClose }: { expense: Expense; rules: ExpenseRules; onClose: () => void }) {
   const [amount, setAmount] = useState(String(expense.amount).replace('.', ','))
   const [note, setNote] = useState(expense.note)
-  const [category, setCategory] = useState(expense.category)
+  // Sin clasificar: «» hasta que se elija una
+  const [category, setCategory] = useState(expense.unclassified ? '' : expense.category)
   const [date, setDate] = useState(expense.date)
   const [tags, setTags] = useState((expense.tags ?? []).join(', '))
   const value = parseFloat(amount.replace(/\./g, '').replace(',', '.'))
@@ -212,19 +213,19 @@ function ExpenseFields({ expense, rules, onClose }: { expense: Expense; rules: E
         if (!(value > 0)) return
         const name = note.trim() || 'Gasto'
         const t = readTags(tags)
-        await db.expenses.update(expense.id, { amount: Math.round(value * 100) / 100, note: name, category, date, tags: t.length ? t : undefined })
+        await db.expenses.update(expense.id, { amount: Math.round(value * 100) / 100, note: name, category: category || 'otros', date, tags: t.length ? t : undefined, unclassified: category ? undefined : true })
         onClose()
-        if (category !== expense.category) {
+        if (category && (category !== expense.category || expense.unclassified)) {
           // Aprende: los próximos con este concepto van a esta categoría
           const key = ruleKey(name)
           if (key) await setSetting('expenseRules', { ...rules, [key]: category })
-          const others = (await db.expenses.toArray()).filter((x) => x.id !== expense.id && ruleKey(x.note) === key && x.category !== category)
+          const others = (await db.expenses.toArray()).filter((x) => x.id !== expense.id && ruleKey(x.note) === key && (x.category !== category || x.unclassified))
           toast(
             `Los próximos «${name}» irán a ${cat(category).label}`,
             others.length
               ? {
                   label: `Cambiar ${others.length === 1 ? 'el otro' : `los otros ${others.length}`}`,
-                  run: () => void db.expenses.bulkUpdate(others.map((x) => ({ key: x.id, changes: { category } }))),
+                  run: () => void db.expenses.bulkUpdate(others.map((x) => ({ key: x.id, changes: { category, unclassified: undefined } }))),
                 }
               : undefined,
             6000,
@@ -247,6 +248,7 @@ function ExpenseFields({ expense, rules, onClose }: { expense: Expense; rules: E
         </Field>
         <Field label="Categoría">
           <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+            {!category && <option value="">Sin clasificar: ¿de qué es?</option>}
             {CATEGORIES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}

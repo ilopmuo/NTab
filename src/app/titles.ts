@@ -20,6 +20,7 @@ export const TITLES: Record<string, string> = {
   journal: 'Diario',
   expenses: 'Gastos',
   money: 'Dinero',
+  insights: 'Análisis',
   accounts: 'Cuentas',
   menu: 'Menú',
   notes: 'Notas',
@@ -55,6 +56,7 @@ const HOME_OF: Record<string, string> = {
   logbook: '/lists',
   matrix: '/lists',
   goals: '/projects',
+  insights: '/money',
   templates: '/projects',
   plan: '/today',
   focus: '/today',
@@ -75,6 +77,8 @@ export function parentOf(path: string): string | undefined {
     }
     case 'area':
       return '/projects'
+    case 'insights':
+      return '/insights'
     case 'people':
       return '/people'
     case 'tag':

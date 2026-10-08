@@ -3,7 +3,7 @@ import { FileSpreadsheet } from 'lucide-react'
 import { db } from '@/db/db'
 import type { Expense, Income } from '@/db/types'
 import { uid } from '@/lib/id'
-import { categoryFor, money, type ExpenseRules } from '@/lib/expenses'
+import { classifyNote, money, type ExpenseRules } from '@/lib/expenses'
 import { incomeCat, incomeCategoryFor } from '@/lib/money'
 import { parseBank, readTable, withoutKnown, type BankRow } from '@/lib/bankImport'
 import { dateLabel } from '@/lib/dates'
@@ -27,7 +27,7 @@ export function BankImport({ open, onClose, expenses, incomes, rules }: { open: 
   )
 }
 
-type Row = BankRow & { key: number; category: string; on: boolean; known?: boolean }
+type Row = BankRow & { key: number; category: string; on: boolean; known?: boolean; unsure?: boolean }
 
 function Importer({ onClose, expenses, incomes, rules }: { onClose: () => void; expenses: Expense[]; incomes: Income[]; rules: ExpenseRules }) {
   const [text, setText] = useState('')
@@ -46,13 +46,10 @@ function Importer({ onClose, expenses, incomes, rules }: { onClose: () => void; 
     const inc = withoutKnown(parsed.filter((r) => r.kind === 'income'), incomes)
     const known = new Set([...ex.repeated, ...inc.repeated])
     setRows(
-      parsed.map((r, key) => ({
-        ...r,
-        key,
-        category: r.kind === 'income' ? incomeCategoryFor(r.note) : categoryFor(r.note, rules),
-        known: known.has(r),
-        on: r.kind !== 'transfer' && !known.has(r),
-      })),
+      parsed.map((r, key) => {
+        const c = r.kind === 'income' ? { category: incomeCategoryFor(r.note), sure: true } : classifyNote(r.note, rules)
+        return { ...r, key, category: c.category, unsure: !c.sure, known: known.has(r), on: r.kind !== 'transfer' && !known.has(r) }
+      }),
     )
   }
 
@@ -85,7 +82,8 @@ function Importer({ onClose, expenses, incomes, rules }: { onClose: () => void; 
 
   const save = async () => {
     const now = Date.now()
-    const ex: Expense[] = chosen.filter((r) => r.kind === 'expense').map((r, i) => ({ id: uid(), amount: r.amount, note: r.note, category: r.category, date: r.date, createdAt: now + i }))
+    // Lo que no se sabe de qué es entra sin clasificar: LUNO lo pregunta después
+    const ex: Expense[] = chosen.filter((r) => r.kind === 'expense').map((r, i) => ({ id: uid(), amount: r.amount, note: r.note, category: r.category, date: r.date, createdAt: now + i, ...(r.unsure ? { unclassified: true as const } : {}) }))
     const inc: Income[] = chosen.filter((r) => r.kind === 'income').map((r, i) => ({ id: uid(), amount: r.amount, note: r.note, category: r.category, date: r.date, createdAt: now + i }))
     await db.transaction('rw', db.expenses, db.incomes, async () => {
       await db.expenses.bulkAdd(ex)
@@ -182,7 +180,7 @@ function Importer({ onClose, expenses, incomes, rules }: { onClose: () => void; 
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14.5px]">{r.note}</span>
                     <span className="block truncate text-[12px] text-muted">
-                      {[dateLabel(r.date), r.kind === 'transfer' ? 'Traspaso' : r.kind === 'income' ? incomeCat(r.category).label : cat(r.category).label, r.known && 'Ya apuntado'].filter(Boolean).join(' · ')}
+                      {[dateLabel(r.date), r.kind === 'transfer' ? 'Traspaso' : r.kind === 'income' ? incomeCat(r.category).label : r.unsure ? 'Sin clasificar (te lo preguntaré)' : cat(r.category).label, r.known && 'Ya apuntado'].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   <span className={cx('font-num shrink-0 text-[14.5px] font-semibold', r.kind === 'income' && 'text-green')}>

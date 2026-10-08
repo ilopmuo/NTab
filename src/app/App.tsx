@@ -92,13 +92,14 @@ const loaders = {
   ExpensesView: keep(() => import('@/features/expenses/ExpensesView').then((m) => ({ default: m.ExpensesView }))),
   MoneyView: keep(() => import('@/features/money/MoneyView').then((m) => ({ default: m.MoneyView }))),
   AccountsView: keep(() => import('@/features/money/AccountsView').then((m) => ({ default: m.AccountsView }))),
+  InsightsView: keep(() => import('@/features/money/InsightsView').then((m) => ({ default: m.InsightsView }))),
   JournalView: keep(() => import('@/features/journal/JournalView').then((m) => ({ default: m.JournalView }))),
   ShoppingView: keep(() => import('@/features/shopping/ShoppingView').then((m) => ({ default: m.ShoppingView }))),
   MedsView: keep(() => import('@/features/meds/MedsView').then((m) => ({ default: m.MedsView }))),
   WaitingView: keep(() => import('@/features/waiting/WaitingView').then((m) => ({ default: m.WaitingView }))),
   RoutinesView: keep(() => import('@/features/routines/RoutinesView').then((m) => ({ default: m.RoutinesView }))),
 }
-const AreaView = warm(loaders.AreaView), CalendarView = warm(loaders.CalendarView), FinanceView = warm(loaders.FinanceView), FocusView = warm(loaders.FocusView), HouseView = warm(loaders.HouseView), GoalsView = warm(loaders.GoalsView), HabitsView = warm(loaders.HabitsView), InboxView = warm(loaders.InboxView), LogbookView = warm(loaders.LogbookView), NotesView = warm(loaders.NotesView), PlanView = warm(loaders.PlanView), ShutdownView = warm(loaders.ShutdownView), TrashView = warm(loaders.TrashView), TemplatesView = warm(loaders.TemplatesView), PeopleView = warm(loaders.PeopleView), PersonView = warm(loaders.PersonView), ProjectView = warm(loaders.ProjectView), ProjectsView = warm(loaders.ProjectsView), ReviewView = warm(loaders.ReviewView), SettingsView = warm(loaders.SettingsView), TagView = warm(loaders.TagView), MoreView = warm(loaders.MoreView), SomedayView = warm(loaders.SomedayView), ListsHome = warm(loaders.ListsHome), MatrixView = warm(loaders.MatrixView), SmartListView = warm(loaders.SmartListView), RoutinesView = warm(loaders.RoutinesView), ThingsView = warm(loaders.ThingsView), MedsView = warm(loaders.MedsView), WaitingView = warm(loaders.WaitingView), ShoppingView = warm(loaders.ShoppingView), JournalView = warm(loaders.JournalView), ExpensesView = warm(loaders.ExpensesView), MoneyView = warm(loaders.MoneyView), AccountsView = warm(loaders.AccountsView), MenuView = warm(loaders.MenuView)
+const AreaView = warm(loaders.AreaView), CalendarView = warm(loaders.CalendarView), FinanceView = warm(loaders.FinanceView), FocusView = warm(loaders.FocusView), HouseView = warm(loaders.HouseView), GoalsView = warm(loaders.GoalsView), HabitsView = warm(loaders.HabitsView), InboxView = warm(loaders.InboxView), LogbookView = warm(loaders.LogbookView), NotesView = warm(loaders.NotesView), PlanView = warm(loaders.PlanView), ShutdownView = warm(loaders.ShutdownView), TrashView = warm(loaders.TrashView), TemplatesView = warm(loaders.TemplatesView), PeopleView = warm(loaders.PeopleView), PersonView = warm(loaders.PersonView), ProjectView = warm(loaders.ProjectView), ProjectsView = warm(loaders.ProjectsView), ReviewView = warm(loaders.ReviewView), SettingsView = warm(loaders.SettingsView), TagView = warm(loaders.TagView), MoreView = warm(loaders.MoreView), SomedayView = warm(loaders.SomedayView), ListsHome = warm(loaders.ListsHome), MatrixView = warm(loaders.MatrixView), SmartListView = warm(loaders.SmartListView), RoutinesView = warm(loaders.RoutinesView), ThingsView = warm(loaders.ThingsView), MedsView = warm(loaders.MedsView), WaitingView = warm(loaders.WaitingView), ShoppingView = warm(loaders.ShoppingView), JournalView = warm(loaders.JournalView), ExpensesView = warm(loaders.ExpensesView), MoneyView = warm(loaders.MoneyView), AccountsView = warm(loaders.AccountsView), InsightsView = warm(loaders.InsightsView), MenuView = warm(loaders.MenuView)
 
 // La barra lateral (ordenador e iPad) y la de pestañas (móvil): cada pantalla
 // usa una, así que van aparte y se pide ya la que se ve; la otra, si cambia
@@ -167,6 +168,7 @@ const ROUTE_CODE: Record<string, () => Promise<unknown>> = {
   expenses: loaders.ExpensesView,
   money: loaders.MoneyView,
   accounts: loaders.AccountsView,
+  insights: loaders.InsightsView,
   menu: loaders.MenuView,
   notes: loaders.NotesView,
   people: loaders.PeopleView,
@@ -287,6 +289,8 @@ function Screen() {
       return <MoneyView />
     case 'accounts':
       return <AccountsView />
+    case 'insights':
+      return <InsightsView category={id} />
     case 'menu':
       return <MenuView />
     case 'notes':
@@ -439,6 +443,12 @@ const Workspace = memo(function Workspace() {
     if (parts[0] === 'med' && parts[1] && parts[2] === 'med-taken') {
       navigate('/meds')
       void reminders().then((r) => r.applyReminderAction('med-taken', decodeURIComponent(parts[1])))
+      return
+    }
+    // «¿De qué es este gasto?»: el botón de la categoría con la app cerrada
+    if (parts[0] === 'expense' && parts[1] && parts[2]?.startsWith('cat:')) {
+      navigate('/expenses')
+      void reminders().then((r) => r.applyReminderAction(parts[2] as `cat:${string}`, parts[1]))
       return
     }
     if (parts[0] === 'habit' && parts[1] && parts[2] === 'habit-done') {

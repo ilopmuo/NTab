@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Env, Row } from '../../supabase/functions/mcp/ntab'
 import { capture } from '../../supabase/functions/mcp/capture'
-import { addIncomeTool, updateAccount, viewFinance } from '../../supabase/functions/mcp/money'
+import { addIncomeTool, classifyExpenseTool, unclassifiedLines, updateAccount, viewFinance } from '../../supabase/functions/mcp/money'
+import { addExpenseTool } from '../../supabase/functions/mcp/ntab'
 import { classify } from './intent'
 
 // Martes 6 de octubre de 2026, 12:00 en Madrid
@@ -58,5 +59,46 @@ describe('dinero desde Claude y Siri', () => {
     expect(nb(capture(rows, '¿cuánto me queda este mes?', env()).report[0])).toBe('Este mes han entrado 0 € y han salido 820 €, contando los pagos fijos: faltan 820 €. Aún no ha llegado nómina.')
     expect(nb(capture(rows, '¿cuánto tengo?', env()).report[0])).toBe('Tu patrimonio neto es de 1000 €: tienes 4000 € y debes 3000 €. Disponible en cuentas, 4000 €.')
     expect(nb(capture(rows, '¿cuánto debo?', env()).report[0])).toBe('Debes 3000 € en total.')
+  })
+})
+
+describe('gastos sin clasificar y consejos, desde Claude y Siri', () => {
+  const past: Row[] = [
+    { tbl: 'expenses', id: 'p1', data: { id: 'p1', amount: 40, note: 'Amazon libros', category: 'ocio', date: '2026-09-10' } },
+    { tbl: 'expenses', id: 'p2', data: { id: 'p2', amount: 22, note: 'Amazon juego', category: 'ocio', date: '2026-09-20' } },
+  ]
+  it('apuntar algo que no se sabe: queda sin clasificar y Claude pregunta; Siri lo dice', () => {
+    const r = addExpenseTool([...rows, ...past], { texto: '23,40 amazon mktp' }, env())
+    expect(r.writes[0].data).toMatchObject({ category: 'otros', unclassified: true })
+    expect(nb(r.report[0])).toContain('NO SÉ DE QUÉ ES: pregúntale de qué categoría es (quizá Ocio, Supermercado, Comer fuera)')
+    const siri = capture([...rows, ...past], 'gasto 12 tpv 3321', env())
+    expect(nb(siri.report[0])).toBe('Apuntado: 12 € · Tpv 3321 (sin clasificar, hoy). No sé de qué es: te lo pregunto luego.')
+  })
+  it('clasificar_gasto: lo aprende y lo aplica a los iguales; ver_gastos los lista', () => {
+    const pending: Row[] = [
+      { tbl: 'expenses', id: 'u1', data: { id: 'u1', amount: 23.4, note: 'AMZN Mktp', category: 'otros', date: '2026-10-05', unclassified: true } },
+      { tbl: 'expenses', id: 'u2', data: { id: 'u2', amount: 9, note: 'amzn mktp', category: 'otros', date: '2026-10-06', unclassified: true } },
+      { tbl: 'expenses', id: 'u3', data: { id: 'u3', amount: 5, note: 'Bizum Laura', category: 'otros', date: '2026-10-06', unclassified: true } },
+    ]
+    const all = [...rows, ...past, ...pending]
+    expect(nb(unclassifiedLines(all).join('\n'))).toContain('- [u1] 2026-10-05 23,40 € AMZN Mktp (¿Ocio,')
+    const r = classifyExpenseTool(all, { id: 'u1', categoria: 'ocio' }, env())
+    expect(r.writes.map((w) => [w.tbl, w.id])).toEqual([
+      ['expenses', 'u1'],
+      ['expenses', 'u2'],
+      ['settings', 'expenseRules'],
+    ])
+    expect(r.writes[0].data).toMatchObject({ category: 'ocio' })
+    expect(r.writes[0].data.unclassified).toBeUndefined()
+    expect(r.writes[2].data).toEqual({ key: 'expenseRules', value: { 'amzn mktp': 'ocio' } })
+    expect(nb(r.report[0])).toBe('«AMZN Mktp» (23,40 €) es de Ocio, y otro igual. Los próximos con ese concepto irán ahí. Queda 1 sin clasificar.')
+    expect(classifyExpenseTool(all, { concepto: 'bizum laura', categoria: 'Regalos' }, env()).writes[0].data).toMatchObject({ category: 'regalos' })
+    expect(classifyExpenseTool(all, { id: 'u1', categoria: 'nada' }, env()).writes).toEqual([])
+  })
+  it('consejos en ver_finanzas y «¿cómo puedo ahorrar?» con Siri', () => {
+    const glovo: Row[] = ['2026-09-08', '2026-09-15', '2026-09-22', '2026-09-29', '2026-10-01', '2026-10-03'].map((date, i) => ({ tbl: 'expenses', id: `g${i}`, data: { id: `g${i}`, amount: 20, note: 'Glovo', category: 'comer', date } }))
+    const all = [...rows, ...glovo]
+    expect(nb(viewFinance(all, {}, env()))).toContain('Glovo: 6 veces en un mes: Son 120 € en 30 días')
+    expect(nb(capture(all, '¿cómo puedo ahorrar?', env()).report[0])).toBe('Podrías ahorrar unos 60 € al mes. Glovo: 6 veces en un mes: Son 120 € en 30 días (unos 1440 € al año).')
   })
 })

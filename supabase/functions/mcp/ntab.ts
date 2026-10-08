@@ -10,7 +10,7 @@ import { WEEKDAYS, addDays, addMonths, diffDays, hhmmIn, longDate, weekStart, we
 import { expandTemplate, planSections, type TemplateItemLike } from '../_shared/templates.ts'
 import { AISLES, aisleFor, itemKey, parseItems } from '../_shared/shopping.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
-import { CATEGORIES, budgetAlert, categoryBudgets, categoryFor, money, monthSummary, monthlyTotals, normTag, parseExpense, searchExpenses, tagTotals, type Budget, type ExpenseRules } from '../_shared/expenses.ts'
+import { CATEGORIES, budgetAlert, categoryBudgets, classifyNote, guessCategories, money, monthSummary, monthlyTotals, normTag, parseExpense, searchExpenses, tagTotals, type Budget, type ExpenseRules } from '../_shared/expenses.ts'
 import { doneDays, groupLogs, isCounted, isDue, progressLabel, targetOf, type HabitLike } from '../_shared/habits.ts'
 import { logGoal, taskGoalCount, type GoalPoint } from '../_shared/goals.ts'
 import { healthLabel, healthRank, projectHealth, type Health } from '../_shared/projectHealth.ts'
@@ -1526,7 +1526,7 @@ export function whatNow(rows: Row[], args: { minutos?: number; energia?: string 
 export function expenseRows(rows: Row[]) {
   return rows
     .filter((r) => r.tbl === 'expenses' && typeof r.data.amount === 'number' && isYmd(r.data.date))
-    .map((r) => ({ amount: r.data.amount as number, category: str(r.data.category) || 'otros', date: r.data.date as string, note: str(r.data.note), tags: Array.isArray(r.data.tags) ? (r.data.tags as unknown[]).map(str).filter(Boolean) : undefined }))
+    .map((r) => ({ id: r.id, amount: r.data.amount as number, category: str(r.data.category) || 'otros', date: r.data.date as string, note: str(r.data.note), tags: Array.isArray(r.data.tags) ? (r.data.tags as unknown[]).map(str).filter(Boolean) : undefined, ...(r.data.unclassified ? { unclassified: true as const } : {}) }))
 }
 export const catLabel = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Otros'
 const setting = (rows: Row[], id: string) => rows.find((r) => r.tbl === 'settings' && r.id === id)?.data.value as Data | undefined
@@ -1556,8 +1556,12 @@ export function addExpenseTool(rows: Row[], args: { texto?: string; importe?: nu
   if (typeof args.importe === 'number' && args.importe > 0) amount = Math.round(args.importe * 100) / 100
   if (!amount) return { writes: [], report: ['Falta el importe del gasto.'] }
   note = note || 'Gasto'
-  // La que diga el usuario; si no, la que aprendió la app al recategorizar; si no, la de las palabras
-  const category = CATEGORIES.some((c) => c.id === args.categoria) ? args.categoria! : categoryFor(note, rules)
+  // La que diga el usuario; si no, la que aprendió la app al recategorizar; si no, la de las palabras;
+  // y si nada encaja, sin clasificar (la app lo pregunta)
+  const given = CATEGORIES.some((c) => c.id === args.categoria)
+  const guess = classifyNote(note, rules)
+  const category = given ? args.categoria! : guess.category
+  const unsure = !given && !guess.sure
   const id = env.newId()
   const before = monthSummary(expenseRows(rows), date.slice(0, 7), today)
   const budget = budgetOf(rows)
@@ -1572,9 +1576,11 @@ export function addExpenseTool(rows: Row[], args: { texto?: string; importe?: nu
   ].filter(Boolean)
   const t = [...tags]
   return {
-    writes: [{ tbl: 'expenses', id, data: { id, amount, note: note.charAt(0).toUpperCase() + note.slice(1), category, date, ...(t.length ? { tags: t } : {}), createdAt: env.now } }],
+    writes: [{ tbl: 'expenses', id, data: { id, amount, note: note.charAt(0).toUpperCase() + note.slice(1), category, date, ...(t.length ? { tags: t } : {}), ...(unsure ? { unclassified: true } : {}), createdAt: env.now } }],
     report: [
-      `Apuntado: ${money(amount)} · ${note} (${catLabel(category)}${t.length ? `, ${t.map((x) => `#${x}`).join(' ')}` : ''}, ${relDay(date, today)}). Este mes: ${money(total)}${budget.monthly ? ` de ${money(budget.monthly)}` : ''}${alerts.length ? ` — ${alerts.join('; ')}` : ''}.`,
+      `Apuntado: ${money(amount)} · ${note} (${unsure ? 'sin clasificar' : catLabel(category)}${t.length ? `, ${t.map((x) => `#${x}`).join(' ')}` : ''}, ${relDay(date, today)}). Este mes: ${money(total)}${budget.monthly ? ` de ${money(budget.monthly)}` : ''}${alerts.length ? ` — ${alerts.join('; ')}` : ''}.${
+        unsure ? ` NO SÉ DE QUÉ ES: pregúntale de qué categoría es (quizá ${guessCategories(note, expenseRows(rows), 3).map(catLabel).join(', ')}) y guárdalo con clasificar_gasto (id ${id}); si no contesta, la app se lo preguntará.` : ''
+      }`,
     ],
   }
 }

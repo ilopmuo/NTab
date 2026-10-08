@@ -12,6 +12,7 @@ import { buildDeadlinePayload, buildDigest, buildHabitPayload, buildPayload, bui
 import { REMINDER_FEATURE, reminderAllowed } from '../_shared/features.ts'
 import { sendHouseReminders, type SendPush } from './house.ts'
 import { dueMedJobs } from './meds.ts'
+import { dueExpenseQuestions, dueMoneyWeek } from './expenses.ts'
 
 const PUBLIC_KEY =
   Deno.env.get('VAPID_PUBLIC_KEY') ?? 'BITtwUVzfRk6yMCn5x36uN9n3nRV7fpCXOyk_bf1RwMYryFTJ54C6HbJFCzdNVPNVMBuTzlT3OEOYbwM6eH3CJM'
@@ -125,6 +126,8 @@ Deno.serve(async (req) => {
     user_id: string
     payload: (tz: string) => unknown
     log: { user_id: string; tbl: string; item_id: string; remind_at: string }
+    /** más avisos que quedan dados con este envío */
+    more?: { user_id: string; tbl: string; item_id: string; remind_at: string }[]
   }
   const jobs: Job[] = [
     ...((remindersRes.data ?? []) as DueReminder[]).map((r) => ({
@@ -172,6 +175,14 @@ Deno.serve(async (req) => {
       return []
     })),
   )
+  // Dinero: «¿de qué es este gasto?» con lo que no se supo clasificar, y la semana los domingos
+  for (const due of [dueExpenseQuestions, dueMoneyWeek])
+    jobs.push(
+      ...(await due(admin).catch((e) => {
+        console.error('dinero', e)
+        return []
+      })),
+    )
   if (!jobs.length) return json({ sent: houseSent })
 
   // Lo de las funciones apagadas (Ajustes → Funciones) no avisa
@@ -219,7 +230,7 @@ Deno.serve(async (req) => {
       }
     }
     // Si falló por un error temporal, no se apunta: se reintenta en el siguiente minuto
-    if (delivered || !transient) log.push(job.log)
+    if (delivered || !transient) log.push(job.log, ...(job.more ?? []))
   }
 
   if (log.length) await admin.from('push_log').upsert(log, { onConflict: 'user_id,tbl,item_id,remind_at', ignoreDuplicates: true })

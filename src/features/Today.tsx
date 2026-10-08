@@ -32,6 +32,7 @@ const ImportantPicker = lazy(() => import('./today/ImportantPicker'))
 // Solo si tienes piso: se carga aparte para no pesar en el arranque
 const HouseCard = lazy(() => import('./today/HouseCard'))
 const MedsCard = lazy(() => import('./today/MedsCard'))
+const ClassifyCard = lazy(() => import('./today/ClassifyCard'))
 // Las tarjetas que solo salen si tienen algo (y no en todos los días) también,
 // para que el arranque traiga lo justo: aparecen a la vez que sus datos
 const RoutinesCard = lazy(() => import('./routines/RoutinesCard').then((m) => ({ default: m.RoutinesCard })))
@@ -151,6 +152,8 @@ export function TodayView() {
         return <HouseCard />
       case 'meds':
         return <MedsCard />
+      case 'classify':
+        return <ClassifyCard />
       case 'things':
         return <ThingsAttention />
       case 'habits':

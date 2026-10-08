@@ -14,6 +14,7 @@ import { cleanTag, replaceTag } from '@/lib/tags'
 import { logGoal } from '@/lib/goals'
 import { renameLinks } from '@/lib/notes'
 import { addHabitCount } from './actions'
+import { ruleKey, type ExpenseRules } from '@/lib/expenses'
 
 /** Los pasillos de la compra solo hacen falta en la compra */
 const shoppingLib = () => import('@/lib/shopping')
@@ -609,6 +610,34 @@ export async function addExpense(data: Omit<Expense, 'id' | 'createdAt'>): Promi
   const e: Expense = { id: uid(), createdAt: Date.now(), ...data }
   await db.expenses.add(e)
   return e
+}
+
+/**
+ * Responder «¿de qué es este gasto?»: queda clasificado, LUNO lo aprende para
+ * los próximos con ese concepto y lo aplica a los que siguen sin clasificar con
+ * el mismo (como Copilot al recategorizar). Devuelve cuántos más y cómo deshacerlo.
+ */
+export async function classifyExpense(id: string, category: string): Promise<{ expense: Expense; others: number; undo: () => Promise<void> } | undefined> {
+  const e = await db.expenses.get(id)
+  if (!e) return undefined
+  const key = ruleKey(e.note)
+  const rules = ((await db.settings.get('expenseRules'))?.value as ExpenseRules | undefined) ?? {}
+  const same = key ? (await db.expenses.filter((x) => !!x.unclassified && x.id !== id && ruleKey(x.note) === key).toArray()) : []
+  const before = [e, ...same]
+  await db.transaction('rw', db.expenses, db.settings, async () => {
+    await db.expenses.bulkUpdate(before.map((x) => ({ key: x.id, changes: { category, unclassified: undefined } })))
+    if (key) await db.settings.put({ key: 'expenseRules', value: { ...rules, [key]: category } })
+  })
+  return {
+    expense: { ...e, category },
+    others: same.length,
+    undo: async () => {
+      await db.transaction('rw', db.expenses, db.settings, async () => {
+        await db.expenses.bulkPut(before)
+        await db.settings.put({ key: 'expenseRules', value: rules })
+      })
+    },
+  }
 }
 
 // ── Ingresos y cuentas ────────────────────────────────────────

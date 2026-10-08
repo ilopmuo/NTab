@@ -6,7 +6,7 @@ import { db } from '@/db/db'
 import type { Expense } from '@/db/types'
 import { addExpense } from '@/db/moreActions'
 import { addDaysYmd, dateLabel, fmt, today } from '@/lib/dates'
-import { budgetAlert, frequentExpenses, money, monthSummary, monthlyTotals, parseExpense, searchExpenses, tagTotals, type Budget, type ExpenseRules, type ParsedExpense } from '@/lib/expenses'
+import { budgetAlert, frequentExpenses, guessCategories, money, monthSummary, monthlyTotals, parseExpense, searchExpenses, tagTotals, type Budget, type ExpenseRules, type ParsedExpense } from '@/lib/expenses'
 import { monthly } from '@/lib/finance'
 import { haptic } from '@/lib/haptics'
 import { toast } from '@/app/store'
@@ -16,6 +16,8 @@ import { Card, Empty, Group, IconButton, PageHeader, Section, bouncy, cx, softSp
 import { Page } from '../Page'
 import { BudgetForm, Categories, ExpenseForm, ExpenseRow, Trend, cat } from './ExpenseParts'
 import { SavingsJars } from './SavingsJars'
+import { ClassifyList } from './Classify'
+import { Icon } from '@/components/icons'
 
 const monthOf = (ymd: string) => ymd.slice(0, 7)
 function shiftMonth(month: string, n: number) {
@@ -44,6 +46,8 @@ export function ExpensesView() {
   const t = today()
   const [month, setMonth] = useState(monthOf(t))
   const [text, setText] = useState('')
+  /** la categoría elegida a mano cuando LUNO no sabe de qué es lo escrito */
+  const [picked, setPicked] = useState<string>()
   const [query, setQuery] = useState<string | null>(null)
   const [editing, setEditing] = useState<Expense | undefined>()
   const [editBudget, setEditBudget] = useState(false)
@@ -57,6 +61,8 @@ export function ExpensesView() {
   if (!expenses || !budget || !rules || fixed === undefined) return null
 
   const sum = monthSummary(expenses, month, t)
+  // Lo que LUNO no supo clasificar, del más reciente al más antiguo
+  const pending = expenses.filter((e) => e.unclassified)
   const prev = monthSummary(expenses, shiftMonth(month, -1), t)
   const list = expenses.filter((e) => e.date.startsWith(month))
   const days = [...new Set(list.map((e) => e.date))]
@@ -67,9 +73,9 @@ export function ExpensesView() {
   const tags = tagTotals(expenses).filter((g) => list.some((e) => e.tags?.includes(g.tag)))
   const showFixed = current && features.on('finance') && fixed > 0
 
-  const save = async (p: Pick<ParsedExpense, 'amount' | 'note' | 'category' | 'tags'>, date: string) => {
+  const save = async (p: Pick<ParsedExpense, 'amount' | 'note' | 'category' | 'tags' | 'unsure'>, date: string) => {
     const alert = alertText(expenses, p, date, t, budget)
-    await addExpense({ amount: p.amount, note: p.note, category: p.category, date, ...(p.tags?.length ? { tags: p.tags } : {}) })
+    await addExpense({ amount: p.amount, note: p.note, category: p.category, date, ...(p.tags?.length ? { tags: p.tags } : {}), ...(p.unsure ? { unclassified: true as const } : {}) })
     haptic()
     setMonth(monthOf(date))
     if (alert) toast(alert, undefined, 6000, { icon: 'bell' })
@@ -79,7 +85,9 @@ export function ExpensesView() {
   const add = async () => {
     if (!parsed) return
     setText('')
-    await save(parsed, addDaysYmd(t, -parsed.daysAgo))
+    setPicked(undefined)
+    // Sin saber de qué es: la que se ha elegido o, si no, sin clasificar (y se pregunta)
+    await save(picked ? { ...parsed, category: picked, unsure: undefined } : parsed, addDaysYmd(t, -parsed.daysAgo))
   }
 
   const search = query !== null ? searchExpenses(expenses, query) : undefined
@@ -105,7 +113,7 @@ export function ExpensesView() {
             className="glass mb-2 flex items-center gap-2 rounded-[18px] py-2 pr-2 pl-4"
           >
             <Receipt size={18} className="shrink-0 text-muted" />
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="12,50 café" aria-label="Apuntar gasto" inputMode="text" className="h-10 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-faint" />
+            <input value={text} onChange={(e) => (setText(e.target.value), setPicked(undefined))} placeholder="12,50 café" aria-label="Apuntar gasto" inputMode="text" className="h-10 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-faint" />
             <button type="submit" aria-label="Apuntar" disabled={!parsed} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-fill text-white disabled:opacity-30">
               <ArrowUp size={18} strokeWidth={2.8} />
             </button>
@@ -117,7 +125,21 @@ export function ExpensesView() {
                   <motion.span key={parsed.amount} initial={{ scale: 0.7 }} animate={{ scale: 1 }} transition={bouncy} className="font-num rounded-full bg-accent-soft px-2.5 py-1 font-bold text-blue">
                     {money(parsed.amount)}
                   </motion.span>
-                  <span className="rounded-full bg-fill px-2.5 py-1 font-semibold">{cat(parsed.category).label}</span>
+                  {parsed.unsure && !picked ? (
+                    // No se sabe de qué es: se elige aquí (o se guarda y se pregunta luego)
+                    <span className="flex flex-wrap items-center gap-1.5" role="group" aria-label="¿De qué es?">
+                      <span className="font-semibold text-muted">¿De qué es?</span>
+                      {guessCategories(parsed.note, expenses, 4).map((id) => (
+                        <button key={id} type="button" onClick={() => setPicked(id)} className="flex items-center gap-1 rounded-full bg-fill px-2.5 py-1 font-semibold transition-colors hover:bg-hover">
+                          <Icon name={cat(id).icon} size={12} /> {cat(id).label}
+                        </button>
+                      ))}
+                    </span>
+                  ) : (
+                    <button type="button" onClick={() => setPicked(undefined)} disabled={!picked} className="rounded-full bg-fill px-2.5 py-1 font-semibold">
+                      {cat(picked ?? parsed.category).label}
+                    </button>
+                  )}
                   {parsed.daysAgo > 0 && <span className="rounded-full bg-fill px-2.5 py-1 font-semibold">{parsed.daysAgo === 1 ? 'Ayer' : 'Anteayer'}</span>}
                   {parsed.tags?.map((tag) => (
                     <span key={tag} className="rounded-full bg-fill px-2.5 py-1 font-semibold">
@@ -147,6 +169,14 @@ export function ExpensesView() {
               )}
             </AnimatePresence>
           </div>
+
+          {pending.length > 0 && (
+            <Section title="¿De qué son?" count={pending.length}>
+              <Card className="p-4">
+                <ClassifyList items={pending} history={expenses} />
+              </Card>
+            </Section>
+          )}
 
           <div className="mb-3 flex items-center gap-2">
             <button type="button" aria-label="Mes anterior" onClick={() => setMonth(shiftMonth(month, -1))} className="flex h-9 w-9 items-center justify-center rounded-full bg-fill active:scale-90">

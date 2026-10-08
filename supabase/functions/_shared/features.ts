@@ -10,6 +10,8 @@ export const REMINDER_FEATURE: Record<string, string> = {
   meds: 'meds',
   things: 'things',
   subscriptions: 'finance',
+  'expense-ask': 'expenses',
+  'money-week': 'expenses',
 }
 
 /** ¿Se puede enviar un aviso de la tabla `tbl` con estas funciones? */

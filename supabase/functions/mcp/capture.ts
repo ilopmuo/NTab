@@ -18,7 +18,7 @@ import { findUrl, linkTask } from '../_shared/links.ts'
 import { money, monthSummary, searchExpenses } from '../_shared/expenses.ts'
 import { suggest, type Energy } from '../_shared/suggest.ts'
 import { captureMed, medsLeft } from './meds.ts'
-import { FLOW_Q, WORTH_Q, addIncomeTool, moneyVoice } from './money.ts'
+import { FLOW_Q, SAVE_Q, WORTH_Q, addIncomeTool, moneyVoice } from './money.ts'
 import { houseVoice, type HouseCtx } from './casa.ts'
 import { itemKey, parseItems } from '../_shared/shopping.ts'
 import { ASKING, classify, cleanDictation, closest, infinitive, tidyTitle } from '../_shared/intent.ts'
@@ -705,7 +705,7 @@ function night(rows: Row[], env: Env, cx?: CaptureContext): string {
 
 const HELP = 'Puedo decirte qué tienes hoy, mañana o esta tarde, qué hacer ahora, dónde está algo, qué falta en la compra, qué hay de cenar, cuánto llevas gastado, qué estás esperando, cómo van tus proyectos o cuándo hiciste algo por última vez. Y dime «buenos días» para el resumen del día.'
 /** Lo que se responde aunque el dictado no ponga «?» ni empiece por «qué», «cuándo»… */
-const SPOKEN = [FLOW_Q, WORTH_Q, /^tengo\s+(?:un\s+rato|tiempo|\S+\s+(?:minutos|horas?))/i, /^(?:mi\s+)?agenda(?:\s|$)/i, /lista\s+de\s+la\s+compra$/i, /^a\s+qui[eé]n\s+le\s+toca\s/i]
+const SPOKEN = [FLOW_Q, WORTH_Q, SAVE_Q, /^tengo\s+(?:un\s+rato|tiempo|\S+\s+(?:minutos|horas?))/i, /^(?:mi\s+)?agenda(?:\s|$)/i, /lista\s+de\s+la\s+compra$/i, /^a\s+qui[eé]n\s+le\s+toca\s/i]
 
 /** La respuesta a una pregunta (o `undefined` si no es una de las que se saben) */
 function answer(rows: Row[], text: string, env: Env, cal?: CaptureContext): string | undefined {
@@ -906,7 +906,8 @@ export function capture(rows: Row[], input: string | CaptureInput, env: Env, cal
       if (!r.writes.length) return { ...r, report: ['¿Cuánto has gastado? Dilo con el importe: «15 euros en el súper».'] }
       // Para Siri, sin el resumen del mes
       const amount = num(r.writes.find((w) => w.tbl === 'expenses')?.data.amount)
-      return remember(rows, { ...r, report: [r.report[0].split('. Este mes')[0] + '.'] }, env, `el gasto de ${money(amount)}`)
+      const unsure = !!r.writes.find((w) => w.tbl === 'expenses')?.data.unclassified
+      return remember(rows, { ...r, report: [r.report[0].split('. Este mes')[0] + '.' + (unsure ? ' No sé de qué es: te lo pregunto luego.' : '')] }, env, `el gasto de ${money(amount)}`)
     }
   }
 

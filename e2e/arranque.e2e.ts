@@ -1,7 +1,7 @@
 import { expect, openApp, test } from './fixtures'
 
 // Las de src/app/sections.tsx y alguna más
-const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/lists', '/matrix', '/someday', '/waiting', '/meds', '/templates', '/goals', '/expenses', '/finance', '/money', '/accounts', '/review', '/trash', '/logbook', '/settings', '/settings/avisos', '/settings/apariencia', '/settings/funciones', '/settings/areas', '/settings/calendarios', '/settings/conectar', '/settings/datos', '/plan']
+const PATHS = ['/today', '/upcoming', '/inbox', '/calendar', '/habits', '/routines', '/notes', '/journal', '/menu', '/shopping', '/trackers', '/things', '/people', '/projects', '/tags', '/lists', '/matrix', '/someday', '/waiting', '/meds', '/templates', '/goals', '/expenses', '/finance', '/money', '/accounts', '/insights', '/insights/comer', '/review', '/trash', '/logbook', '/settings', '/settings/avisos', '/settings/apariencia', '/settings/funciones', '/settings/areas', '/settings/calendarios', '/settings/conectar', '/settings/datos', '/plan']
 
 test('todas las secciones se abren sin errores', async ({ page }) => {
   await openApp(page)

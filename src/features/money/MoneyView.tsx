@@ -1,23 +1,25 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, m as motion } from 'motion/react'
-import { AlertCircle, ArrowUp, Banknote, CalendarClock, Copy, TrendingUp, Upload } from 'lucide-react'
+import { AlertCircle, ArrowUp, Banknote, CalendarClock, ChevronRight, Copy, Upload } from 'lucide-react'
 import { db } from '@/db/db'
 import type { Income } from '@/db/types'
 import { addIncome } from '@/db/moreActions'
 import { addDaysYmd, fmt, today } from '@/lib/dates'
 import { money, monthSummary } from '@/lib/expenses'
 import { forecast } from '@/lib/finance'
-import { duplicateExpenses, incomeCat, monthFlow, parseIncome, pendingIncomes, rule503020, unusualSpending, usualIncomes } from '@/lib/money'
+import { duplicateExpenses, incomeCat, monthFlow, parseIncome, pendingIncomes, rule503020, usualIncomes } from '@/lib/money'
 import { haptic } from '@/lib/haptics'
 import { setUI, toast, useUI } from '@/app/store'
 import { useFeatures } from '@/app/features'
 import { SectionIcon, section } from '@/app/sections'
 import { Card, Empty, Group, IconButton, PageHeader, Section, bouncy, cx, softSpring } from '@/components/ui'
 import { Page } from '../Page'
-import { cat } from '../expenses/ExpenseParts'
+import { CATEGORIES } from '@/lib/expenses'
 import { useMoneyData } from './data'
 import { FlowBar, IncomeForm, IncomeRow, MonthNav, Rule503020, signed } from './MoneyParts'
 import { YearTable } from './YearTable'
+import { TipList, adviceFor, useDismissed } from './Tips'
+import { totalSaving } from '@/lib/advice'
 import { BankImport } from './BankImport'
 
 /**
@@ -182,6 +184,7 @@ export function MoneyView() {
 
         <div className="min-w-0">
           {current && <Insights data={data} t={t} />}
+          {current && <SpendLess data={data} t={t} />}
           {/* Con el mes a medias (sin la nómina) los porcentajes no dicen nada */}
           {flow.income > 0 && !pending.length && <Rule503020 r={rule} />}
         </div>
@@ -206,6 +209,37 @@ export function MoneyView() {
   )
 }
 
+/**
+ * Para gastar menos: los consejos más útiles de este mes (lo urgente y lo que
+ * más ahorra), con su botón. El análisis completo, en «Ver todo».
+ */
+function SpendLess({ data, t }: { data: NonNullable<ReturnType<typeof useMoneyData>>; t: string }) {
+  const features = useFeatures()
+  const dismissed = useDismissed()
+  if (!dismissed) return null
+  const tips = adviceFor(data, t, features.on('finance')).filter((x) => !dismissed[x.id])
+  if (!tips.length) return null
+  const save = totalSaving(tips)
+  const label = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Otros'
+  return (
+    <Section
+      title="Para gastar menos"
+      action={
+        <a href="#/insights" className="inline-flex items-center text-[14px] font-semibold text-blue">
+          Ver todo <ChevronRight size={15} />
+        </a>
+      }
+    >
+      {save >= 10 && (
+        <p className="mb-2 px-1 text-[13.5px] text-muted">
+          Podrías ahorrar unos <span className="font-num font-semibold text-fg">{money(save)}</span> al mes ({money(save * 12)} al año).
+        </p>
+      )}
+      <TipList tips={tips.slice(0, 3)} budget={data.budget} dismissed={dismissed} labels={label} />
+    </Section>
+  )
+}
+
 /** Lo que hace pesado un mes: los pagos que no son de cada mes (el seguro, el IBI) y, si no, los más caros */
 function heavyNames(charges: { sub: { name: string; cycle: string }; amount: number }[]) {
   const rare = charges.filter((c) => c.sub.cycle === 'quarter' || c.sub.cycle === 'year')
@@ -224,7 +258,6 @@ function heavyNames(charges: { sub: { name: string; cycle: string }; amount: num
 function Insights({ data, t }: { data: NonNullable<ReturnType<typeof useMoneyData>>; t: string }) {
   const features = useFeatures()
   const month = t.slice(0, 7)
-  const unusual = unusualSpending(data.expenses, month)
   const dups = duplicateExpenses(data.expenses, month)
   const active = features.on('finance') ? data.subs.filter((s) => s.active) : []
   const soon = active.filter((s) => s.nextDate >= t && s.nextDate <= addDaysYmd(t, 30) && s.currency === 'EUR')
@@ -233,16 +266,6 @@ function Insights({ data, t }: { data: NonNullable<ReturnType<typeof useMoneyDat
   const avg = months.length ? months.reduce((s, m) => s + m.total, 0) / months.length : 0
   const heavy = months.slice(1).find((m) => m.total > avg * 1.3 && m.total - avg > 50)
   const items: { key: string; icon: React.ReactNode; text: React.ReactNode; action?: React.ReactNode }[] = []
-  for (const u of unusual.slice(0, 3))
-    items.push({
-      key: `u-${u.id}`,
-      icon: <TrendingUp size={15} />,
-      text: (
-        <>
-          <span className="font-semibold">{cat(u.id).label}</span>: llevas <span className="font-num font-semibold">{money(Math.round(u.spent))}</span>, y sueles gastar <span className="font-num">{money(Math.round(u.avg))}</span> al mes
-        </>
-      ),
-    })
   for (const [, b] of dups.slice(0, 2))
     items.push({
       key: `d-${b.id}`,

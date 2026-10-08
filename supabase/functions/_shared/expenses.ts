@@ -85,9 +85,39 @@ export function matchRules(note: string, rules: [string, string[]][]): string | 
 }
 
 export function categoryFor(note: string, rules?: ExpenseRules): string {
+  return classifyNote(note, rules).category
+}
+
+/**
+ * La categoría y si se sabe de verdad: por lo que enseñaste a la app o por una
+ * palabra conocida. Si no («AMZN Mktp», «Bizum Laura»), va a Otros sin estar
+ * seguro: el gasto queda sin clasificar y LUNO pregunta.
+ */
+export function classifyNote(note: string, rules?: ExpenseRules): { category: string; sure: boolean } {
   const mine = learned(note, rules)
-  if (mine && CATEGORIES.some((c) => c.id === mine)) return mine
-  return matchRules(note, RULES) ?? 'otros'
+  if (mine && CATEGORIES.some((c) => c.id === mine)) return { category: mine, sure: true }
+  const hit = matchRules(note, RULES)
+  return hit ? { category: hit, sure: true } : { category: 'otros', sure: false }
+}
+
+/**
+ * Las categorías más probables para un gasto que no se sabe (para preguntar
+ * con dos o tres botones): las de los gastos con palabras en común y, si no,
+ * las que más usas.
+ */
+export function guessCategories(note: string, history: { note?: string; category: string; date: string; unclassified?: boolean }[], n = 3): string[] {
+  const words = new Set(fold(note).split(' ').filter((w) => w.length >= 3))
+  const score = new Map<string, number>()
+  const add = (id: string, v: number) => id !== 'otros' && score.set(id, (score.get(id) ?? 0) + v)
+  for (const e of history) {
+    if (e.unclassified) continue
+    const common = fold(e.note ?? '').split(' ').filter((w) => words.has(w)).length
+    if (common) add(e.category, common * 5)
+    add(e.category, 0.05)
+  }
+  const out = [...score.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+  for (const id of ['super', 'comer', 'ocio', 'casa', 'transporte']) if (!out.includes(id)) out.push(id)
+  return out.slice(0, n)
 }
 
 export interface ParsedExpense {
@@ -98,6 +128,8 @@ export interface ParsedExpense {
   daysAgo: number
   /** etiquetas con #, para juntar gastos de un viaje o un plan («#roma») */
   tags?: string[]
+  /** no se sabe de qué es: se apunta en Otros y se pregunta */
+  unsure?: true
 }
 
 const TAG = /(^|\s)#([\p{L}\d][\p{L}\d_-]*)/gu
@@ -195,7 +227,8 @@ export function parseExpense(input: string, rules?: ExpenseRules): ParsedExpense
     .replace(/\s+/g, ' ')
     .trim()
   note = note ? note.charAt(0).toUpperCase() + note.slice(1) : 'Gasto'
-  return { amount, note, category: categoryFor(note, rules), daysAgo, ...(tags.length ? { tags } : {}) }
+  const c = classifyNote(note, rules)
+  return { amount, note, category: c.category, daysAgo, ...(tags.length ? { tags } : {}), ...(c.sure ? {} : { unsure: true as const }) }
 }
 
 export function money(n: number, currency = 'EUR') {

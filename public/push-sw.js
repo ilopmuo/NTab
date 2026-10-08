@@ -51,8 +51,17 @@ self.addEventListener('push', (event) => {
     requireInteraction: true,
     icon: 'icon-192.png',
     badge: 'badge-96.png',
-    data: { url: data.url || './#/today', taskId, habitId: data.habitId, medDose: data.medDose },
-    actions: taskId ? TASK_ACTIONS : data.habitId ? HABIT_ACTIONS : data.medDose ? MED_ACTIONS : [],
+    data: { url: data.url || './#/today', taskId, habitId: data.habitId, medDose: data.medDose, expenseId: data.expenseId },
+    actions: taskId
+      ? TASK_ACTIONS
+      : data.habitId
+        ? HABIT_ACTIONS
+        : data.medDose
+          ? MED_ACTIONS
+          : // «¿De qué es este gasto?»: las categorías más probables como botones
+            data.expenseId && Array.isArray(data.expenseGuesses)
+            ? data.expenseGuesses.slice(0, 2).map((g) => ({ action: 'cat:' + g.id, title: g.label }))
+            : [],
   }
   event.waitUntil(showPush(title, options, data.key || data.tag))
 })
@@ -64,7 +73,7 @@ async function runAction(action, id, kind) {
     windows[0].postMessage({ type: 'reminder-action', action, id })
     return
   }
-  const url = new URL('./#/' + kind + '/' + encodeURIComponent(id) + '/' + action, self.registration.scope).href
+  const url = new URL('./#/' + kind + '/' + encodeURIComponent(id) + '/' + encodeURIComponent(action), self.registration.scope).href
   return self.clients.openWindow(url)
 }
 
@@ -77,6 +86,10 @@ self.addEventListener('notificationclick', (event) => {
   }
   if (event.action === 'habit-done' && data.habitId) {
     event.waitUntil(runAction('habit-done', data.habitId, 'habit'))
+    return
+  }
+  if (event.action && event.action.startsWith('cat:') && data.expenseId) {
+    event.waitUntil(runAction(event.action, data.expenseId, 'expense'))
     return
   }
   if (event.action === 'med-taken' && data.medDose) {

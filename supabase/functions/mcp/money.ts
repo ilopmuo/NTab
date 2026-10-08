@@ -6,8 +6,9 @@
  * sincronización.
  */
 import { addDays, ymdIn } from '../_shared/time.ts'
-import { money, monthSummary } from '../_shared/expenses.ts'
-import { INCOME_CATEGORIES, averageFlow, incomeCat, incomeCategoryFor, lastIncomeLike, monthFlow, parseIncome, pendingIncomes, rule503020, unusualSpending } from '../_shared/money.ts'
+import { CATEGORIES, fold, guessCategories, money, monthSummary, ruleKey, type Budget } from '../_shared/expenses.ts'
+import { spendingAdvice, totalSaving } from '../_shared/advice.ts'
+import { INCOME_CATEGORIES, averageFlow, incomeCat, incomeCategoryFor, lastIncomeLike, monthFlow, parseIncome, pendingIncomes, rule503020 } from '../_shared/money.ts'
 import { ACCOUNT_KINDS, debtPlan, emergencyFund, financialIndependence, groupOf, investable, isDebt, kindOf, monthsFrom, netWorth, withBalance, type AccountKind, type AccountLike } from '../_shared/wealth.ts'
 import { catLabel, expenseRows, findByName, isYmd, relDay, type Env, type Row, type WriteResult } from './ntab.ts'
 
@@ -98,10 +99,13 @@ export function viewFinance(rows: Row[], args: { mes?: string }, env: Env): stri
     const r = rule503020(monthSummary(expenses, month, today).byCategory, flow.income, fixed.needs, fixed.wants)
     lines.push(`50/30/20: lo necesario ${pct(r.pctNeeds)} (${money(Math.round(r.needs))}), caprichos ${pct(r.pctWants)} (${money(Math.round(r.wants))}), queda ${pct(r.pctSavings)}.`)
   }
-  const unusual = month === today.slice(0, 7) ? unusualSpending(expenses, month) : []
-  if (unusual.length) lines.push(`Por encima de lo normal: ${unusual.map((u) => `${catLabel(u.id)} ${money(u.spent)} (media ${money(u.avg)})`).join(', ')}.`)
   const avg = averageFlow(expenses, incomes, today.slice(0, 7), fixed.total)
   if (avg) lines.push(`Un mes normal (media de ${avg.months}): entran ${money(Math.round(avg.income))}, salen ${money(Math.round(avg.out))}.`)
+  const tips = adviceOf(rows, env)
+  if (tips.length) {
+    const save = totalSaving(tips)
+    lines.push(`\nCONSEJOS PARA GASTAR MENOS${save >= 10 ? ` (podría ahorrar unos ${money(save)} al mes)` : ''}:`, ...tips.slice(0, 6).map((t) => `- ${t.title}: ${t.body}`))
+  }
 
   const accounts = accountRows(rows)
   if (accounts.length) {
@@ -122,6 +126,61 @@ export function viewFinance(rows: Row[], args: { mes?: string }, env: Env): stri
     }
   }
   return lines.join('\n')
+}
+
+/** Los consejos para gastar menos con sus datos (los mismos que la app) */
+export function adviceOf(rows: Row[], env: Env) {
+  const today = ymdIn(env.now, env.tz)
+  const expenses = expenseRows(rows)
+  const fixed = fixedOf(rows)
+  const avg = averageFlow(expenses, incomeRows(rows), today.slice(0, 7), fixed.total)
+  const budget = rows.find((r) => r.tbl === 'settings' && r.id === 'budget')?.data.value as Budget | undefined
+  const subs = rows.filter((r) => r.tbl === 'subscriptions').map((r) => ({ name: str(r.data.name), amount: num(r.data.amount), cycle: str(r.data.cycle) || 'month', active: r.data.active !== false, currency: str(r.data.currency) || 'EUR' }))
+  return spendingAdvice({ expenses, today, budget, subs, flow: avg && avg.income > 0 ? avg : undefined })
+}
+
+// ── Clasificar ─────────────────────────────────────────────────
+
+/**
+ * Responder «¿de qué es este gasto?»: por id o por concepto; aprende la
+ * categoría para los próximos con ese concepto y la aplica a los que siguen
+ * sin clasificar con el mismo (como en la app).
+ */
+export function classifyExpenseTool(rows: Row[], args: { id?: string; concepto?: string; categoria?: string }, _env: Env): WriteResult {
+  const all = rows.filter((r) => r.tbl === 'expenses')
+  const pending = all.filter((r) => r.data.unclassified)
+  const want = fold(str(args.categoria))
+  const category = CATEGORIES.find((c) => c.id === args.categoria || fold(c.label) === want || fold(c.label).startsWith(want))?.id
+  if (!category) return { writes: [], report: [`Categoría no válida. Opciones: ${CATEGORIES.map((c) => `${c.id} (${c.label})`).join(', ')}.`] }
+  const pick = (list: Row[]) => (args.id ? list.find((r) => r.id === args.id) : args.concepto ? list.find((r) => fold(str(r.data.note)) === fold(str(args.concepto))) ?? list.find((r) => fold(str(r.data.note)).includes(fold(str(args.concepto)))) : list[0])
+  const target = pick(pending) ?? pick(all)
+  if (!target) return { writes: [], report: [pending.length ? 'No encuentro ese gasto.' : 'No hay gastos sin clasificar.'] }
+  const key = ruleKey(str(target.data.note))
+  const same = key ? pending.filter((r) => r.id !== target.id && ruleKey(str(r.data.note)) === key) : []
+  const clean = (r: Row) => {
+    const { unclassified: _, ...data } = r.data
+    return { tbl: 'expenses', id: r.id, data: { ...data, category } }
+  }
+  const rules = (rows.find((r) => r.tbl === 'settings' && r.id === 'expenseRules')?.data.value as Record<string, string> | undefined) ?? {}
+  const writes = [clean(target), ...same.map(clean), ...(key ? [{ tbl: 'settings', id: 'expenseRules', data: { key: 'expenseRules', value: { ...rules, [key]: category } } }] : [])]
+  const left = pending.length - 1 - same.length
+  return {
+    writes,
+    report: [
+      `«${str(target.data.note)}» (${money(num(target.data.amount))}) es de ${catLabel(category)}${same.length ? (same.length === 1 ? ', y otro igual' : `, y ${same.length} más iguales`) : ''}. Los próximos con ese concepto irán ahí.${left > 0 ? ` ${left === 1 ? 'Queda 1' : `Quedan ${left}`} sin clasificar.` : ''}`,
+    ],
+  }
+}
+
+/** Los gastos sin clasificar, para ver_gastos (con las categorías probables) */
+export function unclassifiedLines(rows: Row[]): string[] {
+  const all = expenseRows(rows)
+  const pending = all.filter((e) => e.unclassified).sort((a, b) => b.date.localeCompare(a.date))
+  if (!pending.length) return []
+  return [
+    `SIN CLASIFICAR (${pending.length}; pregúntale de qué son y usa clasificar_gasto):`,
+    ...pending.slice(0, 10).map((e) => `- [${e.id}] ${e.date} ${money(e.amount)} ${e.note} (¿${guessCategories(e.note, all, 3).map(catLabel).join(', ')}?)`),
+  ]
 }
 
 // ── Cuentas ────────────────────────────────────────────────────
@@ -179,8 +238,21 @@ export const FLOW_Q = /^(?:cu[aá]nto\s+(?:me\s+queda(?:\s+(?:este\s+mes|de\s+di
 /** «¿cuánto tengo?», «¿cuál es mi patrimonio?», «¿cuánto debo?» */
 export const WORTH_Q = /^(?:cu[aá]nto\s+(?:dinero\s+)?(?:tengo|debo)(?:\s+(?:en\s+total|ahorrado))?|cu[aá]l\s+es\s+mi\s+patrimonio|mi\s+patrimonio)$/i
 
+/** «¿cómo puedo ahorrar?», «¿cómo gasto menos?», «dame un consejo para ahorrar», «¿en qué se me va el dinero?», «¿en qué gasto más?» */
+export const SAVE_Q = /^(?:(?:c[oó]mo\s+(?:puedo\s+)?(?:ahorrar|ahorro|gastar\s+menos|gasto\s+menos))|(?:dame\s+)?(?:un\s+)?consejos?\s+para\s+(?:ahorrar|gastar\s+menos)|en\s+qu[eé]\s+(?:se\s+me\s+va\s+el\s+dinero|gasto\s+m[aá]s|me\s+gasto\s+m[aá]s))(?=\s|$)/i
+
 export function moneyVoice(rows: Row[], text: string, env: Env): string | undefined {
   const today = ymdIn(env.now, env.tz)
+  if (SAVE_Q.test(text)) {
+    const s = monthSummary(expenseRows(rows).filter((e) => !e.unclassified), today.slice(0, 7), today)
+    const top = s.byCategory[0]
+    const tips = adviceOf(rows, env)
+    const first = (t: { title: string; body: string }) => `${t.title}: ${t.body.split(/(?<=\.)\s/)[0]}`
+    const where = top && /gasto\s+m[aá]s|se\s+me\s+va/i.test(text) ? `Este mes, lo que más: ${catLabel(top.id).toLowerCase()}, ${money(Math.round(top.amount))}. ` : ''
+    if (!tips.length) return `${where}No veo nada que recortar ahora mismo: vas bien.`
+    const save = totalSaving(tips)
+    return `${where}${save >= 10 ? `Podrías ahorrar unos ${money(save)} al mes. ` : ''}${first(tips[0])}${tips[1] ? ` También: ${tips[1].title.charAt(0).toLowerCase()}${tips[1].title.slice(1)}.` : ''}`
+  }
   if (FLOW_Q.test(text)) {
     const flow = monthFlow(expenseRows(rows), incomeRows(rows), today.slice(0, 7), fixedOf(rows).total)
     if (!flow.income && !flow.out) return 'Este mes no hay nada apuntado.'
