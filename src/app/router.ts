@@ -35,7 +35,7 @@ let transitioning = false
 /** ¿Se está pintando la pantalla nueva dentro de una View Transition? (para no animarla dos veces) */
 export const inViewTransition = () => transitioning
 
-type Doc = Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } }
+type Doc = Document & { startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> } }
 
 const canTransition = () =>
   typeof document !== 'undefined' && !!(document as Doc).startViewTransition && document.documentElement.dataset.motion !== 'reduce'
@@ -64,6 +64,28 @@ export function directionOf(from: string, to: string): NavDirection {
   return b > a ? 'push' : b < a ? 'pop' : 'fade'
 }
 
+/**
+ * Hasta que la pantalla nueva tiene algo que enseñar (su código y sus datos
+ * llegan un momento después), o como mucho `max` ms. Mientras, se sigue viendo
+ * la anterior: si no, la transición fundía hacia el esqueleto vacío y el
+ * contenido aparecía de golpe después (el título, las pestañas…).
+ */
+function screenReady(max = 350): Promise<void> {
+  const has = () => !!document.querySelector('#main .screen')?.childElementCount
+  if (has()) return Promise.resolve()
+  return new Promise((resolve) => {
+    const main = document.getElementById('main')
+    const done = () => {
+      clearTimeout(timer)
+      watch.disconnect()
+      resolve()
+    }
+    const timer = setTimeout(done, max)
+    const watch = new MutationObserver(() => has() && done())
+    if (main) watch.observe(main, { childList: true, subtree: true })
+  })
+}
+
 let vtRun = 0
 /** Cambia de pantalla dentro de una View Transition con su dirección (ver index.css) */
 function transition(dir: NavDirection, update: () => void) {
@@ -71,7 +93,10 @@ function transition(dir: NavDirection, update: () => void) {
   const root = document.documentElement
   root.dataset.nav = dir
   transitioning = true
-  const vt = (document as Doc).startViewTransition!(update)
+  const vt = (document as Doc).startViewTransition!(async () => {
+    update()
+    await screenReady()
+  })
   // Si el navegador la salta (p. ej. otra navegación encima), no es un error
   const vtx = vt as unknown as { ready?: Promise<void>; updateCallbackDone?: Promise<void> }
   vtx.ready?.catch(() => {})

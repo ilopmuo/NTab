@@ -13,14 +13,32 @@ function read(): ThemePref {
   }
 }
 
+/**
+ * Cambiar de colores de golpe: sin esto, cada elemento con transición de color
+ * (y los halos del fondo, 1,2 s) iba pasando del tema viejo al nuevo por su
+ * cuenta, y durante y después del revelado se veían mezclas de los dos.
+ */
+function instantly(change: () => void) {
+  const root = document.documentElement
+  root.classList.add('colors-switching')
+  change()
+  // Que se apliquen ya los colores nuevos, todavía sin transiciones
+  void root.offsetHeight
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('colors-switching')))
+}
+
 function apply(pref: ThemePref) {
+  instantly(() => paint(pref))
+}
+
+function paint(pref: ThemePref) {
   const resolved = pref === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : pref
   document.documentElement.dataset.theme = resolved
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#0a0a0c' : '#f5f5f7')
 }
 
 let pref = read()
-apply(pref)
+paint(pref)
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => pref === 'system' && apply(pref))
 
 let lastPointer: { x: number; y: number } | null = null
@@ -105,7 +123,7 @@ export function setAccent(a: Accent) {
     } catch {
       /* sin almacenamiento: solo en memoria */
     }
-    applyAccent(a)
+    instantly(() => applyAccent(a))
     accentListeners.forEach((l) => l())
   }
   const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown }

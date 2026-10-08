@@ -486,6 +486,12 @@
   transition: background-color 1200ms ease;
   will-change: transform;
 }
+/* Al cambiar de tema o de acento, los colores cambian de golpe (ver instantly en app/theme.ts) */
+html.colors-switching *,
+html.colors-switching *::before,
+html.colors-switching *::after {
+  transition: none !important;
+}
 /* Cambio de tema: la vista nueva se revela en círculo (ver app/theme.ts) */
 .theme-transition::view-transition-old(root),
 .theme-transition::view-transition-new(root) {
@@ -649,6 +655,17 @@ html[data-nav='pop']::view-transition-new(root) {
   html[data-nav='pop'] main [style*='view-transition-name'] {
     view-transition-name: none !important;
   }
+}
+
+/* Las pestañas de un espacio (Hoy · Próximo…): al pasar de una a otra la fila
+   no se funde ni sube con la pantalla; se queda quieta y solo se desliza la
+   píldora. Si la pantalla nueva no las tiene, se van fundidas como lo demás. */
+::view-transition-old(hubtabs):not(:only-child) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(hubtabs):not(:only-child) {
+  animation: none;
 }
 
 /* Al cambiar de tema o de color, todo es una sola imagen (el revelado circular la necesita entera) */

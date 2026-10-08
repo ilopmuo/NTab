@@ -18,13 +18,22 @@ function useMinimized(path: string) {
     const el = document.getElementById('main')
     if (!el) return
     let last = el.scrollTop
+    let height = el.scrollHeight
     let frame = 0
     // Una lectura por fotograma (leer el scroll en cada evento obliga a maquetar a mitad de scroll)
     const onScroll = () => {
       if (frame) return
       frame = requestAnimationFrame(() => {
         frame = 0
-        const y = el.scrollTop
+        // Dentro de los límites: el rebote del iPhone al llegar arriba o abajo no cuenta
+        const y = Math.min(Math.max(el.scrollTop, 0), el.scrollHeight - el.clientHeight)
+        // Si la pantalla ha cambiado de alto (una tarea hecha que se pliega, lo que
+        // llega después), el scroll se mueve solo: no es que hayas bajado o subido
+        if (el.scrollHeight !== height) {
+          height = el.scrollHeight
+          last = y
+          return
+        }
         const d = y - last
         if (y < 60) setMini(false)
         else if (d > 8) setMini(true)

@@ -96,9 +96,12 @@ export function TaskList({
               // Entran escalonadas solo las primeras (las de más abajo ni se ven)
               initial={i < 12 ? { opacity: 0, y: 8 } : false}
               animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 32, delay: Math.min(i, 12) * 0.03 } }}
-              // Recorta solo al plegarse; si no, las chispas de la casilla saldrían cortadas
+              // Recorta solo al plegarse; si no, las chispas de la casilla saldrían cortadas.
+              // Sin content-visibility (row-lazy): en Safari las filas que se animan
+              // parpadeaban, y las que aún no se habían pintado medían otra cosa y la
+              // lista daba saltos al bajar (las listas largas ya van por tramos)
               exit={{ opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }}
-              className={cx(rowSeparator, 'row-lazy', isFresh(t) && 'just-added')}
+              className={cx(rowSeparator, isFresh(t) && 'just-added')}
             >
               <TaskItem task={t} lookup={lookup} hideDate={hideDate} hideProject={hideProject} hideImportant={hideImportant} compact={compact} draggable={draggable} />
             </motion.div>

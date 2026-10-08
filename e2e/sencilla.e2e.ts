@@ -1,4 +1,4 @@
-import { expect, openApp, quickAdd, test } from './fixtures'
+import { expect, openApp, quickAdd, test, morning } from './fixtures'
 
 test('diez lugares y pocas pestañas: lo de dentro, con «‹ Atrás»', async ({ page }) => {
   await openApp(page, '/today')
@@ -32,6 +32,7 @@ test('diez lugares y pocas pestañas: lo de dentro, con «‹ Atrás»', async (
 })
 
 test('Hoy sugiere una sola cosa y lo del día sale de su menú', async ({ page }) => {
+  await morning(page)
   await openApp(page, '/today')
   // La primera vez, elegir funciones; nada más apilado debajo
   await expect(page.getByRole('region', { name: 'Haz LUNO a tu medida' })).toBeVisible()

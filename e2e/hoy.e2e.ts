@@ -1,4 +1,4 @@
-import { expect, openApp, quickAdd, test } from './fixtures'
+import { expect, openApp, quickAdd, test, morning } from './fixtures'
 import type { Page } from '@playwright/test'
 
 /** Otro día: con el reloj ya cambiado, salir de Hoy y volver (la app calcula «hoy» al pintar) */
@@ -12,6 +12,7 @@ async function reload(page: Page) {
 const dialog = (page: Page, title: string) => page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: title }) })
 
 test('lo importante de hoy: se elige, va arriba y no se repite', async ({ page }) => {
+  await morning(page)
   await openApp(page, '/today')
   for (const t of ['Llamar al banco hoy', 'Enviar el informe hoy', 'Comprar pan hoy']) await quickAdd(page, t)
   // Hoy sugiere una cosa cada vez: primero elegir funciones, luego planificar el día

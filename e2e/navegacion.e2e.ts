@@ -1,4 +1,4 @@
-import { expect, openApp, test } from './fixtures'
+import { expect, openApp, test, morning } from './fixtures'
 
 test('barra lateral: una lista clara, los filtros al final y ocultar un lugar lo deja en «N más»', async ({ page }) => {
   await openApp(page)
@@ -82,6 +82,7 @@ test.describe('en el móvil', () => {
 })
 
 test('funciones: apagar Menú lo quita de las pestañas de Casa, ⌘K y su página; sin Gastos, Pagos ni Cuentas no hay Dinero', async ({ page }) => {
+  await morning(page)
   await openApp(page, '/today')
   const nav = page.getByRole('navigation', { name: 'Barra lateral' })
   const casa = page.getByRole('navigation', { name: 'Casa' })

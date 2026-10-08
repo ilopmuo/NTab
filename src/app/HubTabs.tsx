@@ -1,10 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { m as motion } from 'motion/react'
 import { cx, spring } from '@/components/ui'
 import { href, useRoute } from './router'
 import { hubOf, section, sectionOfRoute } from './sections'
 import { hubTabs, rememberTab } from './hubs'
 import { useFeatures } from './features'
+
+/** Hasta dónde estaba deslizada la fila de cada espacio */
+const rowScroll = new Map<string, number>()
 
 /**
  * Las pestañas del espacio en el que estás (Compra · Menú · Cosas), encima del
@@ -20,17 +23,33 @@ export function HubTabs({ className, anyDepth }: { className?: string; /** tambi
   }, [current])
   const h = hubOf(current)
   const tabs = h ? hubTabs(h, features.section) : []
-  // La pestaña activa, siempre a la vista (en el móvil la fila se desliza).
-  // Entre llaves: Chrome ya devuelve una Promise de scrollIntoView y React la
-  // tomaría por la limpieza del efecto; al salir de la pantalla la llamaba
-  // («… is not a function») y la ventana entera se quedaba en blanco
+  // Cada pantalla trae su propia fila de pestañas: se monta donde estaba la
+  // anterior (sin pintarse un momento al principio y luego saltar) y, si la
+  // activa no se ve entera, la fila se desliza lo justo. Solo en horizontal:
+  // scrollIntoView movía también la pantalla hacia arriba o hacia abajo
   const nav = useRef<HTMLElement>(null)
-  useEffect(() => {
-    nav.current?.querySelector('[aria-current=page]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-  }, [current])
+  useLayoutEffect(() => {
+    const el = nav.current
+    if (!el || !h) return
+    el.scrollLeft = rowScroll.get(h.id) ?? 0
+    const on = el.querySelector<HTMLElement>('[aria-current=page]')
+    if (on) {
+      const box = el.getBoundingClientRect()
+      const r = on.getBoundingClientRect()
+      if (r.left < box.left) el.scrollLeft -= box.left - r.left + 8
+      else if (r.right > box.right) el.scrollLeft += r.right - box.right + 8
+    }
+    rowScroll.set(h.id, el.scrollLeft)
+  }, [current, h])
   if (!h || (parts.length > 1 && !anyDepth) || tabs.length < 2) return null
   return (
-    <nav ref={nav} aria-label={h.label} className={cx('no-scrollbar -mx-1 mb-4 flex gap-0.5 overflow-x-auto px-1 after:block after:w-3 after:shrink-0 after:content-[\'\']', className)}>
+    <nav
+      ref={nav}
+      aria-label={h.label}
+      onScroll={(e) => rowScroll.set(h.id, e.currentTarget.scrollLeft)}
+      // Con nombre propio en la transición: al cambiar de pestaña, la fila se queda quieta (ver index.css)
+      style={{ viewTransitionName: 'hubtabs' }}
+      className={cx('no-scrollbar -mx-1 mb-4 flex gap-0.5 overflow-x-auto px-1 after:block after:w-3 after:shrink-0 after:content-[\'\']', className)}>
       {tabs.map((t) => {
         const on = t.id === current
         return (

@@ -7,6 +7,17 @@ export async function offline(page: Page) {
   await page.route(/supabase\.co/, (r) => r.abort())
 }
 
+/**
+ * Las 10 de la mañana en Madrid (con el reloj parado): a partir de las 18 h, Hoy
+ * propone cerrar el día en vez de lo demás, y los tests que miran sus avisos
+ * fallaban según la hora a la que se pasaran
+ */
+export async function morning(page: Page) {
+  const d = new Date()
+  d.setUTCHours(8, 0, 0, 0)
+  await page.clock.setFixedTime(d)
+}
+
 /** Deja la app lista en modo «sin cuenta» y en `path` */
 export async function openApp(page: Page, path = '/today') {
   await page.goto('./')

@@ -302,13 +302,15 @@ export const TaskItem = memo(function TaskItem({
   const area = lookup.area(task.areaId ?? project?.areaId)
   const subDone = task.subtasks.filter((s) => s.done).length
 
+  // Marcada hasta que la tarea llega hecha de la base de datos: antes se
+  // desmarcaba un momento (y la fila se plegaba con la casilla vacía)
+  useEffect(() => {
+    if (task.done) setCompleting(false)
+  }, [task.done])
   const onToggle = () => {
     if (task.done) return void completeWithFeedback(task)
     setCompleting(true)
-    setTimeout(() => {
-      void completeWithFeedback(task)
-      setCompleting(false)
-    }, 520)
+    setTimeout(() => void completeWithFeedback(task).catch(() => setCompleting(false)), 520)
   }
 
   const meta: React.ReactNode[] = []
