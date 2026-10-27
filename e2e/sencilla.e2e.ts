@@ -82,7 +82,7 @@ test('el detalle de una tarea enseña lo justo; lo demás, con «Añadir»', asy
 test('Ajustes: una portada corta y cada apartado en su página, con «‹ Ajustes»', async ({ page }) => {
   await openApp(page, '/settings')
   const main = page.locator('#main')
-  for (const p of ['Avisos', 'Apariencia', 'Funciones y navegación', 'Áreas de vida', 'Calendarios', 'Claude y Siri', 'Tus datos']) await expect(main.getByRole('button', { name: new RegExp(`^${p}`) })).toBeVisible()
+  for (const p of ['Avisos', 'Apariencia', 'Funciones y navegación', 'Áreas de vida', 'Calendarios', 'Claude, Siri y Hermes', 'Tus datos']) await expect(main.getByRole('button', { name: new RegExp(`^${p}`) })).toBeVisible()
   await expect(page.getByRole('radiogroup', { name: 'Color de acento' })).toHaveCount(0)
   await main.getByRole('button', { name: /^Apariencia/ }).click()
   await expect(page.locator('#main h1')).toHaveText('Apariencia')

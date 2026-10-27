@@ -70,6 +70,7 @@ import { CalendarBlock } from './CalendarBlock'
 import { CalendarSourcesBlock } from './CalendarSourcesBlock'
 import { ClaudeBlock } from './ClaudeBlock'
 import { SiriBlock } from './SiriBlock'
+import { HermesBlock } from './HermesBlock'
 import { Page } from '../Page'
 import { DEADLINE_ALERT_TIME, type DeadlineAlertPrefs } from '@/lib/deadlines'
 
@@ -460,6 +461,7 @@ export function SettingsView({ page }: { page?: string }) {
         <>
           <ClaudeBlock />
           <SiriBlock />
+          <HermesBlock />
         </>
       )}
       {def.id === 'datos' && <DataPage />}

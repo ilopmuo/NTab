@@ -98,7 +98,7 @@ export const SETTINGS_PAGES = {
   funciones: 'Funciones y navegación',
   areas: 'Áreas de vida',
   calendarios: 'Calendarios',
-  conectar: 'Claude y Siri',
+  conectar: 'Claude, Siri y Hermes',
   datos: 'Tus datos',
 } as const
 

@@ -14,7 +14,7 @@ export function useSecretLink(table: 'calendar_feeds' | 'mcp_connectors', extra:
   const [token, setToken] = useState<string | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
 
-  // Otro bloque con el mismo enlace (Claude y Siri) lo ha creado o cambiado
+  // Otro bloque con el mismo enlace (Claude, Siri y Hermes) lo ha creado o cambiado
   useEffect(() => {
     const on = (e: Event) => setToken((e as CustomEvent<string>).detail)
     window.addEventListener(`ntab-secret:${table}`, on)

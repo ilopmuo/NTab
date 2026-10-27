@@ -25,7 +25,8 @@ function Glyph({ def, active }: { def: Pick<HubDef, 'icon'>; active: boolean }) 
   if (def.icon === 'today')
     return (
       <span className="font-num flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.6px] border-current text-[9.5px] leading-none font-bold">
-        {new Date().getDate()}
+        {/* El número, siempre en el color del texto: en el acento no se leía bien con «Más contraste» */}
+        <span className="text-fg">{new Date().getDate()}</span>
       </span>
     )
   return <def.icon size={18} strokeWidth={active ? 2.4 : 2} />

@@ -1,6 +1,6 @@
 /**
  * Servidor MCP (Model Context Protocol) de LUNO: responde a los mensajes
- * JSON-RPC que envía Claude. El almacenamiento se inyecta (`Store`), así que
+ * JSON-RPC que envía el asistente (Claude, Hermes…). El almacenamiento se inyecta (`Store`), así que
  * se puede probar sin Supabase (src/lib/mcp.test.ts).
  */
 import { houseAdd, houseDone, houseView, type HouseCtx } from './casa.ts'
@@ -1093,7 +1093,7 @@ export async function handleMessage(msg: RpcRequest, store: Store, env: Env): Pr
         return fail(msg.id, -32601, `Método no disponible: ${msg.method}`)
     }
   } catch (e) {
-    // Un fallo al leer o guardar se devuelve como error de la herramienta para que Claude lo cuente
+    // Un fallo al leer o guardar se devuelve como error de la herramienta para que el asistente lo cuente
     if (msg.method === 'tools/call') return ok(msg.id, text(`No se pudo completar: ${e instanceof Error ? e.message : String(e)}`, true))
     return fail(msg.id, -32603, e instanceof Error ? e.message : 'Error interno')
   }
