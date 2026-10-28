@@ -6,7 +6,10 @@
  */
 export const HERMES_SERVER = 'luno'
 
-/** El trozo de ~/.hermes/config.yaml que añade LUNO (las herramientas se llaman mcp_luno_…) */
+/**
+ * El trozo de ~/.hermes/config.yaml que añade LUNO (las herramientas se llaman
+ * mcp_luno_…). `?via=hermes`: lo que cree queda como «apuntado por Hermes».
+ */
 export function hermesConfig(url: string) {
-  return `mcp_servers:\n  ${HERMES_SERVER}:\n    url: "${url}"\n    timeout: 120\n`
+  return `mcp_servers:\n  ${HERMES_SERVER}:\n    url: "${url}?via=hermes"\n    timeout: 120\n`
 }

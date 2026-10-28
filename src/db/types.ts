@@ -157,6 +157,14 @@ export interface Task {
   waitingFor?: string
   /** YYYY-MM-DD: desde cuándo se espera */
   waitingSince?: string
+  /** qué se espera de esa persona («el presupuesto»): para saber cuándo cerrar la espera */
+  waitingWhat?: string
+  /**
+   * De dónde salió (cuando no la apuntó en la app): quién la apuntó (siri,
+   * claude, hermes…), lo que se dijo tal cual y el correo, mensaje o reunión
+   * del que viene
+   */
+  origin?: { via: string; text?: string; kind?: string; link?: string; about?: string }
   /** de qué casilla de qué nota salió (al hacerla, se marca allí) */
   source?: { noteId: ID; line: string }
   projectId?: ID

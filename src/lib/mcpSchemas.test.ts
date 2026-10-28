@@ -50,7 +50,14 @@ describe('la skill de LUNO para Hermes (hermes/luno/SKILL.md)', () => {
   })
 
   it('solo nombra herramientas que existen, y las nombra todas', () => {
-    const notTools = new Set(['luno', 'importante', 'mcp_luno_ver_resumen', 'insistir', 'esperando'])
+    // Los parámetros de las herramientas también se pueden nombrar
+    const params = new Set<string>()
+    const walk = (x: Schema) => {
+      for (const [k, v] of Object.entries(x.properties ?? {})) (params.add(k), walk(v))
+      if (x.items) walk(x.items)
+    }
+    TOOLS.forEach((t) => walk(t.inputSchema as Schema))
+    const notTools = new Set(['luno', ...params])
     expect([...mentioned].filter((n) => !names.has(n) && !notTools.has(n) && !n.startsWith('mcp_'))).toEqual([])
     expect([...names].filter((n) => !mentioned.has(n))).toEqual([])
   })
@@ -58,6 +65,6 @@ describe('la skill de LUNO para Hermes (hermes/luno/SKILL.md)', () => {
 
 describe('configuración de Hermes', () => {
   it('el bloque luno de ~/.hermes/config.yaml, con la URL privada', () => {
-    expect(hermesConfig('https://x.supabase.co/functions/v1/mcp/abc')).toBe('mcp_servers:\n  luno:\n    url: "https://x.supabase.co/functions/v1/mcp/abc"\n    timeout: 120\n')
+    expect(hermesConfig('https://x.supabase.co/functions/v1/mcp/abc')).toBe('mcp_servers:\n  luno:\n    url: "https://x.supabase.co/functions/v1/mcp/abc?via=hermes"\n    timeout: 120\n')
   })
 })

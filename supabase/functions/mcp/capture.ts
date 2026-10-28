@@ -48,6 +48,7 @@ import {
   type Task,
   type WriteResult,
 } from './ntab.ts'
+import { sameTask, unclearTask } from '../_shared/doubt.ts'
 
 type Data = Record<string, unknown>
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -766,6 +767,13 @@ function newTask(rows: Row[], text: string, fields: CaptureInput, env: Env, proj
   // Sin lo que se dice para pedirla: «recuérdame que tengo que…», «oye, apunta que…»
   const title = tidyTitle(parsed.title)
   if (!title && !link) return { writes: [], report: ['No he entendido qué apuntar.'] }
+  // Mejor preguntar que apuntar algo que no se ha entendido, o apuntarlo dos veces
+  if (!link) {
+    const unclear = unclearTask(title)
+    if (unclear) return { writes: [], report: [`No te he entendido bien: ${unclear.ask} Dímelo otra vez.`] }
+    const same = sameTask(title, ix.tasks)
+    if (same) return { writes: [], report: [`Ya lo tenías apuntado: ${same.title}${same.dueDate ? `, ${spokenDay(same.dueDate, today)}` : ''}.`] }
+  }
   let task: Task = {
     id: env.newId(),
     title: link ? linkTask(title, link.url, fields.titulo).title : title,
@@ -776,6 +784,8 @@ function newTask(rows: Row[], text: string, fields: CaptureInput, env: Env, proj
     subtasks: [],
     order: env.now,
     createdAt: env.now,
+    // Lo que se dictó tal cual, por si la tarea no queda como esperaba
+    origin: { via: env.via || 'siri', text: text.slice(0, 500), kind: 'voz' },
   }
   if (parsed.dueDate) task.dueDate = parsed.dueDate
   if (parsed.dueTime) task.dueTime = parsed.dueTime

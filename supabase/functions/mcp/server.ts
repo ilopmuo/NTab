@@ -6,10 +6,11 @@
 import { houseAdd, houseDone, houseView, type HouseCtx } from './casa.ts'
 import type { HouseOp } from '../_shared/house.ts'
 import { ymdIn } from '../_shared/time.ts'
-import { takeMed, viewMeds } from './meds.ts'
+import { saveMed, takeMed, viewMeds } from './meds.ts'
 import { createHabit, listHabits, updateHabit } from './habits.ts'
 import { createRoutine, deleteRoutines, listRoutines, updateRoutine } from './routines.ts'
-import { DAYS_SCHEMA } from './days.ts'
+import { DAYS_SCHEMA, parseDays } from './days.ts'
+import { changeRecorder, historyText, logRow, newEntry, readLog, undoPlan } from './agentLog.ts'
 import { logFocus, markDone, markRoutine, tellDay, tickShopping } from './day.ts'
 import { createGoal, logContactTool, savePerson, updateProject } from './organize.ts'
 import { buildSummary, eventLines, type EventLike, createNote, createProject, markReturned, saveThing, whereIs, lastTime, logLastTime, addShopping, listShopping, readJournal, writeJournal, whatNow, addExpenseTool, listExpenses, readMenu, planMenu, createRecipe, addCountdown, createTasks, listTemplates, markHabit, markPaid, savePayment, searchNotes, appendNoteTool, searchTasks, updateGoal, updateTasks, useTemplate, type Change, type Env, type NewTask, type Row, type SearchArgs } from './ntab.ts'
@@ -23,7 +24,7 @@ export interface Store {
   load(tables?: string[]): Promise<Row[]>
   save(rows: Row[], deletes?: Row[]): Promise<void>
   /** eventos de los calendarios externos entre dos instantes (ms) */
-  events?(from: number, to: number): Promise<{ events: EventLike[]; names: Record<string, string> }>
+  events?(from: number, to: number): Promise<{ events: EventLike[]; names: Record<string, string>; errors?: { sourceId: string; name: string; error: string }[] }>
   /** su casa compartida (si tiene) y guardar cambios en ella */
   house?(): Promise<HouseCtx | null>
   houseOps?(ops: HouseOp[]): Promise<void>
@@ -78,6 +79,19 @@ const TASK_ITEM = {
     insistir: NAG,
     importante: { type: 'boolean', description: 'De lo importante del día (hasta 3; de hoy si no tiene fecha)' },
     esperando: { type: 'string', description: 'A la espera de esta persona (algo que depende de otro: «le he pedido a Ana el presupuesto»). Sin fecha, vuelve en 3 días para que pregunte' },
+    espero: { type: 'string', description: 'Con esperando: qué respuesta o cosa se espera («el presupuesto»), para saber cuándo cerrar la espera' },
+    texto_original: { type: 'string', description: 'Lo que dijo o escribió el usuario, tal cual (se guarda con la tarea)' },
+    origen: {
+      type: 'object',
+      description: 'De dónde sale: el correo, mensaje o reunión, para poder volver a él',
+      properties: {
+        tipo: { type: 'string', description: 'correo, mensaje, reunión, voz, nota…' },
+        enlace: { type: 'string', description: 'URL del correo, mensaje o reunión si la hay' },
+        descripcion: { type: 'string', description: '«Correo de Ana del martes», «reunión de equipo»' },
+      },
+    },
+    confirmado: { type: 'boolean', description: 'Crearla aunque parezca incompleta (solo si ya se lo has preguntado y es así)' },
+    duplicar: { type: 'boolean', description: 'Crearla aunque ya haya una igual pendiente (solo si es otra distinta)' },
   },
   required: ['titulo'],
 }
@@ -184,7 +198,7 @@ export const TOOLS = [
     name: 'crear_tareas',
     title: 'Crear tareas',
     description:
-      'Crea una o varias tareas en LUNO (por ejemplo, a partir de un email o una lista). Las tareas con hora avisan a su hora si el usuario tiene activado el aviso automático.',
+      'Crea una o varias tareas en LUNO (por ejemplo, a partir de un email o una lista). Las tareas con hora avisan a su hora si el usuario tiene activado el aviso automático. Guarda con cada una lo que dijo tal cual (texto_original) y de dónde sale (origen). No crea lo que no parece entendido («Sacar», «Llamar a», un dictado a medias) ni lo que ya tiene pendiente: lo dice con NO CREADA o YA LA TENÍA y la pregunta que hacerle.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -225,6 +239,12 @@ export const TOOLS = [
               insistir: { type: ['integer', 'null'], minimum: 5, description: 'Repetir el aviso cada N minutos hasta que la haga, o null para dejar de insistir' },
               importante: { type: 'boolean', description: 'true: de lo importante de hoy (hasta 3, arriba en su Hoy); false: quitarlo' },
               esperando: { type: ['string', 'null'], description: 'A la espera de esta persona (vuelve a Hoy en 3 días si no tiene fecha), o null si ya no espera nada' },
+              espero: { type: ['string', 'null'], description: 'Qué se espera de esa persona («el presupuesto»), o null para quitarlo' },
+              origen: {
+                type: 'object',
+                description: 'De dónde sale: el correo, mensaje o reunión',
+                properties: { tipo: { type: 'string' }, enlace: { type: 'string' }, descripcion: { type: 'string' } },
+              },
             },
             required: ['id'],
           },
@@ -676,6 +696,31 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
+    name: 'guardar_medicacion',
+    title: 'Dar de alta o cambiar un medicamento',
+    description:
+      'Apunta un medicamento nuevo o cambia uno que ya tiene (dosis, horas, días, cuánto dura el tratamiento, cuántas quedan), o lo deja con dejar=true. SOLO con la pauta que diga el usuario: nunca deduzcas dosis ni horas; si falta algo, pregúntaselo. Le avisa a cada hora como en la app.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        medicamento: { type: 'string', description: 'Nombre (si ya existe, se cambia ese)' },
+        dosis: { type: 'string', description: '«600 mg», «1 comprimido», «10 gotas»' },
+        horas: { type: 'array', items: { type: 'string' }, description: 'Horas de las tomas, HH:MM' },
+        dias: DAYS_SCHEMA('Días de la semana de las tomas (sin ellos, todos)'),
+        cuando_haga_falta: { type: 'boolean', description: 'Sin horas fijas («si me duele la cabeza»)' },
+        maximo_al_dia: { type: 'integer', minimum: 1, description: 'Con cuando_haga_falta: como mucho N al día' },
+        dias_tratamiento: { type: 'integer', minimum: 1, description: 'Tratamiento de N días desde hoy (o desde que empezó)' },
+        hasta: { ...DATE, description: 'Último día del tratamiento' },
+        quedan: { type: 'integer', minimum: 0, description: 'Unidades que le quedan en casa' },
+        por_toma: { type: 'integer', minimum: 1, description: 'Unidades por toma (1 si no lo dice)' },
+        nota: { type: 'string', description: '«con comida», «en ayunas»' },
+        dejar: { type: 'boolean', description: 'true: ya no lo toma (sale de la medicación)' },
+      },
+      required: ['medicamento'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: 'ultima_vez',
     title: 'Última vez',
     description: '¿Cuándo fue la última vez que hizo algo que hace de vez en cuando (cambiar las sábanas, ir al dentista, regar las plantas)? Sin «cosa», lista todo.',
@@ -898,7 +943,30 @@ export const TOOLS = [
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
+  {
+    name: 'ver_historial',
+    title: 'Ver lo que han hecho los asistentes',
+    description: 'Lo último que han cambiado los asistentes (Claude, Hermes…) en LUNO: cuándo, quién, qué y el id de cada operación para deshacerla.',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'deshacer',
+    title: 'Deshacer una operación',
+    description: 'Deja como estaba lo que cambió una operación de un asistente (su id sale al hacerla y en ver_historial; sin id, la última de este asistente). Lo que haya cambiado después no se pisa.',
+    inputSchema: { type: 'object', properties: { operacion: { type: 'string', description: 'Id de la operación (8 letras y números)' } } },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }
 ]
+
+/** Las herramientas que cambian algo: con historial, deshacer, vista previa e identificador de petición */
+export const WRITE_TOOLS = new Set(TOOLS.filter((t) => !t.annotations.readOnlyHint && t.name !== 'deshacer').map((t) => t.name))
+for (const t of TOOLS) {
+  if (!WRITE_TOOLS.has(t.name)) continue
+  const props = (t.inputSchema as { properties: Record<string, unknown> }).properties
+  props.peticion_id = { type: 'string', description: 'Identificador único de esta petición (p. ej. un UUID): si la llamada se repite por un reintento, no se hace dos veces' }
+  props.simular = { type: 'boolean', description: 'true: no guarda nada y cuenta lo que haría (vista previa para cambios grandes)' }
+}
 
 interface RpcRequest {
   jsonrpc: '2.0'
@@ -912,17 +980,78 @@ const ok = (id: RpcRequest['id'], result: unknown) => ({ jsonrpc: '2.0', id, res
 const fail = (id: RpcRequest['id'], code: number, message: string) => ({ jsonrpc: '2.0', id: id ?? null, error: { code, message } })
 const text = (s: string, isError = false) => ({ content: [{ type: 'text', text: s }], ...(isError ? { isError: true } : {}) })
 
+/**
+ * Todo lo que cambia algo pasa por aquí (ver agentLog.ts): con `simular` no se
+ * guarda nada y se enseña lo que haría; con `peticion_id` un reintento no lo
+ * hace dos veces; y queda en el historial para deshacerlo.
+ */
 async function callTool(name: string, args: Record<string, unknown>, store: Store, env: Env) {
+  if (name === 'ver_historial') return text(historyText(readLog(await store.load()), env.now))
+  if (name === 'deshacer') return undoTool(args, store, env)
+  if (!WRITE_TOOLS.has(name)) return runTool(name, args, store, env)
+
+  const rows = await store.load()
+  const log = readLog(rows)
+  const req = typeof args.peticion_id === 'string' ? args.peticion_id.trim().slice(0, 100) : ''
+  const done = req ? log.find((e) => e.req === req) : undefined
+  if (done) return text(`Ya estaba hecho (peticion_id ${req}, operación ${done.id}): ${done.summary}. No lo repito.`)
+
+  const simulate = args.simular === true
+  const recorder = changeRecorder(rows)
+  const proxy: Store = {
+    ...store,
+    async save(writes, deletes = []) {
+      recorder.add(writes, deletes)
+      if (!simulate) await store.save(writes, deletes)
+    },
+    houseOps: simulate ? async () => {} : store.houseOps,
+  }
+  const result = await runTool(name, args, proxy, env)
+  if (!result) return result
+  const said = result.content.map((c) => c.text).join('\n')
+  const changes = recorder.list
+  if (simulate) {
+    const what = changes.length ? `cambiaría ${changes.length} ${changes.length === 1 ? 'cosa' : 'cosas'}` : 'no cambiaría nada'
+    return text(`VISTA PREVIA (no se ha guardado nada; ${what}). Si le parece bien, repite la llamada sin simular:\n${said}`, result.isError === true)
+  }
+  if (!changes.length) return result
+  const entry = newEntry({ id: env.newId().replace(/-/g, '').slice(0, 8), at: env.now, via: env.via || 'asistente', tool: name, req: req || undefined, summary: said.split('\n')[0] ?? name, changes })
+  await store.save([logRow([...readLog(await store.load(['settings'])), entry])])
+  // Aparte, para que la respuesta siga siendo la misma y el asistente sepa cómo deshacerla
+  return { ...result, content: [...result.content, { type: 'text', text: `(Operación ${entry.id}${entry.noUndo ? '' : ': se puede deshacer con deshacer'})` }] }
+}
+
+/** deshacer: deja como estaba lo que cambió una operación (la última, si no se dice cuál) */
+async function undoTool(args: Record<string, unknown>, store: Store, env: Env) {
+  const rows = await store.load()
+  const log = readLog(rows)
+  const wanted = typeof args.operacion === 'string' ? args.operacion.trim() : ''
+  const entry = wanted ? log.find((e) => e.id === wanted) : [...log].reverse().find((e) => !e.undone && (!env.via || e.via === env.via))
+  if (!entry) return text(wanted ? `No encuentro la operación ${wanted}. Mira ver_historial.` : 'No hay nada que deshacer.', true)
+  if (entry.undone) return text(`La operación ${entry.id} ya estaba deshecha.`)
+  if (entry.noUndo) return text(`La operación ${entry.id} (${entry.summary}) era demasiado grande para guardar cómo estaba: no se puede deshacer.`, true)
+  const plan = undoPlan(entry, rows)
+  const marked = log.map((e) => (e.id === entry.id ? { ...e, undone: env.now } : e))
+  await store.save([...plan.writes, logRow(marked)], plan.deletes)
+  const n = plan.writes.length + plan.deletes.length
+  return text(
+    `Deshecho: ${entry.summary} (${n} ${n === 1 ? 'cambio' : 'cambios'}).${plan.skipped.length ? ` No he tocado lo que ha cambiado después: ${plan.skipped.join(', ')}.` : ''}`,
+  )
+}
+
+async function runTool(name: string, args: Record<string, unknown>, store: Store, env: Env) {
   const rows = await store.load()
   switch (name) {
     case 'ver_resumen': {
-      const cal = store.events ? await store.events(env.now - 864e5, env.now + 8 * 864e5).catch(() => undefined) : undefined
+      // Si no se pueden leer los calendarios, se dice (y no se da el día por libre)
+      let failed = false
+      const cal = store.events ? await store.events(env.now - 864e5, env.now + 8 * 864e5).catch(() => ((failed = true), undefined)) : undefined
       const house = store.house ? ((await store.house().catch(() => null)) ?? undefined) : undefined
       if (cal) {
         const soon = cal.events.filter((e) => Date.parse(e.allDay ? `${e.end}T00:00:00Z` : e.end) > env.now)
-        return text(buildSummary(rows, env, { events: soon, names: cal.names }, house))
+        return text(buildSummary(rows, env, { events: soon, names: cal.names, errors: cal.errors ?? [] }, house))
       }
-      return text(buildSummary(rows, env, undefined, house))
+      return text(buildSummary(rows, env, failed ? { events: [], names: {}, errors: [], failed: true } : undefined, house))
     }
     case 'ver_casa':
     case 'anadir_a_casa':
@@ -953,7 +1082,8 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       if (!Array.isArray(args.tareas)) return text('Falta la lista "tareas".', true)
       const r = createTasks(rows, args.tareas as NewTask[], env)
       if (r.writes.length) await store.save(r.writes)
-      return text(r.report.join('\n'), !r.writes.length)
+      // No crear algo dudoso o repetido no es un error: es una pregunta para el usuario
+      return text(r.report.join('\n'), !r.writes.length && !r.report.some((l) => l.startsWith('NO CREADA') || l.startsWith('YA LA TENÍA')))
     }
     case 'actualizar_tareas': {
       if (!Array.isArray(args.cambios)) return text('Falta la lista "cambios".', true)
@@ -1005,6 +1135,11 @@ async function callTool(name: string, args: Record<string, unknown>, store: Stor
       return text(listShopping(await store.load()))
     case 'ver_medicacion':
       return text(viewMeds(rows, args, env))
+    case 'guardar_medicacion': {
+      const r = saveMed(rows, args, env, parseDays)
+      if (r.writes.length) await store.save(r.writes)
+      return text(r.report.join('\n'), !r.writes.length && /^Falta|No he guardado/.test(r.report.join(' ')))
+    }
     case 'tomar_medicacion': {
       const r = takeMed(rows, args, env)
       if (r.writes.length) await store.save(r.writes)

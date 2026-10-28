@@ -11,9 +11,11 @@ Usa el mismo conector que Claude (el servidor MCP de `supabase/functions/mcp`, c
    ```yaml
    mcp_servers:
      luno:
-       url: "https://<tu-proyecto>.supabase.co/functions/v1/mcp/<tu-token>"
+       url: "https://<tu-proyecto>.supabase.co/functions/v1/mcp/<tu-token>?via=hermes"
        timeout: 120
    ```
+
+   El `?via=hermes` del final hace que lo que cree quede como «Apuntada por Hermes» (con lo que dijiste tal cual) y que su historial y su «deshacer» sean los suyos. Si ya lo tenías sin él, añádelo.
 
 2. **Descargar la skill de LUNO** (o copia [`luno/SKILL.md`](luno/SKILL.md)) y guárdala como `~/.hermes/skills/luno/SKILL.md`. Le explica a Hermes qué herramienta usar en cada caso, cómo planificar con tus huecos y tus reuniones y cómo escribirte cuando es él quien empieza.
 3. En Hermes, `/reload-mcp` (o reinícialo). Las herramientas aparecen como `mcp_luno_ver_resumen`, `mcp_luno_crear_tareas`… Prueba: «¿Qué tengo hoy en LUNO?».
@@ -27,6 +29,14 @@ Pídeselo con tus palabras y él programa las tareas (la skill trae las recetas)
 - «A las 21:30 cerramos el día»: lo hecho, qué pasa con lo que queda y «¿qué tal el día?» para el diario.
 - «Los domingos a las 7, revisión semanal»: proyectos que piden atención, lo que esperas de otros, hábitos y dinero frente al presupuesto, con consejos que puede hacer por ti.
 - Desde cualquier chat: «apunta llamar al casero mañana a las 10», «he gastado 30 en la gasolinera», una nota de voz contándole el día o un mensaje reenviado («mira lo que me dice Ana»).
+
+## Para poder fiarse
+
+- **Agenda**: el resumen dice qué calendarios tiene LUNO y si se han leído bien. Sin calendarios (o si alguno falla), Hermes sabe que no conoce tus reuniones y no te da el día por libre: conéctalos en LUNO → Ajustes → Calendarios (el enlace .ics de Google personal y de trabajo).
+- **Captura**: lo que no se entiende («Sacar», «Llamar a», un dictado a medias) no se crea: vuelve la pregunta que hacerte. Lo que ya tienes pendiente tampoco se duplica. Cada tarea guarda quién la apuntó, lo que dijiste tal cual y el correo, mensaje o reunión del que sale (en la app, debajo del título, con «Abrir»).
+- **Esperas**: con quién y qué se espera («Ana · el presupuesto»), para que Hermes pueda cerrar la espera cuando vea que ha llegado en vez de recordártela.
+- **Cambios reversibles**: cada llamada que cambia algo queda en el historial (`ver_historial`) con un id que se puede `deshacer` (lo que cambió después no se pisa). Con `simular=true` enseña lo que haría sin guardar nada (para cambios grandes) y con `peticion_id` un reintento no crea dos tareas o dos gastos.
+- **Medicación**: `guardar_medicacion` da de alta o cambia un tratamiento solo con la pauta que tú digas; si falta la hora, pregunta.
 
 ## Seguridad
 

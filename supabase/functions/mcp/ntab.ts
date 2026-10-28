@@ -22,6 +22,7 @@ import { MAX_IMPORTANT, STUCK, countByDay, goalStreak, isPostpone, postponedLabe
 import { WAIT_DAYS } from '../_shared/parse.ts'
 import { medLines } from './meds.ts'
 import { checkNoteLine, contactKind, trackerFor } from '../_shared/ripples.ts'
+import { sameTask, unclearTask } from '../_shared/doubt.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -64,6 +65,14 @@ export interface Task {
   /** a la espera de alguien: su fecha es cuándo volver a preguntar */
   waitingFor?: string
   waitingSince?: string
+  /** qué se espera de esa persona («el presupuesto»): para saber cuándo cerrar la espera */
+  waitingWhat?: string
+  /**
+   * De dónde salió (cuando no la apuntó en la app): quién la apuntó (siri,
+   * claude, hermes…), lo que se dijo tal cual y el correo, mensaje o reunión
+   * del que viene
+   */
+  origin?: TaskOrigin
   order: number
   createdAt: number
   completedAt?: number
@@ -82,6 +91,19 @@ export interface Env {
   /** preferencia "Avisar a la hora de las tareas" */
   autoRemind: boolean
   newId: () => string
+  /** quién pide los cambios: siri, claude, hermes… (para el origen de lo que se crea) */
+  via?: string
+}
+
+export interface TaskOrigin {
+  via: string
+  /** lo que se dijo o escribió, tal cual */
+  text?: string
+  /** correo, mensaje, reunión, voz… */
+  kind?: string
+  link?: string
+  /** «correo de Ana del martes», «reunión de equipo» */
+  about?: string
 }
 
 type Data = Record<string, unknown>
@@ -234,7 +256,8 @@ function taskLine(t: Task, ix: Index, today: string) {
     where ? ` · ${where}` : '',
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
     t.people?.length ? ` · con ${ix.personNames(t.people).join(', ')}` : '',
-    t.waitingFor && !t.done ? ` · A LA ESPERA de ${t.waitingFor}${t.waitingSince ? ` desde ${relDay(t.waitingSince, today)}` : ''}` : '',
+    t.waitingFor && !t.done ? ` · A LA ESPERA de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? ` desde ${relDay(t.waitingSince, today)}` : ''}` : '',
+    t.origin?.about || t.origin?.link ? ` · sale de: ${[t.origin.about ?? t.origin.kind, t.origin.link].filter(Boolean).join(' ')}` : '',
     t.estimate ? ` · ~${minutesLabel(t.estimate)}` : '',
     t.nag ? ` · insiste cada ${t.nag} min` : '',
     t.recurrence ? ' · se repite' : '',
@@ -284,7 +307,7 @@ function loadLine(todays: Task[], meetings: EventLike[]) {
  * Reclaim o Motion): sin reuniones ni tareas con hora. Para que Claude sepa
  * dónde cabe algo antes de proponer una hora.
  */
-function freeLine(label: string, day: string, open: Task[], events: EventLike[], env: Env, from: number) {
+function freeLine(label: string, day: string, open: Task[], events: EventLike[], env: Env, from: number, knowsMeetings = true) {
   const busy: Block[] = [
     ...events
       .filter((e) => !e.allDay && ymdIn(Date.parse(e.start), env.tz) === day)
@@ -296,7 +319,8 @@ function freeLine(label: string, day: string, open: Task[], events: EventLike[],
   ]
   const start = Math.max(9 * 60, ceilTo(from, 15))
   if (start >= 20 * 60) return []
-  return [`HUECOS LIBRES ${label} (9–20 h, sin reuniones ni tareas con hora): ${slotsLabel(freeSlots(busy, start, 20 * 60)) || 'ninguno de media hora o más'}.`]
+  const what = knowsMeetings ? 'sin reuniones ni tareas con hora' : 'SOLO según sus tareas con hora: sin calendarios no se saben sus reuniones'
+  return [`HUECOS LIBRES ${label} (9–20 h, ${what}): ${slotsLabel(freeSlots(busy, start, 20 * 60)) || 'ninguno de media hora o más'}.`]
 }
 
 /** Lo importante de hoy (hasta tres), lo primero que mirar */
@@ -306,7 +330,11 @@ function waitingLines(open: Task[], today: string) {
   if (!list.length) return []
   return [
     `\nA LA ESPERA DE OTRAS PERSONAS (${list.length}) — dependen de otro: el día de su fecha toca preguntarle (no proponerlas como trabajo suyo):`,
-    ...list.map((t) => `- [${t.id}] ${t.title}: de ${t.waitingFor}${t.waitingSince ? `, desde ${relDay(t.waitingSince, today)}` : ''}${t.dueDate ? `; volver a preguntar ${relDay(t.dueDate, today)} (${t.dueDate})` : ''}`),
+    ...list.map(
+      (t) =>
+        `- [${t.id}] ${t.title}: de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? `, desde ${relDay(t.waitingSince, today)}` : ''}${t.dueDate ? `; volver a preguntar ${relDay(t.dueDate, today)} (${t.dueDate})` : ''}${t.origin?.about || t.origin?.link ? `; sale de: ${[t.origin.about ?? t.origin.kind, t.origin.link].filter(Boolean).join(' ')}` : ''}`,
+    ),
+    'Si sabes que ya ha llegado lo que espera (lo has visto en su correo o sus mensajes), no se lo recuerdes: propón cerrar la espera (actualizar_tareas con hecha=true o esperando=null).',
   ]
 }
 
@@ -348,7 +376,31 @@ function focusLines(rows: Row[], env: Env, today: string) {
 }
 
 /** Resumen de todo LUNO para que Claude responda y planifique */
-export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLike[]; names: Record<string, string> }, house?: HouseCtx): string {
+/** Lo que se sabe de sus calendarios: cuáles hay, cuáles fallan, o que no hay ninguno */
+export interface CalendarCtx {
+  events: EventLike[]
+  names: Record<string, string>
+  errors?: { sourceId: string; name: string; error: string }[]
+  /** no se pudieron leer (fallo del servidor) */
+  failed?: boolean
+}
+
+/**
+ * Para no dar el día por libre sin saberlo: qué calendarios se han leído bien
+ * ahora mismo y cuáles no, o que no hay ninguno conectado.
+ */
+export function calendarStatus(calendar: CalendarCtx | undefined): string {
+  const unknown = 'no sabes sus reuniones: NO des el día por libre ni propongas horas como si lo estuviera; pregúntale o propón que conecte sus calendarios en LUNO → Ajustes → Calendarios (enlace .ics de Google, iCloud u Outlook).'
+  if (!calendar || calendar.failed) return `CALENDARIOS: ${calendar?.failed ? 'no se han podido leer ahora mismo' : 'ninguno conectado a LUNO'}; ${unknown}`
+  const names = Object.entries(calendar.names)
+  if (!names.length) return `CALENDARIOS: ninguno conectado a LUNO; ${unknown}`
+  const errors = new Map((calendar.errors ?? []).map((e) => [e.sourceId, e.error]))
+  const parts = names.map(([id, name]) => (errors.has(id) ? `${name} (ERROR al leerlo: ${errors.get(id)})` : `${name} (leído bien ahora)`))
+  const warn = errors.size ? ' Los que dan error no cuentan en los huecos: avísale y no des por libre lo que dependa de ellos.' : ''
+  return `CALENDARIOS: ${parts.join(', ')}.${warn}`
+}
+
+export function buildSummary(rows: Row[], env: Env, calendar?: CalendarCtx, house?: HouseCtx): string {
   const today = ymdIn(env.now, env.tz)
   const ix = new Index(rows)
   const open = ix.tasks.filter((t) => !t.done)
@@ -359,20 +411,23 @@ export function buildSummary(rows: Row[], env: Env, calendar?: { events: EventLi
   const undated = open.filter((t) => !due(t) && !t.someday).sort((a, b) => b.priority - a.priority || a.order - b.order)
   const someday = open.filter((t) => !due(t) && t.someday)
   const doneWeek = ix.tasks.filter((t) => t.done && num(t.completedAt) >= env.now - 7 * 864e5)
+  // ¿Se saben sus reuniones? Sin calendarios (o si no se han podido leer), no
+  const knows = !!calendar && !calendar.failed && Object.keys(calendar.names).length > 0
   const limit = (list: Task[], n: number) => [...list.slice(0, n).map((t) => taskLine(t, ix, today)), ...(list.length > n ? [`(y ${list.length - n} más: usa buscar_tareas)`] : [])]
 
   const s: string[] = [
     `HOY: ${longDate(today)} (${today}), son las ${hhmmIn(env.now, env.tz)} (${env.tz}). Semana: del ${weekStart(today)} al ${addDays(weekStart(today), 6)}.`,
     loadLine(open.filter((t) => t.dueDate === today), (calendar?.events ?? []).filter((e) => !e.allDay && ymdIn(Date.parse(e.start), env.tz) === today)),
-    ...freeLine('HOY', today, open, calendar?.events ?? [], env, toMin(hhmmIn(env.now, env.tz))),
-    ...freeLine('MAÑANA', addDays(today, 1), open, calendar?.events ?? [], env, 0),
+    ...freeLine('HOY', today, open, calendar?.events ?? [], env, toMin(hhmmIn(env.now, env.tz)), knows),
+    ...freeLine('MAÑANA', addDays(today, 1), open, calendar?.events ?? [], env, 0, knows),
     ...importantLines(open, today),
     ...medLines(rows, env, today),
     ...waitingLines(open, today),
     ...goalLines(rows, ix.tasks, env, today),
     ...focusLines(rows, env, today),
     ...(house ? houseSummary(house, today) : []),
-    ...(calendar ? [`\nEVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (${calendar.events.length}) — solo lectura:`, ...eventLines(calendar.events, calendar.names, env)] : []),
+    calendarStatus(calendar),
+    ...(calendar && Object.keys(calendar.names).length ? [`\nEVENTOS DE SUS CALENDARIOS, PRÓXIMOS 7 DÍAS (${calendar.events.length}) — solo lectura:`, ...eventLines(calendar.events, calendar.names, env)] : []),
     `\nATRASADAS (${overdue.length}):`,
     ...limit(overdue, 60),
     `\nCON FECHA (${dated.length}):`,
@@ -581,6 +636,16 @@ export interface NewTask {
   importante?: boolean
   /** a la espera de esta persona */
   esperando?: string
+  /** qué se espera de ella («el presupuesto») */
+  espero?: string
+  /** lo que dijo o escribió el usuario, tal cual */
+  texto_original?: string
+  /** de dónde sale: correo, mensaje, reunión… con su enlace */
+  origen?: { tipo?: string; enlace?: string; descripcion?: string }
+  /** crearla aunque no parezca entendida (ya se le ha preguntado) */
+  confirmado?: boolean
+  /** crearla aunque ya haya una igual pendiente */
+  duplicar?: boolean
 }
 
 export interface Change {
@@ -600,6 +665,10 @@ export interface Change {
   importante?: boolean
   /** a la espera de esta persona; null para dejar de esperar */
   esperando?: string | null
+  /** qué se espera de ella («el presupuesto»); null para quitarlo */
+  espero?: string | null
+  /** de dónde sale: el correo, mensaje o reunión */
+  origen?: { tipo?: string; enlace?: string; descripcion?: string }
 }
 
 export interface WriteResult {
@@ -623,6 +692,18 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
   input.forEach((n, i) => {
     const title = str(n?.titulo).trim()
     if (!title) return
+    // Mejor preguntar que guardar algo que no se ha entendido
+    const unclear = n.confirmado === true ? undefined : unclearTask(title)
+    if (unclear) {
+      out.report.push(`NO CREADA «${title}»: ${unclear.why}. Pregúntale: «${unclear.ask}» y vuelve a crearla con el título claro (o con confirmado=true si de verdad es así).`)
+      return
+    }
+    // Ni dos veces lo mismo (también dentro de esta misma llamada)
+    const same = n.duplicar === true ? undefined : sameTask(title, [...ix.tasks, ...out.writes.filter((w) => w.tbl === 'tasks').map((w) => w.data as unknown as Task)])
+    if (same) {
+      out.report.push(`YA LA TENÍA: «${same.title}» [${same.id}]${same.dueDate ? ` (${relDay(same.dueDate, today)})` : ''}. No la he duplicado; si es otra distinta, vuelve a crearla con duplicar=true.`)
+      return
+    }
     const project = n.proyecto ? findByName(ix.projects, n.proyecto) : undefined
     const dueDate = isYmd(n.fecha) ? n.fecha : undefined
     let task: Task = {
@@ -640,8 +721,11 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
     if (dueDate && isHhmm(n.hora)) task.dueTime = normTime(n.hora)
     if (isYmd(n.fecha_limite)) task.deadline = n.fecha_limite
     if (n.algun_dia === true && !dueDate) task.someday = true
+    const origin = originOf(n, env)
+    if (origin) task.origin = origin
     if (str(n.esperando).trim()) {
       task.waitingFor = str(n.esperando).trim()
+      if (str(n.espero).trim()) task.waitingWhat = str(n.espero).trim()
       task.waitingSince = today
       delete task.someday
       // Se vuelve a mirar en unos días si no dice cuándo
@@ -687,6 +771,17 @@ export function createTasks(rows: Row[], input: NewTask[], env: Env): WriteResul
   }
   if (!out.report.length) out.report.push('No se creó ninguna tarea (faltaban los títulos).')
   return out
+}
+
+/** De dónde sale una tarea creada desde fuera de la app (quién, lo que se dijo y su correo o mensaje) */
+export function originOf(n: Pick<NewTask, 'texto_original' | 'origen'>, env: Env): TaskOrigin | undefined {
+  const o = n.origen && typeof n.origen === 'object' ? n.origen : {}
+  const origin: TaskOrigin = { via: env.via || 'asistente' }
+  if (str(n.texto_original).trim()) origin.text = str(n.texto_original).trim().slice(0, 500)
+  if (str(o.tipo).trim()) origin.kind = str(o.tipo).trim()
+  if (/^https?:\/\//i.test(str(o.enlace).trim())) origin.link = str(o.enlace).trim()
+  if (str(o.descripcion).trim()) origin.about = str(o.descripcion).trim().slice(0, 200)
+  return origin
 }
 
 /** Cuántas tareas pendientes son ya de lo importante de `day` (contando las de esta misma llamada) */
@@ -744,10 +839,17 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
     if (c.esperando === null) {
       delete t.waitingFor
       delete t.waitingSince
+      delete t.waitingWhat
     } else if (str(c.esperando).trim()) {
       t.waitingFor = str(c.esperando).trim()
       t.waitingSince = current.waitingFor ? (current.waitingSince ?? today) : today
       if (!isYmd(c.fecha) && (!t.dueDate || t.dueDate <= today)) t.dueDate = addDays(today, WAIT_DAYS)
+    }
+    if (c.espero === null) delete t.waitingWhat
+    else if (str(c.espero).trim() && t.waitingFor) t.waitingWhat = str(c.espero).trim()
+    if (c.origen && typeof c.origen === 'object') {
+      const o = originOf({ origen: c.origen }, env)
+      if (o) t.origin = { ...(current.origin ?? { via: o.via }), ...Object.fromEntries(Object.entries(o).filter(([k]) => k !== 'via')) }
     }
     if (c.proyecto === null) {
       delete t.projectId

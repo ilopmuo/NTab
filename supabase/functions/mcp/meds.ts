@@ -128,3 +128,78 @@ export function captureMed(rows: Row[], text: string, env: Env): WriteResult | u
   }
   return { writes: [], report: [(med ? [med] : meds).map(answer).join(' ')] }
 }
+
+const PILL_COLORS = ['#F2F2F7', '#FF9F0A', '#FF453A', '#0A84FF', '#30D158', '#BF5AF2', '#FFD60A', '#AC8E68']
+
+export interface SaveMedArgs {
+  medicamento?: unknown
+  dosis?: unknown
+  horas?: unknown
+  dias?: unknown
+  cuando_haga_falta?: unknown
+  maximo_al_dia?: unknown
+  dias_tratamiento?: unknown
+  hasta?: unknown
+  quedan?: unknown
+  por_toma?: unknown
+  nota?: unknown
+  dejar?: unknown
+}
+
+/**
+ * guardar_medicacion: da de alta un medicamento o cambia el que hay, SOLO con
+ * lo que diga el usuario (nunca se deducen dosis ni horas). «dejar» lo quita de
+ * la medicación (queda en el historial).
+ */
+export function saveMed(rows: Row[], args: SaveMedArgs, env: Env, parseDays: (v: unknown) => { days?: number[]; error?: string }): WriteResult {
+  const name = typeof args.medicamento === 'string' ? args.medicamento.trim() : ''
+  if (!name) return { writes: [], report: ['Falta el nombre del medicamento.'] }
+  const today = ymdIn(env.now, env.tz)
+  const all = rows.filter((r) => r.tbl === 'meds').map((r) => ({ ...r.data, id: r.id }) as Med)
+  const existing = findMed(all.filter((m) => !m.archived), name) ?? all.find((m) => m.name.toLowerCase() === name.toLowerCase())
+  const errors: string[] = []
+  const med: Med = existing
+    ? { ...existing, archived: 0 }
+    : ({ id: env.newId(), name: name.charAt(0).toUpperCase() + name.slice(1), times: [], from: today, archived: 0, color: PILL_COLORS[all.length % PILL_COLORS.length], order: env.now, createdAt: env.now } as unknown as Med)
+
+  if (args.dejar === true) {
+    if (!existing) return { writes: [], report: [`No tiene «${name}» en la medicación.`] }
+    return { writes: [{ tbl: 'meds', id: med.id, data: { ...existing, archived: 1 } }], report: [`${existing.name}: fuera de la medicación (queda en el historial).`] }
+  }
+  if (typeof args.dosis === 'string') med.dose = args.dosis.trim() || undefined
+  if (args.cuando_haga_falta === true) {
+    med.times = []
+    delete med.days
+  } else if (args.horas !== undefined) {
+    const list = (Array.isArray(args.horas) ? args.horas : String(args.horas).split(/[,;y\s]+/)).map((h) => String(h).trim()).filter(Boolean)
+    const bad = list.filter((h) => !/^\d{1,2}:\d{2}$/.test(h))
+    if (bad.length) errors.push(`Horas que no valen: ${bad.join(', ')} (usa HH:MM).`)
+    med.times = [...new Set(list.filter((h) => /^\d{1,2}:\d{2}$/.test(h)).map((h) => h.padStart(5, '0')))].sort()
+  }
+  if (args.dias !== undefined) {
+    const d = parseDays(args.dias)
+    if (d.error) errors.push(d.error)
+    else if (d.days) {
+      if (d.days.length >= 7) delete med.days
+      else med.days = d.days
+    }
+  }
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.round(v) : undefined)
+  if (args.maximo_al_dia !== undefined) med.maxPerDay = n(args.maximo_al_dia)
+  if (args.quedan !== undefined) med.stock = n(args.quedan)
+  if (args.por_toma !== undefined) med.perDose = n(args.por_toma) || undefined
+  if (typeof args.nota === 'string') med.note = args.nota.trim() || undefined
+  if (typeof args.hasta === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(args.hasta)) med.until = args.hasta
+  else if (n(args.dias_tratamiento)) med.until = addDays(existing ? (med.from ?? today) : today, n(args.dias_tratamiento)! - 1)
+  if (errors.length) return { writes: [], report: [...errors, 'No he guardado nada: corrígelo y vuelve a intentarlo.'] }
+  if (!existing && !med.times.length && args.cuando_haga_falta !== true)
+    return { writes: [], report: [`¿A qué horas se toma ${med.name}? Dímelo (o si es «cuando haga falta»): no me lo invento.`] }
+
+  // Sin campos vacíos (la app no los espera)
+  const data = Object.fromEntries(Object.entries(med).filter(([, v]) => v !== undefined))
+  const when = med.times.length ? `a las ${med.times.map(short).join(', ')}${med.days?.length ? ' (algunos días)' : ''}` : `cuando haga falta${med.maxPerDay ? `, máximo ${med.maxPerDay} al día` : ''}`
+  return {
+    writes: [{ tbl: 'meds', id: med.id, data }],
+    report: [`${existing ? 'Cambiado' : 'Apuntado'}: ${med.name}${med.dose ? ` (${med.dose})` : ''}, ${when}${med.until ? `, hasta el ${med.until}` : ''}${med.stock !== undefined ? `; quedan ${med.stock}` : ''}. Le avisaré a su hora.`],
+  }
+}

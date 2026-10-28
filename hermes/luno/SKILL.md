@@ -1,7 +1,7 @@
 ---
 name: luno
 description: Organiza la vida del usuario con LUNO (tareas, proyectos, hábitos, rutinas, medicación, compra, gastos, personas, notas, diario y casa compartida) a través del servidor MCP «luno». Úsala siempre que el usuario hable de algo que tiene que hacer, recordar, comprar, pagar, tomar o apuntar, pregunte por su día o su semana, cuente lo que ha hecho, o cuando toque un resumen programado (buenos días, cierre del día, revisión semanal).
-version: 1.0.0
+version: 1.1.0
 metadata:
   hermes:
     tags: [productividad, tareas, hábitos, finanzas, personal, español]
@@ -18,15 +18,18 @@ Habla siempre en **español**, con frases cortas. Los cambios se guardan al mome
 ## Antes de nada
 
 - Para cualquier pregunta sobre su día, su semana o para planificar: **primero `ver_resumen`**. Trae HOY, la agenda con sus calendarios, los HUECOS LIBRES, lo IMPORTANTE, lo ATRASADO, la MEDICACIÓN DE HOY, A LA ESPERA, los proyectos (los que llevan «OJO» piden atención), hábitos, objetivos, foco y la casa compartida.
-- Antes de cambios grandes (muchas tareas, reprogramar varias cosas, borrar), **propón el plan y espera a que diga que sí**. `borrar_rutina` manda a la Papelera: confirma antes.
+- Mira la línea **CALENDARIOS** del resumen: si no hay ninguno conectado o alguno da error, **no sabes sus reuniones**. No des el día por libre ni propongas horas como si lo estuviera: pregúntale, o propón que conecte sus calendarios en LUNO → Ajustes → Calendarios.
+- Antes de cambios grandes (muchas tareas, reprogramar varias cosas, borrar), **haz primero la llamada con `simular=true`**: no guarda nada y te dice qué cambiaría. Enséñaselo, espera a que diga que sí y repite sin `simular`. `borrar_rutina` manda a la Papelera: confirma antes.
+- En cada llamada que cambie algo, manda un **`peticion_id`** único (un UUID): si la conexión falla y reintentas con el mismo, LUNO no lo hace dos veces.
+- Todo lo que cambias queda en el historial con un id de operación. Si te equivocas o te lo pide: `deshacer` (la última tuya, o la de un id); para revisar qué has hecho: `ver_historial`.
 - Nunca enseñes ni repitas la URL del conector: quien la tenga puede ver y cambiar todo.
 
 ## Qué herramienta en cada caso
 
 | Lo que dice o pide | Herramienta |
 |---|---|
-| «Tengo que…», «recuérdame…», algo con fecha | `crear_tareas` (títulos cortos que empiecen por verbo; fechas `YYYY-MM-DD`, horas `HH:MM`). Si no puede olvidarlo: con hora e `insistir` |
-| Depende de otra persona («le he pedido a Ana el presupuesto») | `crear_tareas` con `esperando`: sale de Hoy y vuelve en unos días para que pregunte |
+| «Tengo que…», «recuérdame…», algo con fecha | `crear_tareas` (títulos cortos que empiecen por verbo; fechas `YYYY-MM-DD`, horas `HH:MM`), siempre con `texto_original` (lo que dijo tal cual) y, si sale de un correo, mensaje o reunión, `origen` con su enlace. Si no puede olvidarlo: con hora e `insistir`. Si contesta **NO CREADA**, no la inventes: hazle la pregunta que trae y vuelve a crearla con el título claro. Si contesta **YA LA TENÍA**, díselo (no la dupliques salvo que sea otra: `duplicar=true`) |
+| Depende de otra persona («le he pedido a Ana el presupuesto») | `crear_tareas` con `esperando` (quién) y `espero` (qué: «el presupuesto»), y su `origen`: sale de Hoy y vuelve en unos días para que pregunte. Si ves en su correo o sus mensajes que ya ha llegado, no se lo recuerdes: propón cerrar la espera |
 | Cambiar, posponer, completar una tarea concreta | `buscar_tareas` y luego `actualizar_tareas` |
 | «He hecho X» (sin decir qué es) | `marcar_hecho`: completa la tarea, el hábito, la rutina o la «Última vez» que encaje |
 | Me cuenta su día (lo que ha hecho, con quién habló, qué comió, en qué gastó, cómo está, qué hará mañana) | `contar_dia`, **todo de una vez**, con un resumen con sus palabras para el diario. Luego, en pocas líneas, qué has apuntado y pregunta lo que no encajó |
@@ -34,7 +37,7 @@ Habla siempre en **español**, con frases cortas. Los cambios se guardan al mome
 | Cosas de vez en cuando («he cambiado las sábanas») | `lo_he_hecho`; «¿cuándo fue la última vez?»: `ultima_vez` |
 | Hábitos | nuevo: `crear_habito`; ver con racha: `ver_habitos`; cambiar o dejar: `actualizar_habito`; «me he bebido 2 vasos»: `marcar_habito` |
 | Rutinas (pasos que hace siempre igual) | `crear_rutina`, `ver_rutinas`, `actualizar_rutina`, `marcar_rutina` |
-| Pastillas | «¿me la he tomado?»: MEDICACIÓN DE HOY en el resumen o `ver_medicacion`; «me la he tomado»: `tomar_medicacion` |
+| Pastillas | «¿me la he tomado?»: MEDICACIÓN DE HOY en el resumen o `ver_medicacion`; «me la he tomado»: `tomar_medicacion`. Un medicamento nuevo o un cambio de pauta: `guardar_medicacion`, **solo con la dosis, las horas y los días que diga él**: nunca los deduzcas; si falta algo, pregúntaselo |
 | Dónde dejó algo, a quién prestó algo, qué caduca | preguntar: `donde_esta`; contar: `guardar_cosa`; «me lo han devuelto»: `marcar_devuelto` |
 | Gastos e ingresos | `apuntar_gasto` (con etiqueta si es de un viaje), `apuntar_ingreso`; «¿cuánto me queda?», «¿cómo gasto menos?»: `ver_finanzas` (trae CONSEJOS: preséntalos y ofrece hacerlos); sin categoría: pregunta y `clasificar_gasto`; saldo de una cuenta o deuda: `actualizar_cuenta`; algo que se cobra cada mes o una prueba gratis: `guardar_pago`, `marcar_pago`; ver gastos: `ver_gastos` |
 | Personas | datos (cumpleaños, teléfono, ideas de regalo, cada cuánto hablar): `guardar_persona`; «he hablado con…»: `registrar_contacto` |
@@ -47,7 +50,8 @@ Habla siempre en **español**, con frases cortas. Los cambios se guardan al mome
 | Un rato concentrado en algo | `apuntar_foco` |
 | Fechas que espera (un viaje, un concierto) | `cuenta_atras` |
 | Listas que repite (maleta, cierre de mes) | `ver_plantillas`, `usar_plantilla` |
-| Reuniones de sus calendarios | están en el resumen; para otras fechas, `ver_eventos` |
+| Reuniones de sus calendarios | están en el resumen; para otras fechas, `ver_eventos`. LUNO solo las lee: para crear un bloque en su calendario usa tu propia herramienta de calendario, tras su sí |
+| Revisar o deshacer lo que has hecho | `ver_historial`, `deshacer` |
 
 ## Planificar bien
 

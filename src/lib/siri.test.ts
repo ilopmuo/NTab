@@ -56,7 +56,7 @@ describe('Siri: el dictado tal como llega', () => {
 
   it('el título sin lo que se dice para pedirla ni las muletillas', () => {
     const title = (s: string) => saved(say(s)).find((w) => w.tbl === 'tasks')?.data
-    expect(title('Recuérdame que tengo que llamar al dentista mañana por la mañana')).toMatchObject({ title: 'Llamar al dentista', dueDate: '2026-10-06', dueTime: '09:00' })
+    expect(title('Recuérdame que tengo que llamar a la gestoría mañana por la mañana')).toMatchObject({ title: 'Llamar a la gestoría', dueDate: '2026-10-06', dueTime: '09:00' })
     expect(title('Acuérdate de que mañana tengo que llevar el coche al taller')).toMatchObject({ title: 'Llevar el coche al taller', dueDate: '2026-10-06' })
     expect(title('Apúntame una tarea para revisar el contrato del piso el jueves')).toMatchObject({ title: 'Revisar el contrato del piso', dueDate: '2026-10-08' })
     expect(title('Por favor añade una tarea de enviar el informe al jefe el lunes')?.title).toBe('Enviar el informe al jefe')
@@ -71,6 +71,20 @@ describe('Siri: el dictado tal como llega', () => {
     expect(title('Pon la lavadora')?.title).toBe('Pon la lavadora')
     expect(title('Mira el correo de Hacienda')?.title).toBe('Mira el correo de Hacienda')
     expect(title('Voy a la peluquería el martes')?.title).toBe('Voy a la peluquería')
+  })
+
+  it('si no se entiende, pregunta en vez de apuntar; y no apunta dos veces lo mismo', () => {
+    let r = say('Sacar. También tengo que sacar.')
+    expect(saved(r)).toEqual([])
+    expect(r.report[0]).toBe('No te he entendido bien: ¿Qué tienes que sacar? Dímelo otra vez.')
+    r = say('Llamar a')
+    expect(saved(r)).toEqual([])
+    expect(r.report[0]).toBe('No te he entendido bien: ¿A quién tienes que llamar? Dímelo otra vez.')
+    r = say('Tengo que llamar al dentista')
+    expect(saved(r)).toEqual([])
+    expect(r.report[0]).toBe('Ya lo tenías apuntado: Llamar al dentista, hoy.')
+    // Lo que se dictó, con la tarea
+    expect(saved(say('Comprar sellos en Correos mañana')).find((w) => w.tbl === 'tasks')?.data.origin).toEqual({ via: 'siri', text: 'Comprar sellos en Correos mañana', kind: 'voz' })
   })
 
   it('«antes del viernes» es la fecha límite, y se dice', () => {

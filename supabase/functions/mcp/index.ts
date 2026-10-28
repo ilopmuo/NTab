@@ -81,7 +81,9 @@ Deno.serve(async (req) => {
   const userId = connector.user_id as string
 
 
-  const env: Env = { tz: connector.tz || 'Europe/Madrid', now: Date.now(), autoRemind: true, newId: () => crypto.randomUUID() }
+  // Quién pide: el atajo de Siri, o el asistente que diga la URL (?via=hermes); sin decirlo, Claude (el primero que la usó)
+  const via = (url.searchParams.get('via') ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 20) || (capturing ? 'siri' : 'claude')
+  const env: Env = { tz: connector.tz || 'Europe/Madrid', now: Date.now(), autoRemind: true, newId: () => crypto.randomUUID(), via }
 
   // Los registros del usuario, leídos una vez por petición (todos, o solo de unas tablas)
   const cache = new Map<string, Row[]>()
@@ -108,7 +110,7 @@ Deno.serve(async (req) => {
     },
     async events(from, to) {
       const r = await loadEvents(admin, userId, from, to)
-      return { events: r.events, names: r.names }
+      return { events: r.events, names: r.names, errors: r.errors }
     },
     // La casa compartida (ajuste `household`: el enlace del piso y quién es en él)
     async house() {

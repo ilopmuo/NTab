@@ -425,6 +425,7 @@ function TaskDetail({ task }: { task: Task }) {
         />
       </div>
       {task.source && <SourceNote noteId={task.source.noteId} />}
+      {task.origin && <Origin origin={task.origin} />}
 
       <div className="space-y-4 px-3">
         {/* Las notas, justo debajo del título (como en Things y Recordatorios) */}
@@ -796,6 +797,34 @@ function SourceNote({ noteId }: { noteId: string }) {
     <a href={`#/notes/${note.id}`} onClick={() => ui.closeTask()} data-source-note className="-mt-3 mb-4 ml-[58px] flex w-fit items-center gap-1.5 text-[13.5px] font-medium text-muted hover:text-fg">
       <StickyNote size={13} strokeWidth={2.4} aria-hidden /> De la nota «{note.title || 'Sin título'}»
     </a>
+  )
+}
+
+const VIA: Record<string, string> = { siri: 'Siri', claude: 'Claude', hermes: 'Hermes', chatgpt: 'ChatGPT' }
+
+/**
+ * De dónde salió la tarea, si no la apuntaste en la app: quién la apuntó, lo
+ * que se dijo tal cual (por si no quedó como esperabas) y el correo, mensaje o
+ * reunión del que viene.
+ */
+function Origin({ origin }: { origin: NonNullable<Task['origin']> }) {
+  const who = VIA[origin.via] ?? origin.via.charAt(0).toUpperCase() + origin.via.slice(1)
+  const from = origin.about ?? origin.kind
+  return (
+    <div data-task-origin className="-mt-3 mb-4 ml-[58px] space-y-0.5 text-[13.5px] text-muted">
+      <p className="flex flex-wrap items-center gap-x-1.5">
+        <span>
+          Apuntada por {who}
+          {from ? ` · ${from}` : ''}
+        </span>
+        {origin.link && (
+          <a href={origin.link} target="_blank" rel="noreferrer" className="font-medium text-blue hover:underline">
+            Abrir
+          </a>
+        )}
+      </p>
+      {origin.text && <p className="line-clamp-3 italic">«{origin.text}»</p>}
+    </div>
   )
 }
 
