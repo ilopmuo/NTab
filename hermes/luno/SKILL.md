@@ -1,7 +1,7 @@
 ---
 name: luno
 description: Organiza la vida del usuario con LUNO (tareas, proyectos, hábitos, rutinas, medicación, compra, gastos, personas, notas, diario y casa compartida) a través del servidor MCP «luno». Úsala siempre que el usuario hable de algo que tiene que hacer, recordar, comprar, pagar, tomar o apuntar, pregunte por su día o su semana, cuente lo que ha hecho, o cuando toque un resumen programado (buenos días, cierre del día, revisión semanal).
-version: 1.3.1
+version: 1.4.0
 metadata:
   hermes:
     tags: [productividad, tareas, hábitos, finanzas, personal, español]
@@ -22,6 +22,8 @@ Habla siempre en **español**, con frases cortas. Los cambios se guardan al mome
 - Antes de cambios grandes (muchas tareas, reprogramar varias cosas, borrar), **haz primero la llamada con `simular=true`**: no guarda nada y te dice qué cambiaría. Enséñaselo, espera a que diga que sí y repite sin `simular`. `borrar_rutina` manda a la Papelera: confirma antes.
 - En cada llamada que cambie algo, manda un **`peticion_id`** único (un UUID): si la conexión falla y reintentas con el mismo, LUNO no lo hace dos veces.
 - Todo lo que cambias queda en el historial con un id de operación. Si te equivocas o te lo pide: `deshacer` (la última tuya, o la de un id); para revisar qué has hecho: `ver_historial`.
+- Para saber qué ha cambiado desde la última vez (lo que ha hecho o movido desde el móvil, lo que han hecho otros asistentes): **`ver_novedades`**, mucho más corto que el resumen. Úsalo antes de escribirle por tu cuenta para no avisarle de algo que ya ha cambiado.
+- Cada vez que le escribas por tu cuenta, **`apuntar_aviso`** con de qué iba (`tema`), sobre qué (`sobre`: los ids de las tareas o esperas, o «resumen», «medicación»…) y por dónde (`canal`). Cuando conteste, `apuntar_aviso` con `aviso` y su `respuesta`. Los últimos salen en **AVISOS QUE YA LE HAN DADO** del resumen (y en `ver_esperas`): si algo está **SIN RESPUESTA** y no ha cambiado nada, no se lo repitas igual; si ha cambiado desde el aviso (lo ha hecho o movido), no insistas.
 - Nunca enseñes ni repitas la URL del conector: quien la tenga puede ver y cambiar todo.
 
 ## Qué herramienta en cada caso
@@ -53,6 +55,8 @@ Habla siempre en **español**, con frases cortas. Los cambios se guardan al mome
 | Listas que repite (maleta, cierre de mes) | `ver_plantillas`, `usar_plantilla` |
 | Reuniones de sus calendarios | están en el resumen; para otras fechas, `ver_eventos`. LUNO solo las lee: para crear un bloque en su calendario usa tu propia herramienta de calendario, tras su sí |
 | Revisar o deshacer lo que has hecho | `ver_historial`, `deshacer` |
+| ¿Qué ha cambiado desde la última vez? | `ver_novedades` (con `desde` para otra fecha; `sin_marcar` para solo mirar) |
+| Le has escrito por tu cuenta, o te ha contestado a eso | `apuntar_aviso` |
 
 ## Esperas que pueden haberse resuelto
 
@@ -94,6 +98,8 @@ Hermes está siempre encendido y le escribe por su canal (Telegram, WhatsApp…)
 6. **Fin de mes** (día 1, 10:00): `ver_finanzas`; cuánto ha ahorrado, en qué se ha ido más y un consejo que puedas hacer por él (y hazlo si dice que sí).
 
 Cuando le escribas tú primero: pocas líneas, sin listas largas, sin encabezados, lo más urgente arriba y como mucho una pregunta. Si no hay nada que contar, no le escribas.
+
+En todas las recetas: antes de escribir, mira AVISOS QUE YA LE HAN DADO (o `ver_novedades` si no necesitas el resumen entero) para no repetir lo que ya le dijo otro aviso; después de escribir, `apuntar_aviso`; y si contesta, apunta su respuesta.
 
 ## Desde cualquier conversación
 

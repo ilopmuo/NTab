@@ -6,6 +6,7 @@
  */
 import { ymdIn } from '../_shared/time.ts'
 import { KIND_BADGE, KIND_LABEL, SOURCE_LABEL, addReply, confirmReply, discardReply, pendingReplies, type WaitingReply } from '../_shared/waitReplies.ts'
+import { lastNoticeAbout } from './notices.ts'
 import { Index, findByName, relDay, updateTasks, waitStatus, type Env, type Row, type Task, type WriteResult } from './ntab.ts'
 
 type Data = Record<string, unknown>
@@ -49,6 +50,7 @@ export function listWaits(rows: Row[], args: Data, env: Env): string {
       t.waitingSince ? ` · desde ${relDay(t.waitingSince, today)} (${t.waitingSince})` : '',
       t.origin?.about || t.origin?.link ? ` · sale de: ${[t.origin.about ?? t.origin.kind, t.origin.link].filter(Boolean).join(' ')}` : '',
       ...waitStatus(t, today).map((x) => ` · ${x}`),
+      ...[lastNoticeAbout(rows, env, t.id)].filter(Boolean).map((x) => ` · ${x}`),
       discarded ? ` · ha descartado ${discarded} ${discarded === 1 ? 'mensaje' : 'mensajes'} (no se vuelven a proponer)` : '',
       ...pendingReplies(t).map((r) => `\n  ${replyLine(r, today)}.`),
     ].join('')

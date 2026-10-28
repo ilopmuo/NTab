@@ -24,6 +24,7 @@ import { medLines } from './meds.ts'
 import { checkNoteLine, contactKind, trackerFor } from '../_shared/ripples.ts'
 import { sameTask, unclearTask } from '../_shared/doubt.ts'
 import { KIND_BADGE, SOURCE_LABEL, followUp, pendingReplies, type WaitingReply } from '../_shared/waitReplies.ts'
+import { noticeLines } from './notices.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -448,6 +449,7 @@ export function buildSummary(rows: Row[], env: Env, calendar?: CalendarCtx, hous
     loadLine(open.filter((t) => t.dueDate === today), (calendar?.events ?? []).filter((e) => !e.allDay && ymdIn(Date.parse(e.start), env.tz) === today)),
     ...freeLine('HOY', today, open, calendar?.events ?? [], env, toMin(hhmmIn(env.now, env.tz)), knows),
     ...freeLine('MAÑANA', addDays(today, 1), open, calendar?.events ?? [], env, 0, knows),
+    ...noticeLines(rows, env),
     ...importantLines(open, today),
     ...medLines(rows, env, today),
     ...waitingLines(open, today),
