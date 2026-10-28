@@ -32,7 +32,7 @@ function waiting(id: string, title: string, who: string, what: string, reply: Pa
   return { id, title, notes: '', done: 0, priority: 0, tags: [], subtasks: [], order: 0, createdAt: Date.now(), dueDate: inDays(1), ...wait, waitingReplies: [r] }
 }
 
-test('una posible respuesta a una espera: se ve, no se insiste y solo se cierra si dices que sí', async ({ page }) => {
+test('una posible respuesta a una espera: se ve, solo se cierra si dices que sí y deshacer respeta lo cambiado después', async ({ page }) => {
   await openApp(page, '/today')
   await seed(page, {
     tasks: [
@@ -45,13 +45,14 @@ test('una posible respuesta a una espera: se ve, no se insiste y solo se cierra 
     ],
   })
 
-  // Sigue en A la espera, pero con la novedad
+  // Siguen en A la espera, cada una con su novedad
   await page.evaluate(() => (location.hash = '/waiting'))
   const main = page.locator('#main')
   await expect(main.locator('[data-task-id="t1"]')).toContainText('Esperando a Ana · el presupuesto · 3 días')
   await expect(main.locator('[data-task-id="t1"] [data-wait-news]')).toHaveText('Posible respuesta recibida')
-  // Con novedades sin decidir, no se ofrece insistirle
-  await expect(main.getByRole('button', { name: 'Recordárselo' })).toHaveCount(0)
+  await expect(main.locator('[data-task-id="t2"] [data-wait-news]')).toHaveText('Ha contestado · aún sin entregar')
+  // A Ana (posible entrega sin decidir) no se le insiste; a Luis (solo ha contestado), sí
+  await expect(main.getByRole('button', { name: 'Recordárselo' })).toHaveCount(1)
 
   // En el detalle: de dónde, qué dice y por qué; sin «Recordárselo»
   await main.getByText('Presupuesto del baño').click()
@@ -62,27 +63,41 @@ test('una posible respuesta a una espera: se ve, no se insiste y solo se cierra 
   await expect(card.getByRole('link', { name: 'Abrir el mensaje' })).toHaveAttribute('href', 'https://mail.google.com/mail/u/0/#inbox/abc')
   await expect(detail.getByRole('button', { name: 'Recordárselo' })).toHaveCount(0)
 
-  // «Sí, ha llegado»: se cierra, vuelve a hoy y se puede volver a esperar
+  // «Sí, ha llegado»: se cierra y vuelve a hoy
   await card.getByRole('button', { name: 'Sí, ha llegado' }).click()
   await expect(toast(page, 'Ya no esperas a Ana')).toBeVisible()
   await expect(detail).toContainText('Espera cerrada')
   await expect(detail).toContainText('Llegó por Gmail, de Ana · Ayer')
+  await expect(detail).toContainText('Hoy ·')
+  // Después la pasa al lunes: «Volver a esperar» reabre la espera pero se queda su fecha
+  await detail.getByRole('button', { name: 'El lunes' }).click()
   await detail.getByRole('button', { name: 'Volver a esperar' }).click()
-  await expect(toast(page, 'Vuelves a estar a la espera')).toBeVisible()
+  await expect(toast(page, /Vuelves a estar a la espera; se queda tu fecha/)).toBeVisible()
   await expect(detail.getByRole('group', { name: 'Posible respuesta recibida' })).toBeVisible()
   await expect(detail).toContainText('Esperando a Ana')
+  await expect(detail.getByRole('button', { name: 'El lunes' })).toHaveAttribute('aria-pressed', 'true')
 
-  // «Te la mando mañana»: no se da por hecho; «No es eso» la descarta y la espera sigue
+  // Ciérrala otra vez, escribe una nota y «Deshacer»: vuelve la espera y la nota se queda
+  await detail.getByRole('group', { name: 'Posible respuesta recibida' }).getByRole('button', { name: 'Sí, ha llegado' }).click()
+  await expect(toast(page, 'Ya no esperas a Ana')).toBeVisible()
+  await detail.getByPlaceholder('Notas').fill('Revisar la partida de fontanería')
+  await detail.getByPlaceholder('Notas').blur()
+  // (el aviso anterior se está yendo: se espera a que quede solo el de cerrarla)
+  await expect(page.getByRole('button', { name: 'Deshacer' })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Deshacer' }).click()
+  await expect(detail).toContainText('Esperando a Ana')
+  await expect(detail.getByPlaceholder('Notas')).toHaveValue('Revisar la partida de fontanería')
+
+  // «Te la mando mañana»: no se da por hecho ni silencia el seguimiento; «No es eso» la descarta
   await page.keyboard.press('Escape')
   await main.getByText('Factura del taller').click()
   const other = page.getByRole('complementary').filter({ hasText: 'Esperando a Luis' }).last()
-  const reply = other.getByRole('group', { name: 'Posible respuesta recibida' })
+  const reply = other.getByRole('group', { name: 'Ha contestado · aún sin entregar' })
   await expect(reply).toContainText('Slack, de Luis · Ayer: ha contestado, pero no parece que lo haya mandado')
   await expect(reply.getByRole('button', { name: 'Cerrar la espera' })).toBeVisible()
+  await expect(other.getByRole('button', { name: 'Recordárselo' })).toBeVisible()
   await reply.getByRole('button', { name: 'No es eso' }).click()
   await expect(toast(page, 'Descartada: sigues a la espera')).toBeVisible()
-  await expect(other.getByRole('group', { name: 'Posible respuesta recibida' })).toHaveCount(0)
-  await expect(other.getByRole('button', { name: 'Recordárselo' })).toBeVisible()
+  await expect(other.getByRole('group', { name: 'Ha contestado · aún sin entregar' })).toHaveCount(0)
   await expect(main.locator('[data-task-id="t2"] [data-wait-news]')).toHaveCount(0)
-  await expect(main.getByRole('button', { name: 'Recordárselo' })).toHaveCount(1)
 })

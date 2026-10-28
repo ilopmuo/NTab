@@ -10,7 +10,7 @@ import { addDaysYmd, dateLabel, today } from '@/lib/dates'
 import { haptic } from '@/lib/haptics'
 import { useSwipe } from './swipe'
 import { PRIORITY_COLOR, dateColor, waitingLabel } from '@/lib/tasks'
-import { pendingReplies } from '@/lib/waitReplies'
+import { KIND_BADGE, pendingReplies } from '@/lib/waitReplies'
 import { recurrenceLabel } from '@/lib/recurrence'
 import { isStuck, postponedLabel } from '@/lib/day'
 import { toast, ui, useUI } from '@/app/store'
@@ -331,19 +331,19 @@ export const TaskItem = memo(function TaskItem({
     )
   }
   if (task.waitingFor && !task.done) {
-    const news = pendingReplies(task).length > 0
+    const news = pendingReplies(task).at(-1)
     meta.push(
       <span key="w" className="inline-flex items-center gap-1 font-medium text-fg">
         <UserRoundCheck size={11} strokeWidth={2.4} aria-hidden />
         {waitingLabel(task, t)}
       </span>,
     )
-    // Un asistente ha visto algo que podría resolverla: no es «sin novedades»
+    // Un asistente ha visto algo: una posible entrega, una contestación sin entrega o una posible coincidencia
     if (news)
       meta.push(
-        <span key="wr" data-wait-news className="inline-flex items-center gap-1 font-semibold text-blue">
+        <span key="wr" data-wait-news={news.kind} className={cx('inline-flex items-center gap-1', news.kind === 'entregado' ? 'font-semibold text-blue' : 'font-medium')}>
           <MessageCircleReply size={11} strokeWidth={2.6} aria-hidden />
-          Posible respuesta recibida
+          {KIND_BADGE[news.kind]}
         </span>,
       )
   }

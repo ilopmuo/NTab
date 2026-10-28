@@ -15,6 +15,10 @@
  *   que se borra al decidir.
  * - La propuesta lleva la huella de la espera (de quién, qué y desde cuándo):
  *   si la espera cambia o se cierra, ya no vale y no se aplica.
+ * - Solo «entregado» pausa el seguimiento (toca decidir, no insistir a la otra
+ *   persona). «Contestado» y «dudoso» no cambian la fecha de volver a preguntar.
+ * - Volver a esperar y deshacer solo tocan lo que cambió la decisión y sigue
+ *   igual: lo que el usuario cambió después se queda.
  *
  * Sin dependencias: lo usan el conector y la app.
  */
@@ -49,8 +53,16 @@ export interface WaitingReply {
   at: number
   status: ReplyStatus
   decidedAt?: number
-  /** al confirmar: cómo era la espera, para poder volver a ella */
-  closed?: { waitingFor: string; waitingSince?: string; waitingWhat?: string; dueDate?: string }
+  /**
+   * Si solo ha contestado y dice cuándo lo mandará: cuándo propone el asistente
+   * volver a preguntar (YYYY-MM-DD). No se aplica solo: hace falta su sí.
+   */
+  nextAsk?: string
+  /**
+   * Al confirmar: cómo era la espera (para poder volver a ella) y en qué fecha
+   * quedó la tarea al cerrarla (si la cambia después, se respeta la suya)
+   */
+  closed?: { waitingFor: string; waitingSince?: string; waitingWhat?: string; dueDate?: string; dueAfter?: string }
 }
 
 /** Lo que hace falta de una tarea */
@@ -124,52 +136,93 @@ export function cleanLink(s: unknown): string | undefined {
   return out.length <= 500 ? out : undefined
 }
 
-/** Ha mandado algo: adjunto, «aquí tienes», «ya te lo he enviado» (un enlace suelto no: puede ser la firma) */
-const DELIVERED = new RegExp(
-  [
-    'adjunt',
-    'aqui (tienes|te (lo |la |los |las )?(dejo|paso|envio|mando)|va|esta)',
-    'te (lo |la |los |las )?(paso|envio|mando|reenvio) (aqui|ya|adjunt)',
-    '(ya )?(te |os )?(lo |la |los |las )?(he|hemos) (enviado|mandado|pasado|subido|reenviado|compartido|hecho|terminado|transferido|ingresado|pagado)',
-    'ya (esta|estan|lo tienes|la tienes|los tienes|las tienes|tienes)\\b',
-  ].join('|'),
-)
-/** Lo mandará más adelante (o aún no lo tiene) */
-const PROMISED = new RegExp(
-  [
-    '\\bmanana\\b',
-    'pasado manana',
-    '\\bluego\\b',
-    'mas tarde',
-    'esta (tarde|noche|semana)',
-    '(la )?(semana|proxima semana) (que viene|proxima)',
-    'en cuanto',
-    'cuando (pueda|lo tenga|la tenga|tenga)',
-    'lo (miro|reviso|preparo|busco|hago|tengo pendiente)',
-    'te (digo|cuento|aviso) (algo|cuando)',
-    'todavia no',
-    'aun no',
-    'estoy en ello',
-    'estamos en ello',
-    'dame (un|unos)',
-    '(te|os) (lo |la |los |las )?(mando|envio|paso) (en|el|la|esta|luego|cuando)\\b',
-  ].join('|'),
-)
+/*
+ * Clasificar un mensaje: LUNO no entiende el lenguaje, solo busca pruebas.
+ * Para dejar «entregado» hace falta una frase propia (no citada) que entregue
+ * (adjunto, aquí tienes, te he enviado, attached, here is…), sin negar, sin
+ * preguntar, sin ofrecer («si quieres te lo paso») ni prometer («te lo mando
+ * mañana»), y que hable de lo esperado: su palabra principal («presupuesto» en
+ * «el presupuesto del baño») o «lo que me pediste». Si entrega otra cosa
+ * («te adjunto las fotos»), se dice; si solo habla de ello, es «contestado».
+ *
+ * Límites, a propósito: frases cortas en español o en inglés; no entiende
+ * sinónimos («la cotización» no es «el presupuesto»), ni otro idioma para lo
+ * esperado, ni ironía, ni lo que va en un archivo sin nombrarlo. Ante la duda
+ * baja, nunca sube, y siempre hace falta el sí del usuario para cerrar.
+ */
 
-/** Dice que aún no («no te lo he mandado», «todavía no lo tengo») */
-const NOT_YET = /\b(no|todavia no|aun no) (te |os )?(lo |la |los |las )?(he|hemos|tengo|tenemos|esta|estan|puedo|me ha|nos ha)\b/
+/** Hasta aquí es suyo: lo de después es texto citado (la respuesta anterior, un reenvío) */
+const QUOTE_START =
+  /(^|\n)\s*>|(^|\s)(el|on) [^\n]{0,120}?(escribio|wrote):|-{2,}\s*(mensaje original|original message|mensaje reenviado|forwarded message)|(^|\n)\s*(de|from): [^\n]{0,200}\n\s*(enviado|sent|fecha|date):/
+
+/** El texto propio del mensaje, sin lo que cita */
+export function ownText(raw: string): string {
+  const s = raw.slice(0, 4000)
+  const m = QUOTE_START.exec(normalize(s))
+  return (m ? s.slice(0, m.index) : s).trim()
+}
+
+/** Entrega ahora: adjunto, aquí tienes, te paso, ya te he enviado (es / en) */
+const DELIVERS =
+  /\badjunt\w*|\baqui (tienes|te (lo |la |los |las )?(dejo|paso|envio|mando)|va|esta|estan)\b|\b(te|os) (lo |la |los |las )?(paso|envio|mando|reenvio|comparto)\b|\b(he|hemos) (enviado|mandado|pasado|subido|reenviado|compartido|transferido|ingresado|pagado)\b|\bya (esta|estan|lo tienes|la tienes|los tienes|las tienes|tienes)\b|\battach|\benclosed\b|\bplease find\b|\bhere (is|are|it is)\b|\bhere's\b|\b(i|we)('ve| have)? (just )?(sent|shared|uploaded|forwarded)\b|\bsent you\b/
+/** Lo hará más adelante */
+const LATER =
+  /\b(manana|pasado manana|luego|mas tarde|esta (tarde|noche|semana)|semana que viene|proxima semana|en cuanto|cuando (pueda|lo tenga|la tenga|tenga)|estoy en ello|estamos en ello|dame (un|unos)|tomorrow|later|next week|soon|asap|working on it|by (monday|tuesday|wednesday|thursday|friday|eod|end of)|(i|we)('ll| will) (send|share|get))\b/
+/** Va a mirarlo: ha contestado, sin mandar nada todavía */
+const WILL_LOOK = /\b(lo|la|los|las) (miro|reviso|preparo|busco|hago)\b|\bte (digo|cuento|aviso) (algo|cuando)\b|\b(i'll|i will|let me) (check|look|get back)\b|\bget back to you\b/
+/** No lo ha hecho, o no puede */
+const NEGATED = /\b(no|ni|nunca|todavia no|aun no|not|never|haven't|hasn't|didn't|don't|can't|cannot|couldn't|won't|unable|not yet)\b/
+/** Lo ofrece, no lo manda */
+const OFFER = /\b(si (quieres|te parece|necesitas|lo necesitas)|quieres que|puedo|podria|te parece si|if you (want|like|need)|(i|we) (can|could)|shall i|should i|do you want|would you like)\b/
+/** Lo que se pidió, sin nombrarlo */
+const GENERIC = /\b(lo que (me )?(pediste|pedias|pidio|necesitabas|esperabas|hablamos|comentamos)|lo (pedido|prometido|acordado)|what you (asked|needed|requested)|as (requested|promised|discussed))\b/
+/** Lo que puede ir entre el verbo y lo que manda */
+const FILLER = /^(el|la|los|las|un|una|unos|unas|lo|le|les|te|os|me|mi|mis|tu|tus|su|sus|ya|aqui|adjunto|adjunta|adjuntos|adjuntas|por|fin|tambien|the|a|an|my|our|your|you|is|are|it|please|find|herewith|de|del|al|y|and|with|con)$/
 
 /** Las palabras que cuentan de lo que se espera («el presupuesto del baño» → presupuesto, baño) */
 function keyWords(s: string) {
   return normalize(s)
-    .split(/[^a-z0-9ñ]+/)
-    .filter((w) => w.length >= 4 && !/^(para|como|todo|toda|esto|esta|este|unos|unas|sobre|desde|hasta|ellos|ellas)$/.test(w))
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !/^(para|como|todo|toda|esto|esta|este|unos|unas|sobre|desde|hasta|ellos|ellas|that|this|with|from)$/.test(w))
 }
 
-/** ¿El mensaje menciona lo que se espera? (por la raíz: «presupuesto» ~ «presupuestos») */
+/** Raíz de una palabra («presupuestos» ~ «presupuesto») */
+const stem = (w: string) => w.slice(0, Math.max(4, w.length - 2))
+const hasWord = (text: string, w: string) => text.split(/[^a-z0-9]+/).some((x) => x.startsWith(stem(w)))
+
+/**
+ * ¿Habla de lo que se espera? La palabra principal (la primera: «presupuesto»)
+ * o, si no, al menos dos de las demás; una secundaria sola («baño») no basta.
+ */
 export function mentions(what: string, text: string): boolean {
+  const [main, ...rest] = keyWords(what)
+  if (!main) return false
   const t = normalize(text)
-  return keyWords(what).some((w) => t.includes(w.slice(0, Math.max(4, w.length - 2))))
+  return hasWord(t, main) || rest.filter((w) => hasWord(t, w)).length >= 2
+}
+
+interface Clause {
+  text: string
+  question: boolean
+}
+
+/** Frases y, dentro, sus partes (por comas, «pero», «but»), sabiendo cuáles son preguntas */
+function clauses(text: string): Clause[] {
+  const out: Clause[] = []
+  for (const m of normalize(text).matchAll(/[^.!?;\n]+[.!?;]*/g)) {
+    const sentence = m[0]
+    const question = sentence.includes('?') || sentence.trimStart().startsWith('¿')
+    for (const part of sentence.split(/,|\bpero\b|\bbut\b/)) if (part.trim()) out.push({ text: part.trim(), question })
+  }
+  return out
+}
+
+/** Lo que manda, si lo dice: la primera palabra con contenido después del verbo de entrega */
+function objectAfter(text: string): string | undefined {
+  const m = DELIVERS.exec(text)
+  if (!m) return undefined
+  const words = text.slice(m.index + m[0].length).split(/[^a-z0-9']+/).filter(Boolean).slice(0, 5)
+  return words.find((w) => !FILLER.test(w) && w.length >= 3)
 }
 
 /**
@@ -178,27 +231,60 @@ export function mentions(what: string, text: string): boolean {
  */
 export function judgeReply(a: { claimed: unknown; excerpt: string; what?: string; sent: string; since?: string }): { kind: ReplyKind; notes: string[] } {
   const notes: string[] = []
-  let kind: ReplyKind = REPLY_KINDS.includes(a.claimed as ReplyKind) ? (a.claimed as ReplyKind) : 'dudoso'
-  if (!REPLY_KINDS.includes(a.claimed as ReplyKind)) notes.push('no se sabe si entrega lo esperado')
+  const known = REPLY_KINDS.includes(a.claimed as ReplyKind)
+  if (!known) notes.push('no se sabe si entrega lo esperado')
   if (a.since && a.sent < a.since) {
     notes.push('el mensaje es de antes de que empezara a esperar')
     return { kind: 'dudoso', notes }
   }
-  if (kind !== 'entregado') return { kind, notes }
-  const text = normalize(a.excerpt)
-  const notYet = NOT_YET.test(text)
-  const delivered = !notYet && DELIVERED.test(text)
-  if (!delivered && (notYet || PROMISED.test(text))) {
-    notes.push(notYet ? 'dice que aún no: ha contestado, pero no lo ha mandado' : 'dice que lo hará más adelante: ha contestado, pero no parece que lo haya mandado')
-    kind = 'contestado'
-  } else if (!a.what?.trim()) {
-    notes.push('no está apuntado qué se espera, así que no se puede saber si es eso')
-    kind = 'dudoso'
-  } else if (!delivered && !mentions(a.what, a.excerpt)) {
-    notes.push(`el mensaje no menciona «${a.what.trim()}» ni dice que lo mande`)
-    kind = 'dudoso'
+  if (!known || a.claimed !== 'entregado') return { kind: known ? (a.claimed as ReplyKind) : 'dudoso', notes }
+  const own = ownText(a.excerpt)
+  if (!own) {
+    notes.push('solo trae texto citado, no lo que ha contestado')
+    return { kind: 'dudoso', notes }
   }
-  return { kind, notes }
+  const what = a.what?.trim() ?? ''
+  const parts = clauses(own)
+  // Lo que podría ser una entrega, y por qué no lo es
+  const delivering = parts.filter((c) => DELIVERS.test(c.text))
+  const real = delivering.filter((c) => !c.question && !NEGATED.test(c.text) && !OFFER.test(c.text) && !LATER.test(c.text))
+  const notYet = parts.some((c) => (DELIVERS.test(c.text) || /\b(tengo|tenemos|lo he|have it)\b/.test(c.text)) && NEGATED.test(c.text)) || parts.some((c) => /\b(todavia no|aun no|not yet)\b/.test(c.text))
+  const later = parts.some((c) => WILL_LOOK.test(c.text) || (LATER.test(c.text) && (DELIVERS.test(c.text) || /\b(mando|envio|paso|mandare|enviare|pasare|send|share)\b/.test(c.text))))
+  const talksAbout = what ? mentions(what, own) : false
+
+  if (!what) {
+    notes.push('no está apuntado qué se espera, así que no se puede saber si es eso')
+    return { kind: 'dudoso', notes }
+  }
+  const ofWhat = real.filter((c) => mentions(what, c.text) || GENERIC.test(c.text))
+  if (ofWhat.length && !notYet) return { kind: 'entregado', notes }
+  if (ofWhat.length && notYet) {
+    notes.push('dice que lo manda y también que aún no: no está claro')
+    return { kind: 'dudoso', notes }
+  }
+  if (notYet || later) {
+    notes.push(notYet ? 'dice que aún no: ha contestado, pero no lo ha mandado' : 'dice que lo hará más adelante: ha contestado, pero no lo ha mandado')
+    return { kind: 'contestado', notes }
+  }
+  if (delivering.some((c) => c.question || OFFER.test(c.text))) {
+    notes.push('pregunta u ofrece mandarlo, pero no lo manda')
+    return { kind: 'contestado', notes }
+  }
+  const other = real.map((c) => objectAfter(c.text)).find(Boolean)
+  if (real.length && other) {
+    notes.push(`manda otra cosa («${other}»), no ${what}`)
+    return { kind: 'dudoso', notes }
+  }
+  if (real.length) {
+    notes.push(`manda algo, pero no dice que sea ${what}`)
+    return { kind: 'dudoso', notes }
+  }
+  if (talksAbout) {
+    notes.push(`habla de ${what}, pero no dice que lo mande`)
+    return { kind: 'contestado', notes }
+  }
+  notes.push(`el mensaje no menciona ${what} ni dice que lo mande`)
+  return { kind: 'dudoso', notes }
 }
 
 export const KIND_LABEL: Record<ReplyKind, string> = {
@@ -215,6 +301,38 @@ export function pendingReplies(t: WaitTask): WaitingReply[] {
   const key = waitKey(t)
   return (t.waitingReplies ?? []).filter((r) => r.status === 'pendiente' && r.wait === key)
 }
+
+/** Cómo se nombra cada tipo de propuesta pendiente, en la app y para los asistentes */
+export const KIND_BADGE: Record<ReplyKind, string> = {
+  entregado: 'Posible respuesta recibida',
+  contestado: 'Ha contestado · aún sin entregar',
+  dudoso: 'Posible coincidencia',
+}
+
+export type FollowUpState = 'decidir' | 'preguntar' | 'contestado-hoy' | 'esperar'
+
+/**
+ * Qué toca con una espera:
+ * - `decidir`: hay una posible entrega sin decidir. No se insiste a la otra
+ *   persona: se pregunta al usuario si cierra la espera.
+ * - `preguntar`: ha llegado su fecha y no hay entrega propuesta. Una respuesta
+ *   «contestado» o «dudoso» no lo cambia: la fecha sigue siendo la que era.
+ * - `contestado-hoy`: tocaba preguntar, pero ha contestado hoy (sin entregar):
+ *   hoy no se insiste; mañana, si sigue sin llegar, vuelve a `preguntar`.
+ * - `esperar`: aún no toca.
+ * `reply` es la propuesta que lo explica (la entrega, o la última contestación).
+ */
+export function followUp(t: WaitTask, today: string): { state: FollowUpState; reply?: WaitingReply } {
+  const pending = pendingReplies(t)
+  const delivered = pending.filter((r) => r.kind === 'entregado').at(-1)
+  if (delivered) return { state: 'decidir', reply: delivered }
+  const answered = pending.filter((r) => r.kind === 'contestado').at(-1)
+  if (t.dueDate && t.dueDate <= today) return answered && answered.sent >= today ? { state: 'contestado-hoy', reply: answered } : { state: 'preguntar', reply: answered }
+  return { state: 'esperar', reply: answered }
+}
+
+/** ¿Se le puede recordar a la otra persona? (no si hay una entrega por decidir o acaba de contestar) */
+export const canNudge = (t: WaitTask, today: string) => !['decidir', 'contestado-hoy'].includes(followUp(t, today).state)
 
 /** La última que cerró la espera (para «Volver a esperar») */
 export function lastClosing(t: WaitTask): WaitingReply | undefined {
@@ -243,6 +361,8 @@ export interface ReplyInput {
   excerpt: unknown
   kind: unknown
   why: unknown
+  /** fecha que propone el asistente para volver a preguntar (YYYY-MM-DD), solo si el mensaje la dice */
+  nextAsk?: unknown
 }
 
 /**
@@ -261,7 +381,9 @@ export function addReply<T extends WaitTask>(
   if (!msgId) return { error: 'falta el identificador del mensaje (mensaje_id)' }
   const sent = typeof input.sent === 'string' ? ctx.sentDay(input.sent.trim()) : undefined
   if (!sent) return { error: 'falta la fecha del mensaje (YYYY-MM-DD o fecha y hora ISO)' }
-  const excerpt = cleanExcerpt(input.excerpt)
+  // Se juzga lo que ha escrito (sin lo que cita) y solo eso se guarda
+  const raw = typeof input.excerpt === 'string' ? input.excerpt.slice(0, 4000) : ''
+  const excerpt = cleanExcerpt(ownText(raw)) || cleanExcerpt(raw)
   if (!excerpt) return { error: 'falta el extracto del mensaje (las frases justas)' }
   const id = replyId(t.id, source, msgId)
   const list = t.waitingReplies ?? []
@@ -269,7 +391,9 @@ export function addReply<T extends WaitTask>(
   if (dup) return { dup }
   const key = waitKey(t)
   if (list.filter((r) => r.status === 'pendiente' && r.wait === key).length >= MAX_PENDING) return { error: `ya tiene ${MAX_PENDING} posibles respuestas sin decidir: que decida antes` }
-  const { kind, notes } = judgeReply({ claimed: input.kind, excerpt, what: t.waitingWhat, sent, since: t.waitingSince })
+  const { kind, notes } = judgeReply({ claimed: input.kind, excerpt: raw, what: t.waitingWhat, sent, since: t.waitingSince })
+  // Una fecha para volver a preguntar solo tiene sentido si aún no lo ha mandado
+  const nextAsk = kind === 'contestado' && typeof input.nextAsk === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.nextAsk) && input.nextAsk > sent ? input.nextAsk : undefined
   const why = [cleanExcerpt(input.why, 200), ...notes].filter(Boolean).join('; ')
   const from = cleanExcerpt(input.from, 80)
   const link = cleanLink(input.link)
@@ -282,6 +406,7 @@ export function addReply<T extends WaitTask>(
     ...(link ? { link } : {}),
     excerpt,
     kind,
+    ...(nextAsk ? { nextAsk } : {}),
     why: why || KIND_LABEL[kind],
     wait: key,
     via: ctx.via,
@@ -311,14 +436,21 @@ export function confirmReply<T extends WaitTask>(t: T, id: string, ctx: { now: n
   if (!r) return { error: 'no existe esa propuesta' }
   const stale = staleReason(t, r)
   if (stale) return { error: stale, reply: r }
-  const closed = { waitingFor: t.waitingFor!, ...(t.waitingSince ? { waitingSince: t.waitingSince } : {}), ...(t.waitingWhat ? { waitingWhat: t.waitingWhat } : {}), ...(t.dueDate ? { dueDate: t.dueDate } : {}) }
-  const done: WaitingReply = { ...r, status: 'confirmada', decidedAt: ctx.now, closed }
-  delete done.excerpt
-  const next: T = { ...t, waitingReplies: t.waitingReplies!.map((x) => (x.id === id ? done : x)) }
+  const next: T = { ...t }
   delete next.waitingFor
   delete next.waitingSince
   delete next.waitingWhat
   if (!ctx.complete && (!next.dueDate || next.dueDate > ctx.today)) next.dueDate = ctx.today
+  const closed = {
+    waitingFor: t.waitingFor!,
+    ...(t.waitingSince ? { waitingSince: t.waitingSince } : {}),
+    ...(t.waitingWhat ? { waitingWhat: t.waitingWhat } : {}),
+    ...(t.dueDate ? { dueDate: t.dueDate } : {}),
+    dueAfter: next.dueDate ?? '',
+  }
+  const done: WaitingReply = { ...r, status: 'confirmada', decidedAt: ctx.now, closed }
+  delete done.excerpt
+  next.waitingReplies = t.waitingReplies!.map((x) => (x.id === id ? done : x))
   return { task: next, reply: done }
 }
 
@@ -333,16 +465,73 @@ export function discardReply<T extends WaitTask>(t: T, id: string, now: number):
   return { task: { ...t, waitingReplies: t.waitingReplies!.map((x) => (x.id === id ? gone : x)) }, reply: gone }
 }
 
-/** «Volver a esperar»: deshace el cierre si nadie ha vuelto a tocar la espera */
-export function reopenWait<T extends WaitTask>(t: T, id: string): { task?: T; error?: string } {
+/**
+ * «Volver a esperar»: deshace el cierre si nadie ha vuelto a tocar la espera.
+ * La fecha vuelve a la de antes solo si sigue la que dejó el cierre; si el
+ * usuario la cambió después, se queda la suya (`kept`). Lo demás no se toca.
+ */
+export function reopenWait<T extends WaitTask>(t: T, id: string): { task?: T; error?: string; kept?: string } {
   const r = t.waitingReplies?.find((x) => x.id === id)
   if (!r || r.status !== 'confirmada' || !r.closed) return { error: 'no hay ninguna espera cerrada que reabrir' }
   if (t.waitingFor) return { error: 'ya vuelve a estar a la espera' }
   if (t.done) return { error: 'la tarea ya está hecha' }
+  const { waitingFor, waitingSince, waitingWhat, dueDate, dueAfter } = r.closed
   const back: WaitingReply = { ...r, status: 'pendiente' }
   delete back.decidedAt
   delete back.closed
-  const next: T = { ...t, ...r.closed, waitingReplies: t.waitingReplies!.map((x) => (x.id === id ? back : x)) }
-  if (!r.closed.dueDate) delete next.dueDate
+  const next: T = { ...t, waitingFor, waitingReplies: t.waitingReplies!.map((x) => (x.id === id ? back : x)) }
+  if (waitingSince) next.waitingSince = waitingSince
+  if (waitingWhat) next.waitingWhat = waitingWhat
+  // Sin saber cómo quedó (cierres antiguos), mejor no tocarla
+  const untouched = dueAfter !== undefined && (t.dueDate ?? '') === dueAfter
+  if (!untouched) return { task: next, kept: t.dueDate }
+  if (dueDate) next.dueDate = dueDate
+  else delete next.dueDate
   return { task: next }
+}
+
+/** Igual por contenido (sin importar el orden de las claves) */
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`
+  if (v && typeof v === 'object')
+    return `{${Object.keys(v as Record<string, unknown>)
+      .filter((k) => (v as Record<string, unknown>)[k] !== undefined)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`)
+      .join(',')}}`
+  return JSON.stringify(v ?? null)
+}
+const same = (a: unknown, b: unknown) => canonical(a) === canonical(b)
+
+const FIELD_LABEL: Record<string, string> = { waitingFor: 'de quién espera', waitingSince: 'desde cuándo', waitingWhat: 'qué espera', done: 'si está hecha', dueDate: 'la fecha' }
+
+/**
+ * Deshacer una decisión de la app (cerrar, descartar, reabrir, cambiar la
+ * fecha) sin pisar lo que cambió después: solo vuelven los campos que cambió
+ * esa decisión y que siguen como ella los dejó, y su propuesta. Si la espera o
+ * la propuesta han cambiado desde entonces, no se deshace y se dice por qué; si
+ * solo cambió la fecha, se deshace lo demás y se queda la suya (`kept`). El
+ * título, las notas y todo lo demás no se tocan nunca.
+ */
+export function undoDecision<T extends WaitTask>(current: T | undefined, before: T, after: T, replyId: string): { task?: T; error?: string; kept?: string } {
+  if (!current) return { error: 'la tarea ya no existe' }
+  const entry = (t: WaitTask) => t.waitingReplies?.find((x) => x.id === replyId)
+  if (!same(entry(current), entry(after))) return { error: 'la propuesta ha cambiado después' }
+  const b = before as unknown as Record<string, unknown>
+  const a = after as unknown as Record<string, unknown>
+  const c = current as unknown as Record<string, unknown>
+  const next = { ...current } as unknown as Record<string, unknown>
+  let kept: string | undefined
+  for (const k of new Set([...Object.keys(b), ...Object.keys(a)])) {
+    if (k === 'waitingReplies' || same(b[k], a[k])) continue
+    if (same(c[k], a[k])) {
+      if (b[k] === undefined) delete next[k]
+      else next[k] = b[k]
+    } else if (k === 'dueDate') kept = c[k] as string | undefined
+    else return { error: `ha cambiado después (${FIELD_LABEL[k] ?? k})` }
+  }
+  const was = entry(before)
+  const list = (current.waitingReplies ?? []).flatMap((x) => (x.id !== replyId ? [x] : was ? [was] : []))
+  next.waitingReplies = list
+  return { task: next as unknown as T, kept }
 }

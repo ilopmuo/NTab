@@ -12,8 +12,8 @@ import { endOfMonth } from 'date-fns'
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor, moveItem, waitingLabel } from '@/lib/tasks'
 import { nudge, onDay, startWaiting, stopWaiting, waitMore } from '@/features/waiting/nudge'
-import { confirmWaitReply, discardWaitReply, reopenWaitReply } from '@/features/waiting/replies'
-import { KIND_LABEL, SOURCE_LABEL, lastClosing, pendingReplies, type WaitingReply } from '@/lib/waitReplies'
+import { askAgainOn, confirmWaitReply, discardWaitReply, reopenWaitReply } from '@/features/waiting/replies'
+import { KIND_BADGE, KIND_LABEL, SOURCE_LABEL, canNudge, lastClosing, pendingReplies, type WaitingReply } from '@/lib/waitReplies'
 import { uid } from '@/lib/id'
 import { durationLabel, parseDuration } from '@/lib/duration'
 import { NAG_OPTIONS, REMINDER_OPTIONS, nagLabel, reminderLabel, reminderValue } from '@/lib/reminders'
@@ -170,8 +170,8 @@ function WaitingRow({ task, names }: { task: Task; names: string[] }) {
   if (task.waitingFor)
     return (
       <Row field="waiting" icon={<UserRoundCheck size={15} strokeWidth={2.6} />} color="var(--c-text)" label="A la espera" value={waitingLabel(task, today())} onClear={() => run(() => stopWaiting(task))}>
-        {/* Con una posible respuesta sin decidir, no se insiste: primero decides si es eso */}
-        {!task.done && !pending.length && (
+        {/* Con una posible entrega sin decidir (o si acaba de contestar), no se insiste; si solo ha contestado, sí, a su fecha */}
+        {!task.done && canNudge(task, today()) && (
           <>
             <Pill tone="strong" onClick={() => run(() => nudge(task))}>
               Recordárselo
@@ -180,7 +180,14 @@ function WaitingRow({ task, names }: { task: Task; names: string[] }) {
           </>
         )}
         {pending.map((r) => (
-          <ReplyCard key={r.id} reply={r} busy={busy} onConfirm={() => run(() => confirmWaitReply(task, r.id))} onDiscard={() => run(() => discardWaitReply(task, r.id))} />
+          <ReplyCard
+            key={r.id}
+            reply={r}
+            busy={busy}
+            onConfirm={() => run(() => confirmWaitReply(task, r.id))}
+            onDiscard={() => run(() => discardWaitReply(task, r.id))}
+            onAskAgain={r.nextAsk && r.nextAsk !== task.dueDate ? () => run(() => askAgainOn(task, r.id, r.nextAsk!)) : undefined}
+          />
         ))}
       </Row>
     )
@@ -228,12 +235,12 @@ const safeLink = (l?: string) => (l && /^https:\/\//i.test(l) ? l : undefined)
  * (texto de fuera, tal cual) y por qué podría resolver la espera. Solo se
  * cierra si dices que sí.
  */
-function ReplyCard({ reply, busy, onConfirm, onDiscard }: { reply: WaitingReply; busy: boolean; onConfirm: () => void; onDiscard: () => void }) {
+function ReplyCard({ reply, busy, onConfirm, onDiscard, onAskAgain }: { reply: WaitingReply; busy: boolean; onConfirm: () => void; onDiscard: () => void; onAskAgain?: () => void }) {
   const link = safeLink(reply.link)
   return (
-    <div data-wait-reply={reply.kind} role="group" aria-label="Posible respuesta recibida" className="mt-1 w-full rounded-2xl border border-line p-3 text-[13.5px]">
+    <div data-wait-reply={reply.kind} role="group" aria-label={KIND_BADGE[reply.kind]} className="mt-1 w-full rounded-2xl border border-line p-3 text-[13.5px]">
       <p className="flex items-center gap-1.5 font-semibold text-fg">
-        <MessageCircleReply size={13} strokeWidth={2.6} aria-hidden /> Posible respuesta recibida
+        <MessageCircleReply size={13} strokeWidth={2.6} aria-hidden /> {KIND_BADGE[reply.kind]}
       </p>
       <p className="mt-0.5 text-muted">
         {SOURCE_LABEL[reply.source] ?? reply.source}
@@ -248,6 +255,12 @@ function ReplyCard({ reply, busy, onConfirm, onDiscard }: { reply: WaitingReply;
         <button type="button" disabled={busy} onClick={onDiscard} className="h-8 rounded-full bg-fill px-3 text-[13px] font-semibold text-fg transition-all hover:bg-press active:scale-95 disabled:opacity-50">
           No es eso
         </button>
+        {/* La fecha que dice el mensaje, solo si tú quieres */}
+        {onAskAgain && reply.nextAsk && (
+          <button type="button" disabled={busy} onClick={onAskAgain} className="h-8 rounded-full bg-fill px-3 text-[13px] font-semibold text-fg transition-all hover:bg-press active:scale-95 disabled:opacity-50">
+            Volver a preguntar {onDay(reply.nextAsk)}
+          </button>
+        )}
         {link && (
           <a href={link} target="_blank" rel="noreferrer noopener" className="px-2 text-[13px] font-medium text-blue hover:underline">
             Abrir el mensaje

@@ -7,13 +7,15 @@ import { TaskList } from '@/components/TaskList'
 import { Button, Empty, Group, PageHeader, Section } from '@/components/ui'
 import { Page } from '../Page'
 import { nudgeAll } from './nudge'
-import { pendingReplies } from '@/lib/waitReplies'
+import { canNudge } from '@/lib/waitReplies'
+import { today } from '@/lib/dates'
 
 /**
  * «A la espera» (GTD, OmniFocus, Things): lo que depende de otra persona, por
  * persona, con la fecha en que volver a preguntar. No se olvida ni ocupa Hoy
  * hasta que toca; entonces, «Recordárselo» le escribe con todo lo pendiente
- * (menos lo que puede que ya haya contestado: eso se decide en la tarea).
+ * (menos lo que puede que ya te haya mandado, que se decide en la tarea, o lo
+ * que te ha contestado hoy).
  */
 export function WaitingView() {
   const tasks = useLiveQuery(() => db.tasks.where('done').equals(0).filter((t) => !!t.waitingFor).toArray(), [])
@@ -40,7 +42,7 @@ export function WaitingView() {
         </Group>
       ) : (
         [...byWho].map(([who, list]) => {
-          const ask = list.filter((t) => !pendingReplies(t).length)
+          const ask = list.filter((t) => canNudge(t, today()))
           return (
             <Section
               key={who}

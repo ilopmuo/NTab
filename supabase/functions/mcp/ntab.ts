@@ -23,7 +23,7 @@ import { WAIT_DAYS } from '../_shared/parse.ts'
 import { medLines } from './meds.ts'
 import { checkNoteLine, contactKind, trackerFor } from '../_shared/ripples.ts'
 import { sameTask, unclearTask } from '../_shared/doubt.ts'
-import { SOURCE_LABEL, pendingReplies, type WaitingReply } from '../_shared/waitReplies.ts'
+import { KIND_BADGE, SOURCE_LABEL, followUp, pendingReplies, type WaitingReply } from '../_shared/waitReplies.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -259,7 +259,7 @@ function taskLine(t: Task, ix: Index, today: string) {
     where ? ` · ${where}` : '',
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
     t.people?.length ? ` · con ${ix.personNames(t.people).join(', ')}` : '',
-    t.waitingFor && !t.done ? ` · A LA ESPERA de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? ` desde ${relDay(t.waitingSince, today)}` : ''}${pendingReplies(t).length ? ' · POSIBLE RESPUESTA RECIBIDA (sin decidir)' : ''}` : '',
+    t.waitingFor && !t.done ? ` · A LA ESPERA de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? ` desde ${relDay(t.waitingSince, today)}` : ''}${pendingReplies(t).length ? ` · ${KIND_BADGE[pendingReplies(t).at(-1)!.kind].toUpperCase()} (sin decidir)` : ''}` : '',
     t.origin?.about || t.origin?.link ? ` · sale de: ${[t.origin.about ?? t.origin.kind, t.origin.link].filter(Boolean).join(' ')}` : '',
     t.estimate ? ` · ~${minutesLabel(t.estimate)}` : '',
     t.nag ? ` · insiste cada ${t.nag} min` : '',
@@ -326,7 +326,31 @@ function freeLine(label: string, day: string, open: Task[], events: EventLike[],
   return [`HUECOS LIBRES ${label} (9–20 h, ${what}): ${slotsLabel(freeSlots(busy, start, 20 * 60)) || 'ninguno de media hora o más'}.`]
 }
 
-/** Lo importante de hoy (hasta tres), lo primero que mirar */
+/**
+ * Qué toca con una espera, para los asistentes (ver followUp en
+ * _shared/waitReplies.ts): solo una posible entrega pausa el seguimiento;
+ * «ha contestado» y «posible coincidencia» se cuentan, pero la fecha sigue.
+ */
+export function waitStatus(t: Task, today: string): string[] {
+  const fu = followUp(t, today)
+  const by = (r: WaitingReply) => `por ${SOURCE_LABEL[r.source] ?? r.source}${r.from ? ` de ${r.from}` : ''} ${relDay(r.sent, today)}`
+  if (fu.state === 'decidir')
+    return [`POSIBLE RESPUESTA RECIBIDA ${by(fu.reply!)} (propuesta ${fu.reply!.id}, sin decidir): no le insistas a ${t.waitingFor}; pregunta al usuario si cierra la espera`]
+  const out: string[] = []
+  if (t.dueDate) {
+    const when = `volver a preguntar ${relDay(t.dueDate, today)} (${t.dueDate})`
+    out.push(fu.state === 'preguntar' ? `${when}: TOCA PREGUNTAR` : fu.state === 'contestado-hoy' ? `${when}, pero ha contestado hoy: hoy no insistas` : when)
+  }
+  const r = fu.reply
+  if (r) {
+    const next = r.nextAsk && r.nextAsk !== t.dueDate ? `; propone volver a preguntar ${relDay(r.nextAsk, today)} (${r.nextAsk}), sin aplicar: pregúntale si cambia la fecha` : ''
+    out.push(`HA CONTESTADO ${by(r)}, AÚN SIN ENTREGAR (propuesta ${r.id})${next}`)
+  }
+  const doubt = pendingReplies(t).filter((x) => x.kind === 'dudoso').at(-1)
+  if (doubt) out.push(`posible coincidencia ${by(doubt)} sin confirmar (propuesta ${doubt.id}): no cambia el seguimiento`)
+  return out
+}
+
 /** Lo que depende de otra persona (GTD: «A la espera») */
 function waitingLines(open: Task[], today: string) {
   const list = open.filter((t) => t.waitingFor).sort(byDate)
@@ -334,16 +358,11 @@ function waitingLines(open: Task[], today: string) {
   return [
     `\nA LA ESPERA DE OTRAS PERSONAS (${list.length}) — dependen de otro: el día de su fecha toca preguntarle (no proponerlas como trabajo suyo):`,
     ...list.map((t) => {
-      const pending = pendingReplies(t)
       const base = `- [${t.id}] ${t.title}: de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? `, desde ${relDay(t.waitingSince, today)}` : ''}`
       const origin = t.origin?.about || t.origin?.link ? `; sale de: ${[t.origin.about ?? t.origin.kind, t.origin.link].filter(Boolean).join(' ')}` : ''
-      if (pending.length) {
-        const r = pending[pending.length - 1]
-        return `${base}${origin}; POSIBLE RESPUESTA RECIBIDA por ${SOURCE_LABEL[r.source] ?? r.source}${r.from ? ` de ${r.from}` : ''} ${relDay(r.sent, today)} (${pending.length === 1 ? `propuesta ${r.id}` : `${pending.length} propuestas`}, sin decidir): no le insistas a ${t.waitingFor}; pregunta al usuario si cierra la espera (detalles en ver_esperas)`
-      }
-      return `${base}${t.dueDate ? `; volver a preguntar ${relDay(t.dueDate, today)} (${t.dueDate})` : ''}${origin}`
+      return [base, ...waitStatus(t, today)].join('; ') + origin
     }),
-    'Si ves en su correo o sus mensajes algo que pueda resolver una espera, no se la cierres tú: proponer_cierre_espera, y solo con su sí confirmar_cierre_espera.',
+    'Si ves en su correo o sus mensajes algo que pueda resolver una espera, no se la cierres tú: proponer_cierre_espera (detalles en ver_esperas), y solo con su sí confirmar_cierre_espera.',
   ]
 }
 
