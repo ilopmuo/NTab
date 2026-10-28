@@ -50,9 +50,10 @@ describe('la skill de LUNO para Hermes (hermes/luno/SKILL.md)', () => {
   })
 
   it('solo nombra herramientas que existen, y las nombra todas', () => {
-    // Los parámetros de las herramientas también se pueden nombrar
+    // Los parámetros de las herramientas (y sus valores) también se pueden nombrar
     const params = new Set<string>()
     const walk = (x: Schema) => {
+      for (const v of x.enum ?? []) if (typeof v === 'string') params.add(v)
       for (const [k, v] of Object.entries(x.properties ?? {})) (params.add(k), walk(v))
       if (x.items) walk(x.items)
     }

@@ -23,6 +23,7 @@ import { WAIT_DAYS } from '../_shared/parse.ts'
 import { medLines } from './meds.ts'
 import { checkNoteLine, contactKind, trackerFor } from '../_shared/ripples.ts'
 import { sameTask, unclearTask } from '../_shared/doubt.ts'
+import { SOURCE_LABEL, pendingReplies, type WaitingReply } from '../_shared/waitReplies.ts'
 
 // ── Tipos (lo mínimo de src/db/types.ts) ─────────────────────
 
@@ -67,6 +68,8 @@ export interface Task {
   waitingSince?: string
   /** qué se espera de esa persona («el presupuesto»): para saber cuándo cerrar la espera */
   waitingWhat?: string
+  /** posibles respuestas que ha visto un asistente (ver _shared/waitReplies.ts): no la cierran sin su sí */
+  waitingReplies?: WaitingReply[]
   /**
    * De dónde salió (cuando no la apuntó en la app): quién la apuntó (siri,
    * claude, hermes…), lo que se dijo tal cual y el correo, mensaje o reunión
@@ -256,7 +259,7 @@ function taskLine(t: Task, ix: Index, today: string) {
     where ? ` · ${where}` : '',
     t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : '',
     t.people?.length ? ` · con ${ix.personNames(t.people).join(', ')}` : '',
-    t.waitingFor && !t.done ? ` · A LA ESPERA de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? ` desde ${relDay(t.waitingSince, today)}` : ''}` : '',
+    t.waitingFor && !t.done ? ` · A LA ESPERA de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? ` desde ${relDay(t.waitingSince, today)}` : ''}${pendingReplies(t).length ? ' · POSIBLE RESPUESTA RECIBIDA (sin decidir)' : ''}` : '',
     t.origin?.about || t.origin?.link ? ` · sale de: ${[t.origin.about ?? t.origin.kind, t.origin.link].filter(Boolean).join(' ')}` : '',
     t.estimate ? ` · ~${minutesLabel(t.estimate)}` : '',
     t.nag ? ` · insiste cada ${t.nag} min` : '',
@@ -330,11 +333,17 @@ function waitingLines(open: Task[], today: string) {
   if (!list.length) return []
   return [
     `\nA LA ESPERA DE OTRAS PERSONAS (${list.length}) — dependen de otro: el día de su fecha toca preguntarle (no proponerlas como trabajo suyo):`,
-    ...list.map(
-      (t) =>
-        `- [${t.id}] ${t.title}: de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? `, desde ${relDay(t.waitingSince, today)}` : ''}${t.dueDate ? `; volver a preguntar ${relDay(t.dueDate, today)} (${t.dueDate})` : ''}${t.origin?.about || t.origin?.link ? `; sale de: ${[t.origin.about ?? t.origin.kind, t.origin.link].filter(Boolean).join(' ')}` : ''}`,
-    ),
-    'Si sabes que ya ha llegado lo que espera (lo has visto en su correo o sus mensajes), no se lo recuerdes: propón cerrar la espera (actualizar_tareas con hecha=true o esperando=null).',
+    ...list.map((t) => {
+      const pending = pendingReplies(t)
+      const base = `- [${t.id}] ${t.title}: de ${t.waitingFor}${t.waitingWhat ? ` (espera: ${t.waitingWhat})` : ''}${t.waitingSince ? `, desde ${relDay(t.waitingSince, today)}` : ''}`
+      const origin = t.origin?.about || t.origin?.link ? `; sale de: ${[t.origin.about ?? t.origin.kind, t.origin.link].filter(Boolean).join(' ')}` : ''
+      if (pending.length) {
+        const r = pending[pending.length - 1]
+        return `${base}${origin}; POSIBLE RESPUESTA RECIBIDA por ${SOURCE_LABEL[r.source] ?? r.source}${r.from ? ` de ${r.from}` : ''} ${relDay(r.sent, today)} (${pending.length === 1 ? `propuesta ${r.id}` : `${pending.length} propuestas`}, sin decidir): no le insistas a ${t.waitingFor}; pregunta al usuario si cierra la espera (detalles en ver_esperas)`
+      }
+      return `${base}${t.dueDate ? `; volver a preguntar ${relDay(t.dueDate, today)} (${t.dueDate})` : ''}${origin}`
+    }),
+    'Si ves en su correo o sus mensajes algo que pueda resolver una espera, no se la cierres tú: proponer_cierre_espera, y solo con su sí confirmar_cierre_espera.',
   ]
 }
 
@@ -891,6 +900,7 @@ export function updateTasks(rows: Row[], changes: Change[], env: Env): WriteResu
           createdAt: env.now,
         }
         delete copy.completedAt
+        delete copy.waitingReplies
         copy = withReminder(copy, env)
         delete t.recurrence
         out.writes.push({ tbl: 'tasks', id: copy.id, data: copy as unknown as Data })

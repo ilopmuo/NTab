@@ -27,6 +27,7 @@ Pídeselo con tus palabras y él programa las tareas (la skill trae las recetas)
 - «Cada día a las 8 mándame los buenos días de LUNO»: lo importante, las reuniones, lo atrasado, las pastillas, a quién preguntar y el proyecto que se está quedando parado, con una pregunta para decidir.
 - «Recuérdame las pastillas si no las marco»: a la hora de cada toma, si falta; contestas «tomada» y queda apuntada.
 - «A las 21:30 cerramos el día»: lo hecho, qué pasa con lo que queda y «¿qué tal el día?» para el diario.
+- «Mira cada día si me han contestado a lo que espero»: busca en tu correo y tu Slack las respuestas a lo que esperas y te pregunta si cierras la espera.
 - «Los domingos a las 7, revisión semanal»: proyectos que piden atención, lo que esperas de otros, hábitos y dinero frente al presupuesto, con consejos que puede hacer por ti.
 - Desde cualquier chat: «apunta llamar al casero mañana a las 10», «he gastado 30 en la gasolinera», una nota de voz contándole el día o un mensaje reenviado («mira lo que me dice Ana»).
 
@@ -34,7 +35,7 @@ Pídeselo con tus palabras y él programa las tareas (la skill trae las recetas)
 
 - **Agenda**: el resumen dice qué calendarios tiene LUNO y si se han leído bien. Sin calendarios (o si alguno falla), Hermes sabe que no conoce tus reuniones y no te da el día por libre: conéctalos en LUNO → Ajustes → Calendarios (el enlace .ics de Google personal y de trabajo).
 - **Captura**: lo que no se entiende («Sacar», «Llamar a», un dictado a medias) no se crea: vuelve la pregunta que hacerte. Lo que ya tienes pendiente tampoco se duplica. Cada tarea guarda quién la apuntó, lo que dijiste tal cual y el correo, mensaje o reunión del que sale (en la app, debajo del título, con «Abrir»).
-- **Esperas**: con quién y qué se espera («Ana · el presupuesto»), para que Hermes pueda cerrar la espera cuando vea que ha llegado en vez de recordártela.
+- **Esperas**: con quién y qué se espera («Ana · el presupuesto») y de dónde sale. Hermes mira tu correo y tu Slack (sin contestar, marcar como leído ni cambiar nada) y, si ve una respuesta, la **propone** (`proponer_cierre_espera`): la espera sigue, pero sale «Posible respuesta recibida» y deja de insistirte. **Solo se cierra si dices que sí**, en la app («Sí, ha llegado» / «No es eso») o a Hermes; queda en el historial y se puede deshacer («Volver a esperar»). LUNO distingue «ha contestado» de «ha mandado lo que esperabas» («te lo mando mañana» no cierra «esperando el presupuesto»), deja lo dudoso como posible coincidencia, no acepta dos veces el mismo mensaje y no aplica una confirmación si la espera ha cambiado o ya está cerrada. Del mensaje solo guarda quién, cuándo, el enlace (sin tokens) y un extracto corto, que se borra al decidir; el texto de los correos nunca se toma como instrucciones.
 - **Cambios reversibles**: cada llamada que cambia algo queda en el historial (`ver_historial`) con un id que se puede `deshacer` (lo que cambió después no se pisa). Con `simular=true` enseña lo que haría sin guardar nada (para cambios grandes) y con `peticion_id` un reintento no crea dos tareas o dos gastos.
 - **Medicación**: `guardar_medicacion` da de alta o cambia un tratamiento solo con la pauta que tú digas; si falta la hora, pregunta.
 

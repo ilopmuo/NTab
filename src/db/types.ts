@@ -1,5 +1,6 @@
 import type { MedLike, MedLogLike } from '../../supabase/functions/_shared/meds.ts'
 import type { AccountKind } from '../../supabase/functions/_shared/wealth.ts'
+import type { WaitingReply } from '../../supabase/functions/_shared/waitReplies.ts'
 
 export type { AccountKind }
 export type ID = string
@@ -159,6 +160,11 @@ export interface Task {
   waitingSince?: string
   /** qué se espera de esa persona («el presupuesto»): para saber cuándo cerrar la espera */
   waitingWhat?: string
+  /**
+   * Posibles respuestas que ha visto un asistente en el correo o en Slack: la
+   * espera no se cierra hasta que digas que sí (ver _shared/waitReplies.ts)
+   */
+  waitingReplies?: WaitingReply[]
   /**
    * De dónde salió (cuando no la apuntó en la app): quién la apuntó (siri,
    * claude, hermes…), lo que se dijo tal cual y el correo, mensaje o reunión

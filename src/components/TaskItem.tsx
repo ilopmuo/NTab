@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { m as motion, useTransform, type MotionValue } from 'motion/react'
-import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, Link2, ListChecks, Repeat, RotateCcw, Star, StickyNote, Sunrise, Telescope, UserRoundCheck } from 'lucide-react'
+import { Bell, CalendarClock, Check, ChevronRight, Clock, Hourglass, Link2, ListChecks, MessageCircleReply, Repeat, RotateCcw, Star, StickyNote, Sunrise, Telescope, UserRoundCheck } from 'lucide-react'
 import { durationLabel } from '@/lib/duration'
 import type { Task } from '@/db/types'
 import { db } from '@/db/db'
@@ -10,6 +10,7 @@ import { addDaysYmd, dateLabel, today } from '@/lib/dates'
 import { haptic } from '@/lib/haptics'
 import { useSwipe } from './swipe'
 import { PRIORITY_COLOR, dateColor, waitingLabel } from '@/lib/tasks'
+import { pendingReplies } from '@/lib/waitReplies'
 import { recurrenceLabel } from '@/lib/recurrence'
 import { isStuck, postponedLabel } from '@/lib/day'
 import { toast, ui, useUI } from '@/app/store'
@@ -330,12 +331,21 @@ export const TaskItem = memo(function TaskItem({
     )
   }
   if (task.waitingFor && !task.done) {
+    const news = pendingReplies(task).length > 0
     meta.push(
       <span key="w" className="inline-flex items-center gap-1 font-medium text-fg">
         <UserRoundCheck size={11} strokeWidth={2.4} aria-hidden />
         {waitingLabel(task, t)}
       </span>,
     )
+    // Un asistente ha visto algo que podría resolverla: no es «sin novedades»
+    if (news)
+      meta.push(
+        <span key="wr" data-wait-news className="inline-flex items-center gap-1 font-semibold text-blue">
+          <MessageCircleReply size={11} strokeWidth={2.6} aria-hidden />
+          Posible respuesta recibida
+        </span>,
+      )
   }
   if (task.someday && !task.dueDate && !hideDate) {
     meta.push(

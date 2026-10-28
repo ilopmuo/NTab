@@ -7,11 +7,13 @@ import { TaskList } from '@/components/TaskList'
 import { Button, Empty, Group, PageHeader, Section } from '@/components/ui'
 import { Page } from '../Page'
 import { nudgeAll } from './nudge'
+import { pendingReplies } from '@/lib/waitReplies'
 
 /**
  * «A la espera» (GTD, OmniFocus, Things): lo que depende de otra persona, por
  * persona, con la fecha en que volver a preguntar. No se olvida ni ocupa Hoy
- * hasta que toca; entonces, «Recordárselo» le escribe con todo lo pendiente.
+ * hasta que toca; entonces, «Recordárselo» le escribe con todo lo pendiente
+ * (menos lo que puede que ya haya contestado: eso se decide en la tarea).
  */
 export function WaitingView() {
   const tasks = useLiveQuery(() => db.tasks.where('done').equals(0).filter((t) => !!t.waitingFor).toArray(), [])
@@ -37,20 +39,25 @@ export function WaitingView() {
           />
         </Group>
       ) : (
-        [...byWho].map(([who, list]) => (
-          <Section
-            key={who}
-            title={who}
-            count={list.length}
-            action={
-              <Button size="sm" variant="tinted" onClick={() => void nudgeAll(list)}>
-                Recordárselo
-              </Button>
-            }
-          >
-            <TaskList tasks={list} orderKey={`waiting:${who}`} />
-          </Section>
-        ))
+        [...byWho].map(([who, list]) => {
+          const ask = list.filter((t) => !pendingReplies(t).length)
+          return (
+            <Section
+              key={who}
+              title={who}
+              count={list.length}
+              action={
+                ask.length > 0 && (
+                  <Button size="sm" variant="tinted" onClick={() => void nudgeAll(ask)}>
+                    Recordárselo
+                  </Button>
+                )
+              }
+            >
+              <TaskList tasks={list} orderKey={`waiting:${who}`} />
+            </Section>
+          )
+        })
       )}
     </Page>
   )

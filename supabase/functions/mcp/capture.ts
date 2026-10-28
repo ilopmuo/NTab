@@ -49,6 +49,7 @@ import {
   type WriteResult,
 } from './ntab.ts'
 import { sameTask, unclearTask } from '../_shared/doubt.ts'
+import { pendingReplies } from '../_shared/waitReplies.ts'
 
 type Data = Record<string, unknown>
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -616,7 +617,8 @@ function waiting(rows: Row[], who: string | undefined, env: Env): string {
   const all = new Index(rows).tasks.filter((t) => !t.done && t.waitingFor && (!who || fold(t.waitingFor).includes(fold(who.replace(ARTICLE, '')))))
   if (!all.length) return who ? `No esperas nada de ${who}.` : 'No estás esperando nada de nadie.'
   const since = (t: Task) => (t.waitingSince ? (t.waitingSince === today ? ', desde hoy' : `, desde hace ${diffDays(today, t.waitingSince)} días`) : '')
-  return `Esperas ${all.length === 1 ? 'una cosa' : `${all.length} cosas`}: ${list(all.slice(0, 4).map((t) => `${t.title}, de ${t.waitingFor}${since(t)}`))}${all.length > 4 ? ` y ${all.length - 4} más` : ''}.`
+  const news = (t: Task) => (pendingReplies(t).length ? ' (puede que ya haya contestado: míralo en la app)' : '')
+  return `Esperas ${all.length === 1 ? 'una cosa' : `${all.length} cosas`}: ${list(all.slice(0, 4).map((t) => `${t.title}, de ${t.waitingFor}${since(t)}${news(t)}`))}${all.length > 4 ? ` y ${all.length - 4} más` : ''}.`
 }
 
 function habitsLeft(rows: Row[], env: Env): string {
@@ -647,7 +649,11 @@ function brief(rows: Row[], env: Env, cx?: CaptureContext): string {
   const habits = habitsToday(rows, today).filter((h) => !h.done)
   if (habits.length) out.push(`${habits.length === 1 ? 'Te queda un hábito' : `Te quedan ${habits.length} hábitos`}: ${list(habits.slice(0, 4).map((h) => h.name))}${habits.length > 4 ? ' y más' : ''}.`)
   for (const b of birthdaysWithin(rows, today, 1)) out.push(`${cap(spokenDay(b.date, today))} es el cumpleaños de ${b.name}.`)
-  const ask = new Index(rows).tasks.filter((t) => !t.done && t.waitingFor && t.dueDate && t.dueDate <= today)
+  // Con una posible respuesta sin decidir no se insiste: se avisa de que hay novedades
+  const waits = new Index(rows).tasks.filter((t) => !t.done && t.waitingFor)
+  const news = waits.filter((t) => pendingReplies(t).length)
+  const ask = waits.filter((t) => t.dueDate && t.dueDate <= today && !pendingReplies(t).length)
+  if (news.length) out.push(`Puede que ya te hayan contestado: ${list(news.slice(0, 3).map((t) => `${t.waitingFor}, por ${t.title.charAt(0).toLowerCase()}${t.title.slice(1)}`))}. Míralo en la app.`)
   if (ask.length) out.push(`Hoy toca preguntar: ${list(ask.slice(0, 3).map((t) => `a ${t.waitingFor} por ${t.title.charAt(0).toLowerCase()}${t.title.slice(1)}`))}.`)
   if (cx?.house) {
     const home = houseVoice(cx.house, today)

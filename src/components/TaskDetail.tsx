@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, Reorder, m as motion, useDragControls } from 'motion/react'
-import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, UserRoundCheck, X } from 'lucide-react'
+import { AtSign, Bell, Calendar, CalendarClock, CalendarDays, Clock, Copy, Flag, Folder, GripVertical, Hash, Hourglass, ListChecks, MessageCircleReply, Plus, Repeat, Repeat2, Rows3, SkipForward, StickyNote, Timer, Trash2, UserRoundCheck, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Recurrence, Reminder, Subtask, Task } from '@/db/types'
@@ -12,6 +12,8 @@ import { endOfMonth } from 'date-fns'
 import { firstOccurrence, recurrenceLabel } from '@/lib/recurrence'
 import { PRIORITY_COLOR, PRIORITY_LABEL, dateColor, moveItem, waitingLabel } from '@/lib/tasks'
 import { nudge, onDay, startWaiting, stopWaiting, waitMore } from '@/features/waiting/nudge'
+import { confirmWaitReply, discardWaitReply, reopenWaitReply } from '@/features/waiting/replies'
+import { KIND_LABEL, SOURCE_LABEL, lastClosing, pendingReplies, type WaitingReply } from '@/lib/waitReplies'
 import { uid } from '@/lib/id'
 import { durationLabel, parseDuration } from '@/lib/duration'
 import { NAG_OPTIONS, REMINDER_OPTIONS, nagLabel, reminderLabel, reminderValue } from '@/lib/reminders'
@@ -148,6 +150,13 @@ function Row({
   )
 }
 
+/** La espera que se cerró hace poco con una respuesta (para poder volver a ella) */
+function recentClosing(task: Task) {
+  if (task.waitingFor || task.done) return undefined
+  const r = lastClosing(task)
+  return r && Date.now() - (r.decidedAt ?? 0) < 7 * 864e5 ? r : undefined
+}
+
 /** A la espera de alguien (GTD): con quién, desde cuándo, «Recordárselo» y «Ya no espero» */
 function WaitingRow({ task, names }: { task: Task; names: string[] }) {
   const [who, setWho] = useState('')
@@ -156,10 +165,13 @@ function WaitingRow({ task, names }: { task: Task; names: string[] }) {
     setBusy(true)
     void fn().finally(() => setBusy(false))
   }
+  const pending = pendingReplies(task)
+  const closing = recentClosing(task)
   if (task.waitingFor)
     return (
       <Row field="waiting" icon={<UserRoundCheck size={15} strokeWidth={2.6} />} color="var(--c-text)" label="A la espera" value={waitingLabel(task, today())} onClear={() => run(() => stopWaiting(task))}>
-        {!task.done && (
+        {/* Con una posible respuesta sin decidir, no se insiste: primero decides si es eso */}
+        {!task.done && !pending.length && (
           <>
             <Pill tone="strong" onClick={() => run(() => nudge(task))}>
               Recordárselo
@@ -167,6 +179,21 @@ function WaitingRow({ task, names }: { task: Task; names: string[] }) {
             <Pill onClick={() => run(async () => toast(`Lo vuelves a mirar ${onDay(await waitMore(task))}`))}>3 días más</Pill>
           </>
         )}
+        {pending.map((r) => (
+          <ReplyCard key={r.id} reply={r} busy={busy} onConfirm={() => run(() => confirmWaitReply(task, r.id))} onDiscard={() => run(() => discardWaitReply(task, r.id))} />
+        ))}
+      </Row>
+    )
+  if (closing)
+    return (
+      <Row
+        field="waiting"
+        icon={<MessageCircleReply size={15} strokeWidth={2.6} />}
+        color="var(--c-text)"
+        label="Espera cerrada"
+        value={`Llegó por ${SOURCE_LABEL[closing.source] ?? closing.source}${closing.from ? `, de ${closing.from}` : ''} · ${dateLabel(closing.sent)}`}
+      >
+        <Pill onClick={() => run(() => reopenWaitReply(task, closing.id))}>Volver a esperar</Pill>
       </Row>
     )
   return (
@@ -191,6 +218,43 @@ function WaitingRow({ task, names }: { task: Task; names: string[] }) {
         )}
       </form>
     </Row>
+  )
+}
+
+const safeLink = (l?: string) => (l && /^https:\/\//i.test(l) ? l : undefined)
+
+/**
+ * Una posible respuesta que ha visto un asistente: de dónde, quién, qué dice
+ * (texto de fuera, tal cual) y por qué podría resolver la espera. Solo se
+ * cierra si dices que sí.
+ */
+function ReplyCard({ reply, busy, onConfirm, onDiscard }: { reply: WaitingReply; busy: boolean; onConfirm: () => void; onDiscard: () => void }) {
+  const link = safeLink(reply.link)
+  return (
+    <div data-wait-reply={reply.kind} role="group" aria-label="Posible respuesta recibida" className="mt-1 w-full rounded-2xl border border-line p-3 text-[13.5px]">
+      <p className="flex items-center gap-1.5 font-semibold text-fg">
+        <MessageCircleReply size={13} strokeWidth={2.6} aria-hidden /> Posible respuesta recibida
+      </p>
+      <p className="mt-0.5 text-muted">
+        {SOURCE_LABEL[reply.source] ?? reply.source}
+        {reply.from ? `, de ${reply.from}` : ''} · {dateLabel(reply.sent)}: {KIND_LABEL[reply.kind]}
+      </p>
+      {reply.excerpt && <p className="mt-1.5 line-clamp-4 border-l-2 border-line pl-2 text-fg italic">«{reply.excerpt}»</p>}
+      {reply.why && <p className="mt-1 text-muted">{reply.why}</p>}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <button type="button" disabled={busy} onClick={onConfirm} className="h-8 rounded-full bg-fg px-3 text-[13px] font-semibold text-bg transition-all active:scale-95 disabled:opacity-50">
+          {reply.kind === 'entregado' ? 'Sí, ha llegado' : 'Cerrar la espera'}
+        </button>
+        <button type="button" disabled={busy} onClick={onDiscard} className="h-8 rounded-full bg-fill px-3 text-[13px] font-semibold text-fg transition-all hover:bg-press active:scale-95 disabled:opacity-50">
+          No es eso
+        </button>
+        {link && (
+          <a href={link} target="_blank" rel="noreferrer noopener" className="px-2 text-[13px] font-medium text-blue hover:underline">
+            Abrir el mensaje
+          </a>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -350,7 +414,7 @@ function TaskDetail({ task }: { task: Task }) {
     priority: task.priority > 0,
     tags: task.tags.length > 0,
     people: (task.people?.length ?? 0) > 0,
-    waiting: !!task.waitingFor,
+    waiting: !!task.waitingFor || !!recentClosing(task),
   }
   const shows = (f: Field) => has[f] || opened.has(f)
   const addField = (f: Field) => {
