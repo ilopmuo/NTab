@@ -1,5 +1,5 @@
 import { TABLES, type NTabDB } from '@/db/db'
-import { stamp } from './tracking'
+import { isAgentState, stamp } from './tracking'
 
 /** Una fila en la nube: el registro local serializado */
 export interface RemoteRow {
@@ -44,13 +44,17 @@ export class SyncEngine {
     await this.raw._local.put({ key, value })
   }
 
+  /** Lo que falta por subir (sin el estado de los asistentes que pudiera haber dejado una versión anterior de la app) */
   pendingCount() {
-    return this.raw._outbox.count()
+    return this.raw._outbox.filter((e) => !isAgentState(e.tbl, e.id)).count()
   }
 
   /** Sube los cambios locales pendientes. Devuelve cuántos registros se subieron. */
   async push(): Promise<number> {
-    const entries = (await this.raw._outbox.orderBy('ts').toArray()).filter((e) => SYNCED.has(e.tbl))
+    const all = await this.raw._outbox.orderBy('ts').toArray()
+    const internal = all.filter((e) => isAgentState(e.tbl, e.id))
+    if (internal.length) await this.raw._outbox.bulkDelete(internal.map((e) => e.key))
+    const entries = all.filter((e) => SYNCED.has(e.tbl) && !isAgentState(e.tbl, e.id))
     for (let i = 0; i < entries.length; i += CHUNK) {
       const chunk = entries.slice(i, i + CHUNK)
       const rows: RemoteRow[] = await Promise.all(
@@ -103,8 +107,8 @@ export class SyncEngine {
   async enqueueAll() {
     const ts = stamp()
     for (const t of TABLES) {
-      const keys = await this.raw.table(t).toCollection().primaryKeys()
-      await this.raw._outbox.bulkPut(keys.map((k) => ({ key: `${t}:${String(k)}`, tbl: t, id: String(k), ts })))
+      const keys = (await this.raw.table(t).toCollection().primaryKeys()).map(String).filter((k) => !isAgentState(t, k))
+      await this.raw._outbox.bulkPut(keys.map((k) => ({ key: `${t}:${k}`, tbl: t, id: k, ts })))
     }
   }
 

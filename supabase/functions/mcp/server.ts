@@ -1267,8 +1267,8 @@ async function runTool(name: string, args: Record<string, unknown>, store: Store
     }
     case 'apuntar_aviso': {
       const r = saveNotice(rows, args, env)
-      if (r.writes.length) await store.save(r.writes)
-      return text(r.report.join('\n'), !r.writes.length && !r.report[0]?.startsWith('Ya estaba apuntado'))
+      if (r.writes.length) await store.save(r.writes, r.deletes)
+      return text(r.report.join('\n'), r.error === true)
     }
     case 'proponer_cierre_espera':
     case 'confirmar_cierre_espera':

@@ -17,6 +17,14 @@ export function stamp() {
   return lastStamp
 }
 
+/**
+ * Estado interno de los asistentes (historial, revisiones de ver_novedades y la
+ * lista de avisos de antes): solo lo escribe el conector en la nube. La app lo
+ * recibe pero no lo sigue ni lo sube, ni su borrado: restaurar una copia
+ * antigua o combinar un dispositivo con datos viejos no lo pisa.
+ */
+export const isAgentState = (tbl: string, id: string) => tbl === 'settings' && (id === 'agentLog' || id === 'agentNotices' || id.startsWith('agentSeen:'))
+
 type Listener = () => void
 const listeners = new Set<Listener>()
 
@@ -51,6 +59,7 @@ export function createTracking(db: Dexie, tables: readonly string[]): Middleware
     for (const k of keys) {
       if (k === undefined || k === null) continue
       const id = String(k)
+      if (isAgentState(tbl, id)) continue
       pending.set(`${tbl}:${id}`, { key: `${tbl}:${id}`, tbl, id, ts })
     }
     // Fuera de la transacción actual (que no incluye _outbox)

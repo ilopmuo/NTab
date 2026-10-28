@@ -124,7 +124,11 @@ describe('apuntar_aviso: no repetirle lo mismo', () => {
     const id = a.text.match(/Aviso apuntado \[([a-z0-9]+)\]/)![1]
     expect(a.text).toContain('(sobre: resumen, «Llamar al dentista» [dentista], «Presupuesto del fontanero» [fontanero])')
     expect(a.extra).toBe('') // no es un cambio de sus cosas: sin operación que deshacer
-    expect((await call(store, 'apuntar_aviso', { tema: 'otra vez', sobre: ['resumen'], peticion_id: 'av-1' })).text).toBe(`Ya estaba apuntado (peticion_id av-1): aviso [${id}].`)
+    // El reintento con lo mismo no se apunta dos veces; el mismo peticion_id con otro tema es un conflicto y no pisa nada
+    expect((await call(store, 'apuntar_aviso', { tema: 'Buenos días: dentista y preguntar a Luis', sobre: ['resumen', 'dentista', 'fontanero'], canal: 'Telegram', peticion_id: 'av-1' })).text).toBe(`Ya estaba apuntado (peticion_id av-1): aviso [${id}].`)
+    const conflict = await call(store, 'apuntar_aviso', { tema: 'otra vez', sobre: ['resumen'], peticion_id: 'av-1' })
+    expect(conflict.isError).toBe(true)
+    expect(conflict.text).toContain(`el peticion_id av-1 ya se usó para otro aviso [${id}]`)
 
     later(60)
     const s = (await call(store, 'ver_resumen')).text
