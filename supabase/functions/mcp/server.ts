@@ -1010,11 +1010,11 @@ export const TOOLS = [
     name: 'ver_novedades',
     title: 'Ver qué ha cambiado',
     description:
-      'Lo que ha cambiado en sus tareas desde tu última revisión (o desde «desde»): nuevas, hechas, borradas, con otra fecha, que pasan a esperar a alguien o se renombran, y quién lo hizo (el usuario o un asistente); y los avisos que le han dado otros asistentes. Deja apuntada la revisión para la próxima vez (salvo sin_marcar). Tus propios cambios no se repiten salvo incluir_mias.',
+      'Lo que ha cambiado en sus tareas desde tu última revisión (o desde «desde»): nuevas, hechas, borradas, con otra fecha, que pasan a esperar a alguien o se renombran, y quién lo hizo (el usuario o un asistente); y los avisos que le han dado otros asistentes. Deja apuntada la revisión para la próxima vez (salvo con desde o sin_marcar, que solo miran). Tus propios cambios no se repiten salvo incluir_mias (solo cuenta como tuyo lo que sigue como lo dejaste).',
     inputSchema: {
       type: 'object',
       properties: {
-        desde: { type: 'string', description: 'YYYY-MM-DD o fecha y hora ISO; sin él, desde tu última revisión' },
+        desde: { type: 'string', description: 'YYYY-MM-DD (desde la medianoche de ese día en su zona) o fecha y hora ISO (sin zona, la suya); sin él, desde tu última revisión. Solo mira: no cambia tu última revisión' },
         sin_marcar: { type: 'boolean', description: 'true: solo mirar, sin apuntar esta revisión' },
         incluir_mias: { type: 'boolean', description: 'true: incluir también lo que cambiaste tú' },
       },
@@ -1263,7 +1263,7 @@ async function runTool(name: string, args: Record<string, unknown>, store: Store
       // Apunta hasta dónde ha mirado este asistente (no es un cambio de sus cosas)
       const r = whatsNew(rows, args, env)
       if (r.writes.length) await store.save(r.writes)
-      return text(r.text)
+      return text(r.text, r.error === true)
     }
     case 'apuntar_aviso': {
       const r = saveNotice(rows, args, env)
